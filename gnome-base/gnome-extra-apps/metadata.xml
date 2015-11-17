@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+<herd>gnome</herd>
+<use>
+	<flag name="bijiben">Install the <pkg>app-misc/bijiben</pkg> note editor</flag>
+	<flag name="boxes">Install the <pkg>gnome-extra/gnome-boxes</pkg> remote and virtual system manager</flag>
+	<flag name="builder">Install the <pkg>gnome-extra/gnome-builder</pkg> IDE</flag>
+	<flag name="california">Install the <pkg>gnome-extra/california</pkg> calendar</flag>
+	<flag name="epiphany">Install the <pkg>www-client/epiphany</pkg> web browser</flag>
+	<flag name="evolution">Install the <pkg>mail-client/evolution</pkg> mail client</flag>
+	<flag name="games">Install Gnome Games</flag>
+	<flag name="geary">Install the <pkg>mail-client/geary</pkg> mail client</flag>
+	<flag name="share">Install the <pkg>gnome-extra/gnome-user-share</pkg> personal file sharing tool</flag>
+	<flag name="shotwell">Install the <pkg>media-gfx/shotwell</pkg> photo manager</flag>
+	<flag name="todo">Install the <pkg>gnome-extra/gnome-builder</pkg>task manager</flag>
+	<flag name="tracker">Install the <pkg>app-misc/tracker</pkg> indexer and the GNOME packages that require it</flag>
+</use>
+</pkgmetadata>
