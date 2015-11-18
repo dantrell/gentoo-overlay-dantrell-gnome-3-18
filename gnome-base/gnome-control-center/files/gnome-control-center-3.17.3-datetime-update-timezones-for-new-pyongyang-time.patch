@@ -1,0 +1,30 @@
+From 93addb3e9c065e517576e7591ee001bb762fcede Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Fr=C3=A9d=C3=A9ric=20P=C3=A9ters?= <fpeters@0d.be>
+Date: Tue, 18 Aug 2015 00:16:44 +0200
+Subject: [PATCH] datetime: update timezones for new "Pyongyang Time"
+
+https://bugzilla.gnome.org/show_bug.cgi?id=753643
+---
+ panels/datetime/data/timezone_8.5.png     | Bin 0 -> 2069 bytes
+ panels/datetime/data/timezone_8.5_dim.png | Bin 0 -> 1177 bytes
+ panels/datetime/data/timezone_9.png       | Bin 12608 -> 14381 bytes
+ panels/datetime/data/timezone_9_dim.png   | Bin 8383 -> 8377 bytes
+ panels/datetime/datetime.gresource.xml    |   2 ++
+ 5 files changed, 2 insertions(+)
+
+diff --git a/panels/datetime/datetime.gresource.xml b/panels/datetime/datetime.gresource.xml
+index 3282dcd..ccbf955 100644
+--- a/panels/datetime/datetime.gresource.xml
++++ b/panels/datetime/datetime.gresource.xml
+@@ -81,6 +81,8 @@
+     <file alias="timezone_-8_dim.png">data/timezone_-8_dim.png</file>
+     <file alias="timezone_8.png">data/timezone_8.png</file>
+     <file alias="timezone_8_dim.png">data/timezone_8_dim.png</file>
++    <file alias="timezone_8.5.png">data/timezone_8.5.png</file>
++    <file alias="timezone_8.5_dim.png">data/timezone_8.5_dim.png</file>
+     <file alias="timezone_8.75.png">data/timezone_8.75.png</file>
+     <file alias="timezone_8.75_dim.png">data/timezone_8.75_dim.png</file>
+     <file alias="timezone_-9.png">data/timezone_-9.png</file>
+-- 
+2.5.0
+

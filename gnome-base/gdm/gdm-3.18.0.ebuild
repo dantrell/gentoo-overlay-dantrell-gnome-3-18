@@ -20,7 +20,7 @@ LICENSE="
 
 SLOT="0"
 
-IUSE="accessibility audit branding fprint +introspection ipv6 plymouth selinux smartcard systemd tcpd test wayland xinerama"
+IUSE="accessibility audit branding +deprecated fprint +introspection ipv6 plymouth selinux smartcard systemd tcpd test wayland xinerama"
 REQUIRED_USE="wayland? ( systemd )"
 
 KEYWORDS="*"
@@ -128,6 +128,20 @@ pkg_setup() {
 }
 
 src_prepare() {
+	if use deprecated; then
+		# From GNOME:
+		# 	https://git.gnome.org/browse/gdm/commit/?id=e0e7f2d92d8d26592c44dd12fe56c52414a6bb2a
+		# 	https://git.gnome.org/browse/gdm/commit/?id=a9cacb929470eb82582396984c61d5b611bfeb1a
+		# 	https://git.gnome.org/browse/gdm/commit/?id=abb46853f824a004e0d7f58b26e068589b121d6b
+		# 	https://git.gnome.org/browse/gdm/commit/?id=7247ee14cf9db22e6e3608992e02dce16e6c1b59
+		# 	https://git.gnome.org/browse/gdm/commit/?id=193046dbf37c5abad9af21f0a57743bb6015e413
+		# 	https://git.gnome.org/browse/gdm/commit/?id=9be58c9ec9a3a411492a5182ac4b0d51fdc3a323
+		# 	https://git.gnome.org/browse/gdm/commit/?id=1ac67f522f5690c27023d98096ca817f12f7eb88
+		# 	https://bugzilla.gnome.org/show_bug.cgi?id=749418
+		epatch "${FILESDIR}"/${P}-restore-deprecated-consolekit-code.patch
+		epatch "${FILESDIR}"/${P}-rebase-autologin-fixes.patch
+	fi
+
 	# make custom session work, bug #216984, upstream bug #737578
 	epatch "${FILESDIR}/${PN}-3.2.1.1-custom-session.patch"
 
@@ -140,8 +154,9 @@ src_prepare() {
 	# Show logo when branding is enabled
 	use branding && epatch "${FILESDIR}/${PN}-3.8.4-logo.patch"
 
-	eautoreconf
+	epatch_user
 
+	eautoreconf
 	gnome2_src_prepare
 }
 

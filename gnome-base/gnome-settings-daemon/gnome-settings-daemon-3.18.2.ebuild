@@ -96,6 +96,12 @@ DEPEND="${COMMON_DEPEND}
 "
 
 src_prepare() {
+	if use deprecated; then
+		# From Funtoo:
+		# 	https://bugs.funtoo.org/browse/FL-1329
+		epatch "${FILESDIR}"/${PN}-3.16.2-restore-deprecated-code.patch
+	fi
+
 	# https://bugzilla.gnome.org/show_bug.cgi?id=621836
 	# Apparently this change severely affects touchpad usability for some
 	# people, so revert it if USE=short-touchpad-timeout.
@@ -120,6 +126,7 @@ src_configure() {
 		$(use_enable cups) \
 		$(use_enable debug) \
 		$(use_enable debug more-warnings) \
+		$(use_enable deprecated) \
 		$(use_enable networkmanager network-manager) \
 		$(use_enable smartcard smartcard-support) \
 		$(use_enable udev gudev) \

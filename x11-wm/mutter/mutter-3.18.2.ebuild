@@ -3,14 +3,14 @@
 EAPI="5"
 GCONF_DEBUG="yes"
 
-inherit eutils gnome2
+inherit autotools eutils gnome2
 
 DESCRIPTION="GNOME 3 compositing window manager based on Clutter"
 HOMEPAGE="https://git.gnome.org/browse/mutter/"
 
 LICENSE="GPL-2+"
 SLOT="0"
-IUSE="+introspection kms test wayland"
+IUSE="deprecated-background +introspection kms test wayland"
 KEYWORDS="*"
 
 # libXi-1.7.4 or newer needed per:
@@ -75,6 +75,17 @@ DEPEND="${COMMON_DEPEND}
 RDEPEND="${COMMON_DEPEND}
 	!x11-misc/expocity
 "
+
+src_prepare() {
+	if use deprecated-background; then
+		epatch "${FILESDIR}"/${P}-restore-deprecated-background-code.patch
+	fi
+
+	epatch_user
+
+	eautoreconf
+	gnome2_src_prepare
+}
 
 src_configure() {
 	gnome2_src_configure \

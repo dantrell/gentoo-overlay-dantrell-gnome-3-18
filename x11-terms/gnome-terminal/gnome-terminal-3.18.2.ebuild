@@ -11,7 +11,7 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Terminal/"
 
 LICENSE="GPL-3+"
 SLOT="0"
-IUSE="debug +gnome-shell +nautilus vanilla"
+IUSE="debug +deprecated +gnome-shell +nautilus vanilla"
 KEYWORDS="*"
 
 # FIXME: automagic dependency on gtk+[X]
@@ -44,13 +44,27 @@ DOC_CONTENTS="To get previous working directory inherited in new opened
 	. /etc/profile.d/vte.sh"
 
 src_prepare() {
-	if ! use vanilla; then
-		# OpenSuSE patches, https://bugzilla.gnome.org/show_bug.cgi?id=695371
-		epatch "${FILESDIR}"/${PN}-3.18.2-transparency.patch
-		epatch "${FILESDIR}"/${PN}-3.18.2-transparency-fix-for-broken-themes.patch
-		epatch "${FILESDIR}"/${PN}-3.18.2-dark-theme.patch
-		eautoreconf
+	if use deprecated; then
+		# From Fedora:
+		# 	http://pkgs.fedoraproject.org/cgit/gnome-terminal.git/tree/?h=f23
+		epatch "${FILESDIR}"/${PN}-3-18-2-build-dont-treat-warnings-as-errors.patch
+		epatch "${FILESDIR}"/${PN}-3.18.2-symbolic-new-tab-icon.patch
+		epatch "${FILESDIR}"/${PN}-3.18.2-dark-transparency-notify.patch
+
+		# From GNOME:
+		# 	https://git.gnome.org/browse/gnome-terminal/commit/?id=b3c270b3612acd45f309521cf1167e1abd561c09
+		epatch "${FILESDIR}"/${PN}-3.14.3-fix-broken-transparency-on-startup.patch
 	fi
+
+	if ! use vanilla; then
+		# From Funtoo:
+		# 	https://bugs.funtoo.org/browse/FL-1652
+		epatch "${FILESDIR}"/${PN}-3.16.2-disable-function-keys.patch
+	fi
+
+	epatch_user
+
+	eautoreconf
 	gnome2_src_prepare
 }
 

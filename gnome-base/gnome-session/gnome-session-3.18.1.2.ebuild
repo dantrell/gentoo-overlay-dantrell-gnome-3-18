@@ -3,7 +3,7 @@
 EAPI="5"
 GCONF_DEBUG="yes"
 
-inherit gnome2
+inherit autotools eutils gnome2
 
 DESCRIPTION="Gnome session manager"
 HOMEPAGE="https://git.gnome.org/browse/gnome-session"
@@ -11,7 +11,7 @@ HOMEPAGE="https://git.gnome.org/browse/gnome-session"
 LICENSE="GPL-2 LGPL-2 FDL-1.1"
 SLOT="0"
 KEYWORDS="*"
-IUSE="doc elibc_FreeBSD ipv6 systemd"
+IUSE="+deprecated doc elibc_FreeBSD gconf ipv6 systemd"
 
 # x11-misc/xdg-user-dirs{,-gtk} are needed to create the various XDG_*_DIRs, and
 # create .config/user-dirs.dirs which is read by glib to get G_USER_DIRECTORY_*
@@ -38,7 +38,7 @@ COMMON_DEPEND="
 	x11-misc/xdg-user-dirs-gtk
 	x11-apps/xdpyinfo
 
-	systemd? ( >=sys-apps/systemd-183:0= )
+	gconf? ( >=gnome-base/gconf-2:2 )
 "
 # Pure-runtime deps from the session files should *NOT* be added here
 # Otherwise, things like gdm pull in gnome-shell
@@ -49,9 +49,14 @@ RDEPEND="${COMMON_DEPEND}
 	>=gnome-base/gsettings-desktop-schemas-0.1.7
 	>=x11-themes/gnome-themes-standard-2.91.92
 	sys-apps/dbus[X]
+
+	!deprecated? (
+		systemd? ( >=sys-apps/systemd-186:0= )
+	)
 	!systemd? (
 		sys-auth/consolekit
 		>=dev-libs/dbus-glib-0.76
+		deprecated? ( >=sys-power/upower-0.99:=[deprecated] )
 	)
 "
 DEPEND="${COMMON_DEPEND}
@@ -68,22 +73,30 @@ DEPEND="${COMMON_DEPEND}
 # gnome-common needed for eautoreconf
 # gnome-base/gdm does not provide gnome.desktop anymore
 
+src_prepare() {
+	if use deprecated; then
+		# From Funtoo:
+		# 	https://bugs.funtoo.org/browse/FL-1329
+		epatch "${FILESDIR}"/${PN}-3.16.0-restore-deprecated-code.patch
+	fi
+
+	epatch_user
+
+	eautoreconf
+	gnome2_src_prepare
+}
+
 src_configure() {
-	# 1. Avoid automagic on old upower releases
-	# 2. xsltproc is always checked due to man configure
+	# 1. xsltproc is always checked due to man configure
 	#    switch, even if USE=-doc
-	# 3. Disable old gconf support as other distributions did long time
-	#    ago
 	gnome2_src_configure \
-		--disable-deprecation-flags \
-		--disable-gconf \
 		--enable-session-selector \
+		$(use_enable deprecated) \
 		$(use_enable doc docbook-docs) \
+		$(use_enable gconf) \
 		$(use_enable ipv6) \
 		$(use_enable systemd) \
-		$(use_enable !systemd consolekit) \
-		UPOWER_CFLAGS="" \
-		UPOWER_LIBS=""
+		$(use_enable !systemd consolekit)
 		# gnome-session-selector pre-generated man page is missing
 		#$(usex !doc XSLTPROC=$(type -P true))
 }
@@ -96,7 +109,7 @@ src_install() {
 	doexe "${FILESDIR}/Gnome"
 
 	insinto /usr/share/applications
-	newins "${FILESDIR}/defaults.list-r3" gnome-mimeapps.list
+	newins "${FILESDIR}/${PN}-3.16.0-defaults.list" gnome-mimeapps.list
 
 	dodir /etc/X11/xinit/xinitrc.d/
 	exeinto /etc/X11/xinit/xinitrc.d/

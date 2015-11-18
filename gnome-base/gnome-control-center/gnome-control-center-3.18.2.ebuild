@@ -11,7 +11,7 @@ HOMEPAGE="https://git.gnome.org/browse/gnome-control-center/"
 
 LICENSE="GPL-2+"
 SLOT="2"
-IUSE="+bluetooth +colord +cups +gnome-online-accounts +i18n input_devices_wacom kerberos networkmanager v4l wayland"
+IUSE="+bluetooth +colord +cups +deprecated +gnome-online-accounts +i18n input_devices_wacom kerberos networkmanager systemd v4l wayland"
 KEYWORDS="*"
 
 # False positives caused by nested configure scripts
@@ -79,7 +79,6 @@ COMMON_DEPEND="
 # <gnome-color-manager-3.1.2 has file collisions with g-c-c-3.1.x
 # libgnomekbd needed only for gkbd-keyboard-display tool
 RDEPEND="${COMMON_DEPEND}
-	|| ( ( app-admin/openrc-settingsd sys-auth/consolekit ) >=sys-apps/systemd-31 )
 	>=sys-apps/accountsservice-0.6.39
 	x11-themes/gnome-icon-theme-symbolic
 	colord? ( >=gnome-extra/gnome-color-manager-3 )
@@ -94,6 +93,16 @@ RDEPEND="${COMMON_DEPEND}
 	!gnome-extra/gnome-media[pulseaudio]
 	!<gnome-extra/gnome-media-2.32.0-r300
 	!<net-wireless/gnome-bluetooth-3.3.2
+
+	!deprecated? (
+		systemd? ( >=sys-apps/systemd-186:0= )
+	)
+	!systemd? (
+		app-admin/openrc-settingsd
+		sys-auth/consolekit
+
+		deprecated? ( >=sys-power/upower-0.99:=[deprecated] )
+	)
 "
 # PDEPEND to avoid circular dependency
 PDEPEND=">=gnome-base/gnome-session-2.91.6-r1"
@@ -125,6 +134,26 @@ src_prepare() {
 	# Fix some absolute paths to be appropriate for Gentoo
 	epatch "${FILESDIR}"/${PN}-3.10.2-gentoo-paths.patch
 
+	# From GNOME:
+	# 	https://bugzilla.gnome.org/show_bug.cgi?id=753643
+	cp "${FILESDIR}"/timezones/*.png panels/datetime/data/ || die
+	epatch "${FILESDIR}"/${PN}-3.17.3-datetime-update-timezones-for-new-pyongyang-time.patch
+
+	if use deprecated; then
+		# From Funtoo:
+		# 	https://bugs.funtoo.org/browse/FL-1329
+		epatch "${FILESDIR}"/${PN}-3.18.2-revert-critical-battery-action.patch
+		epatch "${FILESDIR}"/${PN}-3.16.3-restore-deprecated-code.patch
+	fi
+
+	# From Funtoo:
+	# 	https://bugs.funtoo.org/browse/FL-1389
+	epatch "${FILESDIR}"/${PN}-3.18.2-disable-automatic-datetime-and-timezone-options.patch
+
+	# From Funtoo:
+	# 	https://bugs.funtoo.org/browse/FL-1391
+	epatch "${FILESDIR}"/${PN}-3.18.2-disable-changing-hostname.patch
+
 	epatch_user
 
 	eautoreconf
@@ -139,6 +168,7 @@ src_configure() {
 		$(use_enable bluetooth) \
 		$(use_enable colord color) \
 		$(use_enable cups) \
+		$(use_enable deprecated) \
 		$(use_enable gnome-online-accounts goa) \
 		$(use_enable i18n ibus) \
 		$(use_enable kerberos) \

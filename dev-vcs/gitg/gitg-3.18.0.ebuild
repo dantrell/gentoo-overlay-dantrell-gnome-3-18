@@ -1,8 +1,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="5"
-
-VALA_MIN_API_VERSION="0.20"
+GCONF_DEBUG="no"
+GNOME2_LA_PUNT="yes"
 PYTHON_COMPAT=( python{3_3,3_4} )
 
 inherit gnome2 python-r1 vala
@@ -13,8 +13,8 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Gitg"
 LICENSE="|| ( GPL-2 GPL-3 )"
 SLOT="0"
 KEYWORDS="*"
-IUSE="debug glade +python"
 
+IUSE="debug glade +python"
 REQUIRED_USE="python? ( ^^ ( $(python_gen_useflags '*') ) )"
 
 # test if unbundling of libgd is possible
@@ -24,11 +24,13 @@ RDEPEND="
 	dev-libs/libgee:0.8[introspection]
 	>=dev-libs/json-glib-0.16
 	>=app-text/gtkspell-3.0.3:3
-	>=dev-libs/glib-2.38:2
-	>=dev-libs/gobject-introspection-0.10.1
-	dev-libs/libgit2:0/22[threads]
+	>=dev-libs/glib-2.38:2[dbus]
+	>=dev-libs/gobject-introspection-0.10.1:=
+	dev-libs/libgit2:=[threads]
+
 	>=dev-libs/libgit2-glib-0.23.5[ssh]
 	<dev-libs/libgit2-glib-0.24.0
+
 	>=dev-libs/libpeas-1.5.0[gtk]
 	>=gnome-base/gsettings-desktop-schemas-0.1.1
 	>=net-libs/webkit-gtk-2.2:4[introspection]
@@ -48,9 +50,8 @@ DEPEND="${RDEPEND}
 	>=sys-devel/gettext-0.17
 	virtual/pkgconfig
 	>=dev-util/intltool-0.40
-	$(vala_depend)"
-
-DOCS="AUTHORS ChangeLog NEWS README"
+	$(vala_depend)
+"
 
 pkg_setup() {
 	use python && [[ ${MERGE_TYPE} != binary ]] && python_setup
@@ -62,10 +63,6 @@ src_prepare() {
 		-e '/CFLAGS/s:-O0::g' \
 		-i configure.ac || die
 
-	sed \
-		-e 's/name="WebKit2" version="3.0"/name="WebKit2" version="4.0"/' \
-		-i Gitg-1.0.gir || die
-
 	gnome2_src_prepare
 	vala_src_prepare
 }
@@ -74,7 +71,6 @@ src_configure() {
 	gnome2_src_configure \
 		--disable-static \
 		--disable-deprecations \
-		--disable-dependency-tracking \
 		$(use_enable debug) \
 		$(use_enable glade glade-catalog) \
 		$(use_enable python)

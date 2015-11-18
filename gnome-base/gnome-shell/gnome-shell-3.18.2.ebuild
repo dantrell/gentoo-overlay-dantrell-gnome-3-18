@@ -12,7 +12,7 @@ HOMEPAGE="https://wiki.gnome.org/Projects/GnomeShell"
 
 LICENSE="GPL-2+ LGPL-2+"
 SLOT="0"
-IUSE="+bluetooth deprecated +networkmanager +nls systemd vanilla"
+IUSE="+bluetooth +deprecated deprecated-background +networkmanager +nls systemd vanilla"
 REQUIRED_USE="${PYTHON_REQUIRED_USE}"
 KEYWORDS="*"
 
@@ -61,6 +61,7 @@ COMMON_DEPEND="
 	x11-apps/mesa-progs
 
 	bluetooth? ( >=net-wireless/gnome-bluetooth-3.9[introspection] )
+	deprecated-background? ( x11-wm/mutter[deprecated-background] )
 	networkmanager? (
 		app-crypt/libsecret
 		>=gnome-extra/nm-applet-0.9.8
@@ -123,6 +124,21 @@ DEPEND="${COMMON_DEPEND}
 # https://bugs.gentoo.org/show_bug.cgi?id=360413
 
 src_prepare() {
+	if use deprecated; then
+		# From Funtoo:
+		# 	https://bugs.funtoo.org/browse/FL-1329
+		epatch "${FILESDIR}"/${PN}-3.14.1-restore-deprecated-code.patch
+		epatch "${FILESDIR}"/${PN}-3.12.2-expose-hibernate-functionality.patch
+	fi
+
+	if use deprecated-background; then
+		epatch "${FILESDIR}"/${P}-restore-deprecated-background-code.patch
+	fi
+
+	if ! use vanilla; then
+		epatch "${FILESDIR}"/${PN}-3.16.4-improve-motd-handling.patch
+	fi
+
 	# Change favorites defaults, bug #479918
 	epatch "${FILESDIR}"/${PN}-3.16.0-defaults.patch
 
@@ -179,18 +195,6 @@ pkg_postinst() {
 		ewarn "you need to either install media-libs/gst-plugins-good:1.0"
 		ewarn "and media-plugins/gst-plugins-vpx:1.0, or use dconf-editor to change"
 		ewarn "apps.gnome-shell.recorder/pipeline to what you want to use."
-	fi
-
-	if ! has_version ">=x11-base/xorg-server-1.11"; then
-		ewarn "If you use multiple screens, it is highly recommended that you"
-		ewarn "upgrade to >=x11-base/xorg-server-1.11 to be able to make use of"
-		ewarn "pointer barriers which will make it easier to use hot corners."
-	fi
-
-	if has_version "<x11-drivers/ati-drivers-12"; then
-		ewarn "GNOME Shell has been reported to show graphical corruption under"
-		ewarn "x11-drivers/ati-drivers-11.*; you may want to switch to open-source"
-		ewarn "drivers."
 	fi
 
 	if ! has_version "media-libs/mesa[llvm]"; then

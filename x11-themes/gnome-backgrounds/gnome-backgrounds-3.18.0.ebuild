@@ -11,10 +11,18 @@ HOMEPAGE="https://git.gnome.org/browse/gnome-backgrounds"
 LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="*"
-IUSE=""
+IUSE="vanilla"
 
 RDEPEND="!<x11-themes/gnome-themes-standard-3.14"
 DEPEND="
 	>=dev-util/intltool-0.40.0
 	sys-devel/gettext
 "
+
+src_compile() {
+	if ! use vanilla; then
+		cp "${FILESDIR}"/"${PN}"-3.14.1-restore-3.10-backgrounds/* "${S}"/backgrounds
+	fi
+
+	gnome2_src_compile
+}
