@@ -49,7 +49,7 @@ src_prepare() {
 		# 	http://pkgs.fedoraproject.org/cgit/gnome-terminal.git/tree/?h=f23
 		epatch "${FILESDIR}"/${PN}-3-18-2-build-dont-treat-warnings-as-errors.patch
 		epatch "${FILESDIR}"/${PN}-3.18.2-symbolic-new-tab-icon.patch
-		epatch "${FILESDIR}"/${PN}-3.18.2-dark-transparency-notify.patch
+		epatch "${FILESDIR}"/${PN}-3.18.2-dark-transparency.patch
 
 		# From GNOME:
 		# 	https://git.gnome.org/browse/gnome-terminal/commit/?id=b3c270b3612acd45f309521cf1167e1abd561c09

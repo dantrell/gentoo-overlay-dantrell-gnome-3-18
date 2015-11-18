@@ -134,11 +134,6 @@ src_prepare() {
 	# Fix some absolute paths to be appropriate for Gentoo
 	epatch "${FILESDIR}"/${PN}-3.10.2-gentoo-paths.patch
 
-	# From GNOME:
-	# 	https://bugzilla.gnome.org/show_bug.cgi?id=753643
-	cp "${FILESDIR}"/timezones/*.png panels/datetime/data/ || die
-	epatch "${FILESDIR}"/${PN}-3.17.3-datetime-update-timezones-for-new-pyongyang-time.patch
-
 	if use deprecated; then
 		# From Funtoo:
 		# 	https://bugs.funtoo.org/browse/FL-1329
