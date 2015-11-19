@@ -10,7 +10,7 @@ HOMEPAGE="https://git.gnome.org/browse/mutter/"
 
 LICENSE="GPL-2+"
 SLOT="0"
-IUSE="deprecated-background +introspection kms test wayland"
+IUSE="+debug deprecated-background +introspection kms test wayland"
 KEYWORDS="*"
 
 # libXi-1.7.4 or newer needed per:
