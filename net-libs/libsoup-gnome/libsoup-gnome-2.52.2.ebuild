@@ -15,14 +15,13 @@ SRC_URI="${SRC_URI//-gnome}"
 
 LICENSE="LGPL-2+"
 SLOT="2.4"
-IUSE="debug +introspection"
+IUSE="+introspection"
 KEYWORDS="*"
 
 RDEPEND="
 	~net-libs/libsoup-${PV}[introspection?,${MULTILIB_USEDEP}]
 	dev-db/sqlite:3=[${MULTILIB_USEDEP}]
-	introspection? ( >=dev-libs/gobject-introspection-0.9.5 )
-	>=net-libs/libsoup-2.42.2-r1[${MULTILIB_USEDEP}]
+	introspection? ( >=dev-libs/gobject-introspection-0.9.5:= )
 "
 DEPEND="${RDEPEND}
 	>=dev-util/gtk-doc-am-1.10
@@ -35,7 +34,7 @@ S=${WORKDIR}/${MY_P}
 
 src_prepare() {
 	# Use lib present on the system
-	epatch "${FILESDIR}"/${PN}-2.48.0-system-lib.patch
+	epatch "${FILESDIR}"/${PN}-2.52.2-system-lib.patch
 	eautoreconf
 	gnome2_src_prepare
 }
@@ -53,7 +52,8 @@ multilib_src_configure() {
 		$(multilib_native_use_enable introspection) \
 		--with-libsoup-system \
 		--with-gnome \
-		--without-apache-httpd
+		--without-apache-httpd \
+		--disable-vala
 }
 
 multilib_src_compile() { gnome2_src_compile; }
