@@ -64,6 +64,7 @@ RDEPEND="
 		>=games-board/gnome-mines-${PV}
 		>=games-board/iagno-${PV}
 		>=games-board/tali-${PV}
+		>=games-puzzle/atomix-${PV}
 		>=games-puzzle/five-or-more-${PV}
 		>=games-puzzle/gnome-klotski-${PV}
 		>=games-puzzle/gnome-sudoku-${PV}

@@ -42,6 +42,7 @@ games-board/gnome-mahjongg::gentoo
 games-board/gnome-mines::gentoo
 games-board/iagno::gentoo
 games-board/tali::gentoo
+games-puzzle/atomix::gentoo
 games-puzzle/five-or-more::gentoo
 games-puzzle/gnome-klotski::gentoo
 games-puzzle/gnome-sudoku::gentoo
