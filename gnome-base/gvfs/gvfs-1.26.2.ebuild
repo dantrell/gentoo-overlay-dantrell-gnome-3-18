@@ -15,6 +15,7 @@ SLOT="0"
 IUSE="afp archive bluray cdda fuse google gnome-keyring gnome-online-accounts gphoto2 gtk +http ios mtp nfs samba systemd test +udev udisks zeroconf"
 REQUIRED_USE="
 	cdda? ( udev )
+	google? ( gnome-online-accounts )
 	mtp? ( udev )
 	udisks? ( udev )
 	systemd? ( udisks )
