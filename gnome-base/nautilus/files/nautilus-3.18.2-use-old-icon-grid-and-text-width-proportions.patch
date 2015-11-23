@@ -1,0 +1,24 @@
+diff '--exclude=.git' -urN a/libnautilus-private/nautilus-canvas-container.c b/libnautilus-private/nautilus-canvas-container.c
+--- a/libnautilus-private/nautilus-canvas-container.c	2015-11-02 06:39:36.000000000 -0500
++++ b/libnautilus-private/nautilus-canvas-container.c	2015-11-22 22:47:06.617270065 -0500
+@@ -98,7 +98,7 @@
+  * where a 76px canvas item would only take one.
+  * Canvas items are then centered in the extra available space.
+  */
+-#define STANDARD_ICON_GRID_WIDTH 80
++#define STANDARD_ICON_GRID_WIDTH 220
+ 
+ /* Desktop layout mode defines */
+ #define DESKTOP_PAD_HORIZONTAL 	10
+diff '--exclude=.git' -urN a/libnautilus-private/nautilus-canvas-item.c b/libnautilus-private/nautilus-canvas-item.c
+--- a/libnautilus-private/nautilus-canvas-item.c	2015-11-02 06:39:36.000000000 -0500
++++ b/libnautilus-private/nautilus-canvas-item.c	2015-11-22 22:47:06.618270060 -0500
+@@ -55,7 +55,7 @@
+ 
+ /* Width of the label with the standard icon size NAUTILUS_CANVAS_ICON_SIZE_STANDARD.
+  * It will adapt to other sizes keeping the same space.*/
+-#define MAX_TEXT_WIDTH_STANDARD (134 - 2 * TEXT_BACK_PADDING_X)
++#define MAX_TEXT_WIDTH_STANDARD (208 - 2 * TEXT_BACK_PADDING_X)
+ 
+ /* special text height handling
+  * each item has three text height variables:

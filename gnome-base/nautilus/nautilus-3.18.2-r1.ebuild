@@ -77,6 +77,11 @@ src_prepare() {
 			close the previewer, press space again."
 	fi
 
+	if ! use vanilla; then
+		epatch "${FILESDIR}"/${P}-reorder-context-menu.patch
+		epatch "${FILESDIR}"/${P}-use-old-icon-grid-and-text-width-proportions.patch
+	fi
+
 	# Remove -D*DEPRECATED flags. Don't leave this for eclass! (bug #448822)
 	sed -e 's/DISABLE_DEPRECATED_CFLAGS=.*/DISABLE_DEPRECATED_CFLAGS=/' \
 		-i configure || die "sed failed"
