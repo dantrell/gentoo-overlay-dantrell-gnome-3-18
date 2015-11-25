@@ -10,7 +10,7 @@ DESCRIPTION="A cheesy program to take pictures and videos from your webcam"
 HOMEPAGE="https://wiki.gnome.org/Apps/Cheese"
 
 LICENSE="GPL-2+"
-SLOT="0/7" # subslot = libcheese soname version
+SLOT="0/8" # subslot = libcheese soname version
 KEYWORDS="*"
 
 IUSE="+introspection test"
