@@ -13,6 +13,7 @@ HOMEPAGE="https://developer.gnome.org/libpeas/stable/"
 LICENSE="LGPL-2+"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE="+gtk glade jit lua +python"
 REQUIRED_USE="python? ( ${PYTHON_REQUIRED_USE} ?? ( $(python_gen_useflags 'python3*') ) )"
 

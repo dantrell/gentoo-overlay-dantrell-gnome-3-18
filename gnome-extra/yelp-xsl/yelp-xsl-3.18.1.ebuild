@@ -9,8 +9,9 @@ HOMEPAGE="https://git.gnome.org/browse/yelp-xsl"
 
 LICENSE="GPL-2+ LGPL-2.1+ MIT FDL-1.1+"
 SLOT="0"
-IUSE=""
 KEYWORDS="*"
+
+IUSE=""
 
 RDEPEND="
 	>=dev-libs/libxml2-2.6.12:=

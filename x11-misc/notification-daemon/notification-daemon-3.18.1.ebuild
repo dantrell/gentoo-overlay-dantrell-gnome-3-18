@@ -10,6 +10,7 @@ HOMEPAGE="https://git.gnome.org/browse/notification-daemon/"
 LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE=""
 
 RDEPEND="

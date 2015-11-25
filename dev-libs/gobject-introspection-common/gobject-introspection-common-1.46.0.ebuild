@@ -11,6 +11,7 @@ HOMEPAGE="https://live.gnome.org/GObjectIntrospection/"
 LICENSE="HPND"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE=""
 
 RDEPEND="!<${CATEGORY}/${PN/-common}-${PV}"

@@ -11,6 +11,7 @@ HOMEPAGE="https://git.gnome.org/browse/gnome-backgrounds"
 LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE="vanilla"
 
 RDEPEND="!<x11-themes/gnome-themes-standard-3.14"

@@ -12,8 +12,9 @@ HOMEPAGE="https://wiki.gnome.org/Design/Apps/Contacts"
 
 LICENSE="GPL-2+"
 SLOT="0"
-IUSE="v4l"
 KEYWORDS="*"
+
+IUSE="v4l"
 
 VALA_DEPEND="
 	$(vala_depend)

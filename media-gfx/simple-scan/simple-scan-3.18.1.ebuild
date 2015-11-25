@@ -16,6 +16,7 @@ SRC_URI="https://launchpad.net/${PN}/${MY_PV}/${PV}/+download/${P}.tar.xz"
 LICENSE="GPL-3"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE="+colord packagekit"
 
 COMMON_DEPEND="

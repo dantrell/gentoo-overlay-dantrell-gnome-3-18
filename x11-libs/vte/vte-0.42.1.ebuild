@@ -11,8 +11,9 @@ HOMEPAGE="https://wiki.gnome.org/action/show/Apps/Terminal/VTE"
 
 LICENSE="LGPL-2+"
 SLOT="2.91"
-IUSE="+crypt debug glade +introspection vala"
 KEYWORDS="*"
+
+IUSE="+crypt debug glade +introspection vala"
 
 RDEPEND="
 	>=dev-libs/glib-2.40:2

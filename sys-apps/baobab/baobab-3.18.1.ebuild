@@ -10,8 +10,9 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Baobab"
 
 LICENSE="GPL-2+ FDL-1.1+"
 SLOT="0"
-IUSE=""
 KEYWORDS="*"
+
+IUSE=""
 
 COMMON_DEPEND="
 	>=dev-libs/glib-2.40:2[dbus]

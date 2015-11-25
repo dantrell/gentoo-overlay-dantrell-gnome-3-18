@@ -10,6 +10,7 @@ DESCRIPTION="GNOME Display Manager for managing graphical display servers and us
 HOMEPAGE="https://wiki.gnome.org/Projects/GDM"
 
 SRC_URI="${SRC_URI}
+
 	branding? ( http://www.mail-archive.com/tango-artists@lists.freedesktop.org/msg00043/tango-gentoo-v1.1.tar.gz )
 "
 
@@ -19,11 +20,10 @@ LICENSE="
 "
 
 SLOT="0"
+KEYWORDS="*"
 
 IUSE="accessibility audit branding +deprecated fprint +introspection ipv6 plymouth selinux smartcard systemd tcpd test wayland xinerama"
 REQUIRED_USE="wayland? ( systemd )"
-
-KEYWORDS="*"
 
 # NOTE: x11-base/xorg-server dep is for X_SERVER_PATH etc, bug #295686
 # nspr used by smartcard extension

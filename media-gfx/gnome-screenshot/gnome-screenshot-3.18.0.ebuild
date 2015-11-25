@@ -10,8 +10,9 @@ HOMEPAGE="https://git.gnome.org/browse/gnome-screenshot"
 
 LICENSE="GPL-2+"
 SLOT="0"
-IUSE=""
 KEYWORDS="*"
+
+IUSE=""
 
 # libcanberra 0.26-r2 is needed for gtk+:3 fixes
 COMMON_DEPEND="

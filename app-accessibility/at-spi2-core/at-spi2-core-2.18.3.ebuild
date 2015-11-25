@@ -11,8 +11,9 @@ HOMEPAGE="https://wiki.gnome.org/Accessibility"
 
 LICENSE="LGPL-2+"
 SLOT="2"
-IUSE="X +introspection"
 KEYWORDS="*"
+
+IUSE="X +introspection"
 
 # x11-libs/libSM is needed until upstream #719808 is solved either
 # making the dep unneeded or fixing their configure

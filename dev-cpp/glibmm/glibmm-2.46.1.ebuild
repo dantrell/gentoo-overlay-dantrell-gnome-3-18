@@ -11,6 +11,7 @@ HOMEPAGE="http://www.gtkmm.org"
 LICENSE="LGPL-2.1+ GPL-2+" # GPL-2+ applies only to the build system
 SLOT="2"
 KEYWORDS="*"
+
 IUSE="doc debug examples test"
 
 RDEPEND="

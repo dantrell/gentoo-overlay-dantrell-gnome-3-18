@@ -12,6 +12,7 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Mines"
 LICENSE="GPL-2+"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE=""
 
 COMMON_DEPEND="

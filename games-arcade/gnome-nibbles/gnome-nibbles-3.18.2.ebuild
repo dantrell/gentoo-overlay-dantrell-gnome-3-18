@@ -11,6 +11,7 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Nibbles"
 LICENSE="GPL-2+"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE=""
 
 RDEPEND="

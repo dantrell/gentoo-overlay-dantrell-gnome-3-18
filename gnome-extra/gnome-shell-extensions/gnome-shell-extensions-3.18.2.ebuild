@@ -10,8 +10,9 @@ HOMEPAGE="https://wiki.gnome.org/Projects/GnomeShell/Extensions"
 
 LICENSE="GPL-2"
 SLOT="0"
-IUSE="examples"
 KEYWORDS="*"
+
+IUSE="examples"
 
 COMMON_DEPEND="
 	>=dev-libs/glib-2.26:2

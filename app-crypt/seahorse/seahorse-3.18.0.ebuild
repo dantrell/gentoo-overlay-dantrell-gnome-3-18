@@ -10,8 +10,9 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Seahorse"
 
 LICENSE="GPL-2+ FDL-1.1+"
 SLOT="0"
-IUSE="debug ldap zeroconf"
 KEYWORDS="*"
+
+IUSE="debug ldap zeroconf"
 
 COMMON_DEPEND="
 	>=app-crypt/gcr-3.11.91:=

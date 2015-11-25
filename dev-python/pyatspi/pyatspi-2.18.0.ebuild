@@ -13,6 +13,7 @@ HOMEPAGE="https://wiki.gnome.org/Accessibility"
 LICENSE="LGPL-2 GPL-2+"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE="" # test
 REQUIRED_USE="${PYTHON_REQUIRED_USE}"
 

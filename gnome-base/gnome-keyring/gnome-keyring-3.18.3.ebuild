@@ -12,8 +12,9 @@ HOMEPAGE="https://wiki.gnome.org/Projects/GnomeKeyring"
 
 LICENSE="GPL-2+ LGPL-2+"
 SLOT="0"
-IUSE="+caps pam selinux +ssh-agent test"
 KEYWORDS="*"
+
+IUSE="+caps pam selinux +ssh-agent test"
 
 # Replace gkd gpg-agent with pinentry[gnome-keyring] one, bug #547456
 COMMON_DEPEND="

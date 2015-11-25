@@ -12,12 +12,13 @@ HOMEPAGE="https://wiki.gnome.org/Projects/GObjectIntrospection"
 
 LICENSE="LGPL-2+ GPL-2+"
 SLOT="0"
+KEYWORDS="*"
+
 IUSE="cairo doctool test"
 REQUIRED_USE="
 	${PYTHON_REQUIRED_USE}
 	test? ( cairo )
 "
-KEYWORDS="*"
 
 # virtual/pkgconfig needed at runtime, bug #505408
 # We force glib and goi to be in sync by this way as explained in bug #518424

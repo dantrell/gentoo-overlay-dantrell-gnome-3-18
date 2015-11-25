@@ -12,11 +12,11 @@ HOMEPAGE="https://wiki.gnome.org/Projects/Tracker"
 
 LICENSE="GPL-2+ LGPL-2.1+"
 SLOT="0/100"
+KEYWORDS="*"
+
 IUSE="cue eds elibc_glibc exif ffmpeg firefox-bookmarks flac gif gsf
 gstreamer gtk iptc +iso +jpeg libav +miner-fs mp3 nautilus networkmanager
 pdf playlist rss stemmer test thunderbird +tiff upnp-av upower +vorbis +xml xmp xps"
-
-KEYWORDS="*"
 
 REQUIRED_USE="
 	?? ( gstreamer ffmpeg )

@@ -11,8 +11,9 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Terminal/"
 
 LICENSE="GPL-3+"
 SLOT="0"
-IUSE="debug +deprecated +gnome-shell +nautilus vanilla"
 KEYWORDS="*"
+
+IUSE="debug +deprecated +gnome-shell +nautilus vanilla"
 
 # FIXME: automagic dependency on gtk+[X]
 RDEPEND="

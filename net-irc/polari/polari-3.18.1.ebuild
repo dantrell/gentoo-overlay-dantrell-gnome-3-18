@@ -11,6 +11,7 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Polari"
 LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE=""
 
 COMMON_DEPEND="

@@ -12,8 +12,9 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Evince"
 LICENSE="GPL-2+ CC-BY-SA-3.0"
 # subslot = evd3.(suffix of libevdocument3)-evv3.(suffix of libevview3)
 SLOT="0/evd3.4-evv3.3"
-IUSE="djvu dvi gstreamer gnome gnome-keyring +introspection nautilus nsplugin +postscript t1lib tiff xps"
 KEYWORDS="*"
+
+IUSE="djvu dvi gstreamer gnome gnome-keyring +introspection nautilus nsplugin +postscript t1lib tiff xps"
 
 # Since 2.26.2, can handle poppler without cairo support. Make it optional ?
 # not mature enough

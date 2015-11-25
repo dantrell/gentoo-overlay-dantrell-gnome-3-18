@@ -12,9 +12,10 @@ HOMEPAGE="https://wiki.gnome.org/Projects/GtkSourceView"
 
 LICENSE="GPL-2+ LGPL-2.1+"
 SLOT="3.0/3"
+KEYWORDS="*"
+
 IUSE="glade +introspection vala"
 REQUIRED_USE="vala? ( introspection )"
-KEYWORDS="*"
 
 # Note: has native OSX support, prefix teams, attack!
 RDEPEND="

@@ -12,10 +12,10 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Boxes"
 
 LICENSE="LGPL-2"
 SLOT="0"
+KEYWORDS="*"
 
 # We force 'bindist' due to licenses from gnome-boxes-nonfree
 IUSE="smartcard usbredir" #bindist
-KEYWORDS="*"
 
 # NOTE: sys-fs/* stuff is called via exec()
 # FIXME: ovirt is not available in tree

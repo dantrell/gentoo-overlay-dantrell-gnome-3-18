@@ -12,9 +12,10 @@ HOMEPAGE="https://wiki.gnome.org/Projects/GnomeShell"
 
 LICENSE="GPL-2+ LGPL-2+"
 SLOT="0"
+KEYWORDS="*"
+
 IUSE="+bluetooth +deprecated deprecated-background +networkmanager +nls systemd vanilla"
 REQUIRED_USE="${PYTHON_REQUIRED_USE}"
-KEYWORDS="*"
 
 # libXfixes-5.0 needed for pointer barriers
 # FIXME:

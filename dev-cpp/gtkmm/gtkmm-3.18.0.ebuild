@@ -11,6 +11,7 @@ HOMEPAGE="http://www.gtkmm.org"
 LICENSE="LGPL-2.1+"
 SLOT="3.0"
 KEYWORDS="*"
+
 IUSE="aqua doc examples test wayland X"
 REQUIRED_USE="|| ( aqua wayland X )"
 

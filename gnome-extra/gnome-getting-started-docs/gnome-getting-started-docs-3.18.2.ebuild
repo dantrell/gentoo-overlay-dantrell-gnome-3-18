@@ -11,6 +11,7 @@ HOMEPAGE="https://help.gnome.org/"
 LICENSE="CC-BY-SA-3.0"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE=""
 
 RDEPEND="gnome-extra/gnome-user-docs"

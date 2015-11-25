@@ -11,8 +11,9 @@ HOMEPAGE="https://git.gnome.org/browse/glib-networking/"
 
 LICENSE="LGPL-2+"
 SLOT="0"
-IUSE="+gnome +libproxy smartcard +ssl test"
 KEYWORDS="*"
+
+IUSE="+gnome +libproxy smartcard +ssl test"
 
 RDEPEND="
 	>=dev-libs/glib-2.36.0:2[${MULTILIB_USEDEP}]

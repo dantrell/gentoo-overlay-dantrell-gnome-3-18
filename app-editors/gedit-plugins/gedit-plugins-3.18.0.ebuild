@@ -13,8 +13,8 @@ DESCRIPTION="Official plugins for gedit"
 HOMEPAGE="https://wiki.gnome.org/Apps/Gedit/ShippedPlugins"
 
 LICENSE="GPL-2+"
-KEYWORDS="*"
 SLOT="0"
+KEYWORDS="*"
 
 IUSE_plugins="charmap git terminal vala zeitgeist"
 IUSE="+python ${IUSE_plugins}"

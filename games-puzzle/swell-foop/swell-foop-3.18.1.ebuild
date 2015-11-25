@@ -12,6 +12,7 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Swell%20Foop"
 LICENSE="GPL-2+"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE=""
 
 RDEPEND="

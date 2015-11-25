@@ -20,17 +20,18 @@ inherit autotools bash-completion-r1 gnome2 libtool eutils flag-o-matic	multilib
 DESCRIPTION="The GLib library of C routines"
 HOMEPAGE="http://www.gtk.org/"
 SRC_URI="${SRC_URI}
+
 	http://pkgconfig.freedesktop.org/releases/pkg-config-0.28.tar.gz" # pkg.m4 for eautoreconf
 
 LICENSE="LGPL-2+"
 SLOT="2"
+KEYWORDS="*"
+
 IUSE="dbus fam kernel_linux +mime selinux static-libs systemtap test utils xattr"
 REQUIRED_USE="
 	utils? ( ${PYTHON_REQUIRED_USE} )
 	test? ( ${PYTHON_REQUIRED_USE} )
 "
-
-KEYWORDS="*"
 
 RDEPEND="
 	!<dev-util/gdbus-codegen-${PV}

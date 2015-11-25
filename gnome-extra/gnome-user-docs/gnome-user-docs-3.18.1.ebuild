@@ -11,6 +11,7 @@ HOMEPAGE="https://git.gnome.org/browse/gnome-user-docs"
 LICENSE="CC-BY-3.0"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE="test"
 
 RDEPEND=""

@@ -10,8 +10,9 @@ HOMEPAGE="https://projects.gnome.org/gnome-power-manager/"
 
 LICENSE="GPL-2"
 SLOT="0"
-IUSE="test"
 KEYWORDS="*"
+
+IUSE="test"
 
 COMMON_DEPEND="
 	>=dev-libs/glib-2.45.8:2

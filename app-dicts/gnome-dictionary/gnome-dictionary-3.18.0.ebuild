@@ -10,8 +10,9 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Dictionary"
 
 LICENSE="GPL-2+ LGPL-2.1+ FDL-1.1+"
 SLOT="0/9" # subslot = suffix of libgdict-1.0.so
-IUSE="+introspection ipv6"
 KEYWORDS="*"
+
+IUSE="+introspection ipv6"
 
 COMMON_DEPEND="
 	>=dev-libs/glib-2.39:2[dbus]

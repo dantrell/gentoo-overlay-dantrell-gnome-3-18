@@ -12,10 +12,10 @@ HOMEPAGE="https://wiki.gnome.org/action/show/Apps/GnomeTweakTool"
 
 LICENSE="GPL-2+"
 SLOT="0"
+KEYWORDS="*"
+
 IUSE=""
 REQUIRED_USE="${PYTHON_REQUIRED_USE}"
-
-KEYWORDS="*"
 
 # Newer pygobject needed due upstream bug #723951
 COMMON_DEPEND="

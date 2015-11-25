@@ -12,13 +12,14 @@ HOMEPAGE="https://git.gnome.org/browse/gnome-settings-daemon"
 
 LICENSE="GPL-2+"
 SLOT="0"
+KEYWORDS="*"
+
 IUSE="+colord +cups debug +deprecated input_devices_wacom networkmanager policykit +short-touchpad-timeout smartcard systemd test +udev wayland"
 REQUIRED_USE="
 	input_devices_wacom? ( udev )
 	smartcard? ( udev )
 	test? ( ${PYTHON_REQUIRED_USE} )
 "
-KEYWORDS="*"
 
 COMMON_DEPEND="
 	>=dev-libs/glib-2.37.7:2[dbus]

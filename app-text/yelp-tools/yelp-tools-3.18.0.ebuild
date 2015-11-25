@@ -11,6 +11,7 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Yelp/Tools"
 LICENSE="|| ( GPL-2+ freedist ) GPL-2+" # yelp.m4 is GPL2 || freely distributable
 SLOT="0"
 KEYWORDS="*"
+
 IUSE=""
 
 RDEPEND="

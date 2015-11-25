@@ -15,10 +15,10 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Evolution"
 # Note: explicitly "|| ( LGPL-2 LGPL-3 )", not "LGPL-2+".
 LICENSE="|| ( LGPL-2 LGPL-3 ) BSD Sleepycat"
 SLOT="0/54" # subslot = libcamel-1.2 soname version
+KEYWORDS="*"
+
 IUSE="api-doc-extras +gnome-online-accounts +gtk +introspection ipv6 ldap kerberos vala +weather"
 REQUIRED_USE="vala? ( introspection )"
-
-KEYWORDS="*"
 
 # sys-libs/db is only required for migrating from <3.13 versions
 # gdata-0.15.1 is required for google tasks

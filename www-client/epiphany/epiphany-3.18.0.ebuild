@@ -12,8 +12,9 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Web"
 # TODO: coverage
 LICENSE="GPL-2"
 SLOT="0"
-IUSE="+jit nss test"
 KEYWORDS="*"
+
+IUSE="+jit nss test"
 
 COMMON_DEPEND="
 	>=app-crypt/gcr-3.5.5

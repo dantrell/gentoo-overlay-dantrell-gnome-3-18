@@ -10,6 +10,7 @@ HOMEPAGE="http://www.cogl3d.org/"
 
 LICENSE="MIT BSD"
 SLOT="1.0/20" # subslot = .so version
+KEYWORDS="*"
 
 # doc and profile disable for now due bugs #484750 and #483332
 IUSE="examples gles2 gstreamer +introspection +kms +opengl +pango test wayland" # doc profile
@@ -17,7 +18,6 @@ REQUIRED_USE="
 	wayland? ( gles2 )
 	|| ( gles2 opengl )
 "
-KEYWORDS="*"
 
 COMMON_DEPEND="
 	>=dev-libs/glib-2.32:2

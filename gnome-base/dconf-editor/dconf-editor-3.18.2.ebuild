@@ -10,7 +10,6 @@ HOMEPAGE="https://git.gnome.org/browse/dconf-editor"
 
 LICENSE="LGPL-2.1+"
 SLOT="0"
-
 KEYWORDS="*"
 
 COMMON_DEPEND="

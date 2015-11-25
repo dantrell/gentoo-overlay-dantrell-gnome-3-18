@@ -11,6 +11,7 @@ HOMEPAGE="http://www.gtkmm.org"
 LICENSE="LGPL-2.1+"
 SLOT="1.4"
 KEYWORDS="*"
+
 IUSE="doc"
 
 COMMON_DEPEND="

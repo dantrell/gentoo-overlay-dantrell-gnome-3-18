@@ -11,6 +11,7 @@ HOMEPAGE="https://wiki.gnome.org/action/show/Apps/Aisleriot"
 LICENSE="GPL-3 LGPL-3 FDL-1.1"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE="extra gnome +sound"
 
 COMMON_DEPEND="

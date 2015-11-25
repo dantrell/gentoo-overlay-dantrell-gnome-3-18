@@ -11,10 +11,10 @@ HOMEPAGE="https://wiki.gnome.org/Projects/LibGWeather"
 
 LICENSE="GPL-2+"
 SLOT="2/3-6" # subslot = 3-(libgweather-3 soname suffix)
+KEYWORDS="*"
+
 IUSE="glade +introspection vala"
 REQUIRED_USE="vala? ( introspection )"
-
-KEYWORDS="*"
 
 COMMON_DEPEND="
 	>=x11-libs/gtk+-3.13.5:3[introspection?]

@@ -14,6 +14,7 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Devhelp"
 LICENSE="GPL-2+"
 SLOT="0/3-1" # subslot = 3-(libdevhelp-3 soname version)
 KEYWORDS="*"
+
 IUSE="gedit"
 REQUIRED_USE="gedit? ( ${PYTHON_REQUIRED_USE} )"
 

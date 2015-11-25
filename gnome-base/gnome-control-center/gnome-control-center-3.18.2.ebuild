@@ -11,8 +11,9 @@ HOMEPAGE="https://git.gnome.org/browse/gnome-control-center/"
 
 LICENSE="GPL-2+"
 SLOT="2"
-IUSE="+bluetooth +colord +cups +deprecated +gnome-online-accounts +i18n input_devices_wacom kerberos networkmanager systemd v4l wayland"
 KEYWORDS="*"
+
+IUSE="+bluetooth +colord +cups +deprecated +gnome-online-accounts +i18n input_devices_wacom kerberos networkmanager systemd v4l wayland"
 
 # False positives caused by nested configure scripts
 QA_CONFIGURE_OPTIONS=".*"

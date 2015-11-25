@@ -14,6 +14,7 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Gedit"
 
 LICENSE="GPL-2+ CC-BY-SA-3.0"
 SLOT="0"
+KEYWORDS="*"
 
 IUSE="+introspection +python spell vala"
 # python-single-r1 would request disabling PYTHON_TARGETS on libpeas
@@ -22,8 +23,6 @@ REQUIRED_USE="
 	python? ( introspection )
 	python? ( ^^ ( $(python_gen_useflags '*') ) )
 "
-
-KEYWORDS="*"
 
 # X libs are not needed for OSX (aqua)
 COMMON_DEPEND="

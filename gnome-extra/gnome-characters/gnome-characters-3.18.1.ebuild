@@ -12,6 +12,7 @@ HOMEPAGE="https://wiki.gnome.org/Design/Apps/CharacterMap"
 LICENSE="GPL-2 BSD"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE="test"
 
 RDEPEND="${COMMON_DEPEND}

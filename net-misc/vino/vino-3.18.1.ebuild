@@ -11,6 +11,7 @@ HOMEPAGE="https://wiki.gnome.org/Projects/Vino"
 LICENSE="GPL-2+"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE="crypt gnome-keyring ipv6 jpeg ssl +telepathy zeroconf +zlib"
 # bug #394611; tight encoding requires zlib encoding
 REQUIRED_USE="jpeg? ( zlib )"

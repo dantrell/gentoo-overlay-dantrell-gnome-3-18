@@ -11,8 +11,9 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Cheese"
 
 LICENSE="GPL-2+"
 SLOT="0/7" # subslot = libcheese soname version
-IUSE="+introspection test"
 KEYWORDS="*"
+
+IUSE="+introspection test"
 
 # using clutter-gst-2.0.0 results in GLSL errors; bug #478702
 COMMON_DEPEND="

@@ -9,6 +9,7 @@ SRC_URI="http://frippery.org/extensions/${P}.tgz"
 LICENSE="GPL-2+"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE=""
 
 RDEPEND="

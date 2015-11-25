@@ -11,6 +11,7 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Vinagre"
 LICENSE="GPL-3+"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE="rdp +ssh spice +telepathy zeroconf"
 
 # cairo used in vinagre-tab

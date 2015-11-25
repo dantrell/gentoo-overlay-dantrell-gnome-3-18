@@ -11,8 +11,9 @@ HOMEPAGE="https://git.gnome.org/browse/gnome-themes-standard/"
 
 LICENSE="LGPL-2.1+"
 SLOT="0"
-IUSE="+gtk"
 KEYWORDS="*"
+
+IUSE="+gtk"
 
 COMMON_DEPEND="
 	gnome-base/librsvg:2[${MULTILIB_USEDEP}]

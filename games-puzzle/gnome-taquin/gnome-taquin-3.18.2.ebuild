@@ -12,6 +12,7 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Taquin"
 LICENSE="LGPL-2+"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE=""
 
 RDEPEND="

@@ -12,6 +12,7 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Iagno"
 LICENSE="LGPL-2+"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE=""
 
 COMMON_DEPEND="

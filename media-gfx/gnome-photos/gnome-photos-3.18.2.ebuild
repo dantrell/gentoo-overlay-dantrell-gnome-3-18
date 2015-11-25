@@ -11,6 +11,7 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Photos"
 LICENSE="GPL-2+ LGPL-2+"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE="test"
 
 RDEPEND="

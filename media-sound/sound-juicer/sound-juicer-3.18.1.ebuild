@@ -11,6 +11,7 @@ HOMEPAGE="https://wiki.gnome.org/Apps/SoundJuicer"
 LICENSE="GPL-2+"
 SLOT="0"
 KEYWORDS="*"
+
 IUSE="flac test vorbis"
 
 COMMON_DEPEND="

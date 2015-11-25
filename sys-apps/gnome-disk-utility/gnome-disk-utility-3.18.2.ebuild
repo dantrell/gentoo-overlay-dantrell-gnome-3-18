@@ -11,8 +11,9 @@ HOMEPAGE="https://git.gnome.org/browse/gnome-disk-utility"
 
 LICENSE="GPL-2+"
 SLOT="0"
-IUSE="fat gnome systemd"
 KEYWORDS="*"
+
+IUSE="fat gnome systemd"
 
 COMMON_DEPEND="
 	>=dev-libs/glib-2.31:2[dbus]

@@ -10,8 +10,9 @@ HOMEPAGE="https://git.gnome.org/browse/gnome-desktop"
 
 LICENSE="GPL-2+ FDL-1.1+ LGPL-2+"
 SLOT="3/12" # subslot = libgnome-desktop-3 soname version
-IUSE="+introspection"
 KEYWORDS="*"
+
+IUSE="+introspection"
 
 # cairo[X] needed for gnome-bg
 COMMON_DEPEND="
