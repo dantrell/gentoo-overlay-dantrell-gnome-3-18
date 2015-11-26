@@ -14,8 +14,10 @@ app-misc/tracker::gentoo
 app-text/evince::gentoo
 app-text/yelp-tools::gentoo
 dev-cpp/atkmm::gentoo
+dev-cpp/cairomm::gentoo
 dev-cpp/glibmm::gentoo
 dev-cpp/gtkmm::gentoo
+dev-cpp/gtksourceviewmm::gentoo
 dev-cpp/pangomm::gentoo
 dev-libs/atk::gentoo
 dev-libs/gdl::gentoo
