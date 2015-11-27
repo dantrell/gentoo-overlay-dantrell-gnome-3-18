@@ -16,7 +16,7 @@ KEYWORDS="*"
 IUSE="+gnome +libproxy smartcard +ssl test"
 
 RDEPEND="
-	>=dev-libs/glib-2.36.0:2[${MULTILIB_USEDEP}]
+	>=dev-libs/glib-2.46.0:2[${MULTILIB_USEDEP}]
 	gnome? ( gnome-base/gsettings-desktop-schemas )
 	libproxy? ( >=net-libs/libproxy-0.4.11-r1:=[${MULTILIB_USEDEP}] )
 	smartcard? (

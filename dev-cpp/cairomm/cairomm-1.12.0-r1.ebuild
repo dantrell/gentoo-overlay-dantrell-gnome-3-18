@@ -12,11 +12,10 @@ LICENSE="LGPL-2+"
 SLOT="0"
 KEYWORDS="*"
 
-IUSE="doc +svg"
+IUSE="aqua doc +svg X"
 
-# FIXME: svg support is automagic
 RDEPEND="
-	>=x11-libs/cairo-1.12.10[svg?,${MULTILIB_USEDEP}]
+	>=x11-libs/cairo-1.12.10[aqua=,svg=,X=,${MULTILIB_USEDEP}]
 	>=dev-libs/libsigc++-2.5.1:2[${MULTILIB_USEDEP}]
 "
 DEPEND="${RDEPEND}

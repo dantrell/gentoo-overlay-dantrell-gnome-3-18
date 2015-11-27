@@ -4,7 +4,7 @@ EAPI="5"
 GCONF_DEBUG="no"
 GNOME2_LA_PUNT="yes"
 
-inherit gnome2 readme.gentoo
+inherit autotools eutils gnome2 readme.gentoo
 
 DESCRIPTION="Desktop note-taking application"
 HOMEPAGE="https://wiki.gnome.org/Apps/Gnote"
@@ -41,8 +41,14 @@ DEPEND="${DEPEND}
 "
 
 src_prepare() {
+	# Fix x11-support switch
+	# https://bugzilla.gnome.org/show_bug.cgi?id=758636
+	epatch "${FILESDIR}"/${PN}-3.18.2-x11-support-switch.patch
+
 	# Do not alter CFLAGS
 	sed 's/-DDEBUG -g/-DDEBUG/' -i configure.ac configure || die
+
+	eautoreconf
 	gnome2_src_prepare
 
 	if has_version net-fs/wdfs; then

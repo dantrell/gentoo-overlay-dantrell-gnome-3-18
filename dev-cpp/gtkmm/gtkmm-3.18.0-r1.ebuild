@@ -23,10 +23,10 @@ RDEPEND="
 	>=dev-cpp/cairomm-1.12.0[${MULTILIB_USEDEP}]
 	>=dev-cpp/pangomm-2.38.1:1.4[${MULTILIB_USEDEP}]
 	>=dev-libs/libsigc++-2.3.2:2[${MULTILIB_USEDEP}]
-	>=media-libs/libepoxy-1.2[${MULTILIB_USEDEP}]
 "
 DEPEND="${RDEPEND}
 	virtual/pkgconfig
+	examples? ( >=media-libs/libepoxy-1.2[${MULTILIB_USEDEP}] )
 	doc? (
 		media-gfx/graphviz
 		dev-libs/libxslt

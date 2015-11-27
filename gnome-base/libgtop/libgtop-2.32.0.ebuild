@@ -14,7 +14,7 @@ KEYWORDS="*"
 
 IUSE="+introspection"
 
-RDEPEND=">=dev-libs/glib-2.6:2"
+RDEPEND=">=dev-libs/glib-2.26:2"
 DEPEND="${RDEPEND}
 	>=dev-util/gtk-doc-am-1.4
 	>=dev-util/intltool-0.35

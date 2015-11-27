@@ -17,7 +17,7 @@ IUSE="debug +deprecated +gnome-shell +nautilus vanilla"
 
 # FIXME: automagic dependency on gtk+[X]
 RDEPEND="
-	>=dev-libs/glib-2.40.0:2[dbus]
+	>=dev-libs/glib-2.42:2[dbus]
 	>=x11-libs/gtk+-3.10:3[X]
 	>=x11-libs/vte-0.42.1:2.91
 	>=gnome-base/dconf-0.14
