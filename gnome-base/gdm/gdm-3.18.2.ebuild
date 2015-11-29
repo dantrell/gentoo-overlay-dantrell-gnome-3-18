@@ -8,9 +8,7 @@ inherit autotools eutils gnome2 pam readme.gentoo systemd user versionator
 
 DESCRIPTION="GNOME Display Manager for managing graphical display servers and user logins"
 HOMEPAGE="https://wiki.gnome.org/Projects/GDM"
-
 SRC_URI="${SRC_URI}
-
 	branding? ( http://www.mail-archive.com/tango-artists@lists.freedesktop.org/msg00043/tango-gentoo-v1.1.tar.gz )
 "
 

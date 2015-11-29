@@ -7,11 +7,10 @@ inherit gnome2 versionator
 
 DESCRIPTION="GNOME default icon theme"
 HOMEPAGE="https://git.gnome.org/browse/adwaita-icon-theme/"
-
 SRC_URI="${SRC_URI}
-
 	branding? ( http://www.mail-archive.com/tango-artists@lists.freedesktop.org/msg00043/tango-gentoo-v1.1.tar.gz )
 "
+
 LICENSE="
 	|| ( LGPL-3 CC-BY-SA-3.0 )
 	branding? ( CC-Sampling-Plus-1.0 )
