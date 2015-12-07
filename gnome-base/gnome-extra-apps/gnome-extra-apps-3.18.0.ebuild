@@ -71,12 +71,12 @@ RDEPEND="
 		>=games-puzzle/gnome-sudoku-${PV}
 		>=games-puzzle/gnome-taquin-${PV}
 		>=games-puzzle/gnome-tetravex-${PV}
-		>=games-puzzle/hitori-3.16.1
+		>=games-puzzle/hitori-3.16.2
 		>=games-puzzle/lightsoff-${PV}
 		>=games-puzzle/quadrapassel-${PV}
 		>=games-puzzle/swell-foop-${PV} )
 	geary? ( >=mail-client/geary-0.10.0 )
-	share? ( >=gnome-extra/gnome-user-share-3.14 )
+	share? ( >=gnome-extra/gnome-user-share-${PV} )
 	shotwell? ( >=media-gfx/shotwell-0.22 )
 	todo? ( >=gnome-extra/gnome-todo-${PV} )
 	tracker? (

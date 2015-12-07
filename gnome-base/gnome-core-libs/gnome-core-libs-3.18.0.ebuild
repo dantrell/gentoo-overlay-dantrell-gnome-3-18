@@ -17,11 +17,11 @@ IUSE="cups python"
 # This is a wrapper for the core libraries used by GNOME 3
 RDEPEND="
 	>=dev-libs/glib-2.46:2
-	>=x11-libs/gdk-pixbuf-2.32.1:2
-	>=x11-libs/pango-1.38.1
+	>=x11-libs/gdk-pixbuf-2.32:2
+	>=x11-libs/pango-1.38
 	>=media-libs/clutter-1.24:1.0
 	>=x11-libs/gtk+-${PV}:3[cups?]
-	>=dev-libs/atk-2.16
+	>=dev-libs/atk-2.18
 	>=x11-libs/libwnck-3.14:3
 	>=gnome-base/librsvg-2.40.11
 	>=gnome-base/gnome-desktop-${PV}:3

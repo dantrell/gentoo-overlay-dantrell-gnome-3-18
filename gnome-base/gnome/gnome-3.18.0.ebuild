@@ -31,9 +31,9 @@ RDEPEND="
 	x11-themes/sound-theme-freedesktop
 
 	accessibility? (
-		>=app-accessibility/at-spi2-atk-2.16
-		>=app-accessibility/at-spi2-core-2.16
-		>=app-accessibility/caribou-0.4.18
+		>=app-accessibility/at-spi2-atk-2.18
+		>=app-accessibility/at-spi2-core-2.18
+		>=app-accessibility/caribou-0.4.19
 		>=app-accessibility/orca-${PV}
 		>=gnome-extra/mousetweaks-3.12.0 )
 	classic? ( >=gnome-extra/gnome-shell-extensions-${PV} )
