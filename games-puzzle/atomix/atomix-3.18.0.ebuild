@@ -20,5 +20,6 @@ RDEPEND="
 DEPEND="${RDEPEND}
 	dev-libs/appstream-glib
 	>=dev-util/intltool-0.40
+	gnome-base/gnome-common
 	sys-devel/gettext
 	virtual/pkgconfig"
