@@ -14,7 +14,6 @@ SLOT="1"
 KEYWORDS="*"
 
 IUSE="+exif +introspection +jpeg lcms +svg tiff xmp"
-
 REQUIRED_USE="exif? ( jpeg )"
 
 RDEPEND="

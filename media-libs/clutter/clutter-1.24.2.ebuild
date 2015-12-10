@@ -6,8 +6,8 @@ GNOME2_LA_PUNT="yes"
 
 inherit gnome2 virtualx
 
-HOMEPAGE="https://wiki.gnome.org/Projects/Clutter"
 DESCRIPTION="Clutter is a library for creating graphical user interfaces"
+HOMEPAGE="https://wiki.gnome.org/Projects/Clutter"
 
 LICENSE="LGPL-2.1+ FDL-1.1+"
 SLOT="1.0"

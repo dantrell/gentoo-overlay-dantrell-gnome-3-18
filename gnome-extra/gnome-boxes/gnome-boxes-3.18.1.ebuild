@@ -12,7 +12,7 @@ HOMEPAGE="https://wiki.gnome.org/Apps/Boxes"
 
 LICENSE="LGPL-2"
 SLOT="0"
-KEYWORDS="*"
+KEYWORDS="*" # qemu-kvm[spice] is 64bit-only
 
 # We force 'bindist' due to licenses from gnome-boxes-nonfree
 IUSE="smartcard usbredir" #bindist

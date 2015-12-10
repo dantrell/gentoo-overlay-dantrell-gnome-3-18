@@ -16,7 +16,6 @@ LICENSE="
 	GPL-2+
 	branding? ( CC-Sampling-Plus-1.0 )
 "
-
 SLOT="0"
 KEYWORDS="*"
 

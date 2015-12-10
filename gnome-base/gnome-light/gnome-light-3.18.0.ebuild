@@ -4,14 +4,14 @@ EAPI="5"
 
 DESCRIPTION="Meta package for GNOME-Light, merge this package to install"
 HOMEPAGE="https://www.gnome.org/"
+
 LICENSE="metapackage"
 SLOT="2.0"
+# when unmasking for an arch
+# double check none of the deps are still masked !
 KEYWORDS="*"
 
 IUSE="cups +gnome-shell"
-
-# when unmasking for an arch
-# double check none of the deps are still masked !
 
 # XXX: Note to developers:
 # This is a wrapper for the 'light' GNOME 3 desktop, and should only consist of

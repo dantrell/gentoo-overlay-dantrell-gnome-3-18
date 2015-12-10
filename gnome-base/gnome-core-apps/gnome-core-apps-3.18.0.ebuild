@@ -4,14 +4,14 @@ EAPI="5"
 
 DESCRIPTION="Sub-meta package for the core applications integrated with GNOME 3"
 HOMEPAGE="https://www.gnome.org/"
+
 LICENSE="metapackage"
 SLOT="3.0"
+# when unmasking for an arch
+# double check none of the deps are still masked !
 KEYWORDS="*"
 
 IUSE="+bluetooth +cdr cups"
-
-# when unmasking for an arch
-# double check none of the deps are still masked !
 
 # Note to developers:
 # This is a wrapper for the core apps tightly integrated with GNOME 3

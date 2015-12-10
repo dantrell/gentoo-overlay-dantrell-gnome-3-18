@@ -16,7 +16,6 @@ SLOT="2.4"
 KEYWORDS="*"
 
 IUSE="+introspection samba ssl test vala"
-
 REQUIRED_IUSE="vala? ( introspection )"
 
 RDEPEND="

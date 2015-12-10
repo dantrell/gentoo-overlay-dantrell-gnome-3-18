@@ -8,11 +8,11 @@ inherit gnome2
 DESCRIPTION="C++ bindings for gtksourceview"
 HOMEPAGE="https://wiki.gnome.org/Projects/GtkSourceView"
 
-IUSE="doc"
+LICENSE="LGPL-2.1"
 SLOT="3.0"
 KEYWORDS="*"
 
-LICENSE="LGPL-2.1"
+IUSE="doc"
 
 RDEPEND="
 	>=dev-cpp/glibmm-2.46.1:2

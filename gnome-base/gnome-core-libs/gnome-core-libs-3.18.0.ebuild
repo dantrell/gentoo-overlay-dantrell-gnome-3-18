@@ -4,14 +4,14 @@ EAPI="5"
 
 DESCRIPTION="Sub-meta package for the core libraries of GNOME 3"
 HOMEPAGE="https://www.gnome.org/"
+
 LICENSE="metapackage"
 SLOT="3.0"
+# when unmasking for an arch
+# double check none of the deps are still masked !
 KEYWORDS="*"
 
 IUSE="cups python"
-
-# when unmasking for an arch
-# double check none of the deps are still masked !
 
 # Note to developers:
 # This is a wrapper for the core libraries used by GNOME 3

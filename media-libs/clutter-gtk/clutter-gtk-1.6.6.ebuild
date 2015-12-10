@@ -8,8 +8,8 @@ inherit gnome2
 
 DESCRIPTION="Library for embedding a Clutter canvas (stage) in GTK+"
 HOMEPAGE="https://wiki.gnome.org/Projects/Clutter"
-LICENSE="LGPL-2.1+"
 
+LICENSE="LGPL-2.1+"
 SLOT="1.0"
 KEYWORDS="*"
 

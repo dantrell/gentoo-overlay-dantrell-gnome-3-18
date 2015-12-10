@@ -32,6 +32,7 @@ DEPEND="${COMMON_DEPEND}
 	sys-devel/gettext
 	virtual/pkgconfig
 "
+
 # This ebuild does not install any binaries
 RESTRICT="binchecks strip"
 

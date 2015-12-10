@@ -7,10 +7,9 @@ HOMEPAGE="https://www.gnome.org/"
 
 LICENSE="metapackage"
 SLOT="2.0" # Cannot be installed at the same time as gnome-2
-KEYWORDS="*"
-
 # when unmasking for an arch
 # double check none of the deps are still masked !
+KEYWORDS="*"
 
 IUSE="accessibility +bluetooth +classic +cdr cups +extras"
 
