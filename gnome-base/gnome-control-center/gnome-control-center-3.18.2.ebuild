@@ -138,7 +138,7 @@ src_prepare() {
 	if use deprecated; then
 		# From Funtoo:
 		# 	https://bugs.funtoo.org/browse/FL-1329
-		epatch "${FILESDIR}"/${PN}-3.18.2-revert-critical-battery-action.patch
+		epatch "${FILESDIR}"/${PN}-3.17.0-restore-critical-battery-action-label.patch
 		epatch "${FILESDIR}"/${PN}-3.16.3-restore-deprecated-code.patch
 	fi
 
