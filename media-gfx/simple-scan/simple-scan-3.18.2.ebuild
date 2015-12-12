@@ -2,10 +2,9 @@
 
 EAPI="5"
 GCONF_DEBUG="no"
-VALA_MIN_API_VERSION="0.26"
-VALA_USE_DEPEND="vapigen"
+VALA_MIN_API_VERSION="0.22"
 
-inherit eutils gnome2 vala versionator
+inherit gnome2 vala versionator
 
 DESCRIPTION="Simple document scanning utility"
 HOMEPAGE="https://launchpad.net/simple-scan"
@@ -21,10 +20,10 @@ IUSE="+colord packagekit"
 
 COMMON_DEPEND="
 	>=dev-libs/glib-2.32:2
+	dev-libs/libgusb:=[vala]
 	>=media-gfx/sane-backends-1.0.20:=
 	>=sys-libs/zlib-1.2.3.1:=
 	virtual/jpeg:0=
-	dev-libs/libgusb:=[vala]
 	x11-libs/cairo:=
 	>=x11-libs/gtk+-3:3
 	colord? ( >=x11-misc/colord-0.1.24:=[udev] )
@@ -32,22 +31,16 @@ COMMON_DEPEND="
 "
 RDEPEND="${COMMON_DEPEND}
 	x11-misc/xdg-utils
-	|| (
-		x11-themes/adwaita-icon-theme
-		x11-themes/gnome-icon-theme )
+	x11-themes/adwaita-icon-theme
 "
 DEPEND="${COMMON_DEPEND}
-	${vala_depend}
+	$(vala_depend)
 	app-text/yelp-tools
 	>=dev-util/intltool-0.35.0
 	virtual/pkgconfig
 "
 
 src_prepare() {
-	# From Simple Scan:
-	# 	https://bugs.launchpad.net/simple-scan/+bug/1517184
-	epatch "${FILESDIR}"/${PN}-3.19.2-make-colord-packagekit-support-able-to-be-explicitly-disabled.patch
-
 	vala_src_prepare
 	gnome2_src_prepare
 }

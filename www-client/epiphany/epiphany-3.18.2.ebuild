@@ -4,7 +4,7 @@ EAPI="5"
 GCONF_DEBUG="yes"
 GNOME2_LA_PUNT="yes"
 
-inherit eutils gnome2 pax-utils versionator virtualx
+inherit eutils gnome2 virtualx
 
 DESCRIPTION="GNOME webbrowser based on Webkit"
 HOMEPAGE="https://wiki.gnome.org/Apps/Web"
@@ -14,7 +14,7 @@ LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="*"
 
-IUSE="+jit nss test"
+IUSE="nss test"
 
 COMMON_DEPEND="
 	>=app-crypt/gcr-3.5.5
@@ -25,7 +25,7 @@ COMMON_DEPEND="
 	>=dev-libs/libxslt-1.1.7
 	>=gnome-base/gsettings-desktop-schemas-0.0.1
 	>=net-dns/avahi-0.6.22[dbus]
-	>=net-libs/webkit-gtk-2.9.5:4[jit?]
+	>=net-libs/webkit-gtk-2.9.5:4
 	>=net-libs/libsoup-2.48:2.4
 	>=x11-libs/gtk+-3.13:3
 	>=x11-libs/libnotify-0.5.1:=
@@ -83,7 +83,6 @@ src_compile() {
 }
 
 src_test() {
-	# FIXME: this should be handled at eclass level
 	"${EROOT}${GLIB_COMPILE_SCHEMAS}" --allow-any-name "${S}/data" || die
 
 	unset DISPLAY
@@ -93,5 +92,4 @@ src_test() {
 src_install() {
 	DOCS="AUTHORS ChangeLog* NEWS README TODO"
 	gnome2_src_install
-	use jit && pax-mark m "${ED}usr/bin/epiphany"
 }

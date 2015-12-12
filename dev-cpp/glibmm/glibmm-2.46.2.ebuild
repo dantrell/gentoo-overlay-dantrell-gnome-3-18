@@ -3,7 +3,7 @@
 EAPI="5"
 GCONF_DEBUG="no"
 
-inherit gnome2 multilib-minimal
+inherit eutils gnome2 multilib-minimal
 
 DESCRIPTION="C++ interface for glib2"
 HOMEPAGE="http://www.gtkmm.org"
@@ -25,6 +25,10 @@ DEPEND="${RDEPEND}
 # dev-cpp/mm-common needed for eautoreconf
 
 src_prepare() {
+	# Gio::Application: Destructor: Use noexcept in the implementation too
+	# (from 'master')
+	epatch "${FILESDIR}"/${PN}-2.46.2-use-noexcept{,2}.patch
+
 	if ! use test; then
 		# don't waste time building tests
 		sed 's/^\(SUBDIRS =.*\)tests\(.*\)$/\1\2/' \
