@@ -14,18 +14,16 @@ KEYWORDS="*"
 IUSE=""
 
 RDEPEND="
-	>=dev-libs/glib-2.27
+	>=dev-libs/glib-2.27:2
 	>=x11-libs/gtk+-3.15.2:3
 	sys-apps/dbus
-	media-libs/libcanberra[gtk3]
-	>=x11-libs/libnotify-0.7
 	x11-libs/libX11
 	!x11-misc/notify-osd
 	!x11-misc/qtnotifydaemon
 "
 DEPEND="${RDEPEND}
-	dev-util/intltool
-	sys-devel/gettext
+	dev-util/gdbus-codegen
+	>=sys-devel/gettext-0.19.4
 	virtual/pkgconfig
 "
 
