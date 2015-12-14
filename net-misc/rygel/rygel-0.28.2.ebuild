@@ -56,7 +56,7 @@ DEPEND="${RDEPEND}
 #   dev-libs/libxslt
 
 src_configure() {
-	# We defined xsltproc because man pages are provided by upstream
+	# We set xsltproc because man pages are provided by upstream
 	# and we do not want to regenerate them automagically.
 	gnome2_src_configure \
 		XSLTPROC=$(type -P false) \
