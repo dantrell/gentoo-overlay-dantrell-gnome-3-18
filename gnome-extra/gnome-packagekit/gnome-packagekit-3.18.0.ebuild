@@ -3,7 +3,7 @@
 EAPI="5"
 GCONF_DEBUG="no"
 
-inherit eutils gnome2 virtualx
+inherit gnome2 virtualx
 
 DESCRIPTION="PackageKit client for the GNOME desktop"
 HOMEPAGE="http://www.freedesktop.org/software/PackageKit/"
@@ -22,7 +22,6 @@ RDEPEND="
 	>=x11-libs/gtk+-3.15.3:3
 	>=x11-libs/libnotify-0.7.0:=
 	x11-libs/pango
-	>=dev-libs/dbus-glib-0.73
 
 	>=app-admin/packagekit-base-0.8
 	>=app-admin/packagekit-gtk-0.7.2

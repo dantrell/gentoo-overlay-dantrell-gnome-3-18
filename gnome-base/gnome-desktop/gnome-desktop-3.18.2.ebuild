@@ -19,7 +19,7 @@ COMMON_DEPEND="
 	app-text/iso-codes
 	>=dev-libs/glib-2.44.0:2[dbus]
 	>=x11-libs/gdk-pixbuf-2.21.3:2[introspection?]
-	>=x11-libs/gtk+-3.3.6:3[introspection?]
+	>=x11-libs/gtk+-3.3.6:3[X,introspection?]
 	>=x11-libs/libXext-1.1
 	>=x11-libs/libXrandr-1.3
 	x11-libs/cairo:=[X]

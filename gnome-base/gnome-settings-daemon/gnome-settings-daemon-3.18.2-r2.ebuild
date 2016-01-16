@@ -100,8 +100,7 @@ src_prepare() {
 	if use deprecated; then
 		# From Funtoo:
 		# 	https://bugs.funtoo.org/browse/FL-1329
-		epatch "${FILESDIR}"/${PN}-3.17.0-restore-critical-battery-action-key.patch
-		epatch "${FILESDIR}"/${PN}-3.16.2-restore-deprecated-code.patch
+		epatch "${FILESDIR}"/${PN}-3.18.2-restore-deprecated-code.patch
 	fi
 
 	# https://bugzilla.gnome.org/show_bug.cgi?id=621836

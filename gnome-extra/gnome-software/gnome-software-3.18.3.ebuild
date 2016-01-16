@@ -24,7 +24,7 @@ RDEPEND="
 	>=gnome-base/gsettings-desktop-schemas-3.11.5
 	net-libs/libsoup:2.4
 	sys-auth/polkit
-	>=x11-libs/gtk+-3.17.7:3
+	>=x11-libs/gtk+-3.16:3
 "
 DEPEND="${RDEPEND}
 	${PYTHON_DEPS}

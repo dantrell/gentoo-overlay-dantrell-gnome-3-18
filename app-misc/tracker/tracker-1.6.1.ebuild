@@ -57,7 +57,7 @@ RDEPEND="
 		>=www-client/firefox-4.0
 		>=www-client/firefox-bin-4.0 ) )
 	flac? ( >=media-libs/flac-1.2.1 )
-	gif? ( media-libs/giflib )
+	gif? ( media-libs/giflib:= )
 	gsf? ( >=gnome-extra/libgsf-1.14.24 )
 	gstreamer? (
 		media-libs/gstreamer:1.0

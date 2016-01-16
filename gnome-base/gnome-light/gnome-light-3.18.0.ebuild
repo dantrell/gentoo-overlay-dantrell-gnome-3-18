@@ -50,7 +50,7 @@ pkg_pretend() {
 }
 
 pkg_postinst() {
-	# Remember people where to find our project information               
+	# Remember people where to find our project information
 	elog "Please remember to look at https://wiki.gentoo.org/wiki/Project:GNOME"
 	elog "for information about the project and documentation."
 }

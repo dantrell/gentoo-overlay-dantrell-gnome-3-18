@@ -29,6 +29,7 @@ RDEPEND="${COMMON_DEPEND}
 	>=x11-libs/gtk+-3.12:3[introspection]
 
 	net-libs/libsoup[introspection]
+	net-libs/libsoup-gnome[introspection]
 	x11-libs/libnotify[introspection]
 
 	>=gnome-base/gnome-settings-daemon-3

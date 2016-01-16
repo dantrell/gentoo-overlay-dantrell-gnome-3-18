@@ -1,6 +1,6 @@
-diff -urN gnome-settings-daemon-3.16.2/config.h.in gnome-settings-daemon-3.16.2-patched/config.h.in
---- gnome-settings-daemon-3.16.2/config.h.in	2015-05-12 10:24:48.000000000 -0400
-+++ gnome-settings-daemon-3.16.2-patched/config.h.in	2015-06-01 14:52:25.697782564 -0400
+diff '--exclude=.git' -urN a/config.h.in b/config.h.in
+--- a/config.h.in	2015-11-10 08:08:29.000000000 -0500
++++ b/config.h.in	2016-01-16 00:48:36.937569865 -0500
 @@ -1,5 +1,8 @@
  /* config.h.in.  Generated from configure.ac by autoheader.  */
  
@@ -10,9 +10,9 @@ diff -urN gnome-settings-daemon-3.16.2/config.h.in gnome-settings-daemon-3.16.2-
  /* always defined to indicate that i18n is enabled */
  #undef ENABLE_NLS
  
-diff -urN gnome-settings-daemon-3.16.2/configure gnome-settings-daemon-3.16.2-patched/configure
---- gnome-settings-daemon-3.16.2/configure	2015-05-12 10:24:48.000000000 -0400
-+++ gnome-settings-daemon-3.16.2-patched/configure	2015-06-01 14:52:25.721782422 -0400
+diff '--exclude=.git' -urN a/configure b/configure
+--- a/configure	2015-11-10 08:08:25.000000000 -0500
++++ b/configure	2016-01-16 00:48:36.944569823 -0500
 @@ -714,6 +714,8 @@
  GLIB_COMPILE_SCHEMAS
  gsettingsschemadir
@@ -22,7 +22,7 @@ diff -urN gnome-settings-daemon-3.16.2/configure gnome-settings-daemon-3.16.2-pa
  GLIB_MKENUMS
  GLIB_GENMARSHAL
  GSD_PLUGIN_LDFLAGS
-@@ -913,6 +915,7 @@
+@@ -915,6 +917,7 @@
  enable_nls
  enable_compile_warnings
  enable_iso_c
@@ -30,7 +30,7 @@ diff -urN gnome-settings-daemon-3.16.2/configure gnome-settings-daemon-3.16.2-pa
  enable_schemas_compile
  enable_gudev
  enable_wayland
-@@ -1631,6 +1634,7 @@
+@@ -1634,6 +1637,7 @@
    --enable-compile-warnings=[no/minimum/yes/maximum/error]
                            Turn on compiler warnings
    --enable-iso-c          Try to warn if code is not ISO C
@@ -38,7 +38,7 @@ diff -urN gnome-settings-daemon-3.16.2/configure gnome-settings-daemon-3.16.2-pa
    --disable-schemas-compile
                            Disable regeneration of gschemas.compiled on install
    --disable-gudev         Disable GUdev support (not optional on Linux
-@@ -17688,6 +17692,28 @@
+@@ -17597,6 +17601,28 @@
  
  
  
@@ -67,7 +67,7 @@ diff -urN gnome-settings-daemon-3.16.2/configure gnome-settings-daemon-3.16.2-pa
  
  
  
-@@ -21017,6 +21043,10 @@
+@@ -21618,6 +21644,10 @@
    ac_config_commands="$ac_config_commands po/stamp-it"
  
  
@@ -78,7 +78,7 @@ diff -urN gnome-settings-daemon-3.16.2/configure gnome-settings-daemon-3.16.2-pa
  if test -z "${HAVE_GUDEV_TRUE}" && test -z "${HAVE_GUDEV_FALSE}"; then
    as_fn_error $? "conditional \"HAVE_GUDEV\" was never defined.
  Usually this means the macro was only invoked conditionally." "$LINENO" 5
-@@ -23631,6 +23661,7 @@
+@@ -24151,6 +24181,7 @@
          cflags:                   ${CFLAGS}
          Maintainer mode:          ${USE_MAINTAINER_MODE}
  
@@ -86,9 +86,9 @@ diff -urN gnome-settings-daemon-3.16.2/configure gnome-settings-daemon-3.16.2-pa
          LCMS DICT support:        ${have_new_lcms}
          NetworkManager support:   ${enable_network_manager}
          Libnotify support:        ${have_libnotify}
-diff -urN gnome-settings-daemon-3.16.2/configure.ac gnome-settings-daemon-3.16.2-patched/configure.ac
---- gnome-settings-daemon-3.16.2/configure.ac	2015-05-12 10:14:12.000000000 -0400
-+++ gnome-settings-daemon-3.16.2-patched/configure.ac	2015-06-01 14:52:25.730782368 -0400
+diff '--exclude=.git' -urN a/configure.ac b/configure.ac
+--- a/configure.ac	2015-11-10 08:08:14.000000000 -0500
++++ b/configure.ac	2016-01-16 00:48:36.944569823 -0500
 @@ -90,6 +90,15 @@
  AC_PATH_PROG(GLIB_GENMARSHAL, glib-genmarshal)
  AC_PATH_PROG([GLIB_MKENUMS],[glib-mkenums])
@@ -105,7 +105,7 @@ diff -urN gnome-settings-daemon-3.16.2/configure.ac gnome-settings-daemon-3.16.2
  dnl ================================================================
  dnl GSettings stuff
  dnl ================================================================
-@@ -578,6 +587,7 @@
+@@ -576,6 +585,7 @@
          cflags:                   ${CFLAGS}
          Maintainer mode:          ${USE_MAINTAINER_MODE}
  
@@ -113,10 +113,24 @@ diff -urN gnome-settings-daemon-3.16.2/configure.ac gnome-settings-daemon-3.16.2
          LCMS DICT support:        ${have_new_lcms}
          NetworkManager support:   ${enable_network_manager}
          Libnotify support:        ${have_libnotify}
-diff -urN gnome-settings-daemon-3.16.2/plugins/common/Makefile.am gnome-settings-daemon-3.16.2-patched/plugins/common/Makefile.am
---- gnome-settings-daemon-3.16.2/plugins/common/Makefile.am	2015-05-04 09:32:57.000000000 -0400
-+++ gnome-settings-daemon-3.16.2-patched/plugins/common/Makefile.am	2015-06-01 14:58:04.865776221 -0400
-@@ -34,6 +34,8 @@
+diff '--exclude=.git' -urN a/data/org.gnome.settings-daemon.plugins.power.gschema.xml.in.in b/data/org.gnome.settings-daemon.plugins.power.gschema.xml.in.in
+--- a/data/org.gnome.settings-daemon.plugins.power.gschema.xml.in.in	2015-11-10 08:00:41.000000000 -0500
++++ b/data/org.gnome.settings-daemon.plugins.power.gschema.xml.in.in	2016-01-16 01:42:37.438365457 -0500
+@@ -50,5 +50,10 @@
+       <summary>Power button action</summary>
+       <description>The action to take when the system power button is pressed. This action is hard-coded (and the setting ignored) on virtual machines (power off) and tablets (suspend).</description>
+     </key>
++    <key name="critical-battery-action" enum="org.gnome.settings-daemon.GsdPowerActionType">
++      <default>'hibernate'</default>
++      <summary>Battery critical low action</summary>
++      <description>The action to take when the battery is critically low.</description>
++    </key>
+   </schema>
+ </schemalist>
+diff '--exclude=.git' -urN a/plugins/common/Makefile.am b/plugins/common/Makefile.am
+--- a/plugins/common/Makefile.am	2015-10-12 06:44:00.000000000 -0400
++++ b/plugins/common/Makefile.am	2016-01-16 00:48:36.945569817 -0500
+@@ -35,6 +35,8 @@
  	gsd-keygrab.h		\
  	gsd-input-helper.c	\
  	gsd-input-helper.h	\
@@ -125,9 +139,9 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/common/Makefile.am gnome-settings
  	gsd-settings-migrate.c	\
  	gsd-settings-migrate.h	\
  	gsd-shell-helper.c	\
-diff -urN gnome-settings-daemon-3.16.2/plugins/common/Makefile.in gnome-settings-daemon-3.16.2-patched/plugins/common/Makefile.in
---- gnome-settings-daemon-3.16.2/plugins/common/Makefile.in	2015-05-12 10:24:49.000000000 -0400
-+++ gnome-settings-daemon-3.16.2-patched/plugins/common/Makefile.in	2015-06-01 15:08:24.861106275 -0400
+diff '--exclude=.git' -urN a/plugins/common/Makefile.in b/plugins/common/Makefile.in
+--- a/plugins/common/Makefile.in	2015-11-10 08:08:25.000000000 -0500
++++ b/plugins/common/Makefile.in	2016-01-16 00:48:36.946569811 -0500
 @@ -118,6 +118,7 @@
  	gsd-device-manager-x11.c gsd-device-manager-x11.h \
  	gsd-device-mapper.c gsd-device-mapper.h gsd-keygrab.c \
@@ -144,7 +158,7 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/common/Makefile.in gnome-settings
  	libcommon_la-gsd-settings-migrate.lo \
  	libcommon_la-gsd-shell-helper.lo $(am__objects_1)
  libcommon_la_OBJECTS = $(am_libcommon_la_OBJECTS)
-@@ -481,6 +483,7 @@
+@@ -483,6 +485,7 @@
  	gsd-device-manager-x11.c gsd-device-manager-x11.h \
  	gsd-device-mapper.c gsd-device-mapper.h gsd-keygrab.c \
  	gsd-keygrab.h gsd-input-helper.c gsd-input-helper.h \
@@ -152,7 +166,7 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/common/Makefile.in gnome-settings
  	gsd-settings-migrate.c gsd-settings-migrate.h \
  	gsd-shell-helper.c gsd-shell-helper.h $(am__append_1)
  libcommon_la_CPPFLAGS = \
-@@ -647,6 +650,7 @@
+@@ -650,6 +653,7 @@
  @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcommon_la-gsd-device-mapper.Plo@am__quote@
  @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcommon_la-gsd-input-helper.Plo@am__quote@
  @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcommon_la-gsd-keygrab.Plo@am__quote@
@@ -160,7 +174,7 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/common/Makefile.in gnome-settings
  @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcommon_la-gsd-settings-migrate.Plo@am__quote@
  @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcommon_la-gsd-shell-helper.Plo@am__quote@
  @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_egg_key_parsing-test-egg-key-parsing.Po@am__quote@
-@@ -721,6 +725,13 @@
+@@ -724,6 +728,13 @@
  @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
  @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcommon_la_CPPFLAGS) $(CPPFLAGS) $(libcommon_la_CFLAGS) $(CFLAGS) -c -o libcommon_la-gsd-settings-migrate.lo `test -f 'gsd-settings-migrate.c' || echo '$(srcdir)/'`gsd-settings-migrate.c
  
@@ -174,9 +188,9 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/common/Makefile.in gnome-settings
  libcommon_la-gsd-shell-helper.lo: gsd-shell-helper.c
  @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcommon_la_CPPFLAGS) $(CPPFLAGS) $(libcommon_la_CFLAGS) $(CFLAGS) -MT libcommon_la-gsd-shell-helper.lo -MD -MP -MF $(DEPDIR)/libcommon_la-gsd-shell-helper.Tpo -c -o libcommon_la-gsd-shell-helper.lo `test -f 'gsd-shell-helper.c' || echo '$(srcdir)/'`gsd-shell-helper.c
  @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libcommon_la-gsd-shell-helper.Tpo $(DEPDIR)/libcommon_la-gsd-shell-helper.Plo
-diff -urN gnome-settings-daemon-3.16.2/plugins/common/gsd-power-helper.c gnome-settings-daemon-3.16.2-patched/plugins/common/gsd-power-helper.c
---- gnome-settings-daemon-3.16.2/plugins/common/gsd-power-helper.c	1969-12-31 19:00:00.000000000 -0500
-+++ gnome-settings-daemon-3.16.2-patched/plugins/common/gsd-power-helper.c	2015-06-01 14:52:25.756782215 -0400
+diff '--exclude=.git' -urN a/plugins/common/gsd-power-helper.c b/plugins/common/gsd-power-helper.c
+--- a/plugins/common/gsd-power-helper.c	1969-12-31 19:00:00.000000000 -0500
++++ b/plugins/common/gsd-power-helper.c	2016-01-16 00:48:36.946569811 -0500
 @@ -0,0 +1,139 @@
 +/* -*- Mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
 + *
@@ -317,9 +331,9 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/common/gsd-power-helper.c gnome-s
 +	upower_hibernate (upower_proxy);
 +}
 +#endif /* ENABLE_DEPRECATED */
-diff -urN gnome-settings-daemon-3.16.2/plugins/common/gsd-power-helper.h gnome-settings-daemon-3.16.2-patched/plugins/common/gsd-power-helper.h
---- gnome-settings-daemon-3.16.2/plugins/common/gsd-power-helper.h	1969-12-31 19:00:00.000000000 -0500
-+++ gnome-settings-daemon-3.16.2-patched/plugins/common/gsd-power-helper.h	2015-06-01 14:52:25.756782215 -0400
+diff '--exclude=.git' -urN a/plugins/common/gsd-power-helper.h b/plugins/common/gsd-power-helper.h
+--- a/plugins/common/gsd-power-helper.h	1969-12-31 19:00:00.000000000 -0500
++++ b/plugins/common/gsd-power-helper.h	2016-01-16 00:48:36.946569811 -0500
 @@ -0,0 +1,35 @@
 +/* -*- Mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
 + *
@@ -356,9 +370,9 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/common/gsd-power-helper.h gnome-s
 +G_END_DECLS
 +
 +#endif /* __GSD_POWER_HELPER_H */
-diff -urN gnome-settings-daemon-3.16.2/plugins/media-keys/gsd-media-keys-manager.c gnome-settings-daemon-3.16.2-patched/plugins/media-keys/gsd-media-keys-manager.c
---- gnome-settings-daemon-3.16.2/plugins/media-keys/gsd-media-keys-manager.c	2015-05-04 09:32:57.000000000 -0400
-+++ gnome-settings-daemon-3.16.2-patched/plugins/media-keys/gsd-media-keys-manager.c	2015-06-01 14:52:25.771782126 -0400
+diff '--exclude=.git' -urN a/plugins/media-keys/gsd-media-keys-manager.c b/plugins/media-keys/gsd-media-keys-manager.c
+--- a/plugins/media-keys/gsd-media-keys-manager.c	2015-11-10 08:05:30.000000000 -0500
++++ b/plugins/media-keys/gsd-media-keys-manager.c	2016-01-16 00:48:36.947569805 -0500
 @@ -57,6 +57,9 @@
  #include "shell-key-grabber.h"
  #include "gsd-screenshot-utils.h"
@@ -382,7 +396,7 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/media-keys/gsd-media-keys-manager
  #define GSD_MEDIA_KEYS_DBUS_PATH GSD_DBUS_PATH "/MediaKeys"
  #define GSD_MEDIA_KEYS_DBUS_NAME GSD_DBUS_NAME ".MediaKeys"
  
-@@ -188,6 +197,11 @@
+@@ -189,6 +198,11 @@
          GDBusProxy      *logind_proxy;
          gint             inhibit_keys_fd;
  
@@ -394,8 +408,8 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/media-keys/gsd-media-keys-manager
          GList           *media_players;
  
          GDBusNodeInfo   *introspection_data;
-@@ -1811,17 +1825,34 @@
-                                            config_key);
+@@ -1808,17 +1822,34 @@
+ {
          switch (action_type) {
          case GSD_POWER_ACTION_SUSPEND:
 +#ifdef ENABLE_DEPRECATED
@@ -429,9 +443,9 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/media-keys/gsd-media-keys-manager
                  break;
          case GSD_POWER_ACTION_BLANK:
          case GSD_POWER_ACTION_LOGOUT:
-@@ -2468,6 +2499,10 @@
-         g_clear_object (&priv->mpris_controller);
+@@ -2499,6 +2530,10 @@
          g_clear_object (&priv->screencast_proxy);
+         g_clear_pointer (&priv->chassis_type, g_free);
  
 +#ifdef ENABLE_DEPRECATED
 +        g_clear_object (&manager->priv->upower_proxy);
@@ -440,7 +454,7 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/media-keys/gsd-media-keys-manager
          if (priv->cancellable != NULL) {
                  g_cancellable_cancel (priv->cancellable);
                  g_clear_object (&priv->cancellable);
-@@ -2655,6 +2690,24 @@
+@@ -2686,6 +2721,24 @@
          }
  }
  
@@ -465,7 +479,7 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/media-keys/gsd-media-keys-manager
  static void
  power_screen_ready_cb (GObject             *source_object,
                         GAsyncResult        *res,
-@@ -2772,6 +2825,19 @@
+@@ -2803,6 +2856,19 @@
                     manager->priv->bus_cancellable,
                     (GAsyncReadyCallback) on_bus_gotten,
                     manager);
@@ -485,9 +499,9 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/media-keys/gsd-media-keys-manager
  }
  
  GsdMediaKeysManager *
-diff -urN gnome-settings-daemon-3.16.2/plugins/power/gsd-power-manager.c gnome-settings-daemon-3.16.2-patched/plugins/power/gsd-power-manager.c
---- gnome-settings-daemon-3.16.2/plugins/power/gsd-power-manager.c	2015-05-12 09:54:57.000000000 -0400
-+++ gnome-settings-daemon-3.16.2-patched/plugins/power/gsd-power-manager.c	2015-06-01 14:52:25.789782020 -0400
+diff '--exclude=.git' -urN a/plugins/power/gsd-power-manager.c b/plugins/power/gsd-power-manager.c
+--- a/plugins/power/gsd-power-manager.c	2015-10-12 06:43:47.000000000 -0400
++++ b/plugins/power/gsd-power-manager.c	2016-01-16 00:59:58.972360955 -0500
 @@ -49,6 +49,9 @@
  #include "gnome-settings-bus.h"
  #include "gsd-enums.h"
@@ -498,7 +512,7 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/power/gsd-power-manager.c gnome-s
  
  #define UPOWER_DBUS_NAME                        "org.freedesktop.UPower"
  #define UPOWER_DBUS_PATH                        "/org/freedesktop/UPower"
-@@ -170,6 +173,11 @@
+@@ -184,6 +187,11 @@
          gboolean                 is_virtual_machine;
          gboolean                 is_tablet;
  
@@ -510,7 +524,7 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/power/gsd-power-manager.c gnome-s
          /* Idles */
          GnomeIdleMonitor        *idle_monitor;
          guint                    idle_dim_id;
-@@ -1018,24 +1026,63 @@
+@@ -1055,24 +1063,63 @@
  }
  
  static void
@@ -574,7 +588,7 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/power/gsd-power-manager.c gnome-s
                  break;
          case GSD_POWER_ACTION_BLANK:
                  backlight_disable (manager);
-@@ -1224,29 +1271,6 @@
+@@ -1261,29 +1308,6 @@
  }
  
  static void
@@ -604,7 +618,23 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/power/gsd-power-manager.c gnome-s
  do_lid_closed_action (GsdPowerManager *manager)
  {
          /* play a sound, using sounds from the naming spec */
-@@ -1908,6 +1932,24 @@
+@@ -1307,7 +1331,15 @@
+                         /* We put the screensaver on * as we're not suspending,
+                          * but the lid is closed */
+                         lock_screensaver (manager);
++#ifdef ENABLE_DEPRECATED
++                } else {
++                        lock_screensaver (manager);
++
++                        gsd_power_suspend (manager->priv->upower_proxy);
++                }
++#else
+                 }
++#endif /* ENABLE_DEPRECATED */
+         }
+ }
+ 
+@@ -1949,6 +1981,24 @@
                  handle_wake_up_screen (GSD_POWER_MANAGER (user_data));
  }
  
@@ -629,7 +659,7 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/power/gsd-power-manager.c gnome-s
  static void
  power_keyboard_proxy_ready_cb (GObject             *source_object,
                                 GAsyncResult        *res,
-@@ -2442,6 +2484,18 @@
+@@ -2591,6 +2641,18 @@
          if (manager->priv->lid_is_present)
                  manager->priv->lid_is_closed = up_client_get_lid_is_closed (manager->priv->up_client);
  
@@ -648,7 +678,7 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/power/gsd-power-manager.c gnome-s
          /* Set up the logind proxy */
          manager->priv->logind_proxy =
                  g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
-@@ -2456,6 +2510,7 @@
+@@ -2605,6 +2667,7 @@
                  g_debug ("No systemd (logind) support, disabling plugin");
                  return FALSE;
          }
@@ -656,7 +686,7 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/power/gsd-power-manager.c gnome-s
  
          /* Check for XTEST support */
          if (supports_xtest () == FALSE) {
-@@ -2528,6 +2583,9 @@
+@@ -2694,6 +2757,9 @@
          }
          g_clear_object (&manager->priv->device_composite);
  
@@ -666,3 +696,22 @@ diff -urN gnome-settings-daemon-3.16.2/plugins/power/gsd-power-manager.c gnome-s
          g_clear_object (&manager->priv->screensaver_proxy);
  
          play_loop_stop (&manager->priv->critical_alert_timeout_id);
+diff '--exclude=.git' -urN a/plugins/power/test.py b/plugins/power/test.py
+--- a/plugins/power/test.py	2015-10-12 06:43:47.000000000 -0400
++++ b/plugins/power/test.py	2016-01-16 01:42:37.438365457 -0500
+@@ -86,7 +86,6 @@
+         # start power plugin
+         self.settings_gsd_power['active'] = False
+         # As hibernate is not available, suspend by default on critical
+-        # FIXME
+         self.settings_gsd_power['critical-battery-action'] = 'suspend'
+         Gio.Settings.sync()
+         self.plugin_log_write = open(os.path.join(self.workdir, 'plugin_power.log'), 'wb')
+@@ -502,7 +501,6 @@
+         self.settings_session['idle-delay'] = 2
+         self.settings_gsd_power['sleep-inactive-battery-timeout'] = 5
+         # Hibernate isn't possible, so it should end up suspending
+-        # FIXME
+         self.settings_gsd_power['critical-battery-action'] = 'hibernate'
+ 
+         # wait for idle delay; should not yet hibernate

@@ -12,7 +12,7 @@ LICENSE="GPL-2+"
 SLOT="0"
 KEYWORDS="*"
 
-IUSE="+debug deprecated-background +introspection kms test wayland"
+IUSE="deprecated-background +introspection kms test wayland"
 
 # libXi-1.7.4 or newer needed per:
 # https://bugzilla.gnome.org/show_bug.cgi?id=738944
@@ -77,6 +77,23 @@ RDEPEND="${COMMON_DEPEND}
 "
 
 src_prepare() {
+	# Multiple patches from gnome-3.18 branch
+
+	# x11/window-props: Initialize bypass compositor hint
+	epatch "${FILESDIR}"/${P}-bypass-hint.patch
+
+	# cursor-renderer: do not update cursor if it is out of monitor
+	epatch "${FILESDIR}"/${P}-cursor-renderer.patch
+
+	# monitor-manager: Fix the max potential number of logical monitors
+	epatch "${FILESDIR}"/${P}-logical-monitors.patch
+
+	# wayland: bind wayland socket after xwayland is initialized
+	epatch "${FILESDIR}"/${P}-wayland-crash.patch
+
+	# x11/window: Ensure we send a ConfigureNotify to just mapped windows
+	epatch "${FILESDIR}"/${P}-configure-notify.patch
+
 	if use deprecated-background; then
 		epatch "${FILESDIR}"/${P}-restore-deprecated-background-code.patch
 	fi

@@ -36,7 +36,7 @@ RDEPEND="
 	gnome-keyring? ( app-crypt/libsecret )
 	gnome-online-accounts? ( >=net-libs/gnome-online-accounts-3.7.1 )
 	google? (
-		>=dev-libs/libgdata-0.17.3:=[gnome]
+		>=dev-libs/libgdata-0.17.3:=[crypt,gnome-online-accounts]
 		>=net-libs/gnome-online-accounts-3.17.1 )
 	gphoto2? ( >=media-libs/libgphoto2-2.4.7:= )
 	gtk? ( >=x11-libs/gtk+-3.0:3 )

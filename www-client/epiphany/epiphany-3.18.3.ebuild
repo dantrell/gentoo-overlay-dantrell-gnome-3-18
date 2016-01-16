@@ -35,12 +35,11 @@ COMMON_DEPEND="
 	x11-libs/libwnck:3
 	x11-libs/libX11
 
-	x11-themes/adwaita-icon-theme
-
 	nss? ( dev-libs/nss )
 "
 # epiphany-extensions support was removed in 3.7; let's not pretend it still works
 RDEPEND="${COMMON_DEPEND}
+	x11-themes/adwaita-icon-theme
 	!www-client/epiphany-extensions
 "
 # paxctl needed for bug #407085

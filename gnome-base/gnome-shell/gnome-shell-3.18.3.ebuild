@@ -198,9 +198,35 @@ pkg_postinst() {
 		ewarn "apps.gnome-shell.recorder/pipeline to what you want to use."
 	fi
 
+	if ! has_version ">=x11-base/xorg-server-1.11"; then
+		ewarn "If you use multiple screens, it is highly recommended that you"
+		ewarn "upgrade to >=x11-base/xorg-server-1.11 to be able to make use of"
+		ewarn "pointer barriers which will make it easier to use hot corners."
+	fi
+
+	if has_version "<x11-drivers/ati-drivers-12"; then
+		ewarn "GNOME Shell has been reported to show graphical corruption under"
+		ewarn "x11-drivers/ati-drivers-11.*; you may want to switch to open-source"
+		ewarn "drivers."
+	fi
+
 	if ! has_version "media-libs/mesa[llvm]"; then
 		elog "llvmpipe is used as fallback when no 3D acceleration"
 		elog "is available. You will need to enable llvm USE for"
 		elog "media-libs/mesa."
+	fi
+
+	# https://bugs.gentoo.org/show_bug.cgi?id=563084
+	if has_version "x11-drivers/nvidia-drivers[-kms]"; then
+		ewarn "You will need to enable kms support in x11-drivers/nvidia-drivers,"
+		ewarn "otherwise Gnome will fail to start"
+	fi
+
+	if use deprecated; then
+		ewarn "You are enabling 'deprecated' USE flag to skip systemd requirement,"
+		ewarn "this can lead to unexpected problems and is not supported neither by"
+		ewarn "upstream neither by Gnome Gentoo maintainers. If you suffer any problem,"
+		ewarn "you will need to disable this USE flag system wide and retest before"
+		ewarn "opening any bug report."
 	fi
 }

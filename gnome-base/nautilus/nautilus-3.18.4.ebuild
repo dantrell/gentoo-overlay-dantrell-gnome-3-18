@@ -4,7 +4,7 @@ EAPI="5"
 GCONF_DEBUG="no"
 GNOME2_LA_PUNT="yes" # Needed with USE 'sendto'
 
-inherit eutils gnome2 readme.gentoo virtualx
+inherit autotools eutils gnome2 readme.gentoo virtualx
 
 DESCRIPTION="A file manager for the GNOME desktop"
 HOMEPAGE="https://wiki.gnome.org/Apps/Nautilus"
@@ -13,20 +13,20 @@ LICENSE="GPL-2+ LGPL-2+ FDL-1.1"
 SLOT="0"
 KEYWORDS="*"
 
-# profiling?
-IUSE="exif gnome +introspection packagekit +previewer sendto tracker xmp +vanilla"
+# TODO: control profiling ?
+IUSE="exif gnome +introspection packagekit +previewer selinux sendto tracker xmp +vanilla"
 
 # FIXME: tests fails under Xvfb, but pass when building manually
 # "FAIL: check failed in nautilus-file.c, line 8307"
+# need org.gnome.SessionManager service (aka gnome-session) but cannot find it
 RESTRICT="test"
 
-# FIXME: selinux support is automagic
 # Require {glib,gdbus-codegen}-2.30.0 due to GDBus API changes between 2.29.92
 # and 2.30.0
 COMMON_DEPEND="
 	>=dev-libs/glib-2.45.7:2[dbus]
 	>=x11-libs/pango-1.28.3
-	>=x11-libs/gtk+-3.17.5:3[introspection?]
+	>=x11-libs/gtk+-3.18.5:3[introspection?]
 	>=dev-libs/libxml2-2.7.8:2
 	>=gnome-base/gnome-desktop-3:3=
 
@@ -38,6 +38,7 @@ COMMON_DEPEND="
 
 	exif? ( >=media-libs/libexif-0.6.20 )
 	introspection? ( >=dev-libs/gobject-introspection-0.6.4:= )
+	selinux? ( >=sys-libs/libselinux-2 )
 	tracker? ( >=app-misc/tracker-0.16:= )
 	xmp? ( >=media-libs/exempi-2.1.0 )
 "
@@ -78,9 +79,15 @@ src_prepare() {
 	fi
 
 	if ! use vanilla; then
-		epatch "${FILESDIR}"/${P}-reorder-context-menu.patch
-		epatch "${FILESDIR}"/${P}-use-old-icon-grid-and-text-width-proportions.patch
+		epatch "${FILESDIR}"/${PN}-3.18.2-reorder-context-menu.patch
+		epatch "${FILESDIR}"/${PN}-3.18.2-use-old-icon-grid-and-text-width-proportions.patch
 	fi
+
+	# Control selinux support
+	# https://bugzilla.gnome.org/show_bug.cgi?id=758632
+	epatch "${FILESDIR}"/${PN}-3.18.2-automagic-selinux.patch
+
+	eautoreconf
 
 	# Remove -D*DEPRECATED flags. Don't leave this for eclass! (bug #448822)
 	sed -e 's/DISABLE_DEPRECATED_CFLAGS=.*/DISABLE_DEPRECATED_CFLAGS=/' \
@@ -98,16 +105,14 @@ src_configure() {
 		$(use_enable introspection) \
 		$(use_enable packagekit) \
 		$(use_enable sendto nst-extension) \
+		$(use_enable selinux) \
 		$(use_enable tracker) \
 		$(use_enable xmp)
 }
 
 src_test() {
 	gnome2_environment_reset
-	unset DBUS_SESSION_BUS_ADDRESS
-	export GSETTINGS_BACKEND="memory"
 	Xemake check
-	unset GSETTINGS_BACKEND
 }
 
 src_install() {

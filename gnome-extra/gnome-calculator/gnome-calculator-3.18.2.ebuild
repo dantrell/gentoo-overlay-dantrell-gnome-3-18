@@ -34,5 +34,6 @@ DEPEND="${COMMON_DEPEND}
 
 src_configure() {
 	gnome2_src_configure \
+		--disable-static \
 		VALAC=$(type -P true)
 }
