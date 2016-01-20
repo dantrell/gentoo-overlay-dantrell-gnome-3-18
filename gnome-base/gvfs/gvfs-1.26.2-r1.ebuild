@@ -7,7 +7,7 @@ GNOME2_LA_PUNT="yes"
 inherit autotools bash-completion-r1 eutils gnome2
 
 DESCRIPTION="Virtual filesystem implementation for gio"
-HOMEPAGE="https://git.gnome.org/browse/gvfs"
+HOMEPAGE="https://wiki.gnome.org/Projects/gvfs"
 
 LICENSE="LGPL-2+"
 SLOT="0"

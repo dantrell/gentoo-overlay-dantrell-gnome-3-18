@@ -17,7 +17,6 @@ KEYWORDS="*"
 IUSE="glade +introspection vala"
 REQUIRED_USE="vala? ( introspection )"
 
-# Note: has native OSX support, prefix teams, attack!
 RDEPEND="
 	>=dev-libs/glib-2.44:2
 	>=dev-libs/libxml2-2.6:2

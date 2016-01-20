@@ -29,7 +29,7 @@ COMMON_DEPEND="
 	>=dev-libs/libxml2-2.5.0:2
 	>=dev-libs/glib-2.44:2[dbus]
 	>=x11-libs/gtk+-3.16:3[introspection?]
-	>=x11-libs/gtksourceview-3.17.3:3.0[introspection?]
+	>=x11-libs/gtksourceview-3.18:3.0[introspection?]
 	>=dev-libs/libpeas-1.14.1[gtk]
 
 	gnome-base/gsettings-desktop-schemas
@@ -50,12 +50,11 @@ COMMON_DEPEND="
 		>=app-text/iso-codes-0.35 )
 "
 RDEPEND="${COMMON_DEPEND}
-	x11-themes/gnome-icon-theme-symbolic
+	x11-themes/adwaita-icon-theme
 "
 DEPEND="${COMMON_DEPEND}
 	${vala_depend}
 	app-text/docbook-xml-dtd:4.1.2
-	>=app-text/scrollkeeper-0.3.11
 	app-text/yelp-tools
 	dev-libs/libxml2:2
 	>=dev-util/gtk-doc-am-1
@@ -89,10 +88,7 @@ src_configure() {
 }
 
 src_test() {
-	# FIXME: this should be handled at eclass level
 	"${EROOT}${GLIB_COMPILE_SCHEMAS}" --allow-any-name "${S}/data" || die
-
-	unset DBUS_SESSION_BUS_ADDRESS
 	GSETTINGS_SCHEMA_DIR="${S}/data" Xemake check
 }
 
