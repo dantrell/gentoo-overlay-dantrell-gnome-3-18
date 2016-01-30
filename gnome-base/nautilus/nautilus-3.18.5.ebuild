@@ -13,7 +13,6 @@ LICENSE="GPL-2+ LGPL-2+ FDL-1.1"
 SLOT="0"
 KEYWORDS="*"
 
-# TODO: control profiling ?
 IUSE="exif gnome +introspection packagekit +previewer selinux sendto tracker xmp +vanilla"
 
 # FIXME: tests fails under Xvfb, but pass when building manually

@@ -13,7 +13,7 @@ LICENSE="GPL-2+"
 SLOT="0/8" # subslot = libcheese soname version
 KEYWORDS="*"
 
-IUSE="+introspection test"
+IUSE="+introspection pulseaudio test"
 
 # using clutter-gst-2.0.0 results in GLSL errors; bug #478702
 COMMON_DEPEND="
@@ -44,6 +44,8 @@ RDEPEND="${COMMON_DEPEND}
 	media-plugins/gst-plugins-jpeg:1.0
 	media-plugins/gst-plugins-v4l2:1.0
 	media-plugins/gst-plugins-vpx:1.0
+
+	pulseaudio? ( media-plugins/gst-plugins-pulse:1.0 )
 "
 DEPEND="${COMMON_DEPEND}
 	$(vala_depend)
