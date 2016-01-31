@@ -179,14 +179,6 @@ multilib_src_test() {
 
 multilib_src_install() {
 	gnome2_src_install
-
-	# add -framework Carbon to the .pc files, bug #???
-#	if use aqua ; then
-#		for i in gtk+-3.0.pc gtk+-quartz-3.0.pc gtk+-unix-print-3.0.pc; do
-#			sed -e "s:Libs\: :Libs\: -framework Carbon :" \
-#				-i "${ED%/}"/usr/$(get_libdir)/pkgconfig/$i || die "sed failed"
-#		done
-#	fi
 }
 
 multilib_src_install_all() {

@@ -24,7 +24,6 @@ COMMON_DEPEND="
 "
 RDEPEND="${COMMON_DEPEND}
 	>=net-wireless/bluez-5
-	x11-themes/gnome-icon-theme-symbolic
 "
 DEPEND="${COMMON_DEPEND}
 	!net-wireless/bluez-gnome
