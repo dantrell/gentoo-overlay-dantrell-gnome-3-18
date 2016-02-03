@@ -18,7 +18,7 @@ RDEPEND="
 	>=dev-libs/glib-2.34:2
 	>=dev-libs/json-glib-0.99.2[introspection?]
 	gnome-base/gvfs[http]
-	net-libs/libsoup:2.4[introspection?]
+	>=net-libs/libsoup-2.42:2.4[introspection?]
 	introspection? (
 		>=dev-libs/gobject-introspection-0.6.3:=
 		net-libs/libsoup:2.4[introspection] )

@@ -62,9 +62,6 @@ RESTRICT="test"
 
 src_prepare() {
 	# Upstream fixes from 1.22 branch
-	# winsys-egl-kms: bypass initial output setup if kms fd passed in
-	epatch "${FILESDIR}"/${P}-initial-output.patch
-
 	# kms-winsys: don't wait for a flip when page flipping fails
 	epatch "${FILESDIR}"/${P}-wait-flip.patch
 
