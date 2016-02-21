@@ -4,7 +4,6 @@ EAPI="5"
 GCONF_DEBUG="no"
 GNOME2_LA_PUNT="yes"
 PYTHON_COMPAT=( python2_7 python3_{4,5} pypy )
-VALA_MIN_API_VERSION="0.22"
 VALA_USE_DEPEND="vapigen"
 
 inherit db-use flag-o-matic gnome2 python-any-r1 vala virtualx
@@ -17,11 +16,12 @@ LICENSE="|| ( LGPL-2 LGPL-3 ) BSD Sleepycat"
 SLOT="0/54" # subslot = libcamel-1.2 soname version
 KEYWORDS="*"
 
-IUSE="api-doc-extras +gnome-online-accounts +gtk +introspection ipv6 ldap kerberos vala +weather"
+IUSE="api-doc-extras +berkdb +gnome-online-accounts +gtk +introspection ipv6 ldap kerberos vala +weather"
 REQUIRED_USE="vala? ( introspection )"
 
 # sys-libs/db is only required for migrating from <3.13 versions
 # gdata-0.15.1 is required for google tasks
+# berkdb needed only for migrating old calendar data, bug #519512
 RDEPEND="
 	>=app-crypt/gcr-3.4
 	>=app-crypt/libsecret-0.5[crypt]
@@ -33,12 +33,12 @@ RDEPEND="
 	>=dev-libs/libxml2-2
 	>=dev-libs/nspr-4.4:=
 	>=dev-libs/nss-3.9:=
-	>=sys-libs/db-4:=
 
 	dev-libs/icu:=
 	sys-libs/zlib:=
 	virtual/libiconv
 
+	berkdb? ( >=sys-libs/db-4:= )
 	gtk? (
 		>=app-crypt/gcr-3.4[gtk]
 		>=x11-libs/gtk+-3.10:3
@@ -55,7 +55,6 @@ DEPEND="${RDEPEND}
 	dev-util/gperf
 	>=dev-util/gtk-doc-am-1.14
 	>=dev-util/intltool-0.35.5
-	>=gnome-base/gnome-common-3.5.5
 	>=sys-devel/gettext-0.17
 	virtual/pkgconfig
 	vala? ( $(vala_depend) )
@@ -85,12 +84,13 @@ src_prepare() {
 src_configure() {
 	# /usr/include/db.h is always db-1 on FreeBSD
 	# so include the right dir in CPPFLAGS
-	append-cppflags "-I$(db_includedir)"
+	use berkdb && append-cppflags "-I$(db_includedir)"
 
 	# phonenumber does not exist in tree
 	gnome2_src_configure \
 		$(use_enable api-doc-extras gtk-doc) \
 		$(use_with api-doc-extras private-docs) \
+		$(usex berkdb --with-libdb="${EPREFIX}"/usr --with-libdb=no) \
 		$(use_enable gnome-online-accounts goa) \
 		$(use_enable gtk) \
 		$(use_enable introspection) \
@@ -103,10 +103,16 @@ src_configure() {
 		--enable-google \
 		--enable-largefile \
 		--enable-smime \
-		--with-libdb="${EPREFIX}"/usr \
 		--without-phonenumber \
 		--disable-examples \
 		--disable-uoa
+}
+
+src_test() {
+	unset ORBIT_SOCKETDIR
+	unset SESSION_MANAGER
+	unset DISPLAY
+	Xemake check
 }
 
 src_install() {
@@ -119,9 +125,10 @@ src_install() {
 	fi
 }
 
-src_test() {
-	unset ORBIT_SOCKETDIR
-	unset SESSION_MANAGER
-	unset DISPLAY
-	Xemake check
+pkg_postinst() {
+	gnome2_pkg_postinst
+	if ! use berkdb; then
+		ewarn "You will need to enable berkdb USE for migrating old"
+		ewarn "(pre-3.12 evolution versions) addressbook data"
+	fi
 }

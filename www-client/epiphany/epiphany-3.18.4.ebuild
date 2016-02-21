@@ -9,7 +9,6 @@ inherit eutils gnome2 virtualx
 DESCRIPTION="GNOME webbrowser based on Webkit"
 HOMEPAGE="https://wiki.gnome.org/Apps/Web"
 
-# TODO: coverage
 LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="*"
@@ -46,7 +45,6 @@ RDEPEND="${COMMON_DEPEND}
 # eautoreconf requires gnome-common-3.5.5
 DEPEND="${COMMON_DEPEND}
 	app-text/yelp-tools
-	>=gnome-base/gnome-common-3.6
 	dev-libs/appstream-glib
 	>=dev-util/intltool-0.50
 	dev-util/itstool
@@ -86,9 +84,4 @@ src_test() {
 
 	unset DISPLAY
 	GSETTINGS_SCHEMA_DIR="${S}/data" Xemake check
-}
-
-src_install() {
-	DOCS="AUTHORS ChangeLog* NEWS README TODO"
-	gnome2_src_install
 }
