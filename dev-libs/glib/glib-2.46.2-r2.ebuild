@@ -90,6 +90,9 @@ pkg_setup() {
 }
 
 src_prepare() {
+	# GDBusProxy: Fix a memory leak during initialization (from 2.46 branch)
+	epatch "${FILESDIR}"/${P}-memleak.patch
+
 	# Prevent build failure in stage3 where pkgconfig is not available, bug #481056
 	mv -f "${WORKDIR}"/pkg-config-*/pkg.m4 "${S}"/m4macros/ || die
 
@@ -134,6 +137,10 @@ src_prepare() {
 
 		# This test is prone to fail, bug #504024, upstream bug #723719
 		sed -i -e '/gdbus-close-pending/d' gio/tests/Makefile.am || die
+
+		# https://bugzilla.gnome.org/show_bug.cgi?id=722604
+		sed -i -e "/timer\/stop/d" glib/tests/timer.c || die
+		sed -i -e "/timer\/basic/d" glib/tests/timer.c || die
 	else
 		# Don't build tests, also prevents extra deps, bug #512022
 		sed -i -e 's/ tests//' {.,gio,glib}/Makefile.am || die
@@ -294,14 +301,6 @@ pkg_postinst() {
 			|| die "Update GIO modules cache failed (for ${ABI})"
 	}
 	multilib_foreach_abi multilib_pkg_postinst
-
-	if has_version '<x11-libs/gtk+-3.0.12:3'; then
-		# To have a clear upgrade path for gtk+-3.0.x users, have to resort to
-		# a warning instead of a blocker
-		ewarn
-		ewarn "Using <gtk+-3.0.12:3 with ${P} results in frequent crashes."
-		ewarn "You should upgrade to a newer version of gtk+:3 immediately."
-	fi
 }
 
 pkg_postrm() {
