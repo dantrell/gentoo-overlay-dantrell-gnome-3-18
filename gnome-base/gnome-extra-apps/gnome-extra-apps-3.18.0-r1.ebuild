@@ -19,7 +19,7 @@ IUSE="+bijiben boxes builder california epiphany +evolution +games geary +share 
 RDEPEND="
 	>=gnome-base/gnome-core-libs-${PV}
 
-	>=app-admin/gnome-system-log-20151007
+	>=app-admin/gnome-system-log-20160125
 	>=app-arch/file-roller-3.16.4
 	>=app-dicts/gnome-dictionary-${PV}
 	>=gnome-base/dconf-editor-${PV}
