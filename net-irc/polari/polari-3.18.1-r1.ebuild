@@ -23,6 +23,7 @@ COMMON_DEPEND="
 "
 RDEPEND="${COMMON_DEPEND}
 	>=net-irc/telepathy-idle-0.2
+	net-im/telepathy-logger[introspection]
 "
 DEPEND="${COMMON_DEPEND}
 	dev-libs/appstream-glib

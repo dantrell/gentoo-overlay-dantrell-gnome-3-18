@@ -16,6 +16,10 @@ IUSE="+bijiben boxes builder california epiphany +evolution +games geary +share 
 # Note to developers:
 # This is a wrapper for the extra apps integrated with GNOME 3
 # New package
+#
+# cantarell upstream relies on noto, unifont and symbola fonts for
+# the fonts they cannot handle due to lack of enough manpower:
+# https://bugzilla.gnome.org/show_bug.cgi?id=762890
 RDEPEND="
 	>=gnome-base/gnome-core-libs-${PV}
 
@@ -48,6 +52,10 @@ RDEPEND="
 	>=sci-geosciences/gnome-maps-${PV}
 	>=sys-apps/baobab-${PV}
 	>=sys-apps/gnome-disk-utility-${PV}
+
+	>=media-fonts/noto-2015.04
+	>=media-fonts/symbola-8.00
+	>=media-fonts/unifont-8.0.01
 
 	bijiben? ( >=app-misc/bijiben-${PV} )
 	boxes? ( >=gnome-extra/gnome-boxes-${PV} )
