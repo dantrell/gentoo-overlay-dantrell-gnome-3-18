@@ -5,7 +5,7 @@ GCONF_DEBUG="no"
 GNOME2_LA_PUNT="yes"
 PYTHON_COMPAT=( python{3_3,3_4,3_5} )
 
-inherit gnome2 python-r1 vala
+inherit gnome2 pax-utils python-r1 vala
 
 DESCRIPTION="git repository viewer for GNOME"
 HOMEPAGE="https://wiki.gnome.org/Apps/Gitg"
@@ -78,4 +78,9 @@ src_configure() {
 
 src_install() {
 	gnome2_src_install -j1
+
+	if has_version 'net-libs/webkit-gtk:4[jit]'; then
+		# needed on hardened/PaX, see github pr 910 and bug #527334
+		pax-mark m "${ED}usr/bin/gitg"
+	fi
 }
