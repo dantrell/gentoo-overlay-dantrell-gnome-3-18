@@ -50,6 +50,7 @@ games-puzzle/gnome-klotski::gentoo
 games-puzzle/gnome-sudoku::gentoo
 games-puzzle/gnome-taquin::gentoo
 games-puzzle/gnome-tetravex::gentoo
+games-puzzle/gnome2048::gentoo
 games-puzzle/lightsoff::gentoo
 games-puzzle/quadrapassel::gentoo
 games-puzzle/swell-foop::gentoo

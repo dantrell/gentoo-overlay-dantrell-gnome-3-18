@@ -75,6 +75,7 @@ RDEPEND="
 		>=games-board/tali-${PV}
 		>=games-puzzle/atomix-${PV}
 		>=games-puzzle/five-or-more-${PV}
+		>=games-puzzle/gnome2048-${PV}
 		>=games-puzzle/gnome-klotski-${PV}
 		>=games-puzzle/gnome-sudoku-${PV}
 		>=games-puzzle/gnome-taquin-${PV}
