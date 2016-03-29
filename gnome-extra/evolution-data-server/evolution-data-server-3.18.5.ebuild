@@ -19,6 +19,11 @@ KEYWORDS="*"
 IUSE="api-doc-extras +berkdb +gnome-online-accounts +gtk +introspection ipv6 ldap kerberos vala +weather"
 REQUIRED_USE="vala? ( introspection )"
 
+# Some tests fail due to missings locales.
+# Also, dbus tests are flacky, bugs #397975 #501834
+# It looks like a nightmare to disable those for now.
+RESTRICT="test"
+
 # sys-libs/db is only required for migrating from <3.13 versions
 # gdata-0.15.1 is required for google tasks
 # berkdb needed only for migrating old calendar data, bug #519512
@@ -62,11 +67,6 @@ DEPEND="${RDEPEND}
 
 # eautoreconf needs:
 #	>=gnome-base/gnome-common-2
-
-# Some tests fail due to missings locales.
-# Also, dbus tests are flacky, bugs #397975 #501834
-# It looks like a nightmare to disable those for now.
-RESTRICT="test"
 
 pkg_setup() {
 	python-any-r1_pkg_setup

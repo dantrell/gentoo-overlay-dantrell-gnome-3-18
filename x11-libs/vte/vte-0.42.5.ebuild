@@ -15,6 +15,8 @@ KEYWORDS="*"
 
 IUSE="+crypt debug glade +introspection vala"
 
+RESTRICT="mirror"
+
 RDEPEND="
 	>=dev-libs/glib-2.40:2
 	>=x11-libs/gtk+-3.8:3[introspection?]

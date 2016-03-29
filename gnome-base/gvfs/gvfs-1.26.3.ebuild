@@ -22,6 +22,10 @@ REQUIRED_USE="
 	systemd? ( udisks )
 "
 
+# Tests with multiple failures, this is being handled upstream at:
+# https://bugzilla.gnome.org/700162
+RESTRICT="test"
+
 # Can use libgphoto-2.5.0 as well. Automagic detection.
 RDEPEND="
 	app-crypt/gcr:=
@@ -71,10 +75,6 @@ DEPEND="${RDEPEND}
 "
 # libgcrypt.m4, provided by libgcrypt, needed for eautoreconf, bug #399043
 # test dependencies needed per https://bugzilla.gnome.org/700162
-
-# Tests with multiple failures, this is being handled upstream at:
-# https://bugzilla.gnome.org/700162
-RESTRICT="test"
 
 src_prepare() {
 	DOCS="AUTHORS ChangeLog NEWS MAINTAINERS README TODO" # ChangeLog.pre-1.2 README.commits

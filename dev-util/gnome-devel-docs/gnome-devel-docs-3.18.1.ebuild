@@ -14,6 +14,9 @@ KEYWORDS="*"
 
 IUSE=""
 
+# This ebuild does not install any binaries
+RESTRICT="binchecks strip"
+
 RDEPEND=""
 DEPEND="
 	app-text/docbook-xml-dtd:4.1.2
@@ -23,9 +26,6 @@ DEPEND="
 	sys-devel/gettext
 	virtual/pkgconfig
 "
-
-# This ebuild does not install any binaries
-RESTRICT="binchecks strip"
 
 src_configure() {
 	# Wants to build demo samples

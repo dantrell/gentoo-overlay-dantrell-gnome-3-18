@@ -2,7 +2,6 @@
 
 EAPI="5"
 GCONF_DEBUG="no"
-GNOME2_LA_PUNT="yes"
 
 inherit gnome2
 
@@ -15,15 +14,18 @@ KEYWORDS="*"
 
 IUSE=""
 
+RESTRICT="mirror"
+
 RDEPEND="
 	>=dev-libs/glib-2.43.4:2
-	dev-libs/libical:0=
-	>=dev-libs/libxml2-2
-	>=gnome-extra/evolution-data-server-3.13.90:0=
-	>=mail-client/evolution-3.13.90:2.0
+	>=dev-libs/libical-0.43
+	>=gnome-extra/evolution-data-server-3.17.1[gtk]
+	>=net-libs/gnome-online-accounts-3.2
 	>=x11-libs/gtk+-3.16:3
 "
 DEPEND="${RDEPEND}
 	>=dev-util/intltool-0.40.6
+	dev-libs/appstream-glib
+	sys-devel/gettext
 	virtual/pkgconfig
 "

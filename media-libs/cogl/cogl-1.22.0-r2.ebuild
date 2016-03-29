@@ -19,6 +19,10 @@ REQUIRED_USE="
 	|| ( gles2 opengl )
 "
 
+# Need classic mesa swrast for tests, llvmpipe causes a test failure
+# For some reason GL3 conformance test all fails again...
+RESTRICT="test"
+
 COMMON_DEPEND="
 	>=dev-libs/glib-2.32:2
 	x11-libs/cairo:=
@@ -55,10 +59,6 @@ DEPEND="${COMMON_DEPEND}
 		app-eselect/eselect-opengl
 		media-libs/mesa[classic] )
 "
-
-# Need classic mesa swrast for tests, llvmpipe causes a test failure
-# For some reason GL3 conformance test all fails again...
-RESTRICT="test"
 
 src_prepare() {
 	# Upstream fixes from 1.22 branch

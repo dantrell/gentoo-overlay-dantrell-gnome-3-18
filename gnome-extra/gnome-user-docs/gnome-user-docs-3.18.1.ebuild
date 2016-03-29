@@ -14,6 +14,9 @@ KEYWORDS="*"
 
 IUSE="test"
 
+# This ebuild does not install any binaries
+RESTRICT="binchecks strip"
+
 RDEPEND=""
 DEPEND="
 	test? ( dev-libs/libxml2 )
@@ -23,9 +26,6 @@ DEPEND="
 # rebuilding translations requires:
 #	app-text/yelp-tools
 #	dev-util/gettext
-
-# This ebuild does not install any binaries
-RESTRICT="binchecks strip"
 
 src_configure() {
 	# itstool is only needed for rebuilding translations
