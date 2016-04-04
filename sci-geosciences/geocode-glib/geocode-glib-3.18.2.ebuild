@@ -37,6 +37,10 @@ DEPEND="${RDEPEND}
 #	dev-libs/gobject-introspection-common
 #	gnome-base/gnome-common
 
+src_configure() {
+	gnome2_src_configure $(use_enable introspection)
+}
+
 src_test() {
 	export GVFS_DISABLE_FUSE=1
 	export GIO_USE_VFS=gvfs

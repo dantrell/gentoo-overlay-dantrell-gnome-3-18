@@ -16,7 +16,7 @@ IUSE=""
 
 # Need gdk-pixbuf-2.25 for gdk_pixbuf_get_pixels_with_length
 COMMON_DEPEND="
-	>=app-misc/tracker-1:=
+	>=app-misc/tracker-1:=[miner-fs]
 	>=app-text/evince-3.13.3[introspection]
 	dev-libs/gjs
 	>=dev-libs/glib-2.39.3:2
@@ -37,7 +37,7 @@ RDEPEND="${COMMON_DEPEND}
 	media-libs/clutter[introspection]
 	net-misc/gnome-online-miners
 	sys-apps/dbus
-	x11-themes/gnome-icon-theme-symbolic
+	x11-themes/adwaita-icon-theme
 "
 DEPEND="${COMMON_DEPEND}
 	dev-libs/libxslt

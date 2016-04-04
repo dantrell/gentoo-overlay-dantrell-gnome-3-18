@@ -24,12 +24,12 @@ REQUIRED_USE="
 	!miner-fs? ( !cue !exif !flac !gif !gsf !iptc !iso !jpeg !mp3 !pdf !playlist !tiff !vorbis !xml !xmp !xps )
 "
 
+RESTRICT="mirror"
+
 # According to NEWS, introspection is non-optional
 # glibc-2.12 needed for SCHED_IDLE (see bug #385003)
-# sqlite-3.7.16 for FTS4 support
 RDEPEND="
 	>=app-i18n/enca-1.9
-	>=dev-db/sqlite-3.7.16:=
 	>=dev-libs/glib-2.40:2
 	>=dev-libs/gobject-introspection-0.9.5:=
 	>=dev-libs/icu-4.8.1.1:=
@@ -137,6 +137,9 @@ src_prepare() {
 	sort "${S}"/tests/libtracker-data/functions/functions-tracker-2.out \
 		-o "${S}"/tests/libtracker-data/functions/functions-tracker-2.out || die
 
+	# Ensure embedded sqlite.h is in the include path (from 1.6 branch)
+	epatch "${FILESDIR}"/${P}-include-path.patch
+
 	eautoreconf # See bug #367975
 	gnome2_src_prepare
 	vala_src_prepare
@@ -180,7 +183,6 @@ src_configure() {
 		--enable-miner-user-guides \
 		--enable-ps \
 		--enable-text \
-		--enable-tracker-fts \
 		--enable-tracker-writeback \
 		--with-unicode-support=libicu \
 		--with-bash-completion-dir="$(get_bashcompdir)" \

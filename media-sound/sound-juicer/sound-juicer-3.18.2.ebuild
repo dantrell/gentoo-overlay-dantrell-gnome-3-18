@@ -23,7 +23,7 @@ COMMON_DEPEND="
 	sys-apps/dbus
 	gnome-base/gsettings-desktop-schemas
 
-	media-libs/libdiscid
+	>=media-libs/libdiscid-0.3.0
 	>=media-libs/musicbrainz-5.0.1:5
 
 	media-libs/gstreamer:1.0

@@ -16,7 +16,7 @@ KEYWORDS="*"
 IUSE="test"
 
 RDEPEND="
-	>=app-misc/tracker-1:=
+	>=app-misc/tracker-1:=[miner-fs]
 	>=dev-libs/glib-2.39.3:2
 	gnome-base/gnome-desktop:3=
 	>=gnome-base/librsvg-2.26.0

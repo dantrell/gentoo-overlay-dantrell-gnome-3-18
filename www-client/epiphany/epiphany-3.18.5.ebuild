@@ -16,7 +16,7 @@ KEYWORDS="*"
 IUSE="nss test"
 
 COMMON_DEPEND="
-	>=app-crypt/gcr-3.5.5
+	>=app-crypt/gcr-3.5.5:=
 	>=app-crypt/libsecret-0.14
 	>=app-text/iso-codes-0.35
 	>=dev-libs/glib-2.38:2[dbus]
