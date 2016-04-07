@@ -24,8 +24,6 @@ REQUIRED_USE="
 	!miner-fs? ( !cue !exif !flac !gif !gsf !iptc !iso !jpeg !mp3 !pdf !playlist !tiff !vorbis !xml !xmp !xps )
 "
 
-RESTRICT="mirror"
-
 # According to NEWS, introspection is non-optional
 # glibc-2.12 needed for SCHED_IDLE (see bug #385003)
 RDEPEND="

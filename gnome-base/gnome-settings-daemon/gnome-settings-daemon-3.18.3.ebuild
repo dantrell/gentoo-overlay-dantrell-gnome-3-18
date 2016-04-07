@@ -12,7 +12,7 @@ HOMEPAGE="https://git.gnome.org/browse/gnome-settings-daemon"
 
 LICENSE="GPL-2+"
 SLOT="0"
-KEYWORDS="~*"
+KEYWORDS="*"
 
 IUSE="+colord +cups debug +deprecated input_devices_wacom networkmanager policykit +short-touchpad-timeout smartcard systemd test +udev wayland"
 REQUIRED_USE="

@@ -15,6 +15,8 @@ KEYWORDS="*"
 
 IUSE=""
 
+RESTRICT="mirror"
+
 RDEPEND="
 	>=dev-libs/glib-2.45.8:2
 	>=x11-libs/gdk-pixbuf-2.30:2

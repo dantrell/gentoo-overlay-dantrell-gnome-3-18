@@ -34,10 +34,10 @@ RDEPEND="
 	>=dev-libs/glib-2.40:2
 	>=dev-libs/libgdata-0.10:=
 	>=dev-libs/libical-0.43:=
-	>=net-libs/libsoup-2.42:2.4
 	>=dev-libs/libxml2-2
 	>=dev-libs/nspr-4.4:=
 	>=dev-libs/nss-3.9:=
+	>=net-libs/libsoup-2.42:2.4
 
 	dev-libs/icu:=
 	sys-libs/zlib:=
@@ -64,7 +64,6 @@ DEPEND="${RDEPEND}
 	virtual/pkgconfig
 	vala? ( $(vala_depend) )
 "
-
 # eautoreconf needs:
 #	>=gnome-base/gnome-common-2
 

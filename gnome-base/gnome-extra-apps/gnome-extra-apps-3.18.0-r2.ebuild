@@ -58,7 +58,7 @@ RDEPEND="
 	builder? ( >=gnome-extra/gnome-builder-${PV} )
 	california? ( >=gnome-extra/california-0.4.0 )
 	epiphany? ( >=www-client/epiphany-${PV} )
-	evolution? ( >=mail-client/evolution-3.18.2 )
+	evolution? ( >=mail-client/evolution-${PV} )
 	fonts? (
 		>=media-fonts/noto-2015.04
 		>=media-fonts/symbola-8.00

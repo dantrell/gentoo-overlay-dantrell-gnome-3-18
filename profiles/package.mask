@@ -12,10 +12,8 @@ app-misc/gnote::gentoo
 app-misc/tracker::gentoo
 app-text/evince::gentoo
 app-text/yelp-tools::gentoo
-dev-cpp/atkmm::gentoo
 dev-cpp/glibmm::gentoo
 dev-cpp/gtkmm::gentoo
-dev-cpp/pangomm::gentoo
 dev-libs/atk::gentoo
 dev-libs/gdl::gentoo
 dev-libs/gjs::gentoo
@@ -88,7 +86,6 @@ gnome-extra/gnome-system-monitor::gentoo
 gnome-extra/gnome-todo::gentoo
 gnome-extra/gnome-tweak-tool::gentoo
 gnome-extra/gnome-user-docs::gentoo
-gnome-extra/gnome-user-share::gentoo
 gnome-extra/gnome-weather::gentoo
 gnome-extra/gucharmap::gentoo
 gnome-extra/nautilus-tracker-tags::gentoo

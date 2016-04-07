@@ -14,8 +14,6 @@ KEYWORDS="*"
 
 IUSE=""
 
-RESTRICT="mirror"
-
 COMMON_DEPEND="
 	~app-misc/tracker-${PV}
 	>=dev-libs/glib-2.38:2

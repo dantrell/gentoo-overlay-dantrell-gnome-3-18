@@ -42,6 +42,7 @@ RDEPEND="
 DEPEND="${RDEPEND}
 	sys-devel/gettext
 	>=dev-util/intltool-0.35
+	dev-util/itstool
 	virtual/pkgconfig
 	test? ( app-text/docbook-xml-dtd:4.5 )
 	xinerama? ( x11-proto/xineramaproto )
@@ -61,6 +62,5 @@ src_configure() {
 		--enable-startup-notification \
 		--enable-xsync \
 		--enable-themes-documentation \
-		$(use_enable xinerama) \
-		ITSTOOL=$(type -P true)
+		$(use_enable xinerama)
 }
