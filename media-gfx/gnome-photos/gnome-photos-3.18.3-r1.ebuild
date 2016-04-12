@@ -23,12 +23,12 @@ RDEPEND="
 	>=dev-libs/libgdata-0.15.2:0=[gnome-online-accounts]
 	media-libs/babl
 	>=media-libs/gegl-0.3:0.3
-	>=media-libs/grilo-0.2.6:0.2
+	>=media-libs/grilo-0.2.6:0.2=
 	>=media-plugins/grilo-plugins-0.2.6:0.2[upnp-av]
-	>=media-libs/exempi-1.99.5
+	>=media-libs/exempi-1.99.5:2
 	media-libs/lcms:2
 	>=media-libs/libexif-0.6.14
-	>=net-libs/gnome-online-accounts-3.8
+	>=net-libs/gnome-online-accounts-3.8:=
 	>=net-libs/libgfbgraph-0.2.1:0.2
 	>=x11-libs/cairo-1.14
 	x11-libs/gdk-pixbuf:2

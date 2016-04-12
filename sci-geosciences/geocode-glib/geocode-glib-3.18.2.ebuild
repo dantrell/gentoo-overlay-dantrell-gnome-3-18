@@ -37,6 +37,10 @@ DEPEND="${RDEPEND}
 #	dev-libs/gobject-introspection-common
 #	gnome-base/gnome-common
 
+src_prepare() {
+	epatch "${FILESDIR}"/${PN}-3.18.1-fix-GLIBC-features.patch
+}
+
 src_configure() {
 	gnome2_src_configure $(use_enable introspection)
 }
