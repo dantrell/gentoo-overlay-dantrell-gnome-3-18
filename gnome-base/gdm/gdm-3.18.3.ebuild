@@ -133,12 +133,13 @@ src_prepare() {
 		# 	https://git.gnome.org/browse/gdm/commit/?id=9be58c9ec9a3a411492a5182ac4b0d51fdc3a323
 		# 	https://git.gnome.org/browse/gdm/commit/?id=1ac67f522f5690c27023d98096ca817f12f7eb88
 		# 	https://bugzilla.gnome.org/show_bug.cgi?id=749418
-		epatch "${FILESDIR}"/${P}-restore-deprecated-consolekit-code.patch
-		epatch "${FILESDIR}"/${P}-rebase-autologin-fixes.patch
+		epatch "${FILESDIR}"/${PN}-3.18.2-restore-deprecated-consolekit-code.patch
+		epatch "${FILESDIR}"/${PN}-3.18.2-rebase-autologin-fixes.patch
 	fi
 
-	# make custom session work, bug #216984, upstream bug #737578
-	epatch "${FILESDIR}/${PN}-3.2.1.1-custom-session.patch"
+	# From GNOME:
+	# 	https://git.gnome.org/browse/gdm/commit/?id=c870d47dd828506857f0997a3af3468fc12fc85b
+	epatch "${FILESDIR}"/${PN}-3.20.1-revert-gdm-session-set-pam-tty-when-initialising-pam.patch
 
 	# ssh-agent handling must be done at xinitrc.d, bug #220603
 	epatch "${FILESDIR}/${PN}-2.32.0-xinitrc-ssh-agent.patch"
