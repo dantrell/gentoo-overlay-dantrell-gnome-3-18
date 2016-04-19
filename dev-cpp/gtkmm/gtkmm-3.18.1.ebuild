@@ -18,7 +18,7 @@ REQUIRED_USE="|| ( aqua wayland X )"
 RDEPEND="
 	>=dev-cpp/glibmm-2.46.1:2[${MULTILIB_USEDEP}]
 	>=x11-libs/gtk+-3.18.0:3[aqua?,wayland?,X?,${MULTILIB_USEDEP}]
-	>=x11-libs/gdk-pixbuf-2.26:2[${MULTILIB_USEDEP}]
+	>=x11-libs/gdk-pixbuf-2.28:2[${MULTILIB_USEDEP}]
 	>=dev-cpp/atkmm-2.24.1[${MULTILIB_USEDEP}]
 	>=dev-cpp/cairomm-1.12.0[${MULTILIB_USEDEP}]
 	>=dev-cpp/pangomm-2.38.1:1.4[${MULTILIB_USEDEP}]
@@ -36,9 +36,6 @@ DEPEND="${RDEPEND}
 # eautoreconf needs mm-common
 
 src_prepare() {
-	# Fix building with gcc-4.7, fixed in next version, bug #567882
-	epatch "${FILESDIR}"/${P}-gcc47.patch
-
 	if ! use test; then
 		# don't waste time building tests
 		sed 's/^\(SUBDIRS =.*\)tests\(.*\)$/\1\2/' -i Makefile.am Makefile.in \
