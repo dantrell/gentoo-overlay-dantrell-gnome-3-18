@@ -81,8 +81,6 @@ src_prepare() {
 		epatch "${FILESDIR}"/${P}-restore-deprecated-background-code.patch
 	fi
 
-	epatch "${FILESDIR}"/${PN}-3.19.92-handle-meta-screen-get-monitor-for-point-returning-null.patch
-
 	epatch_user
 
 	eautoreconf

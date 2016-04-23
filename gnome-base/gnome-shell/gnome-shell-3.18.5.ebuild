@@ -150,11 +150,6 @@ src_prepare() {
 	# https://bugzilla.gnome.org/show_bug.cgi?id=726435
 	epatch "${FILESDIR}"/${PN}-3.14.0-bluetooth-gold.patch
 
-	# Fix crash after selecting vpn
-	# Only needed in 3.18.x because the fix is in 3.19.x
-	# https://bugzilla.gnome.org/show_bug.cgi?id=760924
-	epatch "${FILESDIR}"/${PN}-3.18-fix-crash.patch
-
 	epatch_user
 
 	eautoreconf
