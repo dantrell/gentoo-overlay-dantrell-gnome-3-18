@@ -49,7 +49,7 @@ src_prepare() {
 	if use deprecated; then
 		# From Fedora:
 		# 	http://pkgs.fedoraproject.org/cgit/gnome-terminal.git/tree/?h=f23
-		epatch "${FILESDIR}"/${PN}-3-18-2-build-dont-treat-warnings-as-errors.patch
+		epatch "${FILESDIR}"/${PN}-3.18.2-build-dont-treat-warnings-as-errors.patch
 		epatch "${FILESDIR}"/${PN}-3.18.2-symbolic-new-tab-icon.patch
 		epatch "${FILESDIR}"/${PN}-3.18.2-dark-transparency.patch
 
