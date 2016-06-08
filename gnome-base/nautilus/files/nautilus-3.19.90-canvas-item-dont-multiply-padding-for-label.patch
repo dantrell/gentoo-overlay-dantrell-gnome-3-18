@@ -1,0 +1,35 @@
+From efb04b8b9d9d7d1121caff4f419acaf98967e704 Mon Sep 17 00:00:00 2001
+From: Cosimo Cecchi <cosimoc@gnome.org>
+Date: Sat, 20 Feb 2016 15:51:31 -0800
+Subject: canvas-item: don't multiply padding for label
+
+Avoid multiplying the horizontal padding in the label with the zoom level.
+---
+ libnautilus-private/nautilus-canvas-item.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/libnautilus-private/nautilus-canvas-item.c b/libnautilus-private/nautilus-canvas-item.c
+index 4d2f0fb..dbd6fe9 100644
+--- a/libnautilus-private/nautilus-canvas-item.c
++++ b/libnautilus-private/nautilus-canvas-item.c
+@@ -55,7 +55,7 @@
+ 
+ /* Width of the label with the standard icon size NAUTILUS_CANVAS_ICON_SIZE_STANDARD.
+  * It will adapt to other sizes keeping the same space.*/
+-#define MAX_TEXT_WIDTH_STANDARD (107 - 2 * TEXT_BACK_PADDING_X)
++#define MAX_TEXT_WIDTH_STANDARD 110
+ 
+ /* special text height handling
+  * each item has three text height variables:
+@@ -679,7 +679,7 @@ nautilus_canvas_item_get_max_text_width (NautilusCanvasItem *item)
+ 
+ 	canvas_item = EEL_CANVAS_ITEM (item);
+ 
+-	return MAX_TEXT_WIDTH_STANDARD * canvas_item->canvas->pixels_per_unit;
++	return MAX_TEXT_WIDTH_STANDARD * canvas_item->canvas->pixels_per_unit - 2 * TEXT_BACK_PADDING_X;
+ }
+ 
+ static void
+-- 
+cgit v0.12
+

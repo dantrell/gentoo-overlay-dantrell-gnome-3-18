@@ -1,0 +1,340 @@
+diff '--exclude=.git' -urN a/libnautilus-private/nautilus-canvas-container.c b/libnautilus-private/nautilus-canvas-container.c
+--- a/libnautilus-private/nautilus-canvas-container.c	2015-05-13 13:24:43.000000000 -0400
++++ b/libnautilus-private/nautilus-canvas-container.c	2016-06-03 20:34:53.860807309 -0400
+@@ -99,7 +99,10 @@
+  * where a 76px canvas item would only take one.
+  * Canvas items are then centered in the extra available space.
+  */
+-#define STANDARD_ICON_GRID_WIDTH 80
++#define SMALL_ICON_GRID_WIDTH 58
++#define STANDARD_ICON_GRID_WIDTH 56
++#define LARGE_ICON_GRID_WIDTH 56
++#define LARGER_ICON_GRID_WIDTH 64
+ 
+ /* Desktop layout mode defines */
+ #define DESKTOP_PAD_HORIZONTAL 	10
+@@ -354,6 +357,21 @@
+ 	icon->y = y;
+ }
+ 
++static guint
++nautilus_canvas_container_get_grid_size_for_zoom_level (NautilusCanvasZoomLevel zoom_level)
++{
++	switch (zoom_level) {
++	case NAUTILUS_CANVAS_ZOOM_LEVEL_SMALL:
++		return SMALL_ICON_GRID_WIDTH;
++	case NAUTILUS_CANVAS_ZOOM_LEVEL_STANDARD:
++		return STANDARD_ICON_GRID_WIDTH;
++	case NAUTILUS_CANVAS_ZOOM_LEVEL_LARGE:
++		return LARGE_ICON_GRID_WIDTH;
++	case NAUTILUS_CANVAS_ZOOM_LEVEL_LARGER:
++		return LARGER_ICON_GRID_WIDTH;
++	}
++	g_return_val_if_reached (STANDARD_ICON_GRID_WIDTH);
++}
+ 
+ guint
+ nautilus_canvas_container_get_icon_size_for_zoom_level (NautilusCanvasZoomLevel zoom_level)
+@@ -365,6 +383,8 @@
+ 		return NAUTILUS_CANVAS_ICON_SIZE_STANDARD;
+ 	case NAUTILUS_CANVAS_ZOOM_LEVEL_LARGE:
+ 		return NAUTILUS_CANVAS_ICON_SIZE_LARGE;
++	case NAUTILUS_CANVAS_ZOOM_LEVEL_LARGER:
++		return NAUTILUS_CANVAS_ICON_SIZE_LARGER;
+ 	}
+ 	g_return_val_if_reached (NAUTILUS_CANVAS_ICON_SIZE_STANDARD);
+ }
+@@ -1264,7 +1284,7 @@
+ 	/* Lay out icons a line at a time. */
+ 	canvas_width = CANVAS_WIDTH(container, allocation);
+ 
+-	grid_width = STANDARD_ICON_GRID_WIDTH;
++	grid_width = nautilus_canvas_container_get_grid_size_for_zoom_level (container->details->zoom_level);
+ 	icon_size = nautilus_canvas_container_get_icon_size_for_zoom_level (container->details->zoom_level);
+ 
+ 	line_width = 0;
+@@ -6362,8 +6382,8 @@
+ 	pinned_level = new_level;
+ 	if (pinned_level < NAUTILUS_CANVAS_ZOOM_LEVEL_SMALL) {
+ 		pinned_level = NAUTILUS_CANVAS_ZOOM_LEVEL_SMALL;
+-	} else if (pinned_level > NAUTILUS_CANVAS_ZOOM_LEVEL_LARGE) {
+-		pinned_level = NAUTILUS_CANVAS_ZOOM_LEVEL_LARGE;
++	} else if (pinned_level > NAUTILUS_CANVAS_ZOOM_LEVEL_LARGER) {
++		pinned_level = NAUTILUS_CANVAS_ZOOM_LEVEL_LARGER;
+ 	}
+ 
+         if (pinned_level == details->zoom_level) {
+diff '--exclude=.git' -urN a/libnautilus-private/nautilus-canvas-item.c b/libnautilus-private/nautilus-canvas-item.c
+--- a/libnautilus-private/nautilus-canvas-item.c	2015-05-13 08:12:56.000000000 -0400
++++ b/libnautilus-private/nautilus-canvas-item.c	2016-06-03 20:34:53.861807292 -0400
+@@ -55,7 +55,7 @@
+ 
+ /* Width of the label with the standard icon size NAUTILUS_CANVAS_ICON_SIZE_STANDARD.
+  * It will adapt to other sizes keeping the same space.*/
+-#define MAX_TEXT_WIDTH_STANDARD (134 - 2 * TEXT_BACK_PADDING_X)
++#define MAX_TEXT_WIDTH_STANDARD (107 - 2 * TEXT_BACK_PADDING_X)
+ 
+ /* special text height handling
+  * each item has three text height variables:
+diff '--exclude=.git' -urN a/libnautilus-private/nautilus-directory-async.c b/libnautilus-private/nautilus-directory-async.c
+--- a/libnautilus-private/nautilus-directory-async.c	2015-05-13 08:12:56.000000000 -0400
++++ b/libnautilus-private/nautilus-directory-async.c	2016-06-03 20:34:53.862807276 -0400
+@@ -3560,7 +3560,7 @@
+ 	aspect_ratio = ((double) width) / height;
+ 
+ 	/* cf. nautilus_file_get_icon() */
+-	max_thumbnail_size = NAUTILUS_CANVAS_ICON_SIZE_LARGE * cached_thumbnail_size / NAUTILUS_CANVAS_ICON_SIZE_SMALL;
++	max_thumbnail_size = NAUTILUS_CANVAS_ICON_SIZE_LARGER * cached_thumbnail_size / NAUTILUS_CANVAS_ICON_SIZE_SMALL;
+ 	if (MAX (width, height) > max_thumbnail_size) {
+ 		if (width > height) {
+ 			width = max_thumbnail_size;
+diff '--exclude=.git' -urN a/libnautilus-private/nautilus-icon-info.h b/libnautilus-private/nautilus-icon-info.h
+--- a/libnautilus-private/nautilus-icon-info.h	2015-05-13 08:12:56.000000000 -0400
++++ b/libnautilus-private/nautilus-icon-info.h	2016-06-03 20:34:53.862807276 -0400
+@@ -14,16 +14,18 @@
+ 	NAUTILUS_CANVAS_ZOOM_LEVEL_SMALL,
+ 	NAUTILUS_CANVAS_ZOOM_LEVEL_STANDARD,
+ 	NAUTILUS_CANVAS_ZOOM_LEVEL_LARGE,
++	NAUTILUS_CANVAS_ZOOM_LEVEL_LARGER,
+ } NautilusCanvasZoomLevel;
+ 
+ typedef enum {
+ 	NAUTILUS_LIST_ZOOM_LEVEL_SMALL,
+ 	NAUTILUS_LIST_ZOOM_LEVEL_STANDARD,
+ 	NAUTILUS_LIST_ZOOM_LEVEL_LARGE,
++	NAUTILUS_LIST_ZOOM_LEVEL_LARGER,
+ } NautilusListZoomLevel;
+ 
+-#define NAUTILUS_LIST_ZOOM_LEVEL_N_ENTRIES (NAUTILUS_LIST_ZOOM_LEVEL_LARGE + 1)
+-#define NAUTILUS_CANVAS_ZOOM_LEVEL_N_ENTRIES (NAUTILUS_CANVAS_ZOOM_LEVEL_LARGE + 1)
++#define NAUTILUS_LIST_ZOOM_LEVEL_N_ENTRIES (NAUTILUS_LIST_ZOOM_LEVEL_LARGER + 1)
++#define NAUTILUS_CANVAS_ZOOM_LEVEL_N_ENTRIES (NAUTILUS_CANVAS_ZOOM_LEVEL_LARGER + 1)
+ 
+ /* Nominal icon sizes for each Nautilus zoom level.
+  * This scheme assumes that icons are designed to
+@@ -34,10 +36,12 @@
+ #define NAUTILUS_LIST_ICON_SIZE_SMALL		16
+ #define NAUTILUS_LIST_ICON_SIZE_STANDARD	32
+ #define NAUTILUS_LIST_ICON_SIZE_LARGE		48
++#define NAUTILUS_LIST_ICON_SIZE_LARGER		64
+ 
+-#define NAUTILUS_CANVAS_ICON_SIZE_SMALL		64
+-#define NAUTILUS_CANVAS_ICON_SIZE_STANDARD	96
+-#define NAUTILUS_CANVAS_ICON_SIZE_LARGE		128
++#define NAUTILUS_CANVAS_ICON_SIZE_SMALL		48
++#define NAUTILUS_CANVAS_ICON_SIZE_STANDARD	64
++#define NAUTILUS_CANVAS_ICON_SIZE_LARGE		96
++#define NAUTILUS_CANVAS_ICON_SIZE_LARGER	128
+ 
+ /* Maximum size of an icon that the icon factory will ever produce */
+ #define NAUTILUS_ICON_MAXIMUM_SIZE     320
+diff '--exclude=.git' -urN a/libnautilus-private/org.gnome.nautilus.gschema.xml.in b/libnautilus-private/org.gnome.nautilus.gschema.xml.in
+--- a/libnautilus-private/org.gnome.nautilus.gschema.xml.in	2015-05-13 13:24:43.000000000 -0400
++++ b/libnautilus-private/org.gnome.nautilus.gschema.xml.in	2016-06-03 20:36:30.677199645 -0400
+@@ -35,12 +35,14 @@
+     <value nick="small" value="0"/>
+     <value nick="standard" value="1"/>
+     <value nick="large" value="2"/>
++    <value nick="larger" value="3"/>
+   </enum>
+ 
+   <enum id="org.gnome.nautilus.ListZoomLevel">
+     <value nick="small" value="0"/>
+     <value nick="standard" value="1"/>
+     <value nick="large" value="2"/>
++    <value nick="larger" value="3"/>
+   </enum>
+ 
+   <enum id="org.gnome.nautilus.TabPosition">
+@@ -179,7 +181,7 @@
+       "group", "permissions", and "mime_type".</_description>
+     </key>
+     <key name="default-zoom-level" enum="org.gnome.nautilus.CanvasZoomLevel">
+-      <default>'standard'</default>
++      <default>'small'</default>
+       <_summary>Default icon zoom level</_summary>
+       <_description>Default zoom level used by the icon view.</_description>
+     </key>
+diff '--exclude=.git' -urN a/src/nautilus-canvas-view-container.c b/src/nautilus-canvas-view-container.c
+--- a/src/nautilus-canvas-view-container.c	2015-05-13 08:12:56.000000000 -0400
++++ b/src/nautilus-canvas-view-container.c	2016-06-03 20:34:53.862807276 -0400
+@@ -206,6 +206,7 @@
+ 		1,	/* NAUTILUS_ZOOM_LEVEL_SMALL */
+ 		2,	/* NAUTILUS_ZOOM_LEVEL_STANDARD */
+ 		3,	/* NAUTILUS_ZOOM_LEVEL_LARGE */
++		3,	/* NAUTILUS_ZOOM_LEVEL_LARGER */
+ 	};
+ 
+ 	piece_count = pieces_by_level[nautilus_canvas_container_get_zoom_level (container)];
+diff '--exclude=.git' -urN a/src/nautilus-canvas-view.c b/src/nautilus-canvas-view.c
+--- a/src/nautilus-canvas-view.c	2015-05-13 13:24:43.000000000 -0400
++++ b/src/nautilus-canvas-view.c	2016-06-03 20:34:53.862807276 -0400
+@@ -696,7 +696,7 @@
+ 	default_zoom_level = g_settings_get_enum (nautilus_icon_view_preferences,
+ 						  NAUTILUS_PREFERENCES_ICON_VIEW_DEFAULT_ZOOM_LEVEL);
+ 
+-	return CLAMP (default_zoom_level, NAUTILUS_CANVAS_ZOOM_LEVEL_SMALL, NAUTILUS_CANVAS_ZOOM_LEVEL_LARGE);
++	return CLAMP (default_zoom_level, NAUTILUS_CANVAS_ZOOM_LEVEL_SMALL, NAUTILUS_CANVAS_ZOOM_LEVEL_LARGER);
+ }
+ 
+ static void
+@@ -800,7 +800,7 @@
+ 
+ 	g_return_if_fail (NAUTILUS_IS_CANVAS_VIEW (view));
+ 	g_return_if_fail (new_level >= NAUTILUS_CANVAS_ZOOM_LEVEL_SMALL &&
+-			  new_level <= NAUTILUS_CANVAS_ZOOM_LEVEL_LARGE);
++			  new_level <= NAUTILUS_CANVAS_ZOOM_LEVEL_LARGER);
+ 
+ 	canvas_view = NAUTILUS_CANVAS_VIEW (view);
+ 	canvas_container = get_canvas_container (canvas_view);
+@@ -827,7 +827,7 @@
+ 	new_level = nautilus_canvas_view_get_zoom_level (view) + zoom_increment;
+ 
+ 	if (new_level >= NAUTILUS_CANVAS_ZOOM_LEVEL_SMALL &&
+-	    new_level <= NAUTILUS_CANVAS_ZOOM_LEVEL_LARGE) {
++	    new_level <= NAUTILUS_CANVAS_ZOOM_LEVEL_LARGER) {
+ 		nautilus_canvas_view_zoom_to_level (view, new_level);
+ 	}
+ }
+@@ -850,7 +850,7 @@
+ 	g_return_val_if_fail (NAUTILUS_IS_CANVAS_VIEW (view), FALSE);
+ 
+ 	return nautilus_canvas_view_get_zoom_level (view) 
+-		< NAUTILUS_CANVAS_ZOOM_LEVEL_LARGE;
++		< NAUTILUS_CANVAS_ZOOM_LEVEL_LARGER;
+ }
+ 
+ static gboolean 
+diff '--exclude=.git' -urN a/src/nautilus-list-model.c b/src/nautilus-list-model.c
+--- a/src/nautilus-list-model.c	2015-05-13 08:12:56.000000000 -0400
++++ b/src/nautilus-list-model.c	2016-06-03 20:34:53.862807276 -0400
+@@ -147,6 +147,7 @@
+ 	case NAUTILUS_LIST_MODEL_SMALL_ICON_COLUMN:
+ 	case NAUTILUS_LIST_MODEL_STANDARD_ICON_COLUMN:
+ 	case NAUTILUS_LIST_MODEL_LARGE_ICON_COLUMN:
++	case NAUTILUS_LIST_MODEL_LARGER_ICON_COLUMN:
+ 		return CAIRO_GOBJECT_TYPE_SURFACE;
+ 	case NAUTILUS_LIST_MODEL_FILE_NAME_IS_EDITABLE_COLUMN:
+ 		return G_TYPE_BOOLEAN;
+@@ -257,6 +258,8 @@
+ 		return NAUTILUS_LIST_ICON_SIZE_STANDARD;
+ 	case NAUTILUS_LIST_ZOOM_LEVEL_LARGE:
+ 		return NAUTILUS_LIST_ICON_SIZE_LARGE;
++	case NAUTILUS_LIST_ZOOM_LEVEL_LARGER:
++		return NAUTILUS_LIST_ICON_SIZE_LARGER;
+ 	}
+ 	g_return_val_if_reached (NAUTILUS_LIST_ICON_SIZE_STANDARD);
+ }
+@@ -296,6 +299,7 @@
+ 	case NAUTILUS_LIST_MODEL_SMALL_ICON_COLUMN:
+ 	case NAUTILUS_LIST_MODEL_STANDARD_ICON_COLUMN:
+ 	case NAUTILUS_LIST_MODEL_LARGE_ICON_COLUMN:
++	case NAUTILUS_LIST_MODEL_LARGER_ICON_COLUMN:
+ 		g_value_init (value, CAIRO_GOBJECT_TYPE_SURFACE);
+ 
+ 		if (file != NULL) {
+@@ -1262,6 +1266,8 @@
+ 		return NAUTILUS_LIST_ZOOM_LEVEL_STANDARD;
+ 	case NAUTILUS_LIST_MODEL_LARGE_ICON_COLUMN:
+ 		return NAUTILUS_LIST_ZOOM_LEVEL_LARGE;
++	case NAUTILUS_LIST_MODEL_LARGER_ICON_COLUMN:
++		return NAUTILUS_LIST_ZOOM_LEVEL_LARGER;
+ 	}
+ 
+ 	g_return_val_if_reached (NAUTILUS_LIST_ZOOM_LEVEL_STANDARD);
+@@ -1277,6 +1283,8 @@
+ 		return NAUTILUS_LIST_MODEL_STANDARD_ICON_COLUMN;
+ 	case NAUTILUS_LIST_ZOOM_LEVEL_LARGE:
+ 		return NAUTILUS_LIST_MODEL_LARGE_ICON_COLUMN;
++	case NAUTILUS_LIST_ZOOM_LEVEL_LARGER:
++		return NAUTILUS_LIST_MODEL_LARGER_ICON_COLUMN;
+ 	}
+ 
+ 	g_return_val_if_reached (NAUTILUS_LIST_MODEL_STANDARD_ICON_COLUMN);
+diff '--exclude=.git' -urN a/src/nautilus-list-model.h b/src/nautilus-list-model.h
+--- a/src/nautilus-list-model.h	2015-05-13 08:12:56.000000000 -0400
++++ b/src/nautilus-list-model.h	2016-06-03 20:34:53.863807259 -0400
+@@ -48,6 +48,7 @@
+ 	NAUTILUS_LIST_MODEL_SMALL_ICON_COLUMN,
+ 	NAUTILUS_LIST_MODEL_STANDARD_ICON_COLUMN,
+ 	NAUTILUS_LIST_MODEL_LARGE_ICON_COLUMN,
++	NAUTILUS_LIST_MODEL_LARGER_ICON_COLUMN,
+ 	NAUTILUS_LIST_MODEL_FILE_NAME_IS_EDITABLE_COLUMN,
+ 	NAUTILUS_LIST_MODEL_NUM_COLUMNS
+ };
+diff '--exclude=.git' -urN a/src/nautilus-list-view.c b/src/nautilus-list-view.c
+--- a/src/nautilus-list-view.c	2015-05-13 13:24:43.000000000 -0400
++++ b/src/nautilus-list-view.c	2016-06-03 20:34:53.863807259 -0400
+@@ -1870,6 +1870,7 @@
+ #define SMALL_ZOOM_ICON_PADDING 0
+ #define STANDARD_ZOOM_ICON_PADDING 6
+ #define LARGE_ZOOM_ICON_PADDING 6
++#define LARGER_ZOOM_ICON_PADDING 6
+ 
+ static gint
+ nautilus_list_view_get_icon_padding_for_zoom_level (NautilusListZoomLevel zoom_level)
+@@ -1881,6 +1882,8 @@
+ 		return STANDARD_ZOOM_ICON_PADDING;
+ 	case NAUTILUS_LIST_ZOOM_LEVEL_LARGE:
+ 		return LARGE_ZOOM_ICON_PADDING;
++	case NAUTILUS_LIST_ZOOM_LEVEL_LARGER:
++		return LARGER_ZOOM_ICON_PADDING;
+ 	default:
+ 		g_assert_not_reached ();
+ 	}
+@@ -2331,7 +2334,7 @@
+ 						  NAUTILUS_PREFERENCES_LIST_VIEW_DEFAULT_ZOOM_LEVEL);
+ 
+ 	if (default_zoom_level <  NAUTILUS_LIST_ZOOM_LEVEL_SMALL
+-	    || default_zoom_level > NAUTILUS_LIST_ZOOM_LEVEL_LARGE) {
++	    || default_zoom_level > NAUTILUS_LIST_ZOOM_LEVEL_LARGER) {
+ 		default_zoom_level = NAUTILUS_LIST_ZOOM_LEVEL_STANDARD;
+ 	}
+ 
+@@ -3088,7 +3091,7 @@
+ 
+ 	g_return_if_fail (NAUTILUS_IS_LIST_VIEW (view));
+ 	g_return_if_fail (new_level >= NAUTILUS_LIST_ZOOM_LEVEL_SMALL &&
+-			  new_level <= NAUTILUS_LIST_ZOOM_LEVEL_LARGE);
++			  new_level <= NAUTILUS_LIST_ZOOM_LEVEL_LARGER);
+ 
+ 	if (view->details->zoom_level == new_level) {
+ 		return;
+@@ -3117,7 +3120,7 @@
+ 	new_level = list_view->details->zoom_level + zoom_increment;
+ 
+ 	if (new_level >= NAUTILUS_LIST_ZOOM_LEVEL_SMALL &&
+-	    new_level <= NAUTILUS_LIST_ZOOM_LEVEL_LARGE) {
++	    new_level <= NAUTILUS_LIST_ZOOM_LEVEL_LARGER) {
+ 		nautilus_list_view_zoom_to_level (view, new_level);
+ 	}
+ }
+@@ -3135,7 +3138,7 @@
+ {
+ 	g_return_val_if_fail (NAUTILUS_IS_LIST_VIEW (view), FALSE);
+ 
+-	return NAUTILUS_LIST_VIEW (view)->details->zoom_level < NAUTILUS_LIST_ZOOM_LEVEL_LARGE;
++	return NAUTILUS_LIST_VIEW (view)->details->zoom_level < NAUTILUS_LIST_ZOOM_LEVEL_LARGER;
+ }
+ 
+ static gboolean 
+diff '--exclude=.git' -urN a/src/nautilus-toolbar-view-menu.xml b/src/nautilus-toolbar-view-menu.xml
+--- a/src/nautilus-toolbar-view-menu.xml	2015-05-13 08:12:56.000000000 -0400
++++ b/src/nautilus-toolbar-view-menu.xml	2016-06-03 20:34:53.863807259 -0400
+@@ -63,6 +63,7 @@
+               <mark value="0" position="bottom"/>
+               <mark value="1" position="bottom"/>
+               <mark value="2" position="bottom"/>
++              <mark value="3" position="bottom"/>
+             </marks>
+           </object>
+           <packing>
+@@ -218,7 +219,7 @@
+   </object>
+   <object class="GtkAdjustment" id="zoom_adjustment">
+     <property name="lower">0</property>
+-    <property name="upper">2</property>
++    <property name="upper">3</property>
+     <property name="step_increment">1</property>
+     <property name="page_increment">1</property>
+     <property name="value">1</property>

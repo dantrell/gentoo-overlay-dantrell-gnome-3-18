@@ -1,0 +1,48 @@
+From 965aedb0bb15c0246c67384e2dab13fa027df917 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Florian=20M=C3=BCllner?= <fmuellner@gnome.org>
+Date: Wed, 2 Dec 2015 07:44:05 -0800
+Subject: background: Reload animation on timezone changes
+
+Animated backgrounds are based on a start time in local time - in case
+of a timezone change, that time is no longer accurate. To fix, we need
+to either make BGSlideShow aware of timezone changes (and notify us to
+update the animation), or just reload the animation - timezone changes
+should be a rare event, so go with the simpler second option.
+
+https://bugzilla.gnome.org/show_bug.cgi?id=758939
+---
+ js/ui/background.js | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/js/ui/background.js b/js/ui/background.js
+index e2f9a47..5db1e6c 100644
+--- a/js/ui/background.js
++++ b/js/ui/background.js
+@@ -247,6 +247,13 @@ const Background = new Lang.Class({
+         this._cancellable = new Gio.Cancellable();
+         this.isLoaded = false;
+ 
++        this._clock = new GnomeDesktop.WallClock();
++        this._timezoneChangedId = this._clock.connect('notify::timezone',
++            Lang.bind(this, function() {
++                if (this._animation)
++                    this._loadAnimation(this._animation.file);
++            }));
++
+         this._settingsChangedSignalId = this._settings.connect('changed', Lang.bind(this, function() {
+                                             this.emit('changed');
+                                         }));
+@@ -265,6 +272,10 @@ const Background = new Lang.Class({
+         }
+         this._fileWatches = null;
+ 
++        if (this._timezoneChangedId != 0)
++            this._clock.disconnect(this._timezoneChangedId);
++        this._timezoneChangedId = 0;
++
+         if (this._settingsChangedSignalId != 0)
+             this._settings.disconnect(this._settingsChangedSignalId);
+         this._settingsChangedSignalId = 0;
+-- 
+cgit v0.12
+

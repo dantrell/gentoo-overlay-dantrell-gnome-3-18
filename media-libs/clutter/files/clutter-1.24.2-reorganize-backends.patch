@@ -1,0 +1,38 @@
+diff '--exclude=.git' -urN a/clutter/clutter-backend.c b/clutter/clutter-backend.c
+--- a/clutter/clutter-backend.c	2015-09-15 07:34:24.000000000 -0400
++++ b/clutter/clutter-backend.c	2016-06-04 15:39:38.102573731 -0400
+@@ -522,19 +522,14 @@
+     retval = g_object_new (CLUTTER_TYPE_BACKEND_WIN32, NULL);
+   else
+ #endif
+-#ifdef CLUTTER_WINDOWING_GDK
+-  if (backend == NULL || backend == I_(CLUTTER_WINDOWING_GDK))
+-    retval = g_object_new (CLUTTER_TYPE_BACKEND_GDK, NULL);
+-  else
+-#endif
+ #ifdef CLUTTER_WINDOWING_X11
+   if (backend == NULL || backend == I_(CLUTTER_WINDOWING_X11))
+     retval = g_object_new (CLUTTER_TYPE_BACKEND_X11, NULL);
+   else
+ #endif
+-#ifdef CLUTTER_WINDOWING_WAYLAND
+-  if (backend == NULL || backend == I_(CLUTTER_WINDOWING_WAYLAND))
+-    retval = g_object_new (CLUTTER_TYPE_BACKEND_WAYLAND, NULL);
++#ifdef CLUTTER_WINDOWING_GDK
++  if (backend == NULL || backend == I_(CLUTTER_WINDOWING_GDK))
++    retval = g_object_new (CLUTTER_TYPE_BACKEND_GDK, NULL);
+   else
+ #endif
+ #ifdef CLUTTER_WINDOWING_EGL
+@@ -547,6 +542,11 @@
+     retval = g_object_new (CLUTTER_TYPE_BACKEND_MIR, NULL);
+   else
+ #endif
++#ifdef CLUTTER_WINDOWING_WAYLAND
++  if (backend == NULL || backend == I_(CLUTTER_WINDOWING_WAYLAND))
++    retval = g_object_new (CLUTTER_TYPE_BACKEND_WAYLAND, NULL);
++  else
++#endif
+   if (backend == NULL)
+     g_error ("No default Clutter backend found.");
+   else

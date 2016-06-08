@@ -1,0 +1,30 @@
+From e96f73cf1589c023ade74e4aeb16a0c422790161 Mon Sep 17 00:00:00 2001
+From: Johannes Oertel <johannes.oertel@uni-due.de>
+Date: Mon, 9 May 2016 21:58:17 +0200
+Subject: Do not reset double-click status on pointer movement
+
+This fixes a problem where a double click on an item in Nautilus icon view did
+not activate the moment when moving the pointer even slightly in between the two
+clicks.
+
+https://bugzilla.gnome.org/show_bug.cgi?id=748501
+---
+ libnautilus-private/nautilus-canvas-container.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/libnautilus-private/nautilus-canvas-container.c b/libnautilus-private/nautilus-canvas-container.c
+index cf21a2e..3427a75 100644
+--- a/libnautilus-private/nautilus-canvas-container.c
++++ b/libnautilus-private/nautilus-canvas-container.c
+@@ -5403,6 +5403,8 @@ item_event_callback (EelCanvasItem *item,
+ 	event_button = &event->button;
+ 
+ 	switch (event->type) {
++	case GDK_MOTION_NOTIFY:
++		return FALSE;
+ 	case GDK_BUTTON_PRESS:
+ 		container->details->double_clicked = FALSE;
+ 		if (handle_canvas_button_press (container, icon, event_button)) {
+-- 
+cgit v0.12
+

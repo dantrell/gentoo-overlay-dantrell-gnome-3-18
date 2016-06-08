@@ -4,7 +4,7 @@ EAPI="5"
 GCONF_DEBUG="no"
 GNOME2_LA_PUNT="yes" # Needed with USE 'sendto'
 
-inherit autotools eutils gnome2 readme.gentoo virtualx
+inherit autotools eutils gnome2 readme.gentoo versionator virtualx
 
 DESCRIPTION="A file manager for the GNOME desktop"
 HOMEPAGE="https://wiki.gnome.org/Apps/Nautilus"
@@ -13,7 +13,7 @@ LICENSE="GPL-2+ LGPL-2+ FDL-1.1"
 SLOT="0"
 KEYWORDS="*"
 
-IUSE="exif gnome +introspection packagekit +previewer selinux sendto tracker xmp +vanilla"
+IUSE="exif gnome +introspection packagekit +previewer selinux sendto tracker vanilla xmp"
 
 # FIXME: tests fails under Xvfb, but pass when building manually
 # "FAIL: check failed in nautilus-file.c, line 8307"
@@ -64,7 +64,9 @@ PDEPEND="
 		>=x11-themes/gnome-icon-theme-1.1.91
 		x11-themes/gnome-icon-theme-symbolic )
 	tracker? ( >=gnome-extra/nautilus-tracker-tags-0.12 )
-	previewer? ( >=gnome-extra/sushi-0.1.9 )
+	previewer? (
+		>=gnome-extra/sushi-0.1.9
+		>=media-video/totem-$(get_version_component_range 1-2) )
 	sendto? ( >=gnome-extra/nautilus-sendto-3.0.1 )
 	>=gnome-base/gvfs-1.14[gtk]
 "
@@ -79,8 +81,21 @@ src_prepare() {
 
 	if ! use vanilla; then
 		epatch "${FILESDIR}"/${PN}-3.18.2-reorder-context-menu.patch
-		epatch "${FILESDIR}"/${PN}-3.18.2-use-old-icon-grid-and-text-width-proportions.patch
+		epatch "${FILESDIR}"/${PN}-3.18.5-support-slow-double-click-to-rename.patch
+		#epatch "${FILESDIR}"/${PN}-3.18.2-use-old-icon-grid-and-text-width-proportions.patch
+
+		# From GNOME
+		# 	https://git.gnome.org/browse/nautilus/commit/?id=2f206f0009be7f3a1c4d5968bb12e4d128dd9ad1
+		# 	https://git.gnome.org/browse/nautilus/commit/?id=efb04b8b9d9d7d1121caff4f419acaf98967e704
+		# 	https://git.gnome.org/browse/nautilus/commit/?id=a6821c163f2982acd330c2226268f6dfb9972fc1
+		epatch "${FILESDIR}"/${PN}-3.19.90-general-add-another-zoom-level.patch
+		epatch "${FILESDIR}"/${PN}-3.19.90-canvas-item-dont-multiply-padding-for-label.patch
+		epatch "${FILESDIR}"/${PN}-3.19.90-canvas-item-add-dynamic-label-sizing-for-zoom-levels.patch
 	fi
+
+	# From GNOME
+	# 	https://git.gnome.org/browse/nautilus/commit/?id=e96f73cf1589c023ade74e4aeb16a0c422790161
+	epatch "${FILESDIR}"/${PN}-3.20.2-do-not-reset-double-click-status-on-pointer-movement.patch
 
 	# Control selinux support
 	# https://bugzilla.gnome.org/show_bug.cgi?id=758632
