@@ -13,7 +13,8 @@ LICENSE="GPL-2+ LGPL-2+ FDL-1.1"
 SLOT="0"
 KEYWORDS="*"
 
-IUSE="exif gnome +introspection packagekit +previewer selinux sendto tracker vanilla xmp"
+IUSE="exif gnome +introspection packagekit +previewer selinux sendto tracker vanilla-icon vanilla-icon-grid vanilla-menu vanilla-rename xmp"
+REQUIRED_USE="!vanilla-icon-grid? ( !vanilla-icon )"
 
 # FIXME: tests fails under Xvfb, but pass when building manually
 # "FAIL: check failed in nautilus-file.c, line 8307"
@@ -79,11 +80,7 @@ src_prepare() {
 			close the previewer, press space again."
 	fi
 
-	if ! use vanilla; then
-		epatch "${FILESDIR}"/${PN}-3.18.2-reorder-context-menu.patch
-		epatch "${FILESDIR}"/${PN}-3.18.5-support-slow-double-click-to-rename.patch
-		#epatch "${FILESDIR}"/${PN}-3.18.2-use-old-icon-grid-and-text-width-proportions.patch
-
+	if ! use vanilla-icon; then
 		# From GNOME
 		# 	https://git.gnome.org/browse/nautilus/commit/?id=2f206f0009be7f3a1c4d5968bb12e4d128dd9ad1
 		# 	https://git.gnome.org/browse/nautilus/commit/?id=efb04b8b9d9d7d1121caff4f419acaf98967e704
@@ -91,6 +88,18 @@ src_prepare() {
 		epatch "${FILESDIR}"/${PN}-3.19.90-general-add-another-zoom-level.patch
 		epatch "${FILESDIR}"/${PN}-3.19.90-canvas-item-dont-multiply-padding-for-label.patch
 		epatch "${FILESDIR}"/${PN}-3.19.90-canvas-item-add-dynamic-label-sizing-for-zoom-levels.patch
+
+		#if ! use vanilla-icon-grid; then
+		#	epatch "${FILESDIR}"/${PN}-3.18.2-use-old-icon-grid-and-text-width-proportions.patch
+		#fi
+	fi
+
+	if ! use vanilla-menu; then
+		epatch "${FILESDIR}"/${PN}-3.18.2-reorder-context-menu.patch
+	fi
+
+	if ! use vanilla-rename; then
+		epatch "${FILESDIR}"/${PN}-3.18.5-support-slow-double-click-to-rename.patch
 	fi
 
 	# From GNOME
