@@ -103,7 +103,9 @@ src_prepare() {
 	fi
 
 	# From GNOME
+	# 	https://git.gnome.org/browse/nautilus/commit/?id=618f6a6d1965b35e302b2623cbd7e4e81e752ded
 	# 	https://git.gnome.org/browse/nautilus/commit/?id=e96f73cf1589c023ade74e4aeb16a0c422790161
+	epatch "${FILESDIR}"/${PN}-3.19.91-files-view-hide-hidden-files-when-renamed.patch
 	epatch "${FILESDIR}"/${PN}-3.20.2-do-not-reset-double-click-status-on-pointer-movement.patch
 
 	# Control selinux support

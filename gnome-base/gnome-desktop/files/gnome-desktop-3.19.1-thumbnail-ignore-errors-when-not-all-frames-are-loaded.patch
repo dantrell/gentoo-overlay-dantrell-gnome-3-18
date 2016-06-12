@@ -1,0 +1,34 @@
+From f9b2c480e38de4dbdd763137709a523f206a8d1b Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Fri, 2 Oct 2015 15:11:38 +0200
+Subject: thumbnail: Ignore errors when not all frames are loaded
+
+See https://bugzilla.gnome.org/show_bug.cgi?id=755672
+
+https://bugzilla.gnome.org/show_bug.cgi?id=755982
+---
+ libgnome-desktop/gnome-desktop-thumbnail.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/libgnome-desktop/gnome-desktop-thumbnail.c b/libgnome-desktop/gnome-desktop-thumbnail.c
+index fa1904b..cc78d93 100644
+--- a/libgnome-desktop/gnome-desktop-thumbnail.c
++++ b/libgnome-desktop/gnome-desktop-thumbnail.c
+@@ -549,11 +549,12 @@ _gdk_pixbuf_new_from_uri_at_scale (const char *uri,
+         /* This can happen if the above loop was exited due to the
+          * g_input_stream_read() call failing. */
+         result = FALSE;
+-    } else if (gdk_pixbuf_loader_close (loader, &error) == FALSE) {
++    } else if (gdk_pixbuf_loader_close (loader, &error) == FALSE &&
++               !g_error_matches (error, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_INCOMPLETE_ANIMATION)) {
+         g_warning ("Error creating thumbnail for %s: %s", uri, error->message);
+-        g_clear_error (&error);
+         result = FALSE;
+     }
++    g_clear_error (&error);
+ 
+     if (!result) {
+         g_clear_object (&loader);
+-- 
+cgit v0.12
+

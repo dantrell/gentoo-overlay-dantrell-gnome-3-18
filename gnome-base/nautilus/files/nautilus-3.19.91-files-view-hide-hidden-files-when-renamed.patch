@@ -1,0 +1,37 @@
+From 618f6a6d1965b35e302b2623cbd7e4e81e752ded Mon Sep 17 00:00:00 2001
+From: Carlos Soriano <csoriano@gnome.org>
+Date: Wed, 2 Mar 2016 19:07:16 +0100
+Subject: files-view: hide hidden files when renamed
+
+We were not renaming the file at all when the user changed the
+file name to a dot file i.e. .whatever.
+
+This was confusing. A better solution would be to show the new
+file name until the user changes the directory, but I'm not sure
+how much better is it versus hidding the file straig away, since
+it can be even more confusing trying to hide your file and nautilus
+not hiding it straig away.
+
+For now hide instantaneously a file when renamed to a hidden file.
+
+https://bugzilla.gnome.org/show_bug.cgi?id=342819
+---
+ src/nautilus-files-view.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/nautilus-files-view.c b/src/nautilus-files-view.c
+index 5e008ab..9d78a1f 100644
+--- a/src/nautilus-files-view.c
++++ b/src/nautilus-files-view.c
+@@ -3579,7 +3579,7 @@ process_new_files (NautilusFilesView *view)
+                                         new_changed_files = g_list_delete_link (new_changed_files, node);
+                                         old_added_files = g_list_prepend (old_added_files, pending);
+                                 }
+-                        } else if (nautilus_files_view_should_show_file (view, pending->file)) {
++                        } else {
+                                 new_changed_files = g_list_delete_link (new_changed_files, node);
+                                 old_changed_files = g_list_prepend (old_changed_files, pending);
+                         }
+-- 
+cgit v0.12
+

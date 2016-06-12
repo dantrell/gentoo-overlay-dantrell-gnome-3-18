@@ -3,7 +3,7 @@
 EAPI="5"
 GCONF_DEBUG="yes"
 
-inherit gnome2 virtualx
+inherit eutils gnome2 virtualx
 
 DESCRIPTION="Libraries for the gnome desktop that are not part of the UI"
 HOMEPAGE="https://git.gnome.org/browse/gnome-desktop"
@@ -18,7 +18,7 @@ IUSE="+introspection"
 COMMON_DEPEND="
 	app-text/iso-codes
 	>=dev-libs/glib-2.44.0:2[dbus]
-	>=x11-libs/gdk-pixbuf-2.21.3:2[introspection?]
+	>=x11-libs/gdk-pixbuf-2.33.0:2[introspection?]
 	>=x11-libs/gtk+-3.3.6:3[X,introspection?]
 	>=x11-libs/libXext-1.1
 	>=x11-libs/libXrandr-1.3
@@ -46,6 +46,14 @@ DEPEND="${COMMON_DEPEND}
 # Includes X11/Xatom.h in libgnome-desktop/gnome-bg.c which comes from xproto
 # Includes X11/extensions/Xrandr.h that includes randr.h from randrproto (and
 # eventually libXrandr shouldn't RDEPEND on randrproto)
+
+src_prepare() {
+	# From GNOME:
+	# 	https://git.gnome.org/browse/gnome-desktop/commit/?id=f9b2c480e38de4dbdd763137709a523f206a8d1b
+	# 	https://git.gnome.org/browse/gnome-desktop/commit/?id=70d46d5cd8bac0de99fed21ee2247ec74b03991b
+	epatch "${FILESDIR}"/${PN}-3.19.1-thumbnail-ignore-errors-when-not-all-frames-are-loaded.patch
+	epatch "${FILESDIR}"/${PN}-3.19.1-build-require-the-newest-gdk-pixbuf.patch
+}
 
 src_configure() {
 	DOCS="AUTHORS ChangeLog HACKING NEWS README"
