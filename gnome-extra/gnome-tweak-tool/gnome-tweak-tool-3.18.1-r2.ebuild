@@ -12,7 +12,7 @@ HOMEPAGE="https://wiki.gnome.org/action/show/Apps/GnomeTweakTool"
 
 LICENSE="GPL-2+"
 SLOT="0"
-KEYWORDS="~*"
+KEYWORDS="*"
 
 IUSE=""
 REQUIRED_USE="${PYTHON_REQUIRED_USE}"
