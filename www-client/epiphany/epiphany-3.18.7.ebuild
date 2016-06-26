@@ -3,7 +3,7 @@
 EAPI="6"
 GNOME2_LA_PUNT="yes"
 
-inherit eutils gnome2 virtualx
+inherit gnome2 virtualx
 
 DESCRIPTION="GNOME webbrowser based on Webkit"
 HOMEPAGE="https://wiki.gnome.org/Apps/Web"
@@ -55,10 +55,10 @@ DEPEND="${COMMON_DEPEND}
 src_prepare() {
 	# Fix unittests
 	# https://bugzilla.gnome.org/show_bug.cgi?id=751591
-	epatch "${FILESDIR}"/${PN}-3.16.0-unittest-1.patch
+	eapply "${FILESDIR}"/${PN}-3.16.0-unittest-1.patch
 
 	# https://bugzilla.gnome.org/show_bug.cgi?id=751593
-	epatch "${FILESDIR}"/${PN}-3.14.0-unittest-2.patch
+	eapply "${FILESDIR}"/${PN}-3.14.0-unittest-2.patch
 
 	gnome2_src_prepare
 }
