@@ -19,6 +19,10 @@ REQUIRED_USE="
 	xinerama? ( X )
 "
 
+# Upstream wants us to do their job:
+# https://bugzilla.gnome.org/show_bug.cgi?id=768662#c1
+RESTRICT="test"
+
 # FIXME: introspection data is built against system installation of gtk+:3
 # NOTE: cairo[svg] dep is due to bug 291283 (not patched to avoid eautoreconf)
 COMMON_DEPEND="
