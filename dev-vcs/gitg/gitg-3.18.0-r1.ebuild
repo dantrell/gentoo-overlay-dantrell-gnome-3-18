@@ -32,6 +32,7 @@ RDEPEND="
 	<dev-libs/libgit2-glib-0.24.0
 
 	>=dev-libs/libpeas-1.5.0[gtk]
+	net-libs/libsoup:2.4
 	>=gnome-base/gsettings-desktop-schemas-0.1.1
 	>=net-libs/webkit-gtk-2.2:4[introspection]
 	>=x11-libs/gtk+-3.12.0:3

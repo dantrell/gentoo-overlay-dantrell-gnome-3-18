@@ -4,7 +4,7 @@ EAPI="5"
 GCONF_DEBUG="no"
 GNOME2_LA_PUNT="yes"
 
-inherit gnome2 versionator virtualx
+inherit gnome2 versionator
 
 DESCRIPTION="Rygel is an open source UPnP/DLNA MediaServer"
 HOMEPAGE="https://wiki.gnome.org/Projects/Rygel"
@@ -73,7 +73,7 @@ src_configure() {
 
 pkg_postinst() {
 	gnome2_pkg_postinst
-	if ! version_is_at_least 0.28.2-r1 ${REPLACING_VERSIONS}; then
+	if ! version_is_at_least 0.32.0 ${REPLACING_VERSIONS}; then
 		elog "This version stops forcing the automatical starting of"
 		elog "rygel as upstream pretends. This way, it will honor the"
 		elog "user settings at Sharing section in gnome-control-center."
