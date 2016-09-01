@@ -11,7 +11,6 @@ app-misc/bijiben::gentoo
 app-misc/gnote::gentoo
 app-misc/tracker::gentoo
 app-text/evince::gentoo
-app-text/yelp-tools::gentoo
 dev-cpp/gtkmm::gentoo
 dev-libs/atk::gentoo
 dev-libs/gdl::gentoo
@@ -96,7 +95,6 @@ media-gfx/gnome-screenshot::gentoo
 media-gfx/simple-scan::gentoo
 media-libs/clutter-gtk::gentoo
 media-libs/clutter::gentoo
-media-libs/cogl::gentoo
 media-sound/gnome-music::gentoo
 media-sound/gnome-sound-recorder::gentoo
 media-sound/sound-juicer::gentoo
