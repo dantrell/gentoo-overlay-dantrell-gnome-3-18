@@ -1,12 +1,11 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 
 inherit gnome2
 
 DESCRIPTION="GTK update icon cache"
-HOMEPAGE="http://www.gtk.org/"
+HOMEPAGE="http://www.gtk.org/ https://github.com/EvaSDK/gtk-update-icon-cache"
 SRC_URI="https://dev.gentoo.org/~eva/distfiles/${PN}/${P}.tar.xz http://files.mirthil.org/distfiles/${PN}/${P}.tar.xz"
 
 LICENSE="LGPL-2+"
