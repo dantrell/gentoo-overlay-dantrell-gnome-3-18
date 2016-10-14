@@ -1,11 +1,10 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 GNOME2_LA_PUNT="yes"
 PYTHON_COMPAT=( python{2_7,3_3,3_4,3_5} )
 
-inherit autotools eutils gnome2 python-r1 systemd udev virtualx
+inherit autotools gnome2 python-any-r1 systemd udev virtualx
 
 DESCRIPTION="Gnome Settings Daemon"
 HOMEPAGE="https://git.gnome.org/browse/gnome-settings-daemon"
@@ -26,7 +25,7 @@ COMMON_DEPEND="
 	>=x11-libs/gtk+-3.15.3:3
 	>=gnome-base/gnome-desktop-3.11.1:3=
 	>=gnome-base/gsettings-desktop-schemas-3.15.4
-	>=gnome-base/librsvg-2.36.2
+	>=gnome-base/librsvg-2.36.2:2
 	media-fonts/cantarell
 	media-libs/fontconfig
 	>=media-libs/lcms-2.2:2
@@ -67,9 +66,6 @@ COMMON_DEPEND="
 # <gnome-power-manager-3.1.3 has file collisions with g-s-d-3.1.x
 RDEPEND="${COMMON_DEPEND}
 	gnome-base/dconf
-	>=x11-themes/gnome-themes-standard-2.91
-	>=x11-themes/gnome-icon-theme-2.91
-	>=x11-themes/gnome-icon-theme-symbolic-2.91
 	!<gnome-base/gnome-control-center-2.22
 	!<gnome-extra/gnome-color-manager-3.1.1
 	!<gnome-extra/gnome-power-manager-3.1.3
@@ -82,12 +78,16 @@ RDEPEND="${COMMON_DEPEND}
 	)
 "
 # xproto-7.0.15 needed for power plugin
+# FIXME: tests require dbus-mock
 DEPEND="${COMMON_DEPEND}
 	cups? ( sys-apps/sed )
 	test? (
 		${PYTHON_DEPS}
-		dev-python/pygobject[${PYTHON_USEDEP}] )
+		$(python_gen_any_dep 'dev-python/pygobject:3[${PYTHON_USEDEP}]')
+		gnome-base/gnome-session )
+	app-text/docbook-xsl-stylesheets
 	dev-libs/libxml2:2
+	dev-libs/libxslt
 	sys-devel/gettext
 	>=dev-util/intltool-0.40
 	virtual/pkgconfig
@@ -96,11 +96,19 @@ DEPEND="${COMMON_DEPEND}
 	>=x11-proto/xproto-7.0.15
 "
 
+python_check_deps() {
+	use test && has_version "dev-python/pygobject:3[${PYTHON_USEDEP}]"
+}
+
+pkg_setup() {
+	use test && python-any-r1_pkg_setup
+}
+
 src_prepare() {
 	if use deprecated; then
 		# From Funtoo:
 		# 	https://bugs.funtoo.org/browse/FL-1329
-		epatch "${FILESDIR}"/${PN}-3.18.2-restore-deprecated-code.patch
+		eapply "${FILESDIR}"/${PN}-3.18.2-restore-deprecated-code.patch
 	fi
 
 	# https://bugzilla.gnome.org/show_bug.cgi?id=621836
@@ -108,14 +116,12 @@ src_prepare() {
 	# people, so revert it if USE=short-touchpad-timeout.
 	# Revisit if/when upstream adds a setting for customizing the timeout.
 	use short-touchpad-timeout &&
-		epatch "${FILESDIR}"/${PN}-3.7.90-short-touchpad-timeout.patch
+		eapply "${FILESDIR}"/${PN}-3.7.90-short-touchpad-timeout.patch
 
 	# Make colord and wacom optional; requires eautoreconf
-	epatch "${FILESDIR}"/${PN}-3.16.0-optional.patch
+	eapply "${FILESDIR}"/${PN}-3.16.0-optional.patch
 
-	epatch_user
 	eautoreconf
-
 	gnome2_src_prepare
 }
 
@@ -136,10 +142,27 @@ src_configure() {
 }
 
 src_test() {
-	python_export_best
-	Xemake check
+	virtx emake check
 }
 
 src_install() {
 	gnome2_src_install udevrulesdir="$(get_udevdir)"/rules.d #509484
+}
+
+pkg_postinst() {
+	gnome2_pkg_postinst
+
+	if use systemd && ! systemd_is_booted; then
+		ewarn "${PN} needs Systemd to be *running* for working"
+		ewarn "properly. Please follow the this guide to migrate:"
+		ewarn "https://wiki.gentoo.org/wiki/Systemd"
+	fi
+
+	if use deprecated; then
+		ewarn "You are enabling 'deprecated' USE flag to skip systemd requirement,"
+		ewarn "this can lead to unexpected problems and is not supported neither by"
+		ewarn "upstream neither by Gnome Gentoo maintainers. If you suffer any problem,"
+		ewarn "you will need to disable this USE flag system wide and retest before"
+		ewarn "opening any bug report."
+	fi
 }

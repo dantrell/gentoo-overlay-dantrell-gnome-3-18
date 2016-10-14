@@ -127,7 +127,7 @@ DEPEND="${COMMON_DEPEND}
 src_prepare() {
 	# Make some panels and dependencies optional; requires eautoreconf
 	# https://bugzilla.gnome.org/686840, 697478, 700145
-	epatch "${FILESDIR}"/${PN}-3.18.0-optional.patch
+	epatch "${FILESDIR}"/${PN}-3.18.3-optional.patch
 	epatch "${FILESDIR}"/${PN}-3.16.0-make-wayland-optional.patch
 	epatch "${FILESDIR}"/${PN}-3.18.0-keep-panels-optional.patch
 	epatch "${FILESDIR}"/${PN}-3.16.0-networkmanager.patch
