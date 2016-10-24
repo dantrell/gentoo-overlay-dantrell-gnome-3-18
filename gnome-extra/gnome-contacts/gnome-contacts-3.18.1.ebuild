@@ -1,7 +1,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 VALA_USE_DEPEND="vapigen"
 VALA_MAX_API_VERSION="0.30"
 
@@ -20,7 +19,7 @@ VALA_DEPEND="
 	$(vala_depend)
 	>=dev-libs/gobject-introspection-0.9.6:=
 	dev-libs/folks[vala(+)]
-	gnome-base/gnome-desktop[introspection]
+	gnome-base/gnome-desktop:3=[introspection]
 	gnome-extra/evolution-data-server[vala]
 	net-libs/telepathy-glib[vala]
 "
@@ -34,7 +33,7 @@ RDEPEND="
 	media-libs/clutter:1.0
 	media-libs/clutter-gtk:1.0
 	media-libs/libchamplain:0.12
-	net-libs/gnome-online-accounts
+	net-libs/gnome-online-accounts:=
 	>=net-libs/telepathy-glib-0.17.5
 	>=sci-geosciences/geocode-glib-3.15.3
 	x11-libs/cairo:=
@@ -64,5 +63,7 @@ src_prepare() {
 }
 
 src_configure() {
-	gnome2_src_configure $(use_with v4l cheese)
+	gnome2_src_configure \
+		--enable-man-pages \
+		$(use_with v4l cheese)
 }

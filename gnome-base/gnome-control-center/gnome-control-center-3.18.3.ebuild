@@ -1,10 +1,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="yes"
+EAPI="6"
 GNOME2_LA_PUNT="yes"
 
-inherit autotools bash-completion-r1 eutils gnome2
+inherit autotools bash-completion-r1 gnome2
 
 DESCRIPTION="GNOME's main interface to configure various aspects of the desktop"
 HOMEPAGE="https://git.gnome.org/browse/gnome-control-center/"
@@ -13,7 +12,7 @@ LICENSE="GPL-2+"
 SLOT="2"
 KEYWORDS="*"
 
-IUSE="+bluetooth +colord +cups +deprecated +gnome-online-accounts +i18n input_devices_wacom kerberos networkmanager systemd v4l vanilla-datetime vanilla-hostname wayland"
+IUSE="+bluetooth +colord +cups debug +deprecated +gnome-online-accounts +i18n input_devices_wacom kerberos networkmanager systemd v4l vanilla-datetime vanilla-hostname wayland"
 
 # False positives caused by nested configure scripts
 QA_CONFIGURE_OPTIONS=".*"
@@ -59,8 +58,8 @@ COMMON_DEPEND="
 		>=net-print/cups-1.4[dbus]
 		|| ( >=net-fs/samba-3.6.14-r1[smbclient] >=net-fs/samba-4.0.0[client] ) )
 	gnome-online-accounts? (
-		>=media-libs/grilo-0.2.12:0.2
-		>=net-libs/gnome-online-accounts-3.15.1 )
+		>=media-libs/grilo-0.2.12:0.2=
+		>=net-libs/gnome-online-accounts-3.15.1:= )
 	i18n? ( >=app-i18n/ibus-1.5.2 )
 	kerberos? ( app-crypt/mit-krb5 )
 	networkmanager? (
@@ -81,7 +80,7 @@ COMMON_DEPEND="
 # libgnomekbd needed only for gkbd-keyboard-display tool
 RDEPEND="${COMMON_DEPEND}
 	>=sys-apps/accountsservice-0.6.39
-	x11-themes/gnome-icon-theme-symbolic
+	x11-themes/adwaita-icon-theme
 	colord? ( >=gnome-extra/gnome-color-manager-3 )
 	cups? (
 		app-admin/system-config-printer
@@ -127,34 +126,32 @@ DEPEND="${COMMON_DEPEND}
 src_prepare() {
 	# Make some panels and dependencies optional; requires eautoreconf
 	# https://bugzilla.gnome.org/686840, 697478, 700145
-	epatch "${FILESDIR}"/${PN}-3.18.3-optional.patch
-	epatch "${FILESDIR}"/${PN}-3.16.0-make-wayland-optional.patch
-	epatch "${FILESDIR}"/${PN}-3.18.0-keep-panels-optional.patch
-	epatch "${FILESDIR}"/${PN}-3.16.0-networkmanager.patch
+	eapply "${FILESDIR}"/${PN}-3.18.3-optional.patch
+	eapply "${FILESDIR}"/${PN}-3.16.0-make-wayland-optional.patch
+	eapply "${FILESDIR}"/${PN}-3.18.0-keep-panels-optional.patch
+	eapply "${FILESDIR}"/${PN}-3.16.0-networkmanager.patch
 
 	# Fix some absolute paths to be appropriate for Gentoo
-	epatch "${FILESDIR}"/${PN}-3.10.2-gentoo-paths.patch
+	eapply "${FILESDIR}"/${PN}-3.10.2-gentoo-paths.patch
 
 	if use deprecated; then
 		# From Funtoo:
 		# 	https://bugs.funtoo.org/browse/FL-1329
-		epatch "${FILESDIR}"/${PN}-3.17.0-restore-critical-battery-action-label.patch
-		epatch "${FILESDIR}"/${PN}-3.16.3-restore-deprecated-code.patch
+		eapply "${FILESDIR}"/${PN}-3.17.0-restore-critical-battery-action-label.patch
+		eapply "${FILESDIR}"/${PN}-3.16.3-restore-deprecated-code.patch
 	fi
 
 	if ! use vanilla-datetime; then
 		# From Funtoo:
 		# 	https://bugs.funtoo.org/browse/FL-1389
-		epatch "${FILESDIR}"/${PN}-3.18.2-disable-automatic-datetime-and-timezone-options.patch
+		eapply "${FILESDIR}"/${PN}-3.18.2-disable-automatic-datetime-and-timezone-options.patch
 	fi
 
 	if ! use vanilla-hostname; then
 		# From Funtoo:
 		# 	https://bugs.funtoo.org/browse/FL-1391
-		epatch "${FILESDIR}"/${PN}-3.18.2-disable-changing-hostname.patch
+		eapply "${FILESDIR}"/${PN}-3.18.2-disable-changing-hostname.patch
 	fi
-
-	epatch_user
 
 	eautoreconf
 	gnome2_src_prepare
@@ -168,6 +165,7 @@ src_configure() {
 		$(use_enable bluetooth) \
 		$(use_enable colord color) \
 		$(use_enable cups) \
+		$(usex debug --enable-debug=yes ' ') \
 		$(use_enable deprecated) \
 		$(use_enable gnome-online-accounts goa) \
 		$(use_enable i18n ibus) \

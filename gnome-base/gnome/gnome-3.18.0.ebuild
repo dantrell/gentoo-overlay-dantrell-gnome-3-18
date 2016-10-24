@@ -1,6 +1,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
+EAPI="6"
+
+inherit versionator
 
 DESCRIPTION="Meta package for GNOME 3, merge this package to install"
 HOMEPAGE="https://www.gnome.org/"
@@ -26,7 +28,7 @@ RDEPEND="
 	>=x11-wm/mutter-${PV}
 	>=gnome-base/gnome-shell-${PV}[bluetooth?]
 
-	>=x11-themes/gnome-backgrounds-${PV}
+	>=x11-themes/gnome-backgrounds-$(get_version_component_range 1-2)
 	x11-themes/sound-theme-freedesktop
 
 	accessibility? (

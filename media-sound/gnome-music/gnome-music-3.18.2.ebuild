@@ -1,7 +1,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 PYTHON_COMPAT=( python{3_3,3_4,3_5} )
 
 inherit gnome2 python-r1
@@ -32,8 +31,8 @@ RDEPEND="${COMMON_DEPEND}
 		app-misc/tracker[gstreamer]
 		app-misc/tracker[ffmpeg]
 	)
-	dev-python/pygobject:3[cairo,${PYTHON_USEDEP}]
 	dev-python/dbus-python[${PYTHON_USEDEP}]
+	dev-python/pygobject:3[cairo,${PYTHON_USEDEP}]
 	media-libs/gstreamer:1.0[introspection]
 	media-libs/gst-plugins-base:1.0[introspection]
 	media-plugins/gst-plugins-meta:1.0

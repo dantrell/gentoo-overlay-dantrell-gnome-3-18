@@ -1,7 +1,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 VALA_MIN_API_VERSION="0.26"
 
 inherit gnome2 vala virtualx
@@ -75,13 +74,6 @@ src_configure() {
 		--disable-static
 }
 
-src_compile() {
-	# Clutter-related sandbox violations when USE="doc introspection" and
-	# FEATURES="-userpriv" (see bug #385917).
-	unset DISPLAY
-	gnome2_src_compile
-}
-
 src_test() {
-	Xemake check
+	virtx emake check
 }

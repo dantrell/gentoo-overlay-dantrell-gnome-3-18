@@ -1,7 +1,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 GNOME2_LA_PUNT="yes"
 PYTHON_COMPAT=( python2_7 python3_{4,5} pypy )
 VALA_USE_DEPEND="vapigen"
@@ -16,7 +15,7 @@ LICENSE="|| ( LGPL-2 LGPL-3 ) BSD Sleepycat"
 SLOT="0/54" # subslot = libcamel-1.2 soname version
 KEYWORDS="*"
 
-IUSE="api-doc-extras +berkdb +gnome-online-accounts +gtk +introspection ipv6 ldap kerberos vala +weather"
+IUSE="api-doc-extras +berkdb +gnome-online-accounts +gtk google +introspection ipv6 ldap kerberos vala +weather"
 REQUIRED_USE="vala? ( introspection )"
 
 # Some tests fail due to missings locales.
@@ -48,7 +47,11 @@ RDEPEND="
 		>=app-crypt/gcr-3.4[gtk]
 		>=x11-libs/gtk+-3.10:3
 	)
-	gnome-online-accounts? ( >=net-libs/gnome-online-accounts-3.8 )
+	google? (
+		>=dev-libs/json-glib-1.0.4
+		>=dev-libs/libgdata-0.15.1:=
+	)
+	gnome-online-accounts? ( >=net-libs/gnome-online-accounts-3.8:= )
 	introspection? ( >=dev-libs/gobject-introspection-0.9.12:= )
 	kerberos? ( virtual/krb5:= )
 	ldap? ( >=net-nds/openldap-2:= )
@@ -92,6 +95,7 @@ src_configure() {
 		$(usex berkdb --with-libdb="${EPREFIX}"/usr --with-libdb=no) \
 		$(use_enable gnome-online-accounts goa) \
 		$(use_enable gtk) \
+		$(use_enable google) \
 		$(use_enable introspection) \
 		$(use_enable ipv6) \
 		$(use_with kerberos krb5 "${EPREFIX}"/usr) \
@@ -99,7 +103,6 @@ src_configure() {
 		$(use_with ldap openldap) \
 		$(use_enable vala vala-bindings) \
 		$(use_enable weather) \
-		--enable-google \
 		--enable-largefile \
 		--enable-smime \
 		--without-phonenumber \
@@ -110,8 +113,7 @@ src_configure() {
 src_test() {
 	unset ORBIT_SOCKETDIR
 	unset SESSION_MANAGER
-	unset DISPLAY
-	Xemake check
+	virtx emake check
 }
 
 src_install() {

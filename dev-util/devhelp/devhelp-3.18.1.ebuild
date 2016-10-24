@@ -1,7 +1,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 # gedit-3.8 is python3 only, this also per:
 # https://bugzilla.redhat.com/show_bug.cgi?id=979450
 PYTHON_COMPAT=( python{3_3,3_4,3_5} )
@@ -34,8 +33,10 @@ RDEPEND="${COMMON_DEPEND}
 DEPEND="${COMMON_DEPEND}
 	${PYTHON_DEPS}
 	>=dev-util/intltool-0.40
+	gnome-base/gnome-common
 	virtual/pkgconfig
 "
+
 pkg_setup() {
 	use gedit && python-single-r1_pkg_setup
 }

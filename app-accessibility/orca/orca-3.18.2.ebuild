@@ -1,7 +1,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 GNOME2_LA_PUNT="yes"
 PYTHON_COMPAT=( python3_{3,4,5} )
 PYTHON_REQ_USE="threads"
@@ -18,8 +17,6 @@ KEYWORDS="*"
 IUSE="+braille"
 REQUIRED_USE="${PYTHON_REQUIRED_USE}"
 
-# liblouis is not in portage yet
-# it is used to provide contracted braille support
 COMMON_DEPEND="${PYTHON_DEPS}
 	>=app-accessibility/at-spi2-atk-2.12:2
 	>=app-accessibility/at-spi2-core-2.12:2[introspection]
@@ -61,7 +58,6 @@ src_compile() {
 }
 
 src_install() {
-	DOCS="AUTHORS ChangeLog MAINTAINERS NEWS README TODO"
 	installing() {
 		gnome2_src_install
 		# Massage shebang to make python_doscript happy

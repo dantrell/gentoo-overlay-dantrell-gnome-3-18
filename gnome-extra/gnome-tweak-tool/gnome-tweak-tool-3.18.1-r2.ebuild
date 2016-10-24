@@ -1,11 +1,10 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 GNOME2_LA_PUNT="yes"
 PYTHON_COMPAT=( python2_7 )
 
-inherit eutils gnome2 python-r1
+inherit gnome2 python-r1
 
 DESCRIPTION="Tool to customize GNOME 3 options"
 HOMEPAGE="https://wiki.gnome.org/action/show/Apps/GnomeTweakTool"
@@ -43,13 +42,13 @@ DEPEND="${COMMON_DEPEND}
 
 src_prepare() {
 	# Add contents of Gentoo's cursor theme directory to cursor theme list
-	epatch "${FILESDIR}/${PN}-3.10.1-gentoo-cursor-themes.patch"
+	eapply "${FILESDIR}/${PN}-3.10.1-gentoo-cursor-themes.patch"
 
 	# Prevent problems setting WM preferences, upstream bug #706834
-	epatch "${FILESDIR}/${PN}-3.8.1-wm-preferences.patch"
+	eapply "${FILESDIR}/${PN}-3.8.1-wm-preferences.patch"
 
 	# Stop relying on libsoup-gnome (from 'master')
-	epatch "${FILESDIR}/${PN}-3.18.1-libsoup.patch"
+	eapply "${FILESDIR}/${PN}-3.18.1-libsoup.patch"
 
 	gnome2_src_prepare
 	python_copy_sources

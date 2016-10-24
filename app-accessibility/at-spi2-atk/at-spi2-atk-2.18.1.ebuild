@@ -1,10 +1,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 GNOME2_LA_PUNT="yes"
 
-inherit gnome2 multilib-minimal
+inherit gnome2 multilib-minimal virtualx
 
 DESCRIPTION="Gtk module for bridging AT-SPI to Atk"
 HOMEPAGE="https://wiki.gnome.org/Accessibility"
@@ -31,12 +30,13 @@ DEPEND="${COMMON_DEPEND}
 
 multilib_src_configure() {
 	ECONF_SOURCE=${S} \
-	gnome2_src_configure --enable-p2p $(use_with test tests)
+	gnome2_src_configure \
+		--enable-p2p \
+		$(use_with test tests)
 }
 
 multilib_src_test() {
-	unset DBUS_SESSION_BUS_ADDRESS
-	dbus-run-session -- emake check
+	virtx emake check TESTS_ENVIRONMENT="dbus-run-session"
 }
 
 multilib_src_compile() { gnome2_src_compile; }

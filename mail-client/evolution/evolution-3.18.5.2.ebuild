@@ -1,10 +1,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 GNOME2_LA_PUNT="yes"
 
-inherit eutils flag-o-matic readme.gentoo-r1 gnome2 versionator
+inherit flag-o-matic readme.gentoo-r1 gnome2 versionator
 
 DESCRIPTION="Integrated mail, addressbook and calendaring functionality"
 HOMEPAGE="https://wiki.gnome.org/Apps/Evolution"
@@ -18,7 +17,7 @@ IUSE="+bogofilter crypt highlight ldap map spamassassin spell ssl +weather"
 
 # We need a graphical pinentry frontend to be able to ask for the GPG
 # password from inside evolution, bug 160302
-PINENTRY_DEPEND="|| ( app-crypt/pinentry[gnome-keyring] app-crypt/pinentry[gtk] app-crypt/pinentry[qt4] )"
+PINENTRY_DEPEND="|| ( app-crypt/pinentry[gnome-keyring] app-crypt/pinentry[gtk] app-crypt/pinentry[qt4] app-crypt/pinentry[qt5] )"
 
 # glade-3 support is for maintainers only per configure.ac
 # pst is not mature enough and changes API/ABI frequently
@@ -26,7 +25,7 @@ PINENTRY_DEPEND="|| ( app-crypt/pinentry[gnome-keyring] app-crypt/pinentry[gtk] 
 # gnome-desktop support is optional with --enable-gnome-desktop
 # gnome-autoar (currently disabled because no release has been made)
 COMMON_DEPEND="
-	>=app-crypt/gcr-3.4
+	>=app-crypt/gcr-3.4:=
 	>=app-text/enchant-1.1.7
 	>=dev-libs/glib-2.40:2[dbus]
 	>=dev-libs/libxml2-2.7.3:2
@@ -127,8 +126,6 @@ src_configure() {
 }
 
 src_install() {
-	DOCS="AUTHORS ChangeLog* HACKING MAINTAINERS NEWS* README"
-
 	gnome2_src_install
 
 	# Problems with prelink:

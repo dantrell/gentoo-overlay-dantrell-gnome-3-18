@@ -1,7 +1,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 VALA_MIN_API_VERSION="0.26"
 VALA_USE_DEPEND="vapigen"
 
@@ -16,16 +15,15 @@ KEYWORDS="*"
 
 IUSE="+introspection +latexmk rubber"
 
-# gspell-0.1 is required for this cycle
-# https://git.gnome.org/browse/latexila/commit/?h=gnome-3-18&id=fd6b77796e304cfb9e31844cf24432d3b2cb6043
-COMMON_DEPEND="$(vala_depend)
+COMMON_DEPEND="
+	$(vala_depend)
 	app-text/enchant
 	=app-text/gspell-0.1*
 	>=dev-libs/glib-2.40:2[dbus]
 	>=dev-libs/libgee-0.10:0.8=
 	gnome-base/gsettings-desktop-schemas
 	>=x11-libs/gtk+-3.14:3
-	>=x11-libs/gtksourceview-3.18:3.0
+	>=x11-libs/gtksourceview-3.18:3.0=
 	x11-libs/gdk-pixbuf:2
 	x11-libs/libX11
 	x11-libs/pango
@@ -45,7 +43,6 @@ DEPEND="${COMMON_DEPEND}
 "
 
 src_prepare() {
-	DOCS="AUTHORS HACKING NEWS README"
 	gnome2_src_prepare
 	vala_src_prepare
 }

@@ -1,6 +1,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
+EAPI="6"
+
+inherit versionator
 
 DESCRIPTION="Meta package for GNOME-Light, merge this package to install"
 HOMEPAGE="https://www.gnome.org/"
@@ -31,9 +33,9 @@ RDEPEND="!gnome-base/gnome
 		>=x11-wm/mutter-${PV}
 		>=gnome-base/gnome-shell-${PV} )
 
-	>=x11-themes/adwaita-icon-theme-${PV}
-	>=x11-themes/gnome-themes-standard-${PV}
-	>=x11-themes/gnome-backgrounds-${PV}
+	>=x11-themes/adwaita-icon-theme-$(get_version_component_range 1-2)
+	>=x11-themes/gnome-themes-standard-$(get_version_component_range 1-2)
+	>=x11-themes/gnome-backgrounds-$(get_version_component_range 1-2)
 
 	>=x11-terms/gnome-terminal-${PV}
 "

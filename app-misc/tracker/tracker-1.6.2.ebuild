@@ -1,11 +1,10 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 GNOME2_LA_PUNT="yes"
 PYTHON_COMPAT=( python2_7 )
 
-inherit autotools bash-completion-r1 eutils gnome2 linux-info multilib python-any-r1 vala versionator virtualx
+inherit autotools bash-completion-r1 gnome2 linux-info multilib python-any-r1 vala versionator virtualx
 
 DESCRIPTION="A tagging metadata database, search tool and indexer"
 HOMEPAGE="https://wiki.gnome.org/Projects/Tracker"
@@ -26,6 +25,7 @@ REQUIRED_USE="
 
 # According to NEWS, introspection is non-optional
 # glibc-2.12 needed for SCHED_IDLE (see bug #385003)
+# sqlite-3.11.0 embedded for FTS4 support
 RDEPEND="
 	>=app-i18n/enca-1.9
 	>=dev-libs/glib-2.40:2
@@ -136,10 +136,10 @@ src_prepare() {
 		-o "${S}"/tests/libtracker-data/functions/functions-tracker-2.out || die
 
 	# Ensure embedded sqlite.h is in the include path (from 1.6 branch)
-	epatch "${FILESDIR}"/${P}-include-path.patch
+	eapply "${FILESDIR}"/${P}-include-path.patch
 
 	# embedded sqlite underlinking, https://bugzilla.gnome.org/show_bug.cgi?id=766487
-	epatch "${FILESDIR}"/${P}-sqlite-underlinking.patch
+	eapply "${FILESDIR}"/${P}-sqlite-underlinking.patch
 
 	eautoreconf # See bug #367975
 	gnome2_src_prepare
@@ -225,7 +225,7 @@ src_configure() {
 
 src_test() {
 	# G_MESSAGES_DEBUG, upstream bug #699401#c1
-	Xemake check TESTS_ENVIRONMENT="dbus-run-session" G_MESSAGES_DEBUG="all"
+	virtx emake check TESTS_ENVIRONMENT="dbus-run-session" G_MESSAGES_DEBUG="all"
 }
 
 src_install() {

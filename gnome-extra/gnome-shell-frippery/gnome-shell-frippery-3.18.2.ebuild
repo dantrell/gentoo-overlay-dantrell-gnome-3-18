@@ -1,6 +1,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
+EAPI="6"
 
 DESCRIPTION="Unofficial extension pack providing GNOME 2-like features for GNOME 3"
 HOMEPAGE="http://frippery.org/extensions/index.html"

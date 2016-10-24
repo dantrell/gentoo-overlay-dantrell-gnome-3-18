@@ -1,7 +1,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no" # --enable-debug does not do anything useful
+EAPI="6"
 
 inherit gnome2
 
@@ -23,9 +22,7 @@ RDEPEND="
 	>=dev-libs/json-glib-0.99.2[introspection?]
 	gnome-base/gvfs[http]
 	>=net-libs/libsoup-2.42:2.4[introspection?]
-	introspection? (
-		>=dev-libs/gobject-introspection-0.6.3:=
-		net-libs/libsoup:2.4[introspection] )
+	introspection? ( >=dev-libs/gobject-introspection-0.6.3:= )
 "
 DEPEND="${RDEPEND}
 	>=dev-util/gtk-doc-am-1.13
@@ -37,9 +34,11 @@ DEPEND="${RDEPEND}
 #	dev-libs/gobject-introspection-common
 #	gnome-base/gnome-common
 
-src_prepare() {
-	epatch "${FILESDIR}"/${PN}-3.18.1-fix-GLIBC-features.patch
-}
+PATCHES=(
+	# From GNOME:
+	# 	https://git.gnome.org/browse/geocode-glib/commit/?id=3ce317a218c255b8a8025f8f2a6010ce500dc0ee
+	"${FILESDIR}"/${PN}-3.20.1-use-uclibc-when-checking-for-glibc-features.patch
+)
 
 src_configure() {
 	gnome2_src_configure $(use_enable introspection)

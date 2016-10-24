@@ -1,6 +1,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
+EAPI="6"
 
 VALA_MIN_API_VERSION="0.30"
 VALA_USE_DEPEND="vapigen"

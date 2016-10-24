@@ -1,9 +1,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 
-inherit gnome-games vala
+inherit gnome2 vala
 
 DESCRIPTION="Clear the screen by removing groups of colored and shaped tiles"
 HOMEPAGE="https://wiki.gnome.org/Apps/Swell%20Foop"
@@ -30,6 +29,6 @@ DEPEND="${RDEPEND}
 "
 
 src_prepare() {
-	gnome-games_src_prepare
+	gnome2_src_prepare
 	vala_src_prepare
 }

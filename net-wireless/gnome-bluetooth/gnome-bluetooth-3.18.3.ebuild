@@ -1,9 +1,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="yes"
+EAPI="6"
 
-inherit eutils gnome2 udev user
+inherit gnome2 udev user
 
 DESCRIPTION="Bluetooth graphical utilities integrated with GNOME"
 HOMEPAGE="https://wiki.gnome.org/Projects/GnomeBluetooth"
@@ -12,7 +11,7 @@ LICENSE="GPL-2+ LGPL-2.1+ FDL-1.1+"
 SLOT="2/13" # subslot = libgnome-bluetooth soname version
 KEYWORDS="*"
 
-IUSE="+introspection"
+IUSE="debug +introspection"
 
 COMMON_DEPEND="
 	>=dev-libs/glib-2.38:2
@@ -53,6 +52,7 @@ src_prepare() {
 
 src_configure() {
 	gnome2_src_configure \
+		$(usex debug --enable-debug=yes ' ') \
 		$(use_enable introspection) \
 		--enable-documentation \
 		--disable-desktop-update \

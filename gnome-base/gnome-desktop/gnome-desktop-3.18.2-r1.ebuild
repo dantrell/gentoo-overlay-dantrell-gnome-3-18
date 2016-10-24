@@ -1,9 +1,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="yes"
+EAPI="6"
 
-inherit eutils gnome2 virtualx
+inherit gnome2 virtualx
 
 DESCRIPTION="Libraries for the gnome desktop that are not part of the UI"
 HOMEPAGE="https://git.gnome.org/browse/gnome-desktop"
@@ -12,7 +11,7 @@ LICENSE="GPL-2+ FDL-1.1+ LGPL-2+"
 SLOT="3/12" # subslot = libgnome-desktop-3 soname version
 KEYWORDS="*"
 
-IUSE="+introspection"
+IUSE="debug +introspection"
 
 # cairo[X] needed for gnome-bg
 COMMON_DEPEND="
@@ -51,12 +50,11 @@ src_prepare() {
 	# From GNOME:
 	# 	https://git.gnome.org/browse/gnome-desktop/commit/?id=f9b2c480e38de4dbdd763137709a523f206a8d1b
 	# 	https://git.gnome.org/browse/gnome-desktop/commit/?id=70d46d5cd8bac0de99fed21ee2247ec74b03991b
-	epatch "${FILESDIR}"/${PN}-3.19.1-thumbnail-ignore-errors-when-not-all-frames-are-loaded.patch
-	epatch "${FILESDIR}"/${PN}-3.19.1-build-require-the-newest-gdk-pixbuf.patch
+	eapply "${FILESDIR}"/${PN}-3.19.1-thumbnail-ignore-errors-when-not-all-frames-are-loaded.patch
+	eapply "${FILESDIR}"/${PN}-3.19.1-build-require-the-newest-gdk-pixbuf.patch
 }
 
 src_configure() {
-	DOCS="AUTHORS ChangeLog HACKING NEWS README"
 	# Note: do *not* use "--with-pnp-ids-path" argument. Otherwise, the pnp.ids
 	# file (needed by other packages such as >=gnome-settings-daemon-3.1.2)
 	# will not get installed in ${pnpdatadir} (/usr/share/libgnome-desktop-3.0).
@@ -64,9 +62,10 @@ src_configure() {
 		--disable-static \
 		--with-gnome-distributor=Gentoo \
 		--enable-desktop-docs \
+		$(usex debug --enable-debug=yes ' ') \
 		$(use_enable introspection)
 }
 
 src_test() {
-	Xemake check
+	virtx emake check
 }

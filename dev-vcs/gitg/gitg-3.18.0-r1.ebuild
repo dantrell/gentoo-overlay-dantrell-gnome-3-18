@@ -1,7 +1,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 GNOME2_LA_PUNT="yes"
 PYTHON_COMPAT=( python{3_3,3_4,3_5} )
 
@@ -15,7 +14,7 @@ SLOT="0"
 KEYWORDS="*"
 
 IUSE="debug glade +python"
-REQUIRED_USE="python? ( ^^ ( $(python_gen_useflags '*') ) )"
+REQUIRED_USE="python? ( ${PYTHON_REQUIRED_USE} )"
 
 # test if unbundling of libgd is possible
 # Currently it seems not to be (unstable API/ABI)
@@ -37,21 +36,20 @@ RDEPEND="
 	>=net-libs/webkit-gtk-2.2:4[introspection]
 	>=x11-libs/gtk+-3.12.0:3
 	>=x11-libs/gtksourceview-3.10:3.0
-	>=x11-themes/gnome-icon-theme-symbolic-3.10
+	x11-themes/adwaita-icon-theme
 	glade? ( >=dev-util/glade-3.2:3.10 )
 	python? (
 		${PYTHON_DEPS}
-		dev-libs/libpeas[python,${PYTHON_USEDEP}]
 		dev-python/pygobject:3[${PYTHON_USEDEP}]
 	)
 "
 DEPEND="${RDEPEND}
+	$(vala_depend)
 	>=dev-libs/libgit2-glib-0.22.0[vala]
+	>=dev-util/intltool-0.40
 	gnome-base/gnome-common
 	>=sys-devel/gettext-0.17
 	virtual/pkgconfig
-	>=dev-util/intltool-0.40
-	$(vala_depend)
 "
 
 pkg_setup() {
@@ -78,7 +76,16 @@ src_configure() {
 }
 
 src_install() {
+	# -j1: bug #???
 	gnome2_src_install -j1
+
+	if use python ; then
+		install_gi_override() {
+			python_moduleinto "$(python_get_sitedir)/gi/overrides"
+			python_domodule "${S}"/libgitg-ext/GitgExt.py
+		}
+		python_foreach_impl install_gi_override
+	fi
 
 	if has_version 'net-libs/webkit-gtk:4[jit]'; then
 		# needed on hardened/PaX, see github pr 910 and bug #527334

@@ -1,7 +1,7 @@
 From 3ce317a218c255b8a8025f8f2a6010ce500dc0ee Mon Sep 17 00:00:00 2001
 From: "Anthony G. Basile" <blueness@gentoo.org>
 Date: Tue, 22 Mar 2016 09:48:00 +0000
-Subject: [PATCH] Use __UCLIBC__ when checking for GLIBC features
+Subject: Use __UCLIBC__ when checking for GLIBC features
 
 Commit f0f85d8d introduces __GLIBC__ to check for glibc only features.
 However this is not sufficient for uClibc because it shares code with
@@ -50,5 +50,5 @@ index a23a3c3..9d7194d 100644
  	GError *error = NULL;
  	GList *res;
 -- 
-2.7.3
+cgit v0.12
 

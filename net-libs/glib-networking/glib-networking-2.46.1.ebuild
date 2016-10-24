@@ -1,10 +1,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 GNOME2_LA_PUNT="yes"
 
-inherit autotools eutils gnome2 multilib-minimal virtualx
+inherit autotools gnome2 multilib-minimal virtualx
 
 DESCRIPTION="Network-related giomodules for glib"
 HOMEPAGE="https://git.gnome.org/browse/glib-networking/"
@@ -38,7 +37,7 @@ src_prepare() {
 	# Fix test build failure with USE=-smartcard
 	# https://bugzilla.gnome.org/show_bug.cgi?id=758134
 	# https://bugzilla.gnome.org/show_bug.cgi?id=728977
-	epatch "${FILESDIR}"/${PN}-2.40.1-unittests.patch
+	eapply "${FILESDIR}"/${PN}-2.40.1-unittests.patch
 
 	eautoreconf
 	gnome2_src_prepare
@@ -60,7 +59,7 @@ multilib_src_test() {
 	# have no idea what's wrong. would appreciate some help.
 	multilib_is_native_abi || return 0
 
-	Xemake check
+	virtx emake check
 }
 
 multilib_src_install() {

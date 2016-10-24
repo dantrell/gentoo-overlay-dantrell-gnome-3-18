@@ -1,8 +1,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-# debug only changes CFLAGS
-GCONF_DEBUG="no"
+EAPI="6"
 GNOME2_LA_PUNT="yes"
 
 inherit gnome2
@@ -51,7 +49,6 @@ DEPEND="${RDEPEND}
 "
 
 src_configure() {
-	DOCS="AUTHORS ChangeLog HACKING NEWS README *.txt doc/*.txt"
 	gnome2_src_configure \
 		--disable-static \
 		--enable-canberra \

@@ -1,9 +1,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 
-inherit eutils gnome2 pax-utils virtualx
+inherit gnome2 pax-utils virtualx
 
 DESCRIPTION="Javascript bindings for GNOME"
 HOMEPAGE="https://wiki.gnome.org/Projects/Gjs"
@@ -31,12 +30,10 @@ DEPEND="${RDEPEND}
 	test? ( sys-apps/dbus )
 "
 
-src_prepare() {
-	# Disable broken unittests
-	epatch "${FILESDIR}"/${PN}-1.43.3-disable-unittest-*.patch
-
-	gnome2_src_prepare
-}
+PATCHES=(
+	# Disable broken unittests, upstream bug #????
+	"${FILESDIR}"/${PN}-1.43.3-disable-unittest-{1,2}.patch
+)
 
 src_configure() {
 	# FIXME: add systemtap/dtrace support, like in glib:2
@@ -51,11 +48,11 @@ src_configure() {
 }
 
 src_test() {
-	Xemake check
+	virtx emake check
 }
 
 src_install() {
-	# installation sometimes fails in parallel
+	# installation sometimes fails in parallel, bug #???
 	gnome2_src_install -j1
 
 	if use examples; then

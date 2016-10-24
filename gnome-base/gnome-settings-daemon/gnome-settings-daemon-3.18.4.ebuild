@@ -45,7 +45,7 @@ COMMON_DEPEND="
 	x11-misc/xkeyboard-config
 
 	>=app-misc/geoclue-2.1.2:2.0
-	>=dev-libs/libgweather-3.9.5:2
+	>=dev-libs/libgweather-3.9.5:2=
 	>=sci-geosciences/geocode-glib-3.10
 	>=sys-auth/polkit-0.103
 

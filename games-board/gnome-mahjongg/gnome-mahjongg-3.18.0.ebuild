@@ -1,9 +1,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="no"
+EAPI="6"
 
-inherit gnome-games vala
+inherit gnome2 vala
 
 DESCRIPTION="Disassemble a pile of tiles by removing matching pairs"
 HOMEPAGE="https://wiki.gnome.org/Apps/Mahjongg"
@@ -16,7 +15,7 @@ IUSE=""
 
 RDEPEND="
 	>=dev-libs/glib-2.40:2
-	>=gnome-base/librsvg-2.32
+	>=gnome-base/librsvg-2.32:2
 	>=x11-libs/gtk+-3.13.2:3
 "
 DEPEND="${RDEPEND}
@@ -28,6 +27,6 @@ DEPEND="${RDEPEND}
 "
 
 src_prepare() {
-	gnome-games_src_prepare
+	gnome2_src_prepare
 	vala_src_prepare
 }

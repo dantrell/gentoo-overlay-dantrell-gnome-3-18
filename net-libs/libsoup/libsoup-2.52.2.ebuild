@@ -1,7 +1,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="yes"
+EAPI="6"
 GNOME2_LA_PUNT="yes"
 PYTHON_COMPAT=( python{2_7,3_3,3_4,3_5} )
 VALA_USE_DEPEND="vapigen"
@@ -15,7 +14,7 @@ LICENSE="LGPL-2+"
 SLOT="2.4"
 KEYWORDS="*"
 
-IUSE="+introspection samba ssl test vala"
+IUSE="debug +introspection samba ssl test vala"
 REQUIRED_USE="vala? ( introspection )"
 
 RDEPEND="
@@ -69,6 +68,7 @@ multilib_src_configure() {
 		--disable-tls-check \
 		--without-gnome \
 		--without-apache-httpd \
+		$(usex debug --enable-debug=yes ' ') \
 		$(multilib_native_use_enable introspection) \
 		$(multilib_native_use_enable vala) \
 		$(use_with samba ntlm-auth '${EPREFIX}'/usr/bin/ntlm_auth)

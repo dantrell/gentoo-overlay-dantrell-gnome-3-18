@@ -1,7 +1,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="yes"
+EAPI="6"
 GNOME2_LA_PUNT="yes"
 
 inherit gnome2
@@ -13,7 +12,7 @@ LICENSE="LGPL-2+"
 SLOT="0/1"
 KEYWORDS="*"
 
-IUSE="gnome +introspection kerberos" # telepathy"
+IUSE="debug gnome +introspection kerberos" # telepathy"
 
 # pango used in goaeditablelabel
 # libsoup used in goaoauthprovider
@@ -59,7 +58,7 @@ QA_CONFIGURE_OPTIONS=".*"
 
 src_configure() {
 	# TODO: Give users a way to set the G/FB/Windows Live secrets
-	# telepathy optional support is really a badly done, bug #494456
+	# telepathy optional support is really badly done, bug #494456
 	gnome2_src_configure \
 		--disable-static \
 		--enable-backend \
@@ -75,6 +74,7 @@ src_configure() {
 		--enable-pocket \
 		--enable-telepathy \
 		--enable-windows-live \
+		$(usex debug --enable-debug=yes ' ') \
 		$(use_enable kerberos)
 		#$(use_enable telepathy)
 	# gudev & cheese from sub-configure is overriden

@@ -1,9 +1,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
-GCONF_DEBUG="yes"
+EAPI="6"
 
-inherit autotools eutils gnome2
+inherit autotools gnome2
 
 DESCRIPTION="GNOME 3 compositing window manager based on Clutter"
 HOMEPAGE="https://git.gnome.org/browse/mutter/"
@@ -13,6 +12,9 @@ SLOT="0"
 KEYWORDS="*"
 
 IUSE="+deprecated-background +introspection kms test wayland"
+REQUIRED_USE="
+	wayland? ( kms )
+"
 
 # libXi-1.7.4 or newer needed per:
 # https://bugzilla.gnome.org/show_bug.cgi?id=738944
@@ -78,10 +80,8 @@ RDEPEND="${COMMON_DEPEND}
 
 src_prepare() {
 	if use deprecated-background; then
-		epatch "${FILESDIR}"/${PN}-3.18.4-restore-deprecated-background-code.patch
+		eapply "${FILESDIR}"/${PN}-3.18.4-restore-deprecated-background-code.patch
 	fi
-
-	epatch_user
 
 	eautoreconf
 	gnome2_src_prepare
