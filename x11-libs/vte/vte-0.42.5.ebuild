@@ -24,6 +24,7 @@ RDEPEND="
 	x11-libs/libX11
 	x11-libs/libXft
 
+	crypt?  ( >=net-libs/gnutls-3.2.7 )
 	glade? ( >=dev-util/glade-3.9:3.10 )
 	introspection? ( >=dev-libs/gobject-introspection-0.9.0:= )
 "
@@ -33,7 +34,6 @@ DEPEND="${RDEPEND}
 	sys-devel/gettext
 	virtual/pkgconfig
 
-	crypt?  ( >=net-libs/gnutls-3.2.7 )
 	vala? ( $(vala_depend) )
 "
 RDEPEND="${RDEPEND}
