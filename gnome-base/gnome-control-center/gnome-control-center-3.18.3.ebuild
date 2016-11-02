@@ -34,6 +34,7 @@ COMMON_DEPEND="
 	dev-libs/libxml2:2
 	gnome-base/libgtop:2=
 	media-libs/fontconfig
+	>=sys-apps/accountsservice-0.6.39
 
 	>=media-libs/libcanberra-0.13[gtk3]
 	>=media-sound/pulseaudio-2[glib]
@@ -56,7 +57,11 @@ COMMON_DEPEND="
 		>=x11-libs/colord-gtk-0.1.24 )
 	cups? (
 		>=net-print/cups-1.4[dbus]
-		|| ( >=net-fs/samba-3.6.14-r1[smbclient] >=net-fs/samba-4.0.0[client] ) )
+		|| (
+			( >=net-fs/samba-3.6.14-r1[smbclient] <net-fs/samba-4.0.0[smbclient] )
+			>=net-fs/samba-4.0.0[client]
+		)
+	)
 	gnome-online-accounts? (
 		>=media-libs/grilo-0.2.12:0.2=
 		>=net-libs/gnome-online-accounts-3.15.1:= )
@@ -79,7 +84,6 @@ COMMON_DEPEND="
 # <gnome-color-manager-3.1.2 has file collisions with g-c-c-3.1.x
 # libgnomekbd needed only for gkbd-keyboard-display tool
 RDEPEND="${COMMON_DEPEND}
-	>=sys-apps/accountsservice-0.6.39
 	x11-themes/adwaita-icon-theme
 	colord? ( >=gnome-extra/gnome-color-manager-3 )
 	cups? (
