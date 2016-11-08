@@ -46,13 +46,13 @@ DEPEND="${COMMON_DEPEND}
 # Includes X11/extensions/Xrandr.h that includes randr.h from randrproto (and
 # eventually libXrandr shouldn't RDEPEND on randrproto)
 
-src_prepare() {
+PATCHES=(
 	# From GNOME:
 	# 	https://git.gnome.org/browse/gnome-desktop/commit/?id=f9b2c480e38de4dbdd763137709a523f206a8d1b
 	# 	https://git.gnome.org/browse/gnome-desktop/commit/?id=70d46d5cd8bac0de99fed21ee2247ec74b03991b
-	eapply "${FILESDIR}"/${PN}-3.19.1-thumbnail-ignore-errors-when-not-all-frames-are-loaded.patch
-	eapply "${FILESDIR}"/${PN}-3.19.1-build-require-the-newest-gdk-pixbuf.patch
-}
+	"${FILESDIR}"/${PN}-3.19.1-thumbnail-ignore-errors-when-not-all-frames-are-loaded.patch
+	"${FILESDIR}"/${PN}-3.19.1-build-require-the-newest-gdk-pixbuf.patch
+)
 
 src_configure() {
 	gnome2_src_configure \
