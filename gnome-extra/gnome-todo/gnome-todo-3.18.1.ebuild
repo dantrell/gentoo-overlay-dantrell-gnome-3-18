@@ -4,7 +4,7 @@ EAPI="6"
 
 inherit gnome2
 
-DESCRIPTION="Personnal task manager"
+DESCRIPTION="Personal task manager"
 HOMEPAGE="https://wiki.gnome.org/Apps/Todo"
 
 LICENSE="GPL-3+"
