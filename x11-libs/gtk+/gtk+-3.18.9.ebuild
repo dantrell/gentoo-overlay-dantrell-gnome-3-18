@@ -31,7 +31,7 @@ COMMON_DEPEND="
 	media-libs/fontconfig[${MULTILIB_USEDEP}]
 	>=media-libs/libepoxy-1.0[${MULTILIB_USEDEP}]
 	>=x11-libs/cairo-1.14[aqua?,glib,svg,X?,${MULTILIB_USEDEP}]
-	>=x11-libs/gdk-pixbuf-2.30:2[introspection?,X?,${MULTILIB_USEDEP}]
+	>=x11-libs/gdk-pixbuf-2.30:2[introspection?,${MULTILIB_USEDEP}]
 	>=x11-libs/pango-1.37.3[introspection?,${MULTILIB_USEDEP}]
 	x11-misc/shared-mime-info
 
@@ -111,6 +111,10 @@ strip_builddir() {
 }
 
 src_prepare() {
+	# From GNOME:
+	# 	https://git.gnome.org/browse/gtk+/commit/?id=631f6b536485829a0bd00532f5826ad302b4951b
+	eapply "${FILESDIR}"/${PN}-3.21.3-configure-fix-detecting-cups-2-x.patch
+
 	# -O3 and company cause random crashes in applications. Bug #133469
 	replace-flags -O3 -O2
 	strip-flags
