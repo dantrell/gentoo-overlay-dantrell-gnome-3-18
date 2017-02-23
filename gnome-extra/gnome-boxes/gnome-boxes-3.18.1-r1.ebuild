@@ -25,6 +25,7 @@ IUSE="" #bindist
 #        directly with USE=spice
 RDEPEND="
 	>=app-arch/libarchive-3:=
+	app-crypt/libsecret
 	>=dev-libs/glib-2.38:2
 	>=dev-libs/gobject-introspection-0.9.6:=
 	>=dev-libs/libxml2-2.7.8:2
@@ -82,6 +83,14 @@ src_prepare() {
 	# Do not change CFLAGS, wondering about VALA ones but appears to be
 	# needed as noted in configure comments below
 	sed 's/CFLAGS="$CFLAGS -O0 -ggdb3"//' -i configure{.ac,} || die
+
+	# From GNOME:
+	# 	https://git.gnome.org/browse/gnome-boxes/commit/?id=22084f72bae097ab3c3e1990644e3c69ecf04337
+	# 	https://git.gnome.org/browse/gnome-boxes/commit/?id=62c88b1ad43dfec123818e8de7a9290397d6be65
+	# 	https://git.gnome.org/browse/gnome-boxes/commit/?id=3f71ec5cda4e3ad810c1cc50a1fd3e66324b0e17
+	eapply "${FILESDIR}"/${PN}-3.20.4-unattended-setup-box-remove-redundant-code.patch
+	eapply "${FILESDIR}"/${PN}-3.20.4-configure-require-libsecret.patch
+	eapply "${FILESDIR}"/${PN}-3.20.4-unattended-setup-box-dont-cache-passwords-in-plain-text.patch
 
 	vala_src_prepare
 	gnome2_src_prepare

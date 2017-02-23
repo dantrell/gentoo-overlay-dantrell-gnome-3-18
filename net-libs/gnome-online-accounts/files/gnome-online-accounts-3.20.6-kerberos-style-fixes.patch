@@ -1,0 +1,52 @@
+From 1ba36012879083330871c301464daf7615f7d7d0 Mon Sep 17 00:00:00 2001
+From: Debarshi Ray <debarshir@gnome.org>
+Date: Tue, 2 Aug 2016 02:27:37 +0200
+Subject: kerberos: Style fixes
+
+---
+ src/goabackend/goakerberosprovider.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/goabackend/goakerberosprovider.c b/src/goabackend/goakerberosprovider.c
+index 786314a..a451d98 100644
+--- a/src/goabackend/goakerberosprovider.c
++++ b/src/goabackend/goakerberosprovider.c
+@@ -352,7 +352,8 @@ get_ticket_sync (GoaKerberosProvider *self,
+     }
+ 
+   ret = TRUE;
+-out:
++
++ out:
+   g_clear_object (&account);
+   g_clear_object (&ticketing);
+   g_free (object_path);
+@@ -1438,7 +1439,7 @@ ensure_credentials_sync (GoaProvider    *provider,
+   g_date_time_unref (now);
+   g_date_time_unref (expiration_time);
+ 
+-out:
++ out:
+   g_clear_object (&account);
+   g_clear_object (&identity);
+   g_mutex_unlock (&identity_manager_mutex);
+@@ -1620,7 +1621,7 @@ sign_in_identity_sync (GoaKerberosProvider  *self,
+                                                   error);
+   g_mutex_unlock (&identity_manager_mutex);
+ 
+-out:
++ out:
+   g_object_unref (secret_exchange);
+   return identity_object_path;
+ }
+@@ -1642,7 +1643,6 @@ sign_in_thread (GSimpleAsyncResult  *result,
+ 
+   error = NULL;
+   object_path = sign_in_identity_sync (self, identifier, password, preauth_source, cancellable, &error);
+-
+   if (object_path == NULL)
+     g_simple_async_result_take_error (result, error);
+   else
+-- 
+cgit v0.12
+

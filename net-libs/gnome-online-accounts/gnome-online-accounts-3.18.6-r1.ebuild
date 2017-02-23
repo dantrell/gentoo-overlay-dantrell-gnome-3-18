@@ -53,6 +53,30 @@ DEPEND="${RDEPEND}
 "
 # eautoreconf needs gobject-introspection-common, gnome-common
 
+PATCHES=(
+	# From GNOME:
+	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=01882bde514aae12796c98e03818f8d30cbd13b9
+	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=53ce478c99d43f0cf8333e452edd228418112a2d
+	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=674330b0ccb816530ee6d31cea0f752e334f15d7
+	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=924689ce724cc0f1b893e1e0845c04f59eabd765
+	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=f5325f00c0d2cae9e5f6253c59c713c4b223af1f
+	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=1ba36012879083330871c301464daf7615f7d7d0
+	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=094d8b7f42cdacd307e43347cefae8299c676bb2
+	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=782fdcd83a6b793321d7c4c429c51430cc924f8e
+	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=389ce7fad248998178778ca4a95dd8d09d4f38eb
+	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=236987b0dc06fb429e319bd29a2e9227b78b35e1
+	"${FILESDIR}"/${PN}-3.20.6-goa-identity-manager-get-identity-finish-should-return-a-new-ref.patch
+	"${FILESDIR}"/${PN}-3.20.6-identity-fix-the-error-handling-when-signing-out-an-identity.patch
+	"${FILESDIR}"/${PN}-3.20.6-identity-fix-ensure-credentials-for-accounts-leak.patch
+	"${FILESDIR}"/${PN}-3.20.6-identity-dont-leak-the-invocation-when-handling-exchangesecretkeys.patch
+	"${FILESDIR}"/${PN}-3.20.6-daemon-dont-leak-the-provider-when-coalescing-ensurecredential-calls.patch
+	"${FILESDIR}"/${PN}-3.20.6-kerberos-style-fixes.patch
+	"${FILESDIR}"/${PN}-3.20.6-kerberos-dont-leak-the-return-key-in-sign-in-identity-sync.patch
+	"${FILESDIR}"/${PN}-3.20.6-daemon-dont-leak-the-list-of-providers-in-goa-daemon-init.patch
+	"${FILESDIR}"/${PN}-3.20.6-identity-dont-leak-operation-result-when-handling-exchangesecretkeys.patch
+	"${FILESDIR}"/${PN}-3.20.6-identity-dont-leak-the-invocation-when-handling-signout.patch
+)
+
 # Due to sub-configure
 QA_CONFIGURE_OPTIONS=".*"
 

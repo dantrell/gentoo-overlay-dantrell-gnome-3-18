@@ -1,0 +1,39 @@
+From 53ce478c99d43f0cf8333e452edd228418112a2d Mon Sep 17 00:00:00 2001
+From: Debarshi Ray <debarshir@gnome.org>
+Date: Wed, 4 Jan 2017 18:05:12 +0100
+Subject: identity: Fix the error handling when signing out an identity
+
+https://bugzilla.gnome.org/show_bug.cgi?id=776871
+---
+ src/goaidentity/goaidentityservice.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/src/goaidentity/goaidentityservice.c b/src/goaidentity/goaidentityservice.c
+index f6e21c8..8a804cd 100644
+--- a/src/goaidentity/goaidentityservice.c
++++ b/src/goaidentity/goaidentityservice.c
+@@ -485,6 +485,8 @@ on_got_identity_for_sign_out (GoaIdentityManager *manager,
+     {
+       g_debug ("GoaIdentityService: Identity could not be signed out: %s",
+                error->message);
++      g_simple_async_result_take_error (operation_result, error);
++      g_simple_async_result_complete_in_idle (operation_result);
+       goto out;
+     }
+ 
+@@ -499,10 +501,11 @@ on_got_identity_for_sign_out (GoaIdentityManager *manager,
+                                           NULL,
+                                           (GAsyncReadyCallback)
+                                           on_identity_signed_out,
+-                                          operation_result);
++                                          g_object_ref (operation_result));
+ 
+  out:
+   g_clear_object (&identity);
++  g_object_unref (operation_result);
+ }
+ 
+ static gboolean
+-- 
+cgit v0.12
+

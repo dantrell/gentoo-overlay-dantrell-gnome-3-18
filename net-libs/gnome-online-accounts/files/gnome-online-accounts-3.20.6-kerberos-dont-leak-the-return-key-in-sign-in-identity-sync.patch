@@ -1,0 +1,34 @@
+From 094d8b7f42cdacd307e43347cefae8299c676bb2 Mon Sep 17 00:00:00 2001
+From: Debarshi Ray <debarshir@gnome.org>
+Date: Thu, 5 Jan 2017 18:25:33 +0100
+Subject: kerberos: Don't leak the return_key in sign_in_identity_sync
+
+https://bugzilla.gnome.org/show_bug.cgi?id=765121
+---
+ src/goabackend/goakerberosprovider.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/goabackend/goakerberosprovider.c b/src/goabackend/goakerberosprovider.c
+index a451d98..3624164 100644
+--- a/src/goabackend/goakerberosprovider.c
++++ b/src/goabackend/goakerberosprovider.c
+@@ -1568,7 +1568,7 @@ sign_in_identity_sync (GoaKerberosProvider  *self,
+ {
+   GcrSecretExchange  *secret_exchange;
+   char               *secret_key;
+-  char               *return_key;
++  char               *return_key = NULL;
+   char               *concealed_secret;
+   char               *identity_object_path = NULL;
+   gboolean            keys_exchanged;
+@@ -1622,6 +1622,7 @@ sign_in_identity_sync (GoaKerberosProvider  *self,
+   g_mutex_unlock (&identity_manager_mutex);
+ 
+  out:
++  g_free (return_key);
+   g_object_unref (secret_exchange);
+   return identity_object_path;
+ }
+-- 
+cgit v0.12
+

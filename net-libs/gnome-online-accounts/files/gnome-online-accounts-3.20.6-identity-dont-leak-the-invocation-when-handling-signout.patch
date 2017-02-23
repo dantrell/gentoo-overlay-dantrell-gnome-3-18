@@ -1,0 +1,26 @@
+From 236987b0dc06fb429e319bd29a2e9227b78b35e1 Mon Sep 17 00:00:00 2001
+From: Debarshi Ray <debarshir@gnome.org>
+Date: Thu, 5 Jan 2017 11:44:24 +0100
+Subject: identity: Don't leak the invocation when handling SignOut
+
+https://bugzilla.gnome.org/show_bug.cgi?id=776897
+---
+ src/goaidentity/goaidentityservice.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/goaidentity/goaidentityservice.c b/src/goaidentity/goaidentityservice.c
+index 551737a..797cd3f 100644
+--- a/src/goaidentity/goaidentityservice.c
++++ b/src/goaidentity/goaidentityservice.c
+@@ -432,6 +432,8 @@ on_sign_out_handled (GoaIdentityService    *self,
+   else
+     goa_identity_service_manager_complete_sign_out (GOA_IDENTITY_SERVICE_MANAGER (self),
+                                                     invocation);
++
++  g_object_unref (invocation);
+ }
+ 
+ static void
+-- 
+cgit v0.12
+

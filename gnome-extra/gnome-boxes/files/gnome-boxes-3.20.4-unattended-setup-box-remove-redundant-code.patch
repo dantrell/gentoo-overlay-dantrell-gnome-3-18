@@ -1,0 +1,27 @@
+From 22084f72bae097ab3c3e1990644e3c69ecf04337 Mon Sep 17 00:00:00 2001
+From: Debarshi Ray <debarshir@gnome.org>
+Date: Tue, 24 Jan 2017 17:35:23 +0100
+Subject: unattended-setup-box: Remove redundant code
+
+Fallout from ae21e562515ab60d3279f182313e9a6c7be53abd
+
+https://bugzilla.gnome.org/show_bug.cgi?id=777788
+---
+ src/unattended-setup-box.vala | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/src/unattended-setup-box.vala b/src/unattended-setup-box.vala
+index b1ae8e9..b5d6967 100644
+--- a/src/unattended-setup-box.vala
++++ b/src/unattended-setup-box.vala
+@@ -114,7 +114,6 @@ private class Boxes.UnattendedSetupBox : Gtk.Box {
+ 
+             set_entry_text_from_key (username_entry, USERNAME_KEY, Environment.get_user_name ());
+             set_entry_text_from_key (password_entry, PASSWORD_KEY);
+-            set_entry_text_from_key (password_entry, PASSWORD_KEY);
+             if (password != "")
+                 password_notebook.next_page ();
+             set_entry_text_from_key (product_key_entry, PRODUCTKEY_KEY);
+-- 
+cgit v0.12
+
