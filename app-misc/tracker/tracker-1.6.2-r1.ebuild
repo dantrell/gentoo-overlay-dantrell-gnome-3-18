@@ -13,7 +13,7 @@ LICENSE="GPL-2+ LGPL-2.1+"
 SLOT="0/100"
 KEYWORDS="*"
 
-IUSE="cue eds elibc_glibc exif ffmpeg firefox-bookmarks flac gif gsf
+IUSE="cue elibc_glibc exif ffmpeg firefox-bookmarks flac gif gsf
 gstreamer gtk iptc +iso +jpeg libav +miner-fs mp3 nautilus networkmanager
 pdf playlist rss stemmer test thunderbird +tiff upnp-av upower +vorbis +xml xmp xps"
 REQUIRED_USE="
@@ -38,11 +38,6 @@ RDEPEND="
 	virtual/imagemagick-tools[png,jpeg?]
 
 	cue? ( media-libs/libcue )
-	eds? (
-		>=mail-client/evolution-3.3.5:=
-		>=gnome-extra/evolution-data-server-3.3.5:=
-		<mail-client/evolution-3.5.3
-		<gnome-extra/evolution-data-server-3.5.3 )
 	elibc_glibc? ( >=sys-libs/glibc-2.12 )
 	exif? ( >=media-libs/libexif-0.6 )
 	ffmpeg? (
@@ -54,12 +49,12 @@ RDEPEND="
 		>=www-client/firefox-bin-4.0 ) )
 	flac? ( >=media-libs/flac-1.2.1 )
 	gif? ( media-libs/giflib:= )
-	gsf? ( >=gnome-extra/libgsf-1.14.24 )
+	gsf? ( >=gnome-extra/libgsf-1.14.24:0= )
 	gstreamer? (
 		media-libs/gstreamer:1.0
 		media-libs/gst-plugins-base:1.0 )
 	gtk? (
-		>=dev-libs/libgee-0.3:0.8
+		>=dev-libs/libgee-0.3:0.8=
 		>=x11-libs/gtk+-3:3 )
 	iptc? ( media-libs/libiptcdata )
 	iso? ( >=sys-libs/libosinfo-0.2.9:= )
@@ -71,7 +66,7 @@ RDEPEND="
 		>=x11-libs/cairo-1:=
 		>=app-text/poppler-0.16:=[cairo,utils]
 		>=x11-libs/gtk+-2.12:2 )
-	playlist? ( >=dev-libs/totem-pl-parser-3 )
+	playlist? ( >=dev-libs/totem-pl-parser-3:= )
 	rss? ( >=net-libs/libgrss-0.7:0 )
 	stemmer? ( dev-libs/snowball-stemmer )
 	thunderbird? ( || (
@@ -81,7 +76,7 @@ RDEPEND="
 	upnp-av? ( >=media-libs/gupnp-dlna-0.9.4:2.0 )
 	vorbis? ( >=media-libs/libvorbis-0.22 )
 	xml? ( >=dev-libs/libxml2-2.6 )
-	xmp? ( >=media-libs/exempi-2.1 )
+	xmp? ( >=media-libs/exempi-2.1:2 )
 	xps? ( app-text/libgxps )
 	!gstreamer? ( !ffmpeg? ( || ( media-video/totem media-video/mplayer ) ) )
 "
@@ -164,8 +159,10 @@ src_configure() {
 	# According to NEWS, introspection is required
 	# is not being generated
 	# nautilus extension is in a separate package, nautilus-tracker-tags
+	# miner-evolution disabled as it's incompatible with current eds
 	gnome2_src_configure \
 		--disable-hal \
+		--disable-miner-evolution \
 		--disable-nautilus-extension \
 		--disable-static \
 		--enable-abiword \
@@ -186,7 +183,6 @@ src_configure() {
 		--with-unicode-support=libicu \
 		--with-bash-completion-dir="$(get_bashcompdir)" \
 		$(use_enable cue libcue) \
-		$(use_enable eds miner-evolution) \
 		$(use_enable exif libexif) \
 		$(use_enable firefox-bookmarks miner-firefox) \
 		$(use_with firefox-bookmarks firefox-plugin-dir "${EPREFIX}"/usr/$(get_libdir)/firefox/extensions) \
