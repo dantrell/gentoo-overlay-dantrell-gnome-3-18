@@ -1,5 +1,5 @@
---- gtweak/gsettings.py.old	2013-11-16 09:00:44.863767301 +0100
-+++ gtweak/gsettings.py	2013-11-16 09:01:18.873393932 +0100
+--- a/gtweak/gsettings.py	2013-11-16 09:00:44.863767301 +0100
++++ b/gtweak/gsettings.py	2013-11-16 09:01:18.873393932 +0100
 @@ -34,6 +34,8 @@
      def __init__(self, schema_name, schema_dir=None, schema_filename=None, **options):
          if not schema_dir:
