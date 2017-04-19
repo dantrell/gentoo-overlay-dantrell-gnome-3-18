@@ -23,7 +23,7 @@ RDEPEND="
 	>=dev-libs/glib-2.45.8:2[dbus]
 	dev-libs/libgit2[ssh,threads]
 	>=dev-libs/libgit2-glib-0.23.4[ssh]
-	>=dev-libs/libpeas-1.14.1
+	>=dev-libs/libpeas-1.14.1[python,${PYTHON_USEDEP}]
 	>=dev-libs/libxml2-2.9
 	dev-util/uncrustify
 	sys-devel/clang
