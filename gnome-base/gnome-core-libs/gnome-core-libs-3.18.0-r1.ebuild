@@ -23,7 +23,7 @@ RDEPEND="
 	>=x11-libs/gtk+-${PV}:3[cups?]
 	>=dev-libs/atk-2.18
 	>=x11-libs/libwnck-3.14:3
-	>=gnome-base/librsvg-2.40.11
+	>=gnome-base/librsvg-2.40.17
 	>=gnome-base/gnome-desktop-${PV}:3
 	>=x11-libs/startup-notification-0.12
 
