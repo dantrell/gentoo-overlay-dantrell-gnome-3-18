@@ -11,13 +11,14 @@ LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="*"
 
-IUSE="+deprecated-background examples"
+IUSE="examples"
 
-PDEPEND="
+COMMON_DEPEND="
 	>=dev-libs/glib-2.26:2
 	>=gnome-base/libgtop-2.28.3[introspection]
 	>=app-eselect/eselect-gnome-shell-extensions-20111211
-
+"
+RDEPEND="${COMMON_DEPEND}
 	>=dev-libs/gjs-1.29
 	dev-libs/gobject-introspection:=
 	dev-libs/atk[introspection]
@@ -30,7 +31,7 @@ PDEPEND="
 	x11-libs/pango[introspection]
 	x11-themes/adwaita-icon-theme
 "
-DEPEND="
+DEPEND="${COMMON_DEPEND}
 	>=dev-util/intltool-0.50
 	sys-devel/gettext
 	virtual/pkgconfig
@@ -48,11 +49,9 @@ gnome-extra/gnome-tweak-tool GUI, or modify the org.gnome.shell
 enabled-extensions gsettings key from the command line or a script."
 
 src_prepare() {
-	if use deprecated-background; then
-		# Provided by GNOME Shell with minimal divergence
-		sed -e '/.*calendar-today.svg.*/d' \
-			-i data/Makefile.in || die "sed failed"
-	fi
+	# Provided by gnome-base/gnome-shell-common
+	sed -e '/.*calendar-today.svg.*/d' \
+		-i data/Makefile.in || die "sed failed"
 
 	gnome2_src_prepare
 }
