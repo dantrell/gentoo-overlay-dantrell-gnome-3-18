@@ -20,7 +20,7 @@ dev-libs/gobject-introspection::gentoo
 dev-libs/libgweather::gentoo
 dev-libs/libpeas::gentoo
 dev-python/pyatspi::gentoo
-dev-python/pygobject::gentoo
+dev-python/pygobject:3::gentoo
 dev-util/anjuta::gentoo
 dev-util/devhelp::gentoo
 dev-util/gnome-devel-docs::gentoo
