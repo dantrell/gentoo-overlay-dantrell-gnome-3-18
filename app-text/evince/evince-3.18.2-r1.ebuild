@@ -1,6 +1,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="6"
+GNOME2_EAUTORECONF="yes"
 GNOME2_LA_PUNT="yes"
 
 inherit gnome2
@@ -63,6 +64,20 @@ DEPEND="${COMMON_DEPEND}
 "
 # eautoreconf needs:
 #  app-text/yelp-tools
+
+PATCHES=(
+	# From GNOME:
+	# 	https://git.gnome.org/browse/evince/commit/?id=b18b3dc51a93e12172d22c6b8bb92d32b6e8ebb0
+	# 	https://git.gnome.org/browse/evince/commit/?id=335c0536c137a8bcc886ca33c1aba6abaf32b99c
+	# 	https://git.gnome.org/browse/evince/commit/?id=f932396d1c51646a1535eb28d7c8b1281e794a1a
+	# 	https://git.gnome.org/browse/evince/commit/?id=8bbcdee7aacd2a1c0e5015108978321a31c9ef66
+	# 	https://git.gnome.org/browse/evince/commit/?id=ef6c1d98e0702d6849d6bbbe4d08cfccb033d243
+	"${FILESDIR}"/${PN}-3.20.2-ev-toolbar-fix-ev-toolbar-has-visible-popups-after-cb3d4b2.patch
+	"${FILESDIR}"/${PN}-3.20.2-comics-add-application-vnd-comicbookzip-support.patch
+	"${FILESDIR}"/${PN}-3.20.2-comics-fix-mime-type-comparisons.patch
+	"${FILESDIR}"/${PN}-3.20.2-comics-remove-support-for-tar-and-tar-like-commands.patch
+	"${FILESDIR}"/${PN}-3.20.2-comics-fix-extra-leading-to-a-warning-during-installation.patch
+)
 
 src_prepare() {
 	gnome2_src_prepare
