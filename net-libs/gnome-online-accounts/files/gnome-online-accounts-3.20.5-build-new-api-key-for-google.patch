@@ -1,0 +1,42 @@
+From 5dc30f43e6c721708a6d15fcfcd086a11d41bc2d Mon Sep 17 00:00:00 2001
+From: Debarshi Ray <debarshir@gnome.org>
+Date: Tue, 13 Dec 2016 17:53:16 +0100
+Subject: build: New API key for Google
+
+Some bugs in evolution-data-server were causing us to hit Google's
+daily limit for the CalDAV and Tasks APIs. The bugs have since been
+fixed, but until every single user out there installs the fix,
+everybody using the old keys will be susceptible even if they have a
+fixed copy of evolution-data-server. This is because Google identifies
+us by the API key and not the version of the code running on the
+client.
+
+We are therefore phasing out the old key, so that users updating their
+systems have no connection to the one that was tainted by these bugs.
+
+https://bugzilla.gnome.org/show_bug.cgi?id=771547
+https://bugzilla.gnome.org/show_bug.cgi?id=773248
+---
+ configure.ac | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 714cf8b..b114030 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -254,10 +254,10 @@ AC_ARG_WITH(google-client-secret,
+                             [],
+                             [])
+ if test "$with_google_client_id" = ""; then
+-  with_google_client_id=923794261470.apps.googleusercontent.com
++  with_google_client_id=44438659992-7kgjeitenc16ssihbtdjbgguch7ju55s.apps.googleusercontent.com
+ fi
+ if test "$with_google_client_secret" = ""; then
+-  with_google_client_secret=SlVBAcxamM0TBPlvX2c1zbEY
++  with_google_client_secret=-gMLuQyDiI0XrQS_vx_mhuYF
+ fi
+ AC_DEFINE_UNQUOTED(GOA_GOOGLE_CLIENT_ID,
+                    ["$with_google_client_id"],
+-- 
+cgit v0.12
+

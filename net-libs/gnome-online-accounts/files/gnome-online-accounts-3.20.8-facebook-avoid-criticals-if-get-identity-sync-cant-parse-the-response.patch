@@ -1,0 +1,65 @@
+From 2893345fb5a81ae2de631ea82d4e9ff467c610f6 Mon Sep 17 00:00:00 2001
+From: Debarshi Ray <debarshir@gnome.org>
+Date: Tue, 1 Aug 2017 16:51:49 +0200
+Subject: facebook: Avoid CRITICALs if get_identity_sync can't parse the
+ response
+
+The json_object_get_string_member API expects the member to be present.
+Therefore, we should not use its return value to determine its
+availability. Otherwise it will lead to:
+  Json-CRITICAL **: json_object_get_string_member: assertion
+    'node != NULL' failed
+
+https://bugzilla.gnome.org/show_bug.cgi?id=785726
+---
+ src/goabackend/goafacebookprovider.c | 26 ++++++++++++--------------
+ 1 file changed, 12 insertions(+), 14 deletions(-)
+
+diff --git a/src/goabackend/goafacebookprovider.c b/src/goabackend/goafacebookprovider.c
+index c262a75..0782da9 100644
+--- a/src/goabackend/goafacebookprovider.c
++++ b/src/goabackend/goafacebookprovider.c
+@@ -237,8 +237,7 @@ get_identity_sync (GoaOAuth2Provider  *oauth2_provider,
+     }
+ 
+   json_object = json_node_get_object (json_parser_get_root (parser));
+-  id = g_strdup (json_object_get_string_member (json_object, "id"));
+-  if (id == NULL)
++  if (!json_object_has_member (json_object, "id"))
+     {
+       g_warning ("Did not find id in JSON data");
+       g_set_error (error,
+@@ -247,19 +246,18 @@ get_identity_sync (GoaOAuth2Provider  *oauth2_provider,
+                    _("Could not parse response"));
+       goto out;
+     }
+-  presentation_identity = g_strdup (json_object_get_string_member (json_object, "email"));
+-  if (presentation_identity == NULL)
++
++  id = g_strdup (json_object_get_string_member (json_object, "id"));
++
++  if (json_object_has_member (json_object, "email"))
++    presentation_identity = g_strdup (json_object_get_string_member (json_object, "email"));
++  else if (json_object_has_member (json_object, "username"))
++    presentation_identity = g_strdup (json_object_get_string_member (json_object, "username"));
++  else
+     {
+-      presentation_identity = g_strdup (json_object_get_string_member (json_object, "username"));
+-      if (presentation_identity == NULL)
+-        {
+-          g_warning ("Did not find email or username in JSON data");
+-          g_set_error (error,
+-                       GOA_ERROR,
+-                       GOA_ERROR_FAILED,
+-                       _("Could not parse response"));
+-          goto out;
+-        }
++      g_warning ("Did not find email or username in JSON data");
++      g_set_error (error, GOA_ERROR, GOA_ERROR_FAILED, _("Could not parse response"));
++      goto out;
+     }
+ 
+   ret = id;
+-- 
+cgit v0.12
+

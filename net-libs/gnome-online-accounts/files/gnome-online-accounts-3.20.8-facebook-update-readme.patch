@@ -1,0 +1,28 @@
+From 5583ceb2d001655a492446238ac8074e31c7d2c9 Mon Sep 17 00:00:00 2001
+From: Debarshi Ray <debarshir@gnome.org>
+Date: Wed, 2 Aug 2017 20:34:27 +0200
+Subject: facebook: Update README
+
+Mention the Graph API Explorer. It is a handy tool for debugging issues
+with the wire protocol.
+
+https://bugzilla.gnome.org/show_bug.cgi?id=785726
+---
+ README | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/README b/README
+index aeb4503..4f4621e 100644
+--- a/README
++++ b/README
+@@ -9,6 +9,7 @@ OAuth 2.0:
+ https://developers.facebook.com/docs/authentication/
+ https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow
+ https://developers.facebook.com/docs/reference/dialogs/oauth/
++https://developers.facebook.com/tools/explorer/
+ 
+ Scopes: https://developers.facebook.com/docs/authentication/permissions/
+ 
+-- 
+cgit v0.12
+

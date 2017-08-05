@@ -1,0 +1,86 @@
+From 1f18560d1c151d69f2f72b63c436cfe2b86443a1 Mon Sep 17 00:00:00 2001
+From: Debarshi Ray <debarshir@gnome.org>
+Date: Wed, 2 Aug 2017 19:19:31 +0200
+Subject: facebook: Make it work with Graph API > 2.3
+
+Ever since version 2.3 of the Graph API was retired on 8th July, it
+stopped including "email" in the JSON when a GET request is issued
+against https://graph.facebook.com/me?access_token=...
+
+Now it needs to be explicitly asked for. The changelog [1] for version
+2.4 says:
+  "To try to improve performance on mobile networks, Nodes and Edges
+   in v2.4 requires that you explicitly request the field(s) you need
+   for your GET requests. For example, GET /v2.4/me/feed no longer
+   includes likes and comments by default, but GET
+   /v2.4/me/feed?fields=comments,likes will return the data."
+
+It seems that "id" is always included, but we mention it anyway.
+
+The "username" fallback that was added in commit 10c77f1713be2215 has
+been removed because requesting it leads to:
+  {
+    "error": {
+      "message": "(#12) username field is deprecated for versions v2.0
+                  and higher",
+      "type": "OAuthException",
+      "code": 12,
+      "fbtrace_id": "AJYNXiIv00W"
+    }
+  }
+
+We will have to investigate whether we need a new fallback for the
+presentation identity.
+
+[1] https://developers.facebook.com/docs/apps/changelog
+
+https://bugzilla.gnome.org/show_bug.cgi?id=785726
+---
+ src/goabackend/goafacebookprovider.c | 19 +++++++++----------
+ 1 file changed, 9 insertions(+), 10 deletions(-)
+
+diff --git a/src/goabackend/goafacebookprovider.c b/src/goabackend/goafacebookprovider.c
+index 0782da9..0e3bbcd 100644
+--- a/src/goabackend/goafacebookprovider.c
++++ b/src/goabackend/goafacebookprovider.c
+@@ -199,7 +199,10 @@ get_identity_sync (GoaOAuth2Provider  *oauth2_provider,
+   proxy = rest_proxy_new ("https://graph.facebook.com/me", FALSE);
+   call = rest_proxy_new_call (proxy);
+   rest_proxy_call_set_method (call, "GET");
+-  rest_proxy_call_add_param (call, "access_token", access_token);
++  rest_proxy_call_add_params (call,
++                              "access_token", access_token,
++                              "fields", "id,email",
++                              NULL);
+ 
+   if (!rest_proxy_call_sync (call, error))
+     goto out;
+@@ -246,20 +249,16 @@ get_identity_sync (GoaOAuth2Provider  *oauth2_provider,
+                    _("Could not parse response"));
+       goto out;
+     }
+-
+-  id = g_strdup (json_object_get_string_member (json_object, "id"));
+-
+-  if (json_object_has_member (json_object, "email"))
+-    presentation_identity = g_strdup (json_object_get_string_member (json_object, "email"));
+-  else if (json_object_has_member (json_object, "username"))
+-    presentation_identity = g_strdup (json_object_get_string_member (json_object, "username"));
+-  else
++  if (!json_object_has_member (json_object, "email"))
+     {
+-      g_warning ("Did not find email or username in JSON data");
++      g_warning ("Did not find email in JSON data");
+       g_set_error (error, GOA_ERROR, GOA_ERROR_FAILED, _("Could not parse response"));
+       goto out;
+     }
+ 
++  id = g_strdup (json_object_get_string_member (json_object, "id"));
++  presentation_identity = g_strdup (json_object_get_string_member (json_object, "email"));
++
+   ret = id;
+   id = NULL;
+   if (out_presentation_identity != NULL)
+-- 
+cgit v0.12
+

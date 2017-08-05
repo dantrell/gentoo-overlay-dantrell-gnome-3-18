@@ -1,0 +1,32 @@
+From ee460859029833c7e607f668270d5946525e7d18 Mon Sep 17 00:00:00 2001
+From: Debarshi Ray <debarshir@gnome.org>
+Date: Mon, 12 Jun 2017 18:26:57 +0200
+Subject: google: Update is_identity_node to match the web UI
+
+Google recently updated their web authentication UI. The ID and name
+of the identity node has changed.
+---
+ src/goabackend/goagoogleprovider.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/goabackend/goagoogleprovider.c b/src/goabackend/goagoogleprovider.c
+index ab7b89b..1232f4b 100644
+--- a/src/goabackend/goagoogleprovider.c
++++ b/src/goabackend/goagoogleprovider.c
+@@ -294,11 +294,11 @@ is_identity_node (GoaOAuth2Provider *oauth2_provider, WebKitDOMHTMLInputElement
+     goto out;
+ 
+   id = webkit_dom_element_get_id (WEBKIT_DOM_ELEMENT (element));
+-  if (g_strcmp0 (id, "Email") != 0)
++  if (g_strcmp0 (id, "identifierId") != 0)
+     goto out;
+ 
+   name = webkit_dom_html_input_element_get_name (element);
+-  if (g_strcmp0 (name, "Email") != 0)
++  if (g_strcmp0 (name, "identifier") != 0)
+     goto out;
+ 
+   ret = TRUE;
+-- 
+cgit v0.12
+
