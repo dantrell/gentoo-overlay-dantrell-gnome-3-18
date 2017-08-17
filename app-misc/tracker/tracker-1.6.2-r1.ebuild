@@ -32,7 +32,6 @@ RDEPEND="
 	>=dev-libs/gobject-introspection-0.9.5:=
 	>=dev-libs/icu-4.8.1.1:=
 	>=media-libs/libpng-1.2:0=
-	>=media-libs/libmediaart-1.9:2.0
 	>=x11-libs/pango-1:=
 	sys-apps/util-linux
 	virtual/imagemagick-tools[png,jpeg?]
@@ -173,7 +172,7 @@ src_configure() {
 		--enable-guarantee-metadata \
 		--enable-icon \
 		--enable-introspection \
-		--enable-libmediaart \
+		--disable-libmediaart \
 		--enable-libpng \
 		--enable-miner-apps \
 		--enable-miner-user-guides \
