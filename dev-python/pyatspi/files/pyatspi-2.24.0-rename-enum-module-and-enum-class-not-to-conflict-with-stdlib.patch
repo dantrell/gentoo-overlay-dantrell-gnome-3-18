@@ -1,0 +1,445 @@
+From f87ffc4bc39264e3b9d5ed5747bd44c93bcae59d Mon Sep 17 00:00:00 2001
+From: Adam Williamson <awilliam@redhat.com>
+Date: Wed, 21 Dec 2016 16:38:40 -0800
+Subject: Rename enum module and Enum class not to conflict with stdlib
+
+Python 3 stdlib has an enum module with an Enum class...and so
+do we. They do not work at all the same. This is a bad thing,
+and causes modules which rely on the Python stdlib version to
+blow up when they're used with pyatspi in the Python path, like
+re:
+
+https://bugzilla.redhat.com/show_bug.cgi?id=1406946
+
+To avoid this, let's rename our 'enum' module to 'atspienum'
+and our 'Enum' class to 'AtspiEnum'. This is an API change, but
+it's rather unavoidable, we just can't keep the name 'enum' and
+use regexes on Python 3.6. AFAICS, nothing besides pyatspi is
+actually using this module / class.
+---
+ pyatspi/Makefile.am    |  2 +-
+ pyatspi/action.py      |  1 -
+ pyatspi/application.py |  1 -
+ pyatspi/atspienum.py   | 39 +++++++++++++++++++++++++++++++++++++++
+ pyatspi/collection.py  |  8 ++++----
+ pyatspi/component.py   |  6 +++---
+ pyatspi/deviceevent.py | 12 ++++++------
+ pyatspi/enum.py        | 39 ---------------------------------------
+ pyatspi/hypertext.py   |  1 -
+ pyatspi/image.py       |  1 -
+ pyatspi/interface.py   |  1 -
+ pyatspi/role.py        |  4 ++--
+ pyatspi/state.py       |  4 ++--
+ pyatspi/table.py       |  1 -
+ pyatspi/tablecell.py   |  1 -
+ pyatspi/text.py        |  8 ++++----
+ pyatspi/value.py       |  1 -
+ 17 files changed, 61 insertions(+), 69 deletions(-)
+ create mode 100644 pyatspi/atspienum.py
+ delete mode 100644 pyatspi/enum.py
+
+diff --git a/pyatspi/Makefile.am b/pyatspi/Makefile.am
+index c7605c6..1361690 100644
+--- a/pyatspi/Makefile.am
++++ b/pyatspi/Makefile.am
+@@ -5,7 +5,7 @@ pyatspi_PYTHON = \
+                 appevent.py             \
+ 		constants.py		\
+ 		deviceevent.py		\
+-                enum.py                 \
++                atspienum.py            \
+ 		__init__.py		\
+ 	action.py \
+ 	application.py \
+diff --git a/pyatspi/action.py b/pyatspi/action.py
+index ac69e25..cc38639 100644
+--- a/pyatspi/action.py
++++ b/pyatspi/action.py
+@@ -14,7 +14,6 @@
+ #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ from gi.repository import Atspi
+-from pyatspi.enum import *
+ from pyatspi.utils import *
+ from pyatspi.interface import *
+ 
+diff --git a/pyatspi/application.py b/pyatspi/application.py
+index 33876db..fccbfcb 100644
+--- a/pyatspi/application.py
++++ b/pyatspi/application.py
+@@ -14,7 +14,6 @@
+ #Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ 
+ from gi.repository import Atspi
+-from pyatspi.enum import *
+ from pyatspi.utils import *
+ 
+ __all__ = [
+diff --git a/pyatspi/atspienum.py b/pyatspi/atspienum.py
+new file mode 100644
+index 0000000..120128a
+--- /dev/null
++++ b/pyatspi/atspienum.py
+@@ -0,0 +1,39 @@
++#Copyright (C) 2008 Codethink Ltd
++
++#This library is free software; you can redistribute it and/or
++#modify it under the terms of the GNU Lesser General Public
++#License version 2 as published by the Free Software Foundation.
++
++#This program is distributed in the hope that it will be useful,
++#but WITHOUT ANY WARRANTY; without even the implied warranty of
++#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++#GNU General Public License for more details.
++#You should have received a copy of the GNU Lesser General Public License
++#along with this program; if not, write to the Free Software
++#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
++
++__all__ = [
++           "AtspiEnum",
++          ]
++
++#------------------------------------------------------------------------------
++
++class AtspiEnum(int):
++        def __str__(self):
++                return self._enum_lookup[int(self)]
++
++        def __eq__(self, other):
++                if other is None:
++                        return False
++                try:
++                        if int(self) == int(other):
++                                return True
++                        else:
++                                return False
++                except ValueError:
++                        return False
++
++        def __hash__(self):
++                return int(self)
++
++#END---------------------------------------------------------------------------
+diff --git a/pyatspi/collection.py b/pyatspi/collection.py
+index 9723e30..c1bada2 100644
+--- a/pyatspi/collection.py
++++ b/pyatspi/collection.py
+@@ -14,7 +14,7 @@
+ #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ from gi.repository import Atspi
+-from pyatspi.enum import *
++from pyatspi.atspienum import *
+ from pyatspi.utils import *
+ 
+ __all__ = [
+@@ -26,7 +26,7 @@ __all__ = [
+ 
+ #------------------------------------------------------------------------------
+ 
+-class MatchType(Enum):
++class MatchType(AtspiEnum):
+         _enum_lookup = {
+                 0:'MATCH_INVALID',
+                 1:'MATCH_ALL',
+@@ -36,7 +36,7 @@ class MatchType(Enum):
+                 5:'MATCH_LAST_DEFINED',
+         }
+ 
+-class SortOrder(Enum):
++class SortOrder(AtspiEnum):
+         _enum_lookup = {
+                 0:'SORT_ORDER_INVALID',
+                 1:'SORT_ORDER_CANONICAL',
+@@ -48,7 +48,7 @@ class SortOrder(Enum):
+                 7:'SORT_ORDER_LAST_DEFINED',
+         }
+ 
+-class TreeTraversalType(Enum):
++class TreeTraversalType(AtspiEnum):
+         _enum_lookup = {
+                 0:'TREE_RESTRICT_CHILDREN',
+                 1:'TREE_RESTRICT_SIBLING',
+diff --git a/pyatspi/component.py b/pyatspi/component.py
+index 3153e81..04be988 100644
+--- a/pyatspi/component.py
++++ b/pyatspi/component.py
+@@ -14,7 +14,7 @@
+ #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ from gi.repository import Atspi
+-from pyatspi.enum import *
++from pyatspi.atspienum import *
+ from pyatspi.utils import *
+ from pyatspi.interface import *
+ 
+@@ -37,7 +37,7 @@ __all__ = [
+ 
+ #------------------------------------------------------------------------------
+ 
+-class CoordType(Enum):
++class CoordType(AtspiEnum):
+         _enum_lookup = {
+                 0:'XY_SCREEN',
+                 1:'XY_WINDOW',
+@@ -48,7 +48,7 @@ XY_WINDOW = CoordType(1)
+ 
+ #------------------------------------------------------------------------------
+ 
+-class ComponentLayer(Enum):
++class ComponentLayer(AtspiEnum):
+         _enum_lookup = {
+                 0:'LAYER_INVALID',
+                 1:'LAYER_BACKGROUND',
+diff --git a/pyatspi/deviceevent.py b/pyatspi/deviceevent.py
+index 7b93df8..e24fd42 100644
+--- a/pyatspi/deviceevent.py
++++ b/pyatspi/deviceevent.py
+@@ -14,13 +14,13 @@
+ 
+ import pyatspi.registry as registry
+ 
+-from pyatspi.enum import Enum as _Enum
++from pyatspi.atspienum import *
+ 
+ import traceback
+ 
+ #------------------------------------------------------------------------------
+ 
+-class PressedEventType(_Enum):
++class PressedEventType(AtspiEnum):
+         _enum_lookup = {
+                 0:'KEY_PRESSED_EVENT',
+                 1:'KEY_RELEASED_EVENT',
+@@ -35,7 +35,7 @@ BUTTON_RELEASED_EVENT = PressedEventType(3)
+ 
+ #------------------------------------------------------------------------------
+ 
+-class ControllerEventMask(_Enum):
++class ControllerEventMask(AtspiEnum):
+         _enum_lookup = {
+                 1:'KEY_PRESSED_EVENT_MASK',
+                 2:'KEY_RELEASED_EVENT_MASK',
+@@ -50,7 +50,7 @@ BUTTON_RELEASED_EVENT_MASK = ControllerEventMask(8)
+ 
+ #------------------------------------------------------------------------------
+ 
+-class KeyEventType(_Enum):
++class KeyEventType(AtspiEnum):
+         _enum_lookup = {
+                 0:'KEY_PRESSED',
+                 1:'KEY_RELEASED',
+@@ -60,7 +60,7 @@ KEY_RELEASED = KeyEventType(1)
+ 
+ #------------------------------------------------------------------------------
+ 
+-class KeySynthType(_Enum):
++class KeySynthType(AtspiEnum):
+         _enum_lookup = {
+                 0:'KEY_PRESS',
+                 1:'KEY_RELEASE',
+@@ -77,7 +77,7 @@ KEY_SYM = KeySynthType(3)
+ 
+ #------------------------------------------------------------------------------
+ 
+-class ModifierType(_Enum):
++class ModifierType(AtspiEnum):
+         _enum_lookup = {
+                 0:'MODIFIER_SHIFT',
+                 1:'MODIFIER_SHIFTLOCK',
+diff --git a/pyatspi/enum.py b/pyatspi/enum.py
+deleted file mode 100644
+index 1a6d75f..0000000
+--- a/pyatspi/enum.py
++++ /dev/null
+@@ -1,39 +0,0 @@
+-#Copyright (C) 2008 Codethink Ltd
+-
+-#This library is free software; you can redistribute it and/or
+-#modify it under the terms of the GNU Lesser General Public
+-#License version 2 as published by the Free Software Foundation.
+-
+-#This program is distributed in the hope that it will be useful,
+-#but WITHOUT ANY WARRANTY; without even the implied warranty of
+-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-#GNU General Public License for more details.
+-#You should have received a copy of the GNU Lesser General Public License
+-#along with this program; if not, write to the Free Software
+-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+-
+-__all__ = [
+-           "Enum",
+-          ]
+-
+-#------------------------------------------------------------------------------
+-
+-class Enum(int):
+-        def __str__(self):
+-                return self._enum_lookup[int(self)]
+-
+-        def __eq__(self, other):
+-                if other is None:
+-                        return False
+-                try:
+-                        if int(self) == int(other):
+-                                return True
+-                        else:
+-                                return False
+-                except ValueError:
+-                        return False
+-
+-        def __hash__(self):
+-                return int(self)
+-
+-#END---------------------------------------------------------------------------
+diff --git a/pyatspi/hypertext.py b/pyatspi/hypertext.py
+index 6912224..740192e 100644
+--- a/pyatspi/hypertext.py
++++ b/pyatspi/hypertext.py
+@@ -14,7 +14,6 @@
+ #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ from gi.repository import Atspi
+-from pyatspi.enum import *
+ from pyatspi.utils import *
+ from pyatspi.interface import *
+ 
+diff --git a/pyatspi/image.py b/pyatspi/image.py
+index ef5f866..38d8a73 100644
+--- a/pyatspi/image.py
++++ b/pyatspi/image.py
+@@ -14,7 +14,6 @@
+ #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ from gi.repository import Atspi
+-from pyatspi.enum import *
+ from pyatspi.utils import *
+ 
+ __all__ = [
+diff --git a/pyatspi/interface.py b/pyatspi/interface.py
+index 891b811..7df9e13 100644
+--- a/pyatspi/interface.py
++++ b/pyatspi/interface.py
+@@ -13,7 +13,6 @@
+ #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ from gi.repository import Atspi
+-from pyatspi.enum import *
+ from pyatspi.utils import *
+ #from pyatspi.component import *
+ 
+diff --git a/pyatspi/role.py b/pyatspi/role.py
+index 900988b..2c35e00 100644
+--- a/pyatspi/role.py
++++ b/pyatspi/role.py
+@@ -12,11 +12,11 @@
+ #along with this program; if not, write to the Free Software
+ #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+-from pyatspi.enum import Enum as _Enum
++from pyatspi.atspienum import *
+ 
+ #------------------------------------------------------------------------------
+ 
+-class Role(_Enum):
++class Role(AtspiEnum):
+         _enum_lookup = {
+                 0:'ROLE_INVALID',
+                 1:'ROLE_ACCELERATOR_LABEL',
+diff --git a/pyatspi/state.py b/pyatspi/state.py
+index 67a5243..986431a 100644
+--- a/pyatspi/state.py
++++ b/pyatspi/state.py
+@@ -21,11 +21,11 @@
+ 
+ from gi.repository import Atspi
+ from gi.repository import GObject
+-from pyatspi.enum import Enum as _Enum
++from pyatspi.atspienum import *
+ 
+ #------------------------------------------------------------------------------
+ 
+-class StateType(_Enum):
++class StateType(AtspiEnum):
+         _enum_lookup = {
+                 0:'STATE_INVALID',
+                 1:'STATE_ACTIVE',
+diff --git a/pyatspi/table.py b/pyatspi/table.py
+index f67cc97..f676aa1 100644
+--- a/pyatspi/table.py
++++ b/pyatspi/table.py
+@@ -14,7 +14,6 @@
+ #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ from gi.repository import Atspi
+-from pyatspi.enum import *
+ from pyatspi.utils import *
+ from pyatspi.interface import *
+ 
+diff --git a/pyatspi/tablecell.py b/pyatspi/tablecell.py
+index 4ae59e9..fcbb84b 100644
+--- a/pyatspi/tablecell.py
++++ b/pyatspi/tablecell.py
+@@ -13,7 +13,6 @@
+ #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ from gi.repository import Atspi
+-from pyatspi.enum import *
+ from pyatspi.utils import *
+ from pyatspi.interface import *
+ 
+diff --git a/pyatspi/text.py b/pyatspi/text.py
+index 0cdff67..1f0c1f2 100644
+--- a/pyatspi/text.py
++++ b/pyatspi/text.py
+@@ -14,7 +14,7 @@
+ #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ from gi.repository import Atspi
+-from pyatspi.enum import *
++from pyatspi.atspienum import *
+ from pyatspi.utils import *
+ from pyatspi.interface import *
+ 
+@@ -43,7 +43,7 @@ __all__ = [
+ 
+ #------------------------------------------------------------------------------
+ 
+-class TEXT_BOUNDARY_TYPE(Enum):
++class TEXT_BOUNDARY_TYPE(AtspiEnum):
+         _enum_lookup = {
+                 0:'TEXT_BOUNDARY_CHAR',
+                 1:'TEXT_BOUNDARY_WORD_START',
+@@ -64,7 +64,7 @@ TEXT_BOUNDARY_WORD_START = TEXT_BOUNDARY_TYPE(1)
+ 
+ #------------------------------------------------------------------------------
+ 
+-class TEXT_CLIP_TYPE(Enum):
++class TEXT_CLIP_TYPE(AtspiEnum):
+         _enum_lookup = {
+                 0:'TEXT_CLIP_NONE',
+                 1:'TEXT_CLIP_MIN',
+@@ -79,7 +79,7 @@ TEXT_CLIP_NONE = TEXT_CLIP_TYPE(0)
+ 
+ #------------------------------------------------------------------------------
+ 
+-class TEXT_GRANULARITY_TYPE(Enum):
++class TEXT_GRANULARITY_TYPE(AtspiEnum):
+         _enum_lookup = {
+                 0:'TEXT_GRANULARITY_CHAR',
+                 1:'TEXT_GRANULARITY_WORD',
+diff --git a/pyatspi/value.py b/pyatspi/value.py
+index 08843b3..cb15bc0 100644
+--- a/pyatspi/value.py
++++ b/pyatspi/value.py
+@@ -14,7 +14,6 @@
+ #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+ from gi.repository import Atspi
+-from pyatspi.enum import *
+ from pyatspi.utils import *
+ from pyatspi.interface import *
+ 
+-- 
+cgit v0.12
+

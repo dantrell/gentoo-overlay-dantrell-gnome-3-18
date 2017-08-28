@@ -3,7 +3,7 @@
 EAPI="6"
 PYTHON_COMPAT=( python{2_7,3_4,3_5,3_6} )
 
-inherit gnome2 python-r1
+inherit autotools gnome2 python-r1
 
 DESCRIPTION="Python binding to at-spi library"
 HOMEPAGE="https://wiki.gnome.org/Accessibility"
@@ -33,9 +33,16 @@ DEPEND="${COMMON_DEPEND}
 PATCHES=(
 	# https://bugzilla.gnome.org/show_bug.cgi?id=689957
 	"${FILESDIR}/${PN}-2.6.0-examples-python3.patch"
+
+	# From GNOME:
+	# 	https://git.gnome.org/browse/pyatspi2/commit/?id=f87ffc4bc39264e3b9d5ed5747bd44c93bcae59d
+	# 	https://git.gnome.org/browse/pyatspi2/commit/?id=63c8a0d6cce954bedae34a7f6ebc5807fbef0c14
+	"${FILESDIR}"/${PN}-2.24.0-rename-enum-module-and-enum-class-not-to-conflict-with-stdlib.patch
+	"${FILESDIR}"/${PN}-2.24.0-python-3-6-invalid-escape-sequence-deprecation-fix.patch
 )
 
 src_prepare() {
+	eautoreconf
 	gnome2_src_prepare
 	python_copy_sources
 }
