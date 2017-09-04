@@ -107,7 +107,8 @@ src_configure() {
 		--enable-telepathy \
 		--enable-windows-live \
 		$(usex debug --enable-debug=yes ' ') \
-		$(use_enable kerberos)
+		$(use_enable kerberos) \
+		$(use_enable introspection)
 		#$(use_enable telepathy)
 	# gudev & cheese from sub-configure is overriden
 	# by top level configure, and disabled so leave it like that

@@ -227,6 +227,8 @@ pkg_postinst() {
 	done
 	eend ${ret}
 
+	systemd_reenable gdm.service
+
 	readme.gentoo_print_elog
 
 	local v
