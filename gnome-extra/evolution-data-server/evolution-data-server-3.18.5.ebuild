@@ -5,7 +5,7 @@ GNOME2_LA_PUNT="yes"
 PYTHON_COMPAT=( python{2_7,3_4,3_5,3_6} pypy )
 VALA_USE_DEPEND="vapigen"
 
-inherit db-use flag-o-matic gnome2 python-any-r1 vala virtualx
+inherit db-use flag-o-matic gnome2 python-any-r1 systemd vala virtualx
 
 DESCRIPTION="Evolution groupware backend"
 HOMEPAGE="https://wiki.gnome.org/Apps/Evolution"
@@ -74,11 +74,10 @@ pkg_setup() {
 }
 
 src_prepare() {
-	use vala && vala_src_prepare
-
 	# Fix relink issues in src_install
 	ELTCONF="--reverse-deps"
 
+	use vala && vala_src_prepare
 	gnome2_src_prepare
 }
 
@@ -104,6 +103,7 @@ src_configure() {
 		$(use_enable weather) \
 		--enable-largefile \
 		--enable-smime \
+		--with-systemduserunitdir="$(systemd_get_userunitdir)" \
 		--without-phonenumber \
 		--disable-examples \
 		--disable-uoa

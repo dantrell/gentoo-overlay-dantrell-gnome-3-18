@@ -1,14 +1,14 @@
-From d3ebde7427514ca9ab92b6f7937ebb5ab8efb063 Mon Sep 17 00:00:00 2001
+From 35ea9386d2ad7f7cf043592462c0c3486892dee1 Mon Sep 17 00:00:00 2001
 From: Poncho <poncho@spahan.ch>
-Date: Sun, 27 Sep 2015 14:25:58 +0200
-Subject: [PATCH] make zeitgeist dependency optional
+Date: Sun, 29 Nov 2015 21:50:16 +0100
+Subject: make zeitgeist dependency optional
 
 ---
  configure.ac | 21 ++++++++++++++++++---
  1 file changed, 18 insertions(+), 3 deletions(-)
 
 diff --git a/configure.ac b/configure.ac
-index 19a44b4..afb0c3a 100644
+index d24bf6c..97315c9 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -83,9 +83,24 @@ PKG_CHECK_MODULES(BIJIBEN,
@@ -48,5 +48,5 @@ index 19a44b4..afb0c3a 100644
  	Run make to compile."
  
 -- 
-2.4.9
+cgit v0.12
 
