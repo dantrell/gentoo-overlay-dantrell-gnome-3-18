@@ -1,0 +1,26 @@
+From 5c683f16717c9b8cf785836938bc67e90207c367 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 6 Feb 2015 05:53:32 +0100
+Subject: [PATCH 0257/1800] Bug 686620 - Change wording of a New Account
+ autodiscovery option
+
+---
+ mail/e-mail-config-identity-page.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mail/e-mail-config-identity-page.c b/mail/e-mail-config-identity-page.c
+index 7ddbeb88aa..70d89c7df3 100644
+--- a/mail/e-mail-config-identity-page.c
++++ b/mail/e-mail-config-identity-page.c
+@@ -553,7 +553,7 @@ mail_config_identity_page_constructed (GObject *object)
+ 
+ 	e_extensible_load_extensions (E_EXTENSIBLE (page));
+ 
+-	widget = gtk_check_button_new_with_mnemonic (_("Try _setup account automatically, based on Email Address"));
++	widget = gtk_check_button_new_with_mnemonic (_("_Look up mail server details based on the entered e-mail address"));
+ 	g_object_set (G_OBJECT (widget),
+ 		"valign", GTK_ALIGN_END,
+ 		"vexpand", TRUE,
+-- 
+2.15.0
+

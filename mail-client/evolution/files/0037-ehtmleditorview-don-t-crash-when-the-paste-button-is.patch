@@ -1,0 +1,27 @@
+From ddf9e6183cbd6aed27407ff928ad9078e67c389c Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 5 Nov 2014 11:36:02 +0100
+Subject: [PATCH 0037/1800] EHTMLEditorView - Don't crash when the paste button
+ is pressed and the view is not focused
+
+---
+ e-util/e-html-editor-view.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 31006c6d1c..314e4cb7ea 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -1806,6 +1806,9 @@ body_input_event_cb (WebKitDOMElement *element,
+ 	e_html_editor_view_set_changed (view, TRUE);
+ 	key_event = view->priv->key_event;
+ 
++	if (!key_event)
++		return;
++
+ 	if (view->priv->magic_smileys && view->priv->html_mode)
+ 		html_editor_view_check_magic_smileys (view, range);
+ 
+-- 
+2.15.0
+

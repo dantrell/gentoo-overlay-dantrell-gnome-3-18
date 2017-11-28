@@ -1,0 +1,30 @@
+From e6727229177ebeb72cc28eb49ecaf0465af24eca Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 1 Apr 2015 07:34:38 +0200
+Subject: [PATCH 0610/1800] [CalDAV config] Add also secure settings for
+ collection sources
+
+That way users can unset SSL certificate trust for GOA configured
+sources, in case they want to change the previously set SSL trust.
+---
+ modules/cal-config-caldav/evolution-cal-config-caldav.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/modules/cal-config-caldav/evolution-cal-config-caldav.c b/modules/cal-config-caldav/evolution-cal-config-caldav.c
+index 75f5355996..20738a96b9 100644
+--- a/modules/cal-config-caldav/evolution-cal-config-caldav.c
++++ b/modules/cal-config-caldav/evolution-cal-config-caldav.c
+@@ -280,8 +280,9 @@ cal_config_caldav_insert_widgets (ESourceConfigBackend *backend,
+ 		E_CAL_SOURCE_CONFIG (config), scratch_source);
+ 
+ 	/* If this data source is a collection member,
+-	 * just add a refresh interval and skip the rest. */
++	 * just add a subset and skip the rest. */
+ 	if (collection_source != NULL) {
++		e_source_config_add_secure_connection_for_webdav (config, scratch_source);
+ 		e_source_config_add_refresh_interval (config, scratch_source);
+ 		return;
+ 	}
+-- 
+2.15.0
+

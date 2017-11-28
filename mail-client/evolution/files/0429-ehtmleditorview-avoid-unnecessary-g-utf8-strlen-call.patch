@@ -1,0 +1,26 @@
+From 562cad287b36dcb8d56a72d1a11ad81b6cd31fa2 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 30 Mar 2015 10:48:17 +0200
+Subject: [PATCH 0429/1800] EHTMLEditorView - Avoid unnecessary g_utf8_strlen
+ call
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 2f6be06468..30b7dec412 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -1730,7 +1730,7 @@ body_input_event_cb (WebKitDOMElement *element,
+ 	/* If text before caret includes UNICODE_ZERO_WIDTH_SPACE character, remove it */
+ 	if (WEBKIT_DOM_IS_TEXT (node)) {
+ 		gchar *text = webkit_dom_character_data_get_data (WEBKIT_DOM_CHARACTER_DATA (node));
+-		glong length = g_utf8_strlen (text, -1);
++		glong length = webkit_dom_character_data_get_length (WEBKIT_DOM_CHARACTER_DATA (node));
+ 		WebKitDOMNode *parent;
+ 
+ 		/* We have to preserve empty paragraphs with just UNICODE_ZERO_WIDTH_SPACE
+-- 
+2.15.0
+

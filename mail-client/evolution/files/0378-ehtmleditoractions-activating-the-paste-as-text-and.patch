@@ -1,0 +1,46 @@
+From 0319a10acc2cf2d8e1ecb49659779ef0a213c6e1 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 27 Feb 2015 10:38:39 +0100
+Subject: [PATCH 0378/1800] EHTMLEditorActions - Activating the Paste as Text
+ and Paste Quotation from context menu does nothing
+
+If the view is not focused, grab focus and do the action.
+---
+ e-util/e-html-editor-actions.c | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/e-util/e-html-editor-actions.c b/e-util/e-html-editor-actions.c
+index 393277ffde..5c7751610d 100644
+--- a/e-util/e-html-editor-actions.c
++++ b/e-util/e-html-editor-actions.c
+@@ -543,8 +543,11 @@ action_paste_as_text_cb (GtkAction *action,
+ {
+ 	EHTMLEditorView *view = e_html_editor_get_view (editor);
+ 
+-	if (gtk_widget_has_focus (GTK_WIDGET (view)))
+-		e_html_editor_view_paste_as_text (view);
++	if (!gtk_widget_has_focus (GTK_WIDGET (view)))
++		gtk_widget_grab_focus (GTK_WIDGET (view));
++
++	e_html_editor_view_paste_as_text (view);
++	e_html_editor_view_force_spell_check (view);
+ }
+ 
+ static void
+@@ -553,8 +556,11 @@ action_paste_quote_cb (GtkAction *action,
+ {
+ 	EHTMLEditorView *view = e_html_editor_get_view (editor);
+ 
+-	if (gtk_widget_has_focus (GTK_WIDGET (view)))
+-		e_html_editor_view_paste_clipboard_quoted (view);
++	if (!gtk_widget_has_focus (GTK_WIDGET (view)))
++		gtk_widget_grab_focus (GTK_WIDGET (view));
++
++	e_html_editor_view_paste_clipboard_quoted (view);
++	e_html_editor_view_force_spell_check (view);
+ }
+ 
+ static void
+-- 
+2.15.0
+

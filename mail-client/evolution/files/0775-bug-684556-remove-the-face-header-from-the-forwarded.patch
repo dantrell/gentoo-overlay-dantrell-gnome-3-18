@@ -1,0 +1,63 @@
+From d2e477c3a1a8fe7ad16cb6bcc3cdf1dcee8c4c54 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 1 Jun 2015 10:51:09 +0200
+Subject: [PATCH 0775/1800] Bug 684556 - Remove the Face header from the
+ forwarded message body
+
+---
+ em-format/e-mail-formatter-quote-headers.c | 8 +++++++-
+ em-format/e-mail-part-headers.c            | 5 +++++
+ 2 files changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/em-format/e-mail-formatter-quote-headers.c b/em-format/e-mail-formatter-quote-headers.c
+index 6c3a7c0536..68212d7fdb 100644
+--- a/em-format/e-mail-formatter-quote-headers.c
++++ b/em-format/e-mail-formatter-quote-headers.c
+@@ -95,6 +95,7 @@ static const gchar *addrspec_hdrs[] = {
+ 
+ static void
+ emfqe_format_header (EMailFormatter *formatter,
++		     EMailFormatterContext *context,
+                      GString *buffer,
+                      EMailPart *part,
+                      const gchar *header_name,
+@@ -108,6 +109,11 @@ emfqe_format_header (EMailFormatter *formatter,
+ 	gint is_html = FALSE;
+ 	gint i;
+ 
++	/* Skip Face header in prints, which includes also message forward */
++	if (context->mode == E_MAIL_FORMATTER_MODE_PRINTING &&
++	    g_ascii_strcasecmp (header_name, "Face") == 0)
++		return;
++
+ 	flags = E_MAIL_FORMATTER_HEADER_FLAG_NOELIPSIZE;
+ 
+ 	canon_name = g_alloca (strlen (header_name) + 1);
+@@ -255,7 +261,7 @@ emqfe_headers_format (EMailFormatterExtension *extension,
+ 
+ 	for (ii = 0; ii < length; ii++)
+ 		emfqe_format_header (
+-			formatter, buffer, part,
++			formatter, context, buffer, part,
+ 			default_headers[ii], charset);
+ 
+ 	g_strfreev (default_headers);
+diff --git a/em-format/e-mail-part-headers.c b/em-format/e-mail-part-headers.c
+index db3e7f6411..1cc4ebbc6a 100644
+--- a/em-format/e-mail-part-headers.c
++++ b/em-format/e-mail-part-headers.c
+@@ -97,6 +97,11 @@ mail_part_headers_build_print_model (EMailPartHeaders *part)
+ 		if (g_ascii_strncasecmp (header->name, "Subject", 7) == 0)
+ 			continue;
+ 
++		/* Also skip the 'Face' header, which includes only
++		   base64 encoded data anyway. */
++		if (g_ascii_strcasecmp (header->name, "Face") == 0)
++			continue;
++
+ 		/* Arrange default headers first and select them to be
+ 		 * included in the final printout.  All other headers
+ 		 * are excluded by default in the final printout. */
+-- 
+2.15.0
+

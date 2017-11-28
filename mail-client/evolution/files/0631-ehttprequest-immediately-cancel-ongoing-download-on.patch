@@ -1,0 +1,59 @@
+From 74e89a93d7d417a113eacadc889307dc4f3c08fe Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 3 Apr 2015 08:27:10 +0200
+Subject: [PATCH 0631/1800] [EHTTPRequest] Immediately cancel ongoing download
+ on request cancel
+
+No need to continue any download when the request had been cancelled.
+This could cause starving of other requests with download of large images.
+---
+ mail/e-http-request.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/mail/e-http-request.c b/mail/e-http-request.c
+index f59d26cca6..48688fdce0 100644
+--- a/mail/e-http-request.c
++++ b/mail/e-http-request.c
+@@ -155,6 +155,13 @@ send_and_handle_redirection (SoupSession *session,
+ 	g_free (old_uri);
+ }
+ 
++static void
++http_request_cancelled_cb (GCancellable *cancellable,
++			   SoupSession *session)
++{
++	soup_session_abort (session);
++}
++
+ static void
+ handle_http_request (GSimpleAsyncResult *res,
+                      GObject *source_object,
+@@ -360,6 +367,10 @@ handle_http_request (GSimpleAsyncResult *res,
+ 		GIOStream *cache_stream;
+ 		GError *error;
+ 		GMainContext *context;
++		gulong cancelled_id = 0;
++
++		if (g_cancellable_is_cancelled (cancellable))
++			goto cleanup;
+ 
+ 		message = soup_message_new (SOUP_METHOD_GET, uri);
+ 		if (!message) {
+@@ -383,8 +394,14 @@ handle_http_request (GSimpleAsyncResult *res,
+ 			message->request_headers,
+ 			"User-Agent", "Evolution/" VERSION);
+ 
++		if (cancellable)
++			cancelled_id = g_cancellable_connect (cancellable, G_CALLBACK (http_request_cancelled_cb), temp_session, NULL);
++
+ 		send_and_handle_redirection (temp_session, message, NULL);
+ 
++		if (cancellable && cancelled_id)
++			g_cancellable_disconnect (cancellable, cancelled_id);
++
+ 		if (!SOUP_STATUS_IS_SUCCESSFUL (message->status_code)) {
+ 			g_debug ("Failed to request %s (code %d)", uri, message->status_code);
+ 			g_object_unref (message);
+-- 
+2.15.0
+

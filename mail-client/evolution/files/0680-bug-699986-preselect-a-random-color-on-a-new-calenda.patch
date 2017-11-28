@@ -1,0 +1,54 @@
+From 28cfe25c5ba0124fe068da53b0a8c709515fb0dd Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 16 Apr 2015 18:11:45 +0200
+Subject: [PATCH 0680/1800] Bug 699986 - Preselect a random color on a new
+ calendar source
+
+---
+ e-util/e-cal-source-config.c | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
+
+diff --git a/e-util/e-cal-source-config.c b/e-util/e-cal-source-config.c
+index f619d53245..d90d93f6f9 100644
+--- a/e-util/e-cal-source-config.c
++++ b/e-util/e-cal-source-config.c
+@@ -259,6 +259,25 @@ cal_source_config_list_eligible_collections (ESourceConfig *config)
+ 	return list;
+ }
+ 
++static const gchar *
++choose_initial_color (void)
++{
++	static const gchar *colors[] = {
++		"#BECEDD", /* 190 206 221     Blue */
++		"#E2F0EF", /* 226 240 239     Light Blue */
++		"#C6E2B7", /* 198 226 183     Green */
++		"#E2F0D3", /* 226 240 211     Light Green */
++		"#E2D4B7", /* 226 212 183     Khaki */
++		"#EAEAC1", /* 234 234 193     Light Khaki */
++		"#F0B8B7", /* 240 184 183     Pink */
++		"#FED4D3", /* 254 212 211     Light Pink */
++		"#E2C6E1", /* 226 198 225     Purple */
++		"#F0E2EF"  /* 240 226 239     Light Purple */
++	};
++
++	return colors[g_random_int_range (0, G_N_ELEMENTS (colors))];
++}
++
+ static void
+ cal_source_config_init_candidate (ESourceConfig *config,
+                                   ESource *scratch_source)
+@@ -277,6 +296,10 @@ cal_source_config_init_candidate (ESourceConfig *config,
+ 	extension_name = e_source_config_get_backend_extension_name (config);
+ 	extension = e_source_get_extension (scratch_source, extension_name);
+ 
++	/* Preselect a random color on a new source */
++	if (!e_source_config_get_original_source (config))
++		e_source_selectable_set_color (E_SOURCE_SELECTABLE (extension), choose_initial_color ());
++
+ 	e_binding_bind_property_full (
+ 		extension, "color",
+ 		priv->color_button, "color",
+-- 
+2.15.0
+

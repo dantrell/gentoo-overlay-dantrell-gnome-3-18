@@ -1,0 +1,101 @@
+From 2cda5a5726013824663198a4c0531a61175b39b7 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 2 Apr 2015 18:58:27 +0200
+Subject: [PATCH 0627/1800] Bug 747031 - Messages Not Marked as Read When
+ Changing Folder
+
+---
+ mail/e-mail-paned-view.c |  3 +++
+ mail/e-mail-reader.c     | 13 +++++++++++++
+ mail/e-mail-reader.h     |  2 ++
+ mail/message-list.c      | 12 ++++++++++++
+ mail/message-list.h      |  2 ++
+ 5 files changed, 32 insertions(+)
+
+diff --git a/mail/e-mail-paned-view.c b/mail/e-mail-paned-view.c
+index bb32db85db..20c318798b 100644
+--- a/mail/e-mail-paned-view.c
++++ b/mail/e-mail-paned-view.c
+@@ -162,6 +162,9 @@ mail_paned_view_message_list_built_cb (EMailView *view,
+ 
+ 		g_free (folder_uri);
+ 
++		if (!message_list_contains_uid (message_list, uid))
++			e_mail_reader_unset_folder_just_selected (E_MAIL_READER (view));
++
+ 		/* Use selection fallbacks if UID is not found. */
+ 		message_list_select_uid (message_list, uid, TRUE);
+ 
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index a183bc1db4..06fb7db18f 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -4875,6 +4875,19 @@ e_mail_reader_avoid_next_mark_as_seen (EMailReader *reader)
+ 	priv->avoid_next_mark_as_seen = TRUE;
+ }
+ 
++void
++e_mail_reader_unset_folder_just_selected (EMailReader *reader)
++{
++	EMailReaderPrivate *priv;
++
++	g_return_if_fail (reader != NULL);
++
++	priv = E_MAIL_READER_GET_PRIVATE (reader);
++	g_return_if_fail (priv != NULL);
++
++	priv->folder_was_just_selected = FALSE;
++}
++
+ /**
+  * e_mail_reader_composer_created:
+  * @reader: an #EMailReader
+diff --git a/mail/e-mail-reader.h b/mail/e-mail-reader.h
+index 7dab30badb..9eef8242a6 100644
+--- a/mail/e-mail-reader.h
++++ b/mail/e-mail-reader.h
+@@ -181,6 +181,8 @@ void		e_mail_reader_create_charset_menu
+ void		e_mail_reader_show_search_bar	(EMailReader *reader);
+ void		e_mail_reader_avoid_next_mark_as_seen
+ 						(EMailReader *reader);
++void		e_mail_reader_unset_folder_just_selected
++						(EMailReader *reader);
+ void		e_mail_reader_composer_created	(EMailReader *reader,
+ 						 EMsgComposer *composer,
+ 						 CamelMimeMessage *message);
+diff --git a/mail/message-list.c b/mail/message-list.c
+index a4645b7b61..5038a8d243 100644
+--- a/mail/message-list.c
++++ b/mail/message-list.c
+@@ -6206,3 +6206,15 @@ exit:
+ 		regen_data_unref (old_regen_data);
+ 	}
+ }
++
++gboolean
++message_list_contains_uid (MessageList *message_list,
++			   const gchar *uid)
++{
++	g_return_val_if_fail (IS_MESSAGE_LIST (message_list), FALSE);
++
++	if (!uid || !*uid || !message_list->priv->folder)
++		return FALSE;
++
++	return g_hash_table_lookup (message_list->uid_nodemap, uid) != NULL;
++}
+diff --git a/mail/message-list.h b/mail/message-list.h
+index e5c249ae20..2e7c68e32b 100644
+--- a/mail/message-list.h
++++ b/mail/message-list.h
+@@ -211,6 +211,8 @@ void		message_list_save_state		(MessageList *message_list);
+ 
+ void		message_list_sort_uids		(MessageList *message_list,
+ 						 GPtrArray *uids);
++gboolean	message_list_contains_uid	(MessageList *message_list,
++						 const gchar *uid);
+ 
+ G_END_DECLS
+ 
+-- 
+2.15.0
+

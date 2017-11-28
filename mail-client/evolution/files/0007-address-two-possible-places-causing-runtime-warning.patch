@@ -1,0 +1,106 @@
+From 2b8af87a3c26ce2322259614aa2e32ed3bd94ff1 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 30 Oct 2014 11:21:00 +0100
+Subject: [PATCH 0007/1800] Address two possible places causing runtime warning
+ on a GSource removal
+
+That could generate "Source ID xxx was not found when attempting to remove it"
+on a g_source_remove() invoke, when an already removed GSource ID had been used.
+---
+ e-util/e-activity-proxy.c | 43 +++++++++++++++++++++++++++++++++++++++++--
+ e-util/e-alert.c          | 10 +++++++++-
+ 2 files changed, 50 insertions(+), 3 deletions(-)
+
+diff --git a/e-util/e-activity-proxy.c b/e-util/e-activity-proxy.c
+index d0805b2f57..8ebaed1250 100644
+--- a/e-util/e-activity-proxy.c
++++ b/e-util/e-activity-proxy.c
+@@ -62,11 +62,46 @@ G_DEFINE_TYPE (
+ 	e_activity_proxy,
+ 	GTK_TYPE_FRAME)
+ 
++typedef struct {
++	EActivityProxy *proxy; /* Not referenced */
++	EActivity *activity;   /* Referenced */
++} UnsetTimeoutData;
++
++static void
++unset_timeout_data_free (gpointer ptr)
++{
++	UnsetTimeoutData *utd = ptr;
++
++	if (utd) {
++		g_object_unref (utd->activity);
++		g_free (utd);
++	}
++}
++
++static gboolean
++activity_proxy_unset_timeout_id (gpointer user_data)
++{
++	UnsetTimeoutData *utd = user_data;
++
++	g_return_val_if_fail (utd != NULL, FALSE);
++
++	if (g_source_is_destroyed (g_main_current_source ()))
++		return FALSE;
++
++	g_return_val_if_fail (E_IS_ACTIVITY_PROXY (utd->proxy), FALSE);
++
++	if (g_source_get_id (g_main_current_source ()) == utd->proxy->priv->timeout_id)
++		utd->proxy->priv->timeout_id = 0;
++
++	return FALSE;
++}
++
+ static void
+ activity_proxy_feedback (EActivityProxy *proxy)
+ {
+ 	EActivity *activity;
+ 	EActivityState state;
++	UnsetTimeoutData *utd;
+ 
+ 	activity = e_activity_proxy_get_activity (proxy);
+ 	g_return_if_fail (E_IS_ACTIVITY (activity));
+@@ -78,11 +113,15 @@ activity_proxy_feedback (EActivityProxy *proxy)
+ 	if (proxy->priv->timeout_id > 0)
+ 		g_source_remove (proxy->priv->timeout_id);
+ 
++	utd = g_new0 (UnsetTimeoutData, 1);
++	utd->proxy = proxy;
+ 	/* Hold a reference on the EActivity for a short
+ 	 * period so the activity proxy stays visible. */
++	utd->activity = g_object_ref (activity);
++
+ 	proxy->priv->timeout_id = e_named_timeout_add_seconds_full (
+-		G_PRIORITY_LOW, FEEDBACK_PERIOD, (GSourceFunc) gtk_false,
+-		g_object_ref (activity), (GDestroyNotify) g_object_unref);
++		G_PRIORITY_LOW, FEEDBACK_PERIOD, activity_proxy_unset_timeout_id,
++		utd, unset_timeout_data_free);
+ }
+ 
+ static void
+diff --git a/e-util/e-alert.c b/e-util/e-alert.c
+index e98895ba4c..438f523d52 100644
+--- a/e-util/e-alert.c
++++ b/e-util/e-alert.c
+@@ -429,7 +429,15 @@ alert_set_tag (EAlert *alert,
+ static gboolean
+ alert_timeout_cb (gpointer user_data)
+ {
+-	EAlert *alert = E_ALERT (user_data);
++	EAlert *alert = user_data;
++
++	if (g_source_is_destroyed (g_main_current_source ()))
++		return FALSE;
++
++	g_return_val_if_fail (E_IS_ALERT (alert), FALSE);
++
++	if (g_source_get_id (g_main_current_source ()) == alert->priv->timeout_id)
++		alert->priv->timeout_id = 0;
+ 
+ 	e_alert_response (alert, alert->priv->default_response);
+ 
+-- 
+2.15.0
+

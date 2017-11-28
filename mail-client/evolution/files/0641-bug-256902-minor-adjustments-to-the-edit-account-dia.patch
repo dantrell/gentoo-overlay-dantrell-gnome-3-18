@@ -1,0 +1,127 @@
+From c73f83f91b26a43a4379468f020dad29130faf96 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 3 Apr 2015 12:50:28 +0200
+Subject: [PATCH 0641/1800] Bug 256902 - Minor adjustments to the Edit Account
+ dialog
+
+---
+ mail/e-mail-config-identity-page.c | 19 +++++++++----------
+ mail/e-mail-config-summary-page.c  | 19 +++++++++----------
+ smime/gui/smime-ui.ui              |  4 +++-
+ 3 files changed, 21 insertions(+), 21 deletions(-)
+
+diff --git a/mail/e-mail-config-identity-page.c b/mail/e-mail-config-identity-page.c
+index a14d96bd40..ed44d48b82 100644
+--- a/mail/e-mail-config-identity-page.c
++++ b/mail/e-mail-config-identity-page.c
+@@ -316,20 +316,12 @@ mail_config_identity_page_constructed (GObject *object)
+ 	gtk_widget_show (widget);
+ 	g_free (markup);
+ 
+-	text = _("Type the name by which you would like to refer to "
+-		 "this account.\nFor example, \"Work\" or \"Personal\".");
+-	widget = gtk_label_new (text);
+-	gtk_widget_set_margin_left (widget, 12);
+-	gtk_misc_set_alignment (GTK_MISC (widget), 0.0, 0.5);
+-	gtk_grid_attach (GTK_GRID (container), widget, 0, 1, 2, 1);
+-	gtk_widget_show (widget);
+-
+ 	text = _("_Name:");
+ 	widget = gtk_label_new_with_mnemonic (text);
+ 	gtk_widget_set_margin_left (widget, 12);
+ 	gtk_size_group_add_widget (size_group, widget);
+ 	gtk_misc_set_alignment (GTK_MISC (widget), 1.0, 0.5);
+-	gtk_grid_attach (GTK_GRID (container), widget, 0, 2, 1, 1);
++	gtk_grid_attach (GTK_GRID (container), widget, 0, 1, 1, 1);
+ 	gtk_widget_show (widget);
+ 
+ 	label = GTK_LABEL (widget);
+@@ -337,7 +329,7 @@ mail_config_identity_page_constructed (GObject *object)
+ 	widget = gtk_entry_new ();
+ 	gtk_widget_set_hexpand (widget, TRUE);
+ 	gtk_label_set_mnemonic_widget (label, widget);
+-	gtk_grid_attach (GTK_GRID (container), widget, 1, 2, 1, 1);
++	gtk_grid_attach (GTK_GRID (container), widget, 1, 1, 1, 1);
+ 	gtk_widget_show (widget);
+ 
+ 	e_binding_bind_object_text_property (
+@@ -351,6 +343,13 @@ mail_config_identity_page_constructed (GObject *object)
+ 		widget, "changed",
+ 		G_CALLBACK (e_mail_config_page_changed), page);
+ 
++	text = _("The above name will be used to identify this account.\n"
++		 "Use for example, \"Work\" or \"Personal\".");
++	widget = gtk_label_new (text);
++	gtk_misc_set_alignment (GTK_MISC (widget), 0.0, 0.5);
++	gtk_grid_attach (GTK_GRID (container), widget, 1, 2, 1, 1);
++	gtk_widget_show (widget);
++
+ 	/*** Required Information ***/
+ 
+ 	widget = gtk_grid_new ();
+diff --git a/mail/e-mail-config-summary-page.c b/mail/e-mail-config-summary-page.c
+index e51df6ac8d..91f969873b 100644
+--- a/mail/e-mail-config-summary-page.c
++++ b/mail/e-mail-config-summary-page.c
+@@ -328,19 +328,11 @@ mail_config_summary_page_constructed (GObject *object)
+ 	gtk_widget_show (widget);
+ 	g_free (markup);
+ 
+-	text = _("Type the name by which you would like to refer to "
+-		 "this account.\nFor example, \"Work\" or \"Personal\".");
+-	widget = gtk_label_new (text);
+-	gtk_widget_set_margin_left (widget, 12);
+-	gtk_misc_set_alignment (GTK_MISC (widget), 0.0, 0.5);
+-	gtk_grid_attach (GTK_GRID (container), widget, 0, 1, 2, 1);
+-	gtk_widget_show (widget);
+-
+ 	text = _("_Name:");
+ 	widget = gtk_label_new_with_mnemonic (text);
+ 	gtk_widget_set_margin_left (widget, 12);
+ 	gtk_misc_set_alignment (GTK_MISC (widget), 1.0, 0.5);
+-	gtk_grid_attach (GTK_GRID (container), widget, 0, 2, 1, 1);
++	gtk_grid_attach (GTK_GRID (container), widget, 0, 1, 1, 1);
+ 	gtk_widget_show (widget);
+ 
+ 	label = GTK_LABEL (widget);
+@@ -348,7 +340,7 @@ mail_config_summary_page_constructed (GObject *object)
+ 	widget = gtk_entry_new ();
+ 	gtk_widget_set_hexpand (widget, TRUE);
+ 	gtk_label_set_mnemonic_widget (label, widget);
+-	gtk_grid_attach (GTK_GRID (container), widget, 1, 2, 1, 1);
++	gtk_grid_attach (GTK_GRID (container), widget, 1, 1, 1, 1);
+ 	page->priv->account_name_entry = GTK_ENTRY (widget);
+ 	gtk_widget_show (widget);
+ 
+@@ -357,6 +349,13 @@ mail_config_summary_page_constructed (GObject *object)
+ 		widget, "changed",
+ 		G_CALLBACK (e_mail_config_page_changed), page);
+ 
++	text = _("The above name will be used to identify this account.\n"
++		 "Use for example, \"Work\" or \"Personal\".");
++	widget = gtk_label_new (text);
++	gtk_misc_set_alignment (GTK_MISC (widget), 0.0, 0.5);
++	gtk_grid_attach (GTK_GRID (container), widget, 1, 2, 1, 1);
++	gtk_widget_show (widget);
++
+ 	/*** Details ***/
+ 
+ 	widget = gtk_grid_new ();
+diff --git a/smime/gui/smime-ui.ui b/smime/gui/smime-ui.ui
+index 1473b95829..9eb761b914 100644
+--- a/smime/gui/smime-ui.ui
++++ b/smime/gui/smime-ui.ui
+@@ -623,7 +623,9 @@
+         <child>
+           <object class="GtkLabel" id="label67">
+             <property name="visible">True</property>
+-            <property name="label" translatable="yes">Certificate</property>
++            <property name="label" translatable="yes">C_ertificate:</property>
++            <property name="use_underline">True</property>
++            <property name="mnemonic-widget">cert_combobox</property>
+           </object>
+           <packing>
+             <property name="expand">False</property>
+-- 
+2.15.0
+

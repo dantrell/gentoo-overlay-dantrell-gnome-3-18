@@ -1,0 +1,27 @@
+From f5d01ca3042ca3672e1437949128bf589f865bb5 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 26 Feb 2016 12:27:05 +0100
+Subject: [PATCH 0904/1800] EHTMLEditorView - Don't try to wrap the already
+ wrapped blocks
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 1b59ea195d..e3082d8093 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -6741,7 +6741,8 @@ dom_process_content_for_plain_text (WebKitDOMDocument *document,
+ 				}
+ 				item = next_item;
+ 			}
+-		} else {
++		} else if (!webkit_dom_element_query_selector (WEBKIT_DOM_ELEMENT (paragraph), ".-x-evo-wrap-br,.-x-evo-quoted", NULL)) {
++			/* Dont't try to wrap the already wrapped content. */
+ 			dom_wrap_paragraph (
+ 				document, extension, WEBKIT_DOM_ELEMENT (paragraph));
+ 		}
+-- 
+2.15.0
+

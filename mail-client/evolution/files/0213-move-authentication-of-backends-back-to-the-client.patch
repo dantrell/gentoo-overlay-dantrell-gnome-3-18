@@ -1,0 +1,4267 @@
+From 77c3ed213e7d32c23231175b30aa7597685df189 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 2 Feb 2015 14:50:27 +0100
+Subject: [PATCH 0213/1800] Move authentication of backends back to the client
+
+Since this change the client is responsible to provide credentials
+to use to authenticate backends (through ESource-s, to be more precise),
+unless the credentials are already saved.
+---
+ .../gui/contact-editor/e-contact-quick-add.c       |   4 +-
+ addressbook/gui/widgets/e-addressbook-selector.c   |   2 +-
+ addressbook/gui/widgets/eab-contact-compare.c      |   2 +-
+ addressbook/gui/widgets/eab-gui-util.c             |   2 +-
+ addressbook/importers/evolution-csv-importer.c     |   2 +-
+ addressbook/importers/evolution-ldif-importer.c    |   2 +-
+ addressbook/importers/evolution-vcard-importer.c   |   2 +-
+ .../evolution-addressbook-export-list-cards.c      |   2 +-
+ .../evolution-addressbook-export-list-folders.c    |   2 +-
+ calendar/alarm-notify/alarm-notify.c               |   4 +-
+ calendar/gui/dialogs/copy-source-dialog.c          |   4 +-
+ calendar/gui/e-cal-model.c                         |   2 +-
+ calendar/gui/e-cal-ops.c                           |  10 +-
+ calendar/gui/e-calendar-view.c                     |   2 +-
+ calendar/importers/icalendar-importer.c            |   4 +-
+ configure.ac                                       |   6 +-
+ e-util/e-client-cache.c                            |  93 +++-
+ e-util/e-client-cache.h                            |  10 +-
+ e-util/e-client-combo-box.c                        |   2 +-
+ e-util/e-client-selector.c                         | 121 ++---
+ e-util/e-client-selector.h                         |   2 +
+ e-util/e-misc-utils.c                              |  70 +--
+ e-util/e-misc-utils.h                              |  15 +-
+ e-util/e-name-selector-entry.c                     |   2 +-
+ e-util/e-name-selector.c                           |   2 +-
+ e-util/test-source-selector.c                      |   4 +-
+ evolution-shell.pc.in                              |   2 +-
+ libemail-engine/Makefile.am                        |   2 -
+ libemail-engine/e-mail-authenticator.c             | 266 ----------
+ libemail-engine/e-mail-authenticator.h             |  79 ---
+ libemail-engine/e-mail-session-utils.c             |   8 +-
+ libemail-engine/e-mail-session.c                   | 228 ++-------
+ libemail-engine/e-mail-session.h                   |   5 +
+ libemail-engine/libemail-engine.h                  |   1 -
+ libemail-engine/mail-ops.c                         |   7 +-
+ mail/e-mail-account-store.c                        |  23 +-
+ mail/e-mail-backend.c                              |  15 +
+ mail/e-mail-ui-session.c                           | 260 +++++++++-
+ mail/importers/pine-importer.c                     |   2 +-
+ modules/addressbook/e-book-shell-backend.c         |   4 +-
+ modules/addressbook/e-book-shell-view-actions.c    | 120 ++---
+ modules/addressbook/e-book-shell-view-private.c    |   2 +-
+ .../cal-config-caldav/e-caldav-chooser-dialog.c    | 136 ++++-
+ modules/cal-config-caldav/e-caldav-chooser.c       | 295 ++++++++---
+ modules/cal-config-caldav/e-caldav-chooser.h       |  30 ++
+ .../evolution-cal-config-caldav.c                  |  16 +
+ modules/calendar/e-cal-attachment-handler.c        |   2 +-
+ modules/calendar/e-cal-base-shell-backend.c        |   2 +-
+ modules/calendar/e-cal-base-shell-sidebar.c        |   6 +-
+ modules/calendar/e-cal-base-shell-view.c           |  16 +-
+ modules/contact-photos/e-contact-photo-source.c    |   2 +-
+ modules/itip-formatter/itip-view.c                 |  17 +-
+ modules/mail/e-mail-shell-view-actions.c           |  62 +--
+ modules/vcard-inline/e-mail-part-vcard.c           |   2 +-
+ plugins/bbdb/bbdb.c                                |   4 +-
+ plugins/mail-to-task/mail-to-task.c                |   2 +-
+ plugins/publish-calendar/publish-format-fb.c       |   2 +-
+ plugins/publish-calendar/publish-format-ical.c     |   2 +-
+ plugins/save-calendar/csv-format.c                 |   2 +-
+ plugins/save-calendar/ical-format.c                |   2 +-
+ plugins/save-calendar/rdf-format.c                 |   2 +-
+ po/POTFILES.in                                     |   1 -
+ shell/e-shell-window.c                             |   2 +-
+ shell/e-shell.c                                    | 546 ++++++++++++++++++++-
+ shell/e-shell.h                                    |   5 +
+ shell/shell.error.xml                              |  32 ++
+ 66 files changed, 1527 insertions(+), 1058 deletions(-)
+ delete mode 100644 libemail-engine/e-mail-authenticator.c
+ delete mode 100644 libemail-engine/e-mail-authenticator.h
+
+diff --git a/addressbook/gui/contact-editor/e-contact-quick-add.c b/addressbook/gui/contact-editor/e-contact-quick-add.c
+index dbcdd563a8..2830508a0b 100644
+--- a/addressbook/gui/contact-editor/e-contact-quick-add.c
++++ b/addressbook/gui/contact-editor/e-contact-quick-add.c
+@@ -190,7 +190,7 @@ quick_add_merge_contact (QuickAdd *qa)
+ 
+ 	e_client_cache_get_client (
+ 		qa->client_cache, qa->source,
+-		E_SOURCE_EXTENSION_ADDRESS_BOOK,
++		E_SOURCE_EXTENSION_ADDRESS_BOOK, 30,
+ 		qa->cancellable, merge_cb, qa);
+ }
+ 
+@@ -337,7 +337,7 @@ edit_contact (QuickAdd *qa)
+ 
+ 	e_client_cache_get_client (
+ 		qa->client_cache, qa->source,
+-		E_SOURCE_EXTENSION_ADDRESS_BOOK,
++		E_SOURCE_EXTENSION_ADDRESS_BOOK, 30,
+ 		qa->cancellable, ce_have_book, qa);
+ }
+ 
+diff --git a/addressbook/gui/widgets/e-addressbook-selector.c b/addressbook/gui/widgets/e-addressbook-selector.c
+index 60a4b0e9b2..5d4eb93105 100644
+--- a/addressbook/gui/widgets/e-addressbook-selector.c
++++ b/addressbook/gui/widgets/e-addressbook-selector.c
+@@ -326,7 +326,7 @@ addressbook_selector_data_dropped (ESourceSelector *selector,
+ 	merge_context->pending_adds = TRUE;
+ 
+ 	e_client_selector_get_client (
+-		E_CLIENT_SELECTOR (selector), destination, FALSE, NULL,
++		E_CLIENT_SELECTOR (selector), destination, FALSE, 30, NULL,
+ 		target_client_connect_cb, merge_context);
+ 
+ 	return TRUE;
+diff --git a/addressbook/gui/widgets/eab-contact-compare.c b/addressbook/gui/widgets/eab-contact-compare.c
+index 776e26d2c7..21648af1d8 100644
+--- a/addressbook/gui/widgets/eab-contact-compare.c
++++ b/addressbook/gui/widgets/eab-contact-compare.c
+@@ -831,7 +831,7 @@ eab_contact_locate_match_full (ESourceRegistry *registry,
+ 
+ 	source = e_source_registry_ref_default_address_book (registry);
+ 
+-	e_book_client_connect (source, NULL, book_client_connect_cb, info);
++	e_book_client_connect (source, 30, NULL, book_client_connect_cb, info);
+ 
+ 	g_object_unref (source);
+ }
+diff --git a/addressbook/gui/widgets/eab-gui-util.c b/addressbook/gui/widgets/eab-gui-util.c
+index 8718cda9d0..7fa58d4ccc 100644
+--- a/addressbook/gui/widgets/eab-gui-util.c
++++ b/addressbook/gui/widgets/eab-gui-util.c
+@@ -618,7 +618,7 @@ eab_transfer_contacts (ESourceRegistry *registry,
+ 	process->delete_from_source = delete_from_source;
+ 
+ 	e_book_client_connect (
+-		destination, NULL, book_client_connect_cb, process);
++		destination, 30, NULL, book_client_connect_cb, process);
+ }
+ 
+ /*
+diff --git a/addressbook/importers/evolution-csv-importer.c b/addressbook/importers/evolution-csv-importer.c
+index 5e1eb331a2..89d158348a 100644
+--- a/addressbook/importers/evolution-csv-importer.c
++++ b/addressbook/importers/evolution-csv-importer.c
+@@ -929,7 +929,7 @@ csv_import (EImport *ei,
+ 
+ 	source = g_datalist_get_data (&target->data, "csv-source");
+ 
+-	e_book_client_connect (source, NULL, book_client_connect_cb, gci);
++	e_book_client_connect (source, 30, NULL, book_client_connect_cb, gci);
+ }
+ 
+ static void
+diff --git a/addressbook/importers/evolution-ldif-importer.c b/addressbook/importers/evolution-ldif-importer.c
+index 7268a1a1bf..ac616cc09a 100644
+--- a/addressbook/importers/evolution-ldif-importer.c
++++ b/addressbook/importers/evolution-ldif-importer.c
+@@ -723,7 +723,7 @@ ldif_import (EImport *ei,
+ 
+ 	source = g_datalist_get_data (&target->data, "ldif-source");
+ 
+-	e_book_client_connect (source, NULL, book_client_connect_cb, gci);
++	e_book_client_connect (source, 30, NULL, book_client_connect_cb, gci);
+ }
+ 
+ static void
+diff --git a/addressbook/importers/evolution-vcard-importer.c b/addressbook/importers/evolution-vcard-importer.c
+index 636210f732..b6a3abc439 100644
+--- a/addressbook/importers/evolution-vcard-importer.c
++++ b/addressbook/importers/evolution-vcard-importer.c
+@@ -548,7 +548,7 @@ vcard_import (EImport *ei,
+ 
+ 	source = g_datalist_get_data (&target->data, "vcard-source");
+ 
+-	e_book_client_connect (source, NULL, book_client_connect_cb, gci);
++	e_book_client_connect (source, 30, NULL, book_client_connect_cb, gci);
+ }
+ 
+ static void
+diff --git a/addressbook/tools/evolution-addressbook-export-list-cards.c b/addressbook/tools/evolution-addressbook-export-list-cards.c
+index c6261f6c53..c89c54b648 100644
+--- a/addressbook/tools/evolution-addressbook-export-list-cards.c
++++ b/addressbook/tools/evolution-addressbook-export-list-cards.c
+@@ -719,7 +719,7 @@ action_list_cards_init (ActionContext *p_actctx)
+ 	else
+ 		source = e_source_registry_ref_default_address_book (registry);
+ 
+-	client = e_book_client_connect_sync (source, NULL, &error);
++	client = e_book_client_connect_sync (source, 30, NULL, &error);
+ 
+ 	g_object_unref (source);
+ 
+diff --git a/addressbook/tools/evolution-addressbook-export-list-folders.c b/addressbook/tools/evolution-addressbook-export-list-folders.c
+index 41b232cebe..8e137b89e4 100644
+--- a/addressbook/tools/evolution-addressbook-export-list-folders.c
++++ b/addressbook/tools/evolution-addressbook-export-list-folders.c
+@@ -63,7 +63,7 @@ action_list_folders_init (ActionContext *p_actctx)
+ 
+ 		source = E_SOURCE (iter->data);
+ 
+-		client = e_book_client_connect_sync (source, NULL, &error);
++		client = e_book_client_connect_sync (source, 30, NULL, &error);
+ 
+ 		/* Sanity check. */
+ 		g_warn_if_fail (
+diff --git a/calendar/alarm-notify/alarm-notify.c b/calendar/alarm-notify/alarm-notify.c
+index fc71d6917b..50621f131a 100644
+--- a/calendar/alarm-notify/alarm-notify.c
++++ b/calendar/alarm-notify/alarm-notify.c
+@@ -312,9 +312,7 @@ alarm_notify_add_calendar (AlarmNotify *an,
+ 
+ 	debug (("Opening '%s' (%s)", e_source_get_display_name (source), e_source_get_uid (source)));
+ 
+-	e_cal_client_connect (
+-		source, source_type, NULL,
+-		client_connect_cb, an);
++	e_cal_client_connect (source, source_type, 30, NULL, client_connect_cb, an);
+ 
+ 	g_mutex_unlock (&an->priv->mutex);
+ }
+diff --git a/calendar/gui/dialogs/copy-source-dialog.c b/calendar/gui/dialogs/copy-source-dialog.c
+index 6210587358..0c0fd10649 100644
+--- a/calendar/gui/dialogs/copy-source-dialog.c
++++ b/calendar/gui/dialogs/copy-source-dialog.c
+@@ -111,14 +111,14 @@ copy_source_thread (EAlertSinkThreadJobData *job_data,
+ 	if (!csd)
+ 		goto out;
+ 
+-	client = e_util_open_client_sync (job_data, e_cal_model_get_client_cache (csd->model), csd->extension_name, csd->from_source, cancellable, error);
++	client = e_util_open_client_sync (job_data, e_cal_model_get_client_cache (csd->model), csd->extension_name, csd->from_source, 30, cancellable, error);
+ 	if (client)
+ 		from_client = E_CAL_CLIENT (client);
+ 
+ 	if (!from_client)
+ 		goto out;
+ 
+-	client = e_util_open_client_sync (job_data, e_cal_model_get_client_cache (csd->model), csd->extension_name, csd->to_source, cancellable, error);
++	client = e_util_open_client_sync (job_data, e_cal_model_get_client_cache (csd->model), csd->extension_name, csd->to_source, 30, cancellable, error);
+ 	if (client)
+ 		to_client = E_CAL_CLIENT (client);
+ 
+diff --git a/calendar/gui/e-cal-model.c b/calendar/gui/e-cal-model.c
+index 44253bb013..b4f399ef67 100644
+--- a/calendar/gui/e-cal-model.c
++++ b/calendar/gui/e-cal-model.c
+@@ -1188,7 +1188,7 @@ cal_model_create_component_from_values_thread (EAlertSinkThreadJobData *job_data
+ 	e_alert_sink_thread_job_set_alert_arg_0 (job_data, e_source_get_display_name (source));
+ 
+ 	client = e_client_cache_get_client_sync (client_cache, source,
+-		cal_model_kind_to_extension_name (ccd->model), cancellable, &local_error);
++		cal_model_kind_to_extension_name (ccd->model), (guint32) -1, cancellable, &local_error);
+ 	g_clear_object (&source);
+ 
+ 	if (!client) {
+diff --git a/calendar/gui/e-cal-ops.c b/calendar/gui/e-cal-ops.c
+index cd8224ee15..3d5fc1ad9c 100644
+--- a/calendar/gui/e-cal-ops.c
++++ b/calendar/gui/e-cal-ops.c
+@@ -590,7 +590,7 @@ cal_ops_update_components_thread (EAlertSinkThreadJobData *job_data,
+ 
+ 	e_alert_sink_thread_job_set_alert_arg_0 (job_data, e_source_get_display_name (source));
+ 
+-	client = e_client_cache_get_client_sync (client_cache, source, pcd->extension_name, cancellable, &local_error);
++	client = e_client_cache_get_client_sync (client_cache, source, pcd->extension_name, 30, cancellable, &local_error);
+ 	g_clear_object (&source);
+ 
+ 	if (!client) {
+@@ -1209,7 +1209,7 @@ cal_ops_open_client_sync (EAlertSinkThreadJobData *job_data,
+ 			_("Source with UID '%s' not found"), client_uid);
+ 		e_alert_sink_thread_job_set_alert_arg_0 (job_data, client_uid);
+ 	} else {
+-		client = e_client_cache_get_client_sync (client_cache, source, extension_name, cancellable, error);
++		client = e_client_cache_get_client_sync (client_cache, source, extension_name, 30, cancellable, error);
+ 		if (client)
+ 			cal_client = E_CAL_CLIENT (client);
+ 	}
+@@ -1560,7 +1560,7 @@ cal_ops_new_component_editor_thread (EAlertSinkThreadJobData *job_data,
+ 
+ 		client_cache = e_shell_get_client_cache (ncd->shell);
+ 
+-		client = e_client_cache_get_client_sync (client_cache, ncd->default_source, ncd->extension_name, cancellable, &local_error);
++		client = e_client_cache_get_client_sync (client_cache, ncd->default_source, ncd->extension_name, 30, cancellable, &local_error);
+ 		if (client)
+ 			ncd->client = E_CAL_CLIENT (client);
+ 	}
+@@ -1930,7 +1930,7 @@ transfer_components_thread (EAlertSinkThreadJobData *job_data,
+ 
+ 	client_cache = e_shell_get_client_cache (tcd->shell);
+ 
+-	to_client = e_util_open_client_sync (job_data, client_cache, extension_name, tcd->destination, cancellable, error);
++	to_client = e_util_open_client_sync (job_data, client_cache, extension_name, tcd->destination, 30, cancellable, error);
+ 	if (!to_client)
+ 		goto out;
+ 
+@@ -1948,7 +1948,7 @@ transfer_components_thread (EAlertSinkThreadJobData *job_data,
+ 		ESource *source = key;
+ 		GSList *icalcomps = value;
+ 
+-		from_client = e_util_open_client_sync (job_data, client_cache, extension_name, source, cancellable, error);
++		from_client = e_util_open_client_sync (job_data, client_cache, extension_name, source, 30, cancellable, error);
+ 		if (!from_client) {
+ 			success = FALSE;
+ 			goto out;
+diff --git a/calendar/gui/e-calendar-view.c b/calendar/gui/e-calendar-view.c
+index 22b278f82f..799054e998 100644
+--- a/calendar/gui/e-calendar-view.c
++++ b/calendar/gui/e-calendar-view.c
+@@ -853,7 +853,7 @@ cal_view_paste_clipboard_thread (EAlertSinkThreadJobData *job_data,
+ 	e_alert_sink_thread_job_set_alert_arg_0 (job_data, e_source_get_display_name (source));
+ 	client_cache = e_cal_model_get_client_cache (model);
+ 
+-	e_client = e_client_cache_get_client_sync (client_cache, source, extension_name, cancellable, &local_error);
++	e_client = e_client_cache_get_client_sync (client_cache, source, extension_name, 30, cancellable, &local_error);
+ 	if (!e_client) {
+ 		e_util_propagate_open_source_job_error (job_data, extension_name, local_error, error);
+ 		goto out;
+diff --git a/calendar/importers/icalendar-importer.c b/calendar/importers/icalendar-importer.c
+index fd4c9ad85c..f59aacfd65 100644
+--- a/calendar/importers/icalendar-importer.c
++++ b/calendar/importers/icalendar-importer.c
+@@ -463,7 +463,7 @@ ivcal_import (EImport *ei,
+ 
+ 	e_cal_client_connect (
+ 		g_datalist_get_data (&target->data, "primary-source"),
+-		type, ici->cancellable, ivcal_connect_cb, ici);
++		type, 30, ici->cancellable, ivcal_connect_cb, ici);
+ }
+ 
+ static void
+@@ -901,7 +901,7 @@ open_default_source (ICalIntelligentImporter *ici,
+ 	e_import_status (ici->ei, ici->target, _("Opening calendar"), 0);
+ 
+ 	e_cal_client_connect (
+-		source, source_type, ici->cancellable,
++		source, source_type, 30, ici->cancellable,
+ 		default_client_connect_cb, odsd);
+ 
+ 	g_object_unref (source);
+diff --git a/configure.ac b/configure.ac
+index 49e4547366..55ca4a5492 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -303,6 +303,7 @@ PKG_CHECK_MODULES([EVOLUTION_DATA_SERVER],
+ 	 libebook-1.2 >= eds_minimum_version
+ 	 libecal-1.2 >= eds_minimum_version
+ 	 libedataserver-1.2 >= eds_minimum_version
++	 libedataserverui-1.2 >= eds_minimum_version
+ 	 libebackend-1.2 >= eds_minimum_version])
+ AC_SUBST(EVOLUTION_DATA_SERVER_CFLAGS)
+ AC_SUBST(EVOLUTION_DATA_SERVER_LIBS)
+@@ -1127,9 +1128,8 @@ dnl CERT_UI Flags
+ dnl ******************************
+ dnl
+ dnl Here we want the Mozilla flags to go *before* the other ones,
+-dnl especially the mozilla-nss -I flags to go before the gnutls ones
+-dnl (which are dragged in through libedataserverui), as both
+-dnl gnutls and mozilla-nss have a header called "pkcs12.h" which is
++dnl especially the mozilla-nss -I flags to go before the gnutls ones,
++dnl as both gnutls and mozilla-nss have a header called "pkcs12.h" which is
+ dnl included in smime/lib/e-pkcs12.c. It wants the Mozilla NSS one.
+ dnl
+ CERT_UI_CFLAGS="$MANUAL_NSS_CFLAGS $MOZILLA_NSS_CFLAGS"
+diff --git a/e-util/e-client-cache.c b/e-util/e-client-cache.c
+index 39d670fdee..8a962adaac 100644
+--- a/e-util/e-client-cache.c
++++ b/e-util/e-client-cache.c
+@@ -95,6 +95,7 @@ enum {
+ 	CLIENT_CONNECTED,
+ 	CLIENT_CREATED,
+ 	CLIENT_NOTIFY,
++	ALLOW_AUTH_PROMPT,
+ 	LAST_SIGNAL
+ };
+ 
+@@ -655,21 +656,6 @@ client_cache_cal_connect_cb (GObject *source_object,
+ 	client_data_unref (client_data);
+ }
+ 
+-static void
+-client_cache_source_allow_auth_prompt_done_cb (GObject *source_object,
+-					       GAsyncResult *result,
+-					       gpointer user_data)
+-{
+-	GError *local_error = NULL;
+-
+-	e_source_allow_auth_prompt_finish (E_SOURCE (source_object), result, &local_error);
+-
+-	if (local_error) {
+-		g_debug ("%s: Failed with: %s", G_STRFUNC, local_error->message);
+-		g_clear_error (&local_error);
+-	}
+-}
+-
+ static void
+ client_cache_source_removed_cb (ESourceRegistry *registry,
+                                 ESource *source,
+@@ -695,10 +681,7 @@ client_cache_source_disabled_cb (ESourceRegistry *registry,
+ 	client_cache = g_weak_ref_get (weak_ref);
+ 
+ 	if (client_cache != NULL) {
+-		/* There is not much interest in the result, it just
+-		   makes sure a password prompt will be shown the next
+-		   time it is needed. */
+-		e_source_allow_auth_prompt (source, NULL, client_cache_source_allow_auth_prompt_done_cb, NULL);
++		e_client_cache_emit_allow_auth_prompt (client_cache, source);
+ 
+ 		client_ht_remove (client_cache, source);
+ 		g_object_unref (client_cache);
+@@ -924,7 +907,7 @@ e_client_cache_class_init (EClientCacheClass *class)
+ 		"client-connected",
+ 		G_TYPE_FROM_CLASS (class),
+ 		G_SIGNAL_RUN_FIRST,
+-		0 /* G_STRUCT_OFFSET (EClientCacheClass, client_connected) */,
++		G_STRUCT_OFFSET (EClientCacheClass, client_connected),
+ 		NULL, NULL, NULL,
+ 		G_TYPE_NONE, 1,
+ 		E_TYPE_CLIENT);
+@@ -980,6 +963,25 @@ e_client_cache_class_init (EClientCacheClass *class)
+ 		G_TYPE_NONE, 2,
+ 		E_TYPE_CLIENT,
+ 		G_TYPE_PARAM);
++
++	/**
++	 * EClientCache::allow-auth-prompt:
++	 * @client_cache: an #EClientCache, which sent the signal
++	 * @source: an #ESource
++	 *
++	 * This signal is emitted with e_client_cache_emit_allow_auth_prompt() to let
++	 * any listeners know to enable credentials prompt for the given @source.
++	 *
++	 * Since: 3.14
++	 **/
++	signals[ALLOW_AUTH_PROMPT] = g_signal_new (
++		"allow-auth-prompt",
++		G_TYPE_FROM_CLASS (class),
++		G_SIGNAL_RUN_FIRST,
++		G_STRUCT_OFFSET (EClientCacheClass, allow_auth_prompt),
++		NULL, NULL, NULL,
++		G_TYPE_NONE, 1,
++		E_TYPE_SOURCE);
+ }
+ 
+ static void
+@@ -1094,6 +1096,7 @@ client_cache_get_client_sync_cb (GObject *source_object,
+  * @client_cache: an #EClientCache
+  * @source: an #ESource
+  * @extension_name: an extension name
++ * @wait_for_connected_seconds: timeout, in seconds, to wait for the backend to be fully connected
+  * @cancellable: optional #GCancellable object, or %NULL
+  * @error: return location for a #GError, or %NULL
+  *
+@@ -1118,6 +1121,15 @@ client_cache_get_client_sync_cb (GObject *source_object,
+  * for this function to work.  All other @extension_name values will
+  * result in an error.
+  *
++ * The @wait_for_connected_seconds argument had been added since 3.14,
++ * to let the caller decide how long to wait for the backend to fully
++ * connect to its (possibly remote) data store. This is required due
++ * to a change in the authentication process, which is fully asynchronous
++ * and done on the client side, while not every client is supposed to
++ * response to authentication requests. In case the backend will not connect
++ * within the set interval, then it is opened in an offline mode. A special
++ * value -1 can be used to not wait for the connected state at all.
++ *
+  * If a request for the same @source and @extension_name is already in
+  * progress when this function is called, this request will "piggyback"
+  * on the in-progress request such that they will both succeed or fail
+@@ -1133,6 +1145,7 @@ EClient *
+ e_client_cache_get_client_sync (EClientCache *client_cache,
+                                 ESource *source,
+                                 const gchar *extension_name,
++				guint32 wait_for_connected_seconds,
+                                 GCancellable *cancellable,
+                                 GError **error)
+ {
+@@ -1148,7 +1161,7 @@ e_client_cache_get_client_sync (EClientCache *client_cache,
+ 	g_mutex_lock (&data.mutex);
+ 
+ 	e_client_cache_get_client (
+-		client_cache, source, extension_name,cancellable,
++		client_cache, source, extension_name, wait_for_connected_seconds, cancellable,
+ 		client_cache_get_client_sync_cb, &data);
+ 
+ 	/* This is needed, because e_async_closure_new() pushes its own thread default main context,
+@@ -1176,6 +1189,7 @@ e_client_cache_get_client_sync (EClientCache *client_cache,
+  * @client_cache: an #EClientCache
+  * @source: an #ESource
+  * @extension_name: an extension name
++ * @wait_for_connected_seconds: timeout, in seconds, to wait for the backend to be fully connected
+  * @cancellable: optional #GCancellable object, or %NULL
+  * @callback: a #GAsyncReadyCallback to call when the request is satisfied
+  * @user_data: data to pass to the callback function
+@@ -1201,6 +1215,15 @@ e_client_cache_get_client_sync (EClientCache *client_cache,
+  * for this function to work.  All other @extension_name values will
+  * result in an error.
+  *
++ * The @wait_for_connected_seconds argument had been added since 3.14,
++ * to let the caller decide how long to wait for the backend to fully
++ * connect to its (possibly remote) data store. This is required due
++ * to a change in the authentication process, which is fully asynchronous
++ * and done on the client side, while not every client is supposed to
++ * response to authentication requests. In case the backend will not connect
++ * within the set interval, then it is opened in an offline mode. A special
++ * value -1 can be used to not wait for the connected state at all.
++ *
+  * If a request for the same @source and @extension_name is already in
+  * progress when this function is called, this request will "piggyback"
+  * on the in-progress request such that they will both succeed or fail
+@@ -1214,6 +1237,7 @@ void
+ e_client_cache_get_client (EClientCache *client_cache,
+                            ESource *source,
+                            const gchar *extension_name,
++			   guint32 wait_for_connected_seconds,
+                            GCancellable *cancellable,
+                            GAsyncReadyCallback callback,
+                            gpointer user_data)
+@@ -1276,7 +1300,7 @@ e_client_cache_get_client (EClientCache *client_cache,
+ 
+ 	if (g_str_equal (extension_name, E_SOURCE_EXTENSION_ADDRESS_BOOK)) {
+ 		e_book_client_connect (
+-			source, cancellable,
++			source, wait_for_connected_seconds, cancellable,
+ 			client_cache_book_connect_cb,
+ 			client_data_ref (client_data));
+ 		goto exit;
+@@ -1284,7 +1308,7 @@ e_client_cache_get_client (EClientCache *client_cache,
+ 
+ 	if (g_str_equal (extension_name, E_SOURCE_EXTENSION_CALENDAR)) {
+ 		e_cal_client_connect (
+-			source, E_CAL_CLIENT_SOURCE_TYPE_EVENTS,
++			source, E_CAL_CLIENT_SOURCE_TYPE_EVENTS, wait_for_connected_seconds,
+ 			cancellable, client_cache_cal_connect_cb,
+ 			client_data_ref (client_data));
+ 		goto exit;
+@@ -1292,7 +1316,7 @@ e_client_cache_get_client (EClientCache *client_cache,
+ 
+ 	if (g_str_equal (extension_name, E_SOURCE_EXTENSION_MEMO_LIST)) {
+ 		e_cal_client_connect (
+-			source, E_CAL_CLIENT_SOURCE_TYPE_MEMOS,
++			source, E_CAL_CLIENT_SOURCE_TYPE_MEMOS, wait_for_connected_seconds,
+ 			cancellable, client_cache_cal_connect_cb,
+ 			client_data_ref (client_data));
+ 		goto exit;
+@@ -1300,7 +1324,7 @@ e_client_cache_get_client (EClientCache *client_cache,
+ 
+ 	if (g_str_equal (extension_name, E_SOURCE_EXTENSION_TASK_LIST)) {
+ 		e_cal_client_connect (
+-			source, E_CAL_CLIENT_SOURCE_TYPE_TASKS,
++			source, E_CAL_CLIENT_SOURCE_TYPE_TASKS, wait_for_connected_seconds,
+ 			cancellable, client_cache_cal_connect_cb,
+ 			client_data_ref (client_data));
+ 		goto exit;
+@@ -1429,3 +1453,22 @@ e_client_cache_is_backend_dead (EClientCache *client_cache,
+ 	return dead_backend;
+ }
+ 
++/**
++ * e_client_cache_emit_allow_auth_prompt:
++ * @client_cache: an #EClientCache
++ * @source: an #ESource
++ *
++ * Emits 'allow-auth-prompt' on @client_cache for @source. This lets
++ * any listeners know to enable credentials prompt for this @source.
++ *
++ * Since: 3.14
++ **/
++void
++e_client_cache_emit_allow_auth_prompt (EClientCache *client_cache,
++				       ESource *source)
++{
++	g_return_if_fail (E_IS_CLIENT_CACHE (client_cache));
++	g_return_if_fail (E_IS_SOURCE (source));
++
++	g_signal_emit (client_cache, signals[ALLOW_AUTH_PROMPT], 0, source);
++}
+diff --git a/e-util/e-client-cache.h b/e-util/e-client-cache.h
+index c3c45ed261..71d0fd0473 100644
+--- a/e-util/e-client-cache.h
++++ b/e-util/e-client-cache.h
+@@ -76,9 +76,10 @@ struct _EClientCacheClass {
+ 						 GParamSpec *pspec);
+ 	void		(*client_created)	(EClientCache *client_cache,
+ 						 EClient *client);
+-	/* Do not break ABI right now
+ 	void		(*client_connected)	(EClientCache *client_cache,
+-						 EClient *client); */
++						 EClient *client);
++	void		(*allow_auth_prompt)	(EClientCache *client_cache,
++						 ESource *source);
+ };
+ 
+ GType		e_client_cache_get_type		(void) G_GNUC_CONST;
+@@ -88,11 +89,13 @@ ESourceRegistry *
+ EClient *	e_client_cache_get_client_sync	(EClientCache *client_cache,
+ 						 ESource *source,
+ 						 const gchar *extension_name,
++						 guint32 wait_for_connected_seconds,
+ 						 GCancellable *cancellable,
+ 						 GError **error);
+ void		e_client_cache_get_client	(EClientCache *client_cache,
+ 						 ESource *source,
+ 						 const gchar *extension_name,
++						 guint32 wait_for_connected_seconds,
+ 						 GCancellable *cancellable,
+ 						 GAsyncReadyCallback callback,
+ 						 gpointer user_data);
+@@ -107,6 +110,9 @@ EClient *	e_client_cache_ref_cached_client
+ gboolean	e_client_cache_is_backend_dead	(EClientCache *client_cache,
+ 						 ESource *source,
+ 						 const gchar *extension_name);
++void		e_client_cache_emit_allow_auth_prompt
++						(EClientCache *client_cache,
++						 ESource *source);
+ 
+ G_END_DECLS
+ 
+diff --git a/e-util/e-client-combo-box.c b/e-util/e-client-combo-box.c
+index 0845fd0c28..3b98f1bfe1 100644
+--- a/e-util/e-client-combo-box.c
++++ b/e-util/e-client-combo-box.c
+@@ -372,7 +372,7 @@ e_client_combo_box_get_client (EClientComboBox *combo_box,
+ 
+ 	e_client_cache_get_client (
+ 		client_cache, source,
+-		extension_name, cancellable,
++		extension_name, 30, cancellable,
+ 		client_combo_box_get_client_done_cb,
+ 		g_object_ref (simple));
+ 
+diff --git a/e-util/e-client-selector.c b/e-util/e-client-selector.c
+index 6b65735200..6972b2f75e 100644
+--- a/e-util/e-client-selector.c
++++ b/e-util/e-client-selector.c
+@@ -516,6 +516,7 @@ e_client_selector_ref_client_cache (EClientSelector *selector)
+  * @selector: an #ESourceSelector
+  * @source: an #ESource
+  * @call_allow_auth_prompt: whether call allow-auth-prompt on the source first
++ * @wait_for_connected_seconds: timeout, in seconds, to wait for the backend to be fully connected
+  * @cancellable: optional #GCancellable object, or %NULL
+  * @error: return location for a #GError, or %NULL
+  *
+@@ -531,6 +532,15 @@ e_client_selector_ref_client_cache (EClientSelector *selector)
+  * "piggyback" on the in-progress request such that they will both succeed
+  * or fail simultaneously.
+  *
++ * The @wait_for_connected_seconds argument had been added since 3.14,
++ * to let the caller decide how long to wait for the backend to fully
++ * connect to its (possibly remote) data store. This is required due
++ * to a change in the authentication process, which is fully asynchronous
++ * and done on the client side, while not every client is supposed to
++ * response to authentication requests. In case the backend will not connect
++ * within the set interval, then it is opened in an offline mode. A special
++ * value -1 can be used to not wait for the connected state at all.
++ *
+  * Unreference the returned #EClient with g_object_unref() when finished
+  * with it.  If an error occurs, the function will set @error and return
+  * %NULL.
+@@ -541,6 +551,7 @@ EClient *
+ e_client_selector_get_client_sync (EClientSelector *selector,
+                                    ESource *source,
+ 				   gboolean call_allow_auth_prompt,
++				   guint32 wait_for_connected_seconds,
+                                    GCancellable *cancellable,
+                                    GError **error)
+ {
+@@ -551,18 +562,16 @@ e_client_selector_get_client_sync (EClientSelector *selector,
+ 	g_return_val_if_fail (E_IS_CLIENT_SELECTOR (selector), NULL);
+ 	g_return_val_if_fail (E_IS_SOURCE (source), NULL);
+ 
+-	if (call_allow_auth_prompt) {
+-		if (!e_source_allow_auth_prompt_sync (source, cancellable, error))
+-			return NULL;
+-	}
+-
+ 	extension_name = e_source_selector_get_extension_name (E_SOURCE_SELECTOR (selector));
+ 
+ 	client_cache = e_client_selector_ref_client_cache (selector);
+ 
++	if (call_allow_auth_prompt)
++		e_client_cache_emit_allow_auth_prompt (client_cache, source);
++
+ 	client = e_client_cache_get_client_sync (
+ 		client_cache, source,
+-		extension_name, cancellable, error);
++		extension_name, wait_for_connected_seconds, cancellable, error);
+ 
+ 	g_object_unref (client_cache);
+ 
+@@ -604,63 +613,12 @@ client_selector_get_client_done_cb (GObject *source_object,
+ 	g_object_unref (simple);
+ }
+ 
+-typedef struct _AllowAuthPromptData
+-{
+-	EClientSelector *selector;
+-	GSimpleAsyncResult *simple;
+-	GCancellable *cancellable;
+-} AllowAuthPromptData;
+-
+-static void
+-client_selector_allow_auth_prompt_done_cb (GObject *source_object,
+-					   GAsyncResult *result,
+-					   gpointer user_data)
+-{
+-	AllowAuthPromptData *data;
+-	ESource *source;
+-	GError *local_error = NULL;
+-
+-	g_return_if_fail (E_IS_SOURCE (source_object));
+-	g_return_if_fail (user_data != NULL);
+-
+-	data = user_data;
+-	source = E_SOURCE (source_object);
+-
+-	e_source_allow_auth_prompt_finish (source, result, &local_error);
+-
+-	if (local_error) {
+-		g_simple_async_result_take_error (data->simple, local_error);
+-		g_simple_async_result_complete (data->simple);
+-		local_error = NULL;
+-	} else {
+-		EClientCache *client_cache;
+-		const gchar *extension_name;
+-
+-		extension_name = e_source_selector_get_extension_name (
+-			E_SOURCE_SELECTOR (data->selector));
+-
+-		client_cache = e_client_selector_ref_client_cache (data->selector);
+-
+-		e_client_cache_get_client (
+-			client_cache, source,
+-			extension_name, data->cancellable,
+-			client_selector_get_client_done_cb,
+-			g_object_ref (data->simple));
+-
+-		g_object_unref (client_cache);
+-	}
+-
+-	g_clear_object (&data->selector);
+-	g_clear_object (&data->simple);
+-	g_clear_object (&data->cancellable);
+-	g_free (data);
+-}
+-
+ /**
+  * e_client_selector_get_client:
+  * @selector: an #ESourceSelector
+  * @source: an #ESource
+  * @call_allow_auth_prompt: whether call allow-auth-prompt on the source first
++ * @wait_for_connected_seconds: timeout, in seconds, to wait for the backend to be fully connected
+  * @cancellable: optional #GCancellable object, or %NULL
+  * @callback: a #GAsyncReadyCallback to call when the request is satisfied
+  * @user_data: data to pass to the callback function
+@@ -677,6 +635,15 @@ client_selector_allow_auth_prompt_done_cb (GObject *source_object,
+  * "piggyback" on the in-progress request such that they will both succeed
+  * or fail simultaneously.
+  *
++ * The @wait_for_connected_seconds argument had been added since 3.14,
++ * to let the caller decide how long to wait for the backend to fully
++ * connect to its (possibly remote) data store. This is required due
++ * to a change in the authentication process, which is fully asynchronous
++ * and done on the client side, while not every client is supposed to
++ * response to authentication requests. In case the backend will not connect
++ * within the set interval, then it is opened in an offline mode. A special
++ * value -1 can be used to not wait for the connected state at all.
++ *
+  * When the operation is finished, @callback will be called.  You can
+  * then call e_client_selector_get_client_finish() to get the result of
+  * the operation.
+@@ -685,11 +652,14 @@ void
+ e_client_selector_get_client (EClientSelector *selector,
+                               ESource *source,
+ 			      gboolean call_allow_auth_prompt,
++			      guint32 wait_for_connected_seconds,
+                               GCancellable *cancellable,
+                               GAsyncReadyCallback callback,
+                               gpointer user_data)
+ {
+ 	GSimpleAsyncResult *simple;
++	EClientCache *client_cache;
++	const gchar *extension_name;
+ 
+ 	g_return_if_fail (E_IS_CLIENT_SELECTOR (selector));
+ 	g_return_if_fail (E_IS_SOURCE (source));
+@@ -700,34 +670,21 @@ e_client_selector_get_client (EClientSelector *selector,
+ 
+ 	g_simple_async_result_set_check_cancellable (simple, cancellable);
+ 
+-	if (call_allow_auth_prompt) {
+-		AllowAuthPromptData *data;
++	extension_name = e_source_selector_get_extension_name (
++		E_SOURCE_SELECTOR (selector));
+ 
+-		data = g_new0 (AllowAuthPromptData, 1);
+-		data->selector = g_object_ref (selector);
+-		data->simple = g_object_ref (simple);
+-		data->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
++	client_cache = e_client_selector_ref_client_cache (selector);
+ 
+-		e_source_allow_auth_prompt (source, cancellable,
+-			client_selector_allow_auth_prompt_done_cb, data);
+-	} else {
+-		EClientCache *client_cache;
+-		const gchar *extension_name;
++	if (call_allow_auth_prompt)
++		e_client_cache_emit_allow_auth_prompt (client_cache, source);
+ 
+-		extension_name = e_source_selector_get_extension_name (
+-			E_SOURCE_SELECTOR (selector));
+-
+-		client_cache = e_client_selector_ref_client_cache (selector);
+-
+-		e_client_cache_get_client (
+-			client_cache, source,
+-			extension_name, cancellable,
+-			client_selector_get_client_done_cb,
+-			g_object_ref (simple));
+-
+-		g_object_unref (client_cache);
+-	}
++	e_client_cache_get_client (
++		client_cache, source,
++		extension_name, wait_for_connected_seconds, cancellable,
++		client_selector_get_client_done_cb,
++		g_object_ref (simple));
+ 
++	g_object_unref (client_cache);
+ 	g_object_unref (simple);
+ }
+ 
+diff --git a/e-util/e-client-selector.h b/e-util/e-client-selector.h
+index c8d3e7108e..66556c30bd 100644
+--- a/e-util/e-client-selector.h
++++ b/e-util/e-client-selector.h
+@@ -68,11 +68,13 @@ EClient *	e_client_selector_get_client_sync
+ 						(EClientSelector *selector,
+ 						 ESource *source,
+ 						 gboolean call_allow_auth_prompt,
++						 guint32 wait_for_connected_seconds,
+ 						 GCancellable *cancellable,
+ 						 GError **error);
+ void		e_client_selector_get_client	(EClientSelector *selector,
+ 						 ESource *source,
+ 						 gboolean call_allow_auth_prompt,
++						 guint32 wait_for_connected_seconds,
+ 						 GCancellable *cancellable,
+ 						 GAsyncReadyCallback callback,
+ 						 gpointer user_data);
+diff --git a/e-util/e-misc-utils.c b/e-util/e-misc-utils.c
+index 8ebcb21b75..72a610ba98 100644
+--- a/e-util/e-misc-utils.c
++++ b/e-util/e-misc-utils.c
+@@ -2308,73 +2308,6 @@ e_util_dup_searchable_categories (void)
+ 
+ 	return g_list_reverse (res);
+ }
+-
+-gboolean
+-e_util_allow_auth_prompt_and_refresh_client_sync (EClient *client,
+-						  GCancellable *cancellable,
+-						  GError **error)
+-{
+-	g_return_val_if_fail (E_IS_CLIENT (client), FALSE);
+-
+-	if (!e_source_allow_auth_prompt_sync (e_client_get_source (client), cancellable, error))
+-		return FALSE;
+-
+-	return e_client_refresh_sync (client, cancellable, error);
+-}
+-
+-static void
+-util_allow_auth_prompt_and_refresh_client_thread (GTask *task,
+-						  gpointer source_object,
+-						  gpointer task_data,
+-						  GCancellable *cancellable)
+-{
+-	gboolean success;
+-	GError *local_error = NULL;
+-
+-	success = e_util_allow_auth_prompt_and_refresh_client_sync (
+-		E_CLIENT (source_object),
+-		cancellable, &local_error);
+-
+-	if (local_error != NULL) {
+-		g_task_return_error (task, local_error);
+-	} else {
+-		g_task_return_boolean (task, success);
+-	}
+-}
+-
+-void
+-e_util_allow_auth_prompt_and_refresh_client (EClient *client,
+-					     GCancellable *cancellable,
+-					     GAsyncReadyCallback callback,
+-					     gpointer user_data)
+-{
+-	GTask *task;
+-
+-	g_return_if_fail (E_IS_CLIENT (client));
+-
+-	task = g_task_new (client, cancellable, callback, user_data);
+-	g_task_set_source_tag (task, e_util_allow_auth_prompt_and_refresh_client);
+-
+-	g_task_run_in_thread (task, util_allow_auth_prompt_and_refresh_client_thread);
+-
+-	g_object_unref (task);
+-}
+-
+-gboolean
+-e_util_allow_auth_prompt_and_refresh_client_finish (EClient *client,
+-						    GAsyncResult *result,
+-						    GError **error)
+-{
+-	g_return_val_if_fail (E_IS_CLIENT (client), FALSE);
+-	g_return_val_if_fail (g_task_is_valid (result, client), FALSE);
+-
+-	g_return_val_if_fail (
+-		g_async_result_is_tagged (
+-		result, e_util_allow_auth_prompt_and_refresh_client), FALSE);
+-
+-	return g_task_propagate_boolean (G_TASK (result), error);
+-}
+-
+ /**
+  * e_util_get_open_source_job_info:
+  * @extension_name: an extension name of the source
+@@ -2485,6 +2418,7 @@ e_util_open_client_sync (EAlertSinkThreadJobData *job_data,
+ 			 EClientCache *client_cache,
+ 			 const gchar *extension_name,
+ 			 ESource *source,
++			 guint32 wait_for_connected_seconds,
+ 			 GCancellable *cancellable,
+ 			 GError **error)
+ {
+@@ -2497,7 +2431,7 @@ e_util_open_client_sync (EAlertSinkThreadJobData *job_data,
+ 
+ 	camel_operation_push_message (cancellable, "%s", description);
+ 
+-	client = e_client_cache_get_client_sync (client_cache, source, extension_name, cancellable, &local_error);
++	client = e_client_cache_get_client_sync (client_cache, source, extension_name, wait_for_connected_seconds, cancellable, &local_error);
+ 
+ 	camel_operation_pop_message (cancellable);
+ 
+diff --git a/e-util/e-misc-utils.h b/e-util/e-misc-utils.h
+index e4c5c1aa88..3fce1d0bd1 100644
+--- a/e-util/e-misc-utils.h
++++ b/e-util/e-misc-utils.h
+@@ -194,20 +194,6 @@ GSList *	e_util_get_category_filter_options
+ 						(void);
+ GList *		e_util_dup_searchable_categories (void);
+ 
+-gboolean	e_util_allow_auth_prompt_and_refresh_client_sync
+-						(EClient *client,
+-						 GCancellable *cancellable,
+-						 GError **error);
+-void		e_util_allow_auth_prompt_and_refresh_client
+-						(EClient *client,
+-						 GCancellable *cancellable,
+-						 GAsyncReadyCallback callback,
+-						 gpointer user_data);
+-gboolean	e_util_allow_auth_prompt_and_refresh_client_finish
+-						(EClient *client,
+-						 GAsyncResult *result,
+-						 GError **error);
+-
+ gboolean	e_util_get_open_source_job_info	(const gchar *extension_name,
+ 						 const gchar *source_display_name,
+ 						 gchar **description,
+@@ -224,6 +210,7 @@ EClient *	e_util_open_client_sync		(struct _EAlertSinkThreadJobData *job_data,
+ 						 struct _EClientCache *client_cache,
+ 						 const gchar *extension_name,
+ 						 ESource *source,
++						 guint32 wait_for_connected_seconds,
+ 						 GCancellable *cancellable,
+ 						 GError **error);
+ 
+diff --git a/e-util/e-name-selector-entry.c b/e-util/e-name-selector-entry.c
+index d1e5f7ae57..0b53b35419 100644
+--- a/e-util/e-name-selector-entry.c
++++ b/e-util/e-name-selector-entry.c
+@@ -2459,7 +2459,7 @@ setup_default_contact_store (ENameSelectorEntry *name_selector_entry)
+ 
+ 		e_client_cache_get_client (
+ 			client_cache, source,
+-			E_SOURCE_EXTENSION_ADDRESS_BOOK,
++			E_SOURCE_EXTENSION_ADDRESS_BOOK, (guint32) -1,
+ 			cancellable,
+ 			name_selector_entry_get_client_cb,
+ 			g_object_ref (contact_store));
+diff --git a/e-util/e-name-selector.c b/e-util/e-name-selector.c
+index cd0eb017db..53f9b36891 100644
+--- a/e-util/e-name-selector.c
++++ b/e-util/e-name-selector.c
+@@ -199,7 +199,7 @@ e_name_selector_load_books (ENameSelector *name_selector)
+ 		 *       concurrent operations like this. */
+ 		e_client_cache_get_client (
+ 			client_cache, source,
+-			E_SOURCE_EXTENSION_ADDRESS_BOOK,
++			E_SOURCE_EXTENSION_ADDRESS_BOOK, (guint32) -1,
+ 			name_selector->priv->cancellable,
+ 			name_selector_get_client_cb,
+ 			g_object_ref (name_selector));
+diff --git a/e-util/test-source-selector.c b/e-util/test-source-selector.c
+index 8b0914244a..8c081630f9 100644
+--- a/e-util/test-source-selector.c
++++ b/e-util/test-source-selector.c
+@@ -137,10 +137,10 @@ open_selected_clicked_cb (GtkWidget *button,
+ 
+ 		if (source_type == E_CAL_CLIENT_SOURCE_TYPE_LAST)
+ 			client = e_book_client_connect_sync (
+-				source, NULL, &local_error);
++				source, (guint32) -1, NULL, &local_error);
+ 		else
+ 			client = e_cal_client_connect_sync (
+-				source, source_type, NULL, &local_error);
++				source, source_type, (guint32) -1, NULL, &local_error);
+ 
+ 		if (client != NULL) {
+ 			g_hash_table_insert (
+diff --git a/evolution-shell.pc.in b/evolution-shell.pc.in
+index 9954edcbcd..0127017e46 100644
+--- a/evolution-shell.pc.in
++++ b/evolution-shell.pc.in
+@@ -18,7 +18,7 @@ execversion=@BASE_VERSION@
+ Name: evolution-shell
+ Description: libraries needed for Evolution shell components
+ Version: @VERSION@
+-Requires: gtk+-3.0 libebackend-1.2 webkitgtk-3.0
++Requires: gtk+-3.0 libebackend-1.2 libedataserver-1.2 libedataserverui-1.2 webkitgtk-3.0
+ Requires.private: @GNOME_DESKTOP_DEPENDENCY@
+ Libs: -L${privlibdir} -levolution-shell -levolution-util -Wl,-R${privlibdir}
+ Cflags: -I${privincludedir}
+diff --git a/libemail-engine/Makefile.am b/libemail-engine/Makefile.am
+index 4dd1bd4ae5..c8ecb91e7c 100644
+--- a/libemail-engine/Makefile.am
++++ b/libemail-engine/Makefile.am
+@@ -33,7 +33,6 @@ libmailengineinclude_HEADERS =  \
+ 	libemail-engine.h \
+ 	camel-null-store.h \
+ 	camel-sasl-xoauth2.h \
+-	e-mail-authenticator.h \
+ 	e-mail-engine-enums.h \
+ 	e-mail-engine-enumtypes.h \
+ 	e-mail-folder-utils.h \
+@@ -57,7 +56,6 @@ libemail_engine_la_SOURCES =  \
+ 	$(libmailengineinclude_HEADERS) \
+ 	camel-null-store.c \
+ 	camel-sasl-xoauth2.c \
+-	e-mail-authenticator.c \
+ 	e-mail-engine-enumtypes.c \
+ 	e-mail-folder-utils.c \
+ 	e-mail-junk-filter.c \
+diff --git a/libemail-engine/e-mail-authenticator.c b/libemail-engine/e-mail-authenticator.c
+deleted file mode 100644
+index 095bebce15..0000000000
+--- a/libemail-engine/e-mail-authenticator.c
++++ /dev/null
+@@ -1,266 +0,0 @@
+-/*
+- * e-mail-authenticator.c
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU Lesser General Public License as published by
+- * the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+- *
+- */
+-
+-#include "e-mail-authenticator.h"
+-
+-#include <config.h>
+-#include <glib/gi18n-lib.h>
+-
+-#define E_MAIL_AUTHENTICATOR_GET_PRIVATE(obj) \
+-	(G_TYPE_INSTANCE_GET_PRIVATE \
+-	((obj), E_TYPE_MAIL_AUTHENTICATOR, EMailAuthenticatorPrivate))
+-
+-struct _EMailAuthenticatorPrivate {
+-	CamelService *service;
+-	gchar *mechanism;
+-};
+-
+-enum {
+-	PROP_0,
+-	PROP_MECHANISM,
+-	PROP_SERVICE
+-};
+-
+-/* Forward Declarations */
+-static void	e_mail_authenticator_interface_init
+-				(ESourceAuthenticatorInterface *iface);
+-
+-G_DEFINE_TYPE_WITH_CODE (
+-	EMailAuthenticator,
+-	e_mail_authenticator,
+-	G_TYPE_OBJECT,
+-	G_IMPLEMENT_INTERFACE (
+-		E_TYPE_SOURCE_AUTHENTICATOR,
+-		e_mail_authenticator_interface_init))
+-
+-static void
+-mail_authenticator_set_mechanism (EMailAuthenticator *auth,
+-                                  const gchar *mechanism)
+-{
+-	g_return_if_fail (auth->priv->mechanism == NULL);
+-
+-	auth->priv->mechanism = g_strdup (mechanism);
+-}
+-
+-static void
+-mail_authenticator_set_service (EMailAuthenticator *auth,
+-                                CamelService *service)
+-{
+-	g_return_if_fail (CAMEL_IS_SERVICE (service));
+-	g_return_if_fail (auth->priv->service == NULL);
+-
+-	auth->priv->service = g_object_ref (service);
+-}
+-
+-static void
+-mail_authenticator_set_property (GObject *object,
+-                                 guint property_id,
+-                                 const GValue *value,
+-                                 GParamSpec *pspec)
+-{
+-	switch (property_id) {
+-		case PROP_MECHANISM:
+-			mail_authenticator_set_mechanism (
+-				E_MAIL_AUTHENTICATOR (object),
+-				g_value_get_string (value));
+-			return;
+-
+-		case PROP_SERVICE:
+-			mail_authenticator_set_service (
+-				E_MAIL_AUTHENTICATOR (object),
+-				g_value_get_object (value));
+-			return;
+-	}
+-
+-	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+-}
+-
+-static void
+-mail_authenticator_get_property (GObject *object,
+-                                 guint property_id,
+-                                 GValue *value,
+-                                 GParamSpec *pspec)
+-{
+-	switch (property_id) {
+-		case PROP_MECHANISM:
+-			g_value_set_string (
+-				value,
+-				e_mail_authenticator_get_mechanism (
+-				E_MAIL_AUTHENTICATOR (object)));
+-			return;
+-
+-		case PROP_SERVICE:
+-			g_value_set_object (
+-				value,
+-				e_mail_authenticator_get_service (
+-				E_MAIL_AUTHENTICATOR (object)));
+-			return;
+-	}
+-
+-	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+-}
+-
+-static void
+-mail_authenticator_dispose (GObject *object)
+-{
+-	EMailAuthenticatorPrivate *priv;
+-
+-	priv = E_MAIL_AUTHENTICATOR_GET_PRIVATE (object);
+-
+-	if (priv->service != NULL) {
+-		g_object_unref (priv->service);
+-		priv->service = NULL;
+-	}
+-
+-	/* Chain up to parent's dispose() method. */
+-	G_OBJECT_CLASS (e_mail_authenticator_parent_class)->dispose (object);
+-}
+-
+-static void
+-mail_authenticator_finalize (GObject *object)
+-{
+-	EMailAuthenticatorPrivate *priv;
+-
+-	priv = E_MAIL_AUTHENTICATOR_GET_PRIVATE (object);
+-
+-	g_free (priv->mechanism);
+-
+-	/* Chain up to parent's finalize() method. */
+-	G_OBJECT_CLASS (e_mail_authenticator_parent_class)->finalize (object);
+-}
+-
+-static ESourceAuthenticationResult
+-mail_authenticator_try_password_sync (ESourceAuthenticator *auth,
+-                                      const GString *password,
+-                                      GCancellable *cancellable,
+-                                      GError **error)
+-{
+-	CamelService *service;
+-	EMailAuthenticator *mail_auth;
+-	CamelAuthenticationResult camel_result;
+-	ESourceAuthenticationResult source_result;
+-	const gchar *mechanism;
+-
+-	mail_auth = E_MAIL_AUTHENTICATOR (auth);
+-	service = e_mail_authenticator_get_service (mail_auth);
+-	mechanism = e_mail_authenticator_get_mechanism (mail_auth);
+-
+-	camel_service_set_password (service, password->str);
+-
+-	camel_result = camel_service_authenticate_sync (
+-		service, mechanism, cancellable, error);
+-
+-	switch (camel_result) {
+-		case CAMEL_AUTHENTICATION_ERROR:
+-			source_result = E_SOURCE_AUTHENTICATION_ERROR;
+-			break;
+-		case CAMEL_AUTHENTICATION_ACCEPTED:
+-			source_result = E_SOURCE_AUTHENTICATION_ACCEPTED;
+-			break;
+-		case CAMEL_AUTHENTICATION_REJECTED:
+-			source_result = E_SOURCE_AUTHENTICATION_REJECTED;
+-			break;
+-		default:
+-			g_set_error (
+-				error, CAMEL_SERVICE_ERROR,
+-				CAMEL_SERVICE_ERROR_CANT_AUTHENTICATE,
+-				_("Invalid authentication result code (%d)"),
+-				camel_result);
+-			source_result = E_SOURCE_AUTHENTICATION_ERROR;
+-			break;
+-	}
+-
+-	return source_result;
+-}
+-
+-static void
+-e_mail_authenticator_class_init (EMailAuthenticatorClass *class)
+-{
+-	GObjectClass *object_class;
+-
+-	g_type_class_add_private (class, sizeof (EMailAuthenticatorPrivate));
+-
+-	object_class = G_OBJECT_CLASS (class);
+-	object_class->set_property = mail_authenticator_set_property;
+-	object_class->get_property = mail_authenticator_get_property;
+-	object_class->dispose = mail_authenticator_dispose;
+-	object_class->finalize = mail_authenticator_finalize;
+-
+-	g_object_class_install_property (
+-		object_class,
+-		PROP_MECHANISM,
+-		g_param_spec_string (
+-			"mechanism",
+-			"Mechanism",
+-			"Authentication mechanism",
+-			NULL,
+-			G_PARAM_READWRITE |
+-			G_PARAM_CONSTRUCT_ONLY |
+-			G_PARAM_STATIC_STRINGS));
+-
+-	g_object_class_install_property (
+-		object_class,
+-		PROP_SERVICE,
+-		g_param_spec_object (
+-			"service",
+-			"Service",
+-			"The CamelService to authenticate",
+-			CAMEL_TYPE_SERVICE,
+-			G_PARAM_READWRITE |
+-			G_PARAM_CONSTRUCT_ONLY |
+-			G_PARAM_STATIC_STRINGS));
+-}
+-
+-static void
+-e_mail_authenticator_interface_init (ESourceAuthenticatorInterface *iface)
+-{
+-	iface->try_password_sync = mail_authenticator_try_password_sync;
+-}
+-
+-static void
+-e_mail_authenticator_init (EMailAuthenticator *auth)
+-{
+-	auth->priv = E_MAIL_AUTHENTICATOR_GET_PRIVATE (auth);
+-}
+-
+-ESourceAuthenticator *
+-e_mail_authenticator_new (CamelService *service,
+-                          const gchar *mechanism)
+-{
+-	g_return_val_if_fail (CAMEL_IS_SERVICE (service), NULL);
+-
+-	return g_object_new (
+-		E_TYPE_MAIL_AUTHENTICATOR,
+-		"service", service, "mechanism", mechanism, NULL);
+-}
+-
+-CamelService *
+-e_mail_authenticator_get_service (EMailAuthenticator *auth)
+-{
+-	g_return_val_if_fail (E_IS_MAIL_AUTHENTICATOR (auth), NULL);
+-
+-	return auth->priv->service;
+-}
+-
+-const gchar *
+-e_mail_authenticator_get_mechanism (EMailAuthenticator *auth)
+-{
+-	g_return_val_if_fail (E_IS_MAIL_AUTHENTICATOR (auth), NULL);
+-
+-	return auth->priv->mechanism;
+-}
+-
+diff --git a/libemail-engine/e-mail-authenticator.h b/libemail-engine/e-mail-authenticator.h
+deleted file mode 100644
+index 7addbe5825..0000000000
+--- a/libemail-engine/e-mail-authenticator.h
++++ /dev/null
+@@ -1,79 +0,0 @@
+-/*
+- * e-mail-authenticator.h
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU Lesser General Public License as published by
+- * the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+- *
+- */
+-
+-#if !defined (__LIBEMAIL_ENGINE_H_INSIDE__) && !defined (LIBEMAIL_ENGINE_COMPILATION)
+-#error "Only <libemail-engine/libemail-engine.h> should be included directly."
+-#endif
+-
+-#ifndef E_MAIL_AUTHENTICATOR_H
+-#define E_MAIL_AUTHENTICATOR_H
+-
+-#include <camel/camel.h>
+-#include <libedataserver/libedataserver.h>
+-
+-/* Standard GObject macros */
+-#define E_TYPE_MAIL_AUTHENTICATOR \
+-	(e_mail_authenticator_get_type ())
+-#define E_MAIL_AUTHENTICATOR(obj) \
+-	(G_TYPE_CHECK_INSTANCE_CAST \
+-	((obj), E_TYPE_MAIL_AUTHENTICATOR, EMailAuthenticator))
+-#define E_MAIL_AUTHENTICATOR_CLASS(cls) \
+-	(G_TYPE_CHECK_CLASS_CAST \
+-	((cls), E_TYPE_MAIL_AUTHENTICATOR, EMailAuthenticatorClass))
+-#define E_IS_MAIL_AUTHENTICATOR(obj) \
+-	(G_TYPE_CHECK_INSTANCE_TYPE \
+-	((obj), E_TYPE_MAIL_AUTHENTICATOR))
+-#define E_IS_MAIL_AUTHENTICATOR_CLASS(cls) \
+-	(G_TYPE_CHECK_CLASS_TYPE \
+-	((cls), E_TYPE_MAIL_AUTHENTICATOR))
+-#define E_MAIL_AUTHENTICATOR_GET_CLASS(obj) \
+-	(G_TYPE_INSTANCE_GET_CLASS \
+-	((obj), E_TYPE_MAIL_AUTHENTICATOR, EMailAuthenticatorClass))
+-
+-G_BEGIN_DECLS
+-
+-typedef struct _EMailAuthenticator EMailAuthenticator;
+-typedef struct _EMailAuthenticatorClass EMailAuthenticatorClass;
+-typedef struct _EMailAuthenticatorPrivate EMailAuthenticatorPrivate;
+-
+-/**
+- * EMailAuthenticator:
+- *
+- * Contains only private data that should be read and manipulated using the
+- * functions below.
+- **/
+-struct _EMailAuthenticator {
+-	GObject parent;
+-	EMailAuthenticatorPrivate *priv;
+-};
+-
+-struct _EMailAuthenticatorClass {
+-	GObjectClass parent_class;
+-};
+-
+-GType		e_mail_authenticator_get_type	(void);
+-ESourceAuthenticator *
+-		e_mail_authenticator_new	(CamelService *service,
+-						 const gchar *mechanism);
+-CamelService *	e_mail_authenticator_get_service
+-						(EMailAuthenticator *auth);
+-const gchar *	e_mail_authenticator_get_mechanism
+-						(EMailAuthenticator *auth);
+-
+-G_END_DECLS
+-
+-#endif /* E_MAIL_AUTHENTICATOR_H */
+diff --git a/libemail-engine/e-mail-session-utils.c b/libemail-engine/e-mail-session-utils.c
+index 8f4630d439..8a8e96cd71 100644
+--- a/libemail-engine/e-mail-session-utils.c
++++ b/libemail-engine/e-mail-session-utils.c
+@@ -559,14 +559,8 @@ mail_session_send_to_thread (GSimpleAsyncResult *simple,
+ 		g_object_unref (session);
+ 
+ 		if (source) {
+-			e_source_allow_auth_prompt_sync (source, cancellable, &error);
++			e_mail_session_emit_allow_auth_prompt (session, source);
+ 			g_object_unref (source);
+-
+-			if (error) {
+-				g_simple_async_result_take_error (simple, error);
+-				e_mail_session_unmark_service_used (session, context->transport);
+-				return;
+-			}
+ 		}
+ 
+ 		did_connect = TRUE;
+diff --git a/libemail-engine/e-mail-session.c b/libemail-engine/e-mail-session.c
+index fb97e4eaa3..6fb442ba35 100644
+--- a/libemail-engine/e-mail-session.c
++++ b/libemail-engine/e-mail-session.c
+@@ -51,7 +51,6 @@
+ /* This too, though it's less of a hack. */
+ #include "camel-sasl-xoauth2.h"
+ 
+-#include "e-mail-authenticator.h"
+ #include "e-mail-session.h"
+ #include "e-mail-folder-utils.h"
+ #include "e-mail-utils.h"
+@@ -135,6 +134,7 @@ enum {
+ 	REFRESH_SERVICE,
+ 	STORE_ADDED,
+ 	STORE_REMOVED,
++	ALLOW_AUTH_PROMPT,
+ 	LAST_SIGNAL
+ };
+ 
+@@ -1280,190 +1280,6 @@ mail_session_forget_password (CamelSession *session,
+ 	return TRUE;
+ }
+ 
+-static CamelCertTrust
+-mail_session_trust_prompt (CamelSession *session,
+-                           CamelService *service,
+-                           GTlsCertificate *certificate,
+-                           GTlsCertificateFlags errors)
+-{
+-	EUserPrompter *prompter;
+-	ENamedParameters *parameters;
+-	CamelSettings *settings;
+-	CamelCertTrust response;
+-	GByteArray *der = NULL;
+-	gchar *base64;
+-	gchar *errhex;
+-	gchar *host;
+-	gint button_index;
+-
+-	prompter = e_user_prompter_new ();
+-	parameters = e_named_parameters_new ();
+-
+-	settings = camel_service_ref_settings (service);
+-	g_return_val_if_fail (CAMEL_IS_NETWORK_SETTINGS (settings), 0);
+-	host = camel_network_settings_dup_host (
+-		CAMEL_NETWORK_SETTINGS (settings));
+-	g_object_unref (settings);
+-
+-	/* XXX No accessor function for this property. */
+-	g_object_get (certificate, "certificate", &der, NULL);
+-	g_return_val_if_fail (der != NULL, 0);
+-	base64 = g_base64_encode (der->data, der->len);
+-	g_byte_array_unref (der);
+-
+-	errhex = g_strdup_printf ("%x", (gint) errors);
+-
+-	e_named_parameters_set (parameters, "host", host);
+-	e_named_parameters_set (parameters, "certificate", base64);
+-	e_named_parameters_set (parameters, "certificate-errors", errhex);
+-
+-	g_free (host);
+-	g_free (base64);
+-	g_free (errhex);
+-
+-	button_index = e_user_prompter_extension_prompt_sync (
+-		prompter, "ETrustPrompt::trust-prompt",
+-		parameters, NULL, NULL, NULL);
+-
+-	switch (button_index) {
+-		case 0:
+-			response = CAMEL_CERT_TRUST_NEVER;
+-			break;
+-		case 1:
+-			response = CAMEL_CERT_TRUST_FULLY;
+-			break;
+-		case 2:
+-			response = CAMEL_CERT_TRUST_TEMPORARY;
+-			break;
+-		default:
+-			response = CAMEL_CERT_TRUST_UNKNOWN;
+-			break;
+-	}
+-
+-	e_named_parameters_free (parameters);
+-	g_object_unref (prompter);
+-
+-	return response;
+-}
+-
+-static gboolean
+-mail_session_authenticate_sync (CamelSession *session,
+-                                CamelService *service,
+-                                const gchar *mechanism,
+-                                GCancellable *cancellable,
+-                                GError **error)
+-{
+-	ESource *source;
+-	ESourceRegistry *registry;
+-	ESourceAuthenticator *auth;
+-	CamelServiceAuthType *authtype = NULL;
+-	CamelAuthenticationResult result;
+-	const gchar *uid;
+-	gboolean authenticated;
+-	gboolean try_empty_password = FALSE;
+-	GError *local_error = NULL;
+-
+-	/* Do not chain up.  Camel's default method is only an example for
+-	 * subclasses to follow.  Instead we mimic most of its logic here. */
+-
+-	registry = e_mail_session_get_registry (E_MAIL_SESSION (session));
+-
+-	/* Treat a mechanism name of "none" as NULL. */
+-	if (g_strcmp0 (mechanism, "none") == 0)
+-		mechanism = NULL;
+-
+-	/* APOP is one case where a non-SASL mechanism name is passed, so
+-	 * don't bail if the CamelServiceAuthType struct comes back NULL. */
+-	if (mechanism != NULL)
+-		authtype = camel_sasl_authtype (mechanism);
+-
+-	/* If the SASL mechanism does not involve a user
+-	 * password, then it gets one shot to authenticate. */
+-	if (authtype != NULL && !authtype->need_password) {
+-		result = camel_service_authenticate_sync (
+-			service, mechanism, cancellable, error);
+-		if (result == CAMEL_AUTHENTICATION_REJECTED)
+-			g_set_error (
+-				error, CAMEL_SERVICE_ERROR,
+-				CAMEL_SERVICE_ERROR_CANT_AUTHENTICATE,
+-				_("%s authentication failed"), mechanism);
+-		return (result == CAMEL_AUTHENTICATION_ACCEPTED);
+-	}
+-
+-	/* Some SASL mechanisms can attempt to authenticate without a
+-	 * user password being provided (e.g. single-sign-on credentials),
+-	 * but can fall back to a user password.  Handle that case next. */
+-	if (mechanism != NULL) {
+-		CamelProvider *provider;
+-		CamelSasl *sasl;
+-		const gchar *service_name;
+-
+-		provider = camel_service_get_provider (service);
+-		service_name = provider->protocol;
+-
+-		/* XXX Would be nice if camel_sasl_try_empty_password_sync()
+-		 *     returned the result in an "out" parameter so it's
+-		 *     easier to distinguish errors from a "no" answer.
+-		 * YYY There are precisely two states. Either we appear to
+-		 *     have credentials (although we don't yet know if the
+-		 *     server would *accept* them, of course). Or we don't
+-		 *     have any credentials, and we can't even try. There
+-		 *     is no middle ground.
+-		 *     N.B. For 'have credentials', read 'the ntlm_auth
+-		 *          helper exists and at first glance seems to
+-		 *          be responding sanely'. */
+-		sasl = camel_sasl_new (service_name, mechanism, service);
+-		if (sasl != NULL) {
+-			try_empty_password =
+-				camel_sasl_try_empty_password_sync (
+-				sasl, cancellable, &local_error);
+-			g_object_unref (sasl);
+-		}
+-	}
+-
+-	/* Abort authentication if we got cancelled.
+-	 * Otherwise clear any errors and press on. */
+-	if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+-		return FALSE;
+-
+-	g_clear_error (&local_error);
+-
+-	/* Find a matching ESource for this CamelService. */
+-	uid = camel_service_get_uid (service);
+-	source = e_source_registry_ref_source (registry, uid);
+-
+-	if (source == NULL) {
+-		g_set_error (
+-			error, CAMEL_SERVICE_ERROR,
+-			CAMEL_SERVICE_ERROR_CANT_AUTHENTICATE,
+-			_("No data source found for UID '%s'"), uid);
+-		return FALSE;
+-	}
+-
+-	auth = e_mail_authenticator_new (service, mechanism);
+-
+-	result = CAMEL_AUTHENTICATION_REJECTED;
+-
+-	if (try_empty_password) {
+-		result = camel_service_authenticate_sync (
+-			service, mechanism, cancellable, error);
+-	}
+-
+-	if (result == CAMEL_AUTHENTICATION_REJECTED) {
+-		/* We need a password, preferrably one cached in
+-		 * the keyring or else by interactive user prompt. */
+-		authenticated = e_source_registry_authenticate_sync (
+-			registry, source, auth, cancellable, error);
+-	} else {
+-		authenticated = (result == CAMEL_AUTHENTICATION_ACCEPTED);
+-	}
+-	g_object_unref (auth);
+-
+-	g_object_unref (source);
+-
+-	return authenticated;
+-}
+-
+ static gboolean
+ mail_session_forward_to_sync (CamelSession *session,
+                               CamelFolder *folder,
+@@ -1660,8 +1476,6 @@ e_mail_session_class_init (EMailSessionClass *class)
+ 	session_class->add_service = mail_session_add_service;
+ 	session_class->get_password = mail_session_get_password;
+ 	session_class->forget_password = mail_session_forget_password;
+-	session_class->trust_prompt = mail_session_trust_prompt;
+-	session_class->authenticate_sync = mail_session_authenticate_sync;
+ 	session_class->forward_to_sync = mail_session_forward_to_sync;
+ 
+ 	class->create_vfolder_context = mail_session_create_vfolder_context;
+@@ -1777,6 +1591,26 @@ e_mail_session_class_init (EMailSessionClass *class)
+ 		G_TYPE_NONE, 1,
+ 		CAMEL_TYPE_STORE);
+ 
++	/**
++	 * EMailSession::store-removed
++	 * @session: the #EMailSession that emitted the signal
++	 * @source: an #ESource
++	 *
++	 * This signal is emitted with e_mail_session_emit_allow_auth_prompt() to let
++	 * any listeners know to enable credentials prompt for the given @source.
++	 *
++	 * Since: 3.14
++	 **/
++	signals[ALLOW_AUTH_PROMPT] = g_signal_new (
++		"allow-auth-prompt",
++		G_OBJECT_CLASS_TYPE (object_class),
++		G_SIGNAL_RUN_FIRST,
++		G_STRUCT_OFFSET (EMailSessionClass, allow_auth_prompt),
++		NULL, NULL,
++		g_cclosure_marshal_VOID__OBJECT,
++		G_TYPE_NONE, 1,
++		E_TYPE_SOURCE);
++
+ 	camel_null_store_register_provider ();
+ 
+ 	/* Make sure ESourceCamel picks up the "none" provider. */
+@@ -2552,3 +2386,23 @@ e_mail_session_unmark_service_used (EMailSession *session,
+ 
+ 	g_mutex_unlock (&session->priv->used_services_lock);
+ }
++
++/**
++ * e_mail_session_emit_allow_auth_prompt:
++ * @session: an #EMailSession
++ * @source: an #ESource
++ *
++ * Emits 'allow-auth-prompt' on @session for @source. This lets
++ * any listeners know to enable credentials prompt for this @source.
++ *
++ * Since: 3.14
++ **/
++void
++e_mail_session_emit_allow_auth_prompt (EMailSession *session,
++				       ESource *source)
++{
++	g_return_if_fail (E_IS_MAIL_SESSION (session));
++	g_return_if_fail (E_IS_SOURCE (source));
++
++	g_signal_emit (session, signals[ALLOW_AUTH_PROMPT], 0, source);
++}
+diff --git a/libemail-engine/e-mail-session.h b/libemail-engine/e-mail-session.h
+index 0d8f5e646b..44374cd353 100644
+--- a/libemail-engine/e-mail-session.h
++++ b/libemail-engine/e-mail-session.h
+@@ -82,6 +82,8 @@ struct _EMailSessionClass {
+ 						 CamelStore *store);
+ 	void		(*store_removed)	(EMailSession *session,
+ 						 CamelStore *store);
++	void		(*allow_auth_prompt)	(EMailSession *session,
++						 ESource *source);
+ };
+ 
+ GType		e_mail_session_get_type		(void);
+@@ -164,6 +166,9 @@ gboolean	e_mail_session_mark_service_used_sync
+ void		e_mail_session_unmark_service_used
+ 						(EMailSession *session,
+ 						 CamelService *service);
++void		e_mail_session_emit_allow_auth_prompt
++						(EMailSession *session,
++						 ESource *source);
+ 
+ /* Useful GBinding transform functions */
+ gboolean	e_binding_transform_service_to_source
+diff --git a/libemail-engine/libemail-engine.h b/libemail-engine/libemail-engine.h
+index c8eaea029a..6e0b2beaa2 100644
+--- a/libemail-engine/libemail-engine.h
++++ b/libemail-engine/libemail-engine.h
+@@ -22,7 +22,6 @@
+ 
+ #include <libemail-engine/camel-null-store.h>
+ #include <libemail-engine/camel-sasl-xoauth2.h>
+-#include <libemail-engine/e-mail-authenticator.h>
+ #include <libemail-engine/e-mail-engine-enums.h>
+ #include <libemail-engine/e-mail-engine-enumtypes.h>
+ #include <libemail-engine/e-mail-folder-utils.h>
+diff --git a/libemail-engine/mail-ops.c b/libemail-engine/mail-ops.c
+index 7679d45e5d..8e6484dffb 100644
+--- a/libemail-engine/mail-ops.c
++++ b/libemail-engine/mail-ops.c
+@@ -680,13 +680,8 @@ mail_send_message (struct _send_queue_msg *m,
+ 			g_object_unref (session);
+ 
+ 			if (source) {
+-				gboolean success;
+-
+-				success = e_source_allow_auth_prompt_sync (source, cancellable, error);
++				e_mail_session_emit_allow_auth_prompt (m->session, source);
+ 				g_object_unref (source);
+-
+-				if (!success)
+-					goto exit;
+ 			}
+ 
+ 			if (!camel_service_connect_sync (service, cancellable, error))
+diff --git a/mail/e-mail-account-store.c b/mail/e-mail-account-store.c
+index 70c7cf3c12..4a685844c0 100644
+--- a/mail/e-mail-account-store.c
++++ b/mail/e-mail-account-store.c
+@@ -503,33 +503,18 @@ mail_account_store_constructed (GObject *object)
+ 	e_extensible_load_extensions (E_EXTENSIBLE (object));
+ }
+ 
+-static void
+-mail_account_store_allow_auth_prompt_done_cb (GObject *source_object,
+-					      GAsyncResult *result,
+-					      gpointer user_data)
+-{
+-	GError *local_error = NULL;
+-
+-	e_source_allow_auth_prompt_finish (E_SOURCE (source_object), result, &local_error);
+-
+-	if (local_error) {
+-		g_debug ("%s: Failed with: %s", G_STRFUNC, local_error->message);
+-		g_clear_error (&local_error);
+-	}
+-}
+-
+ static void
+ call_allow_auth_prompt (ESource *source)
+ {
++	EShell *shell;
++
+ 	if (!source)
+ 		return;
+ 
+ 	g_return_if_fail (E_IS_SOURCE (source));
+ 
+-	/* There is not much interest in the result, it just
+-	   makes sure a password prompt will be shown the next
+-	   time it is needed. */
+-	e_source_allow_auth_prompt (source, NULL, mail_account_store_allow_auth_prompt_done_cb, NULL);
++	shell = e_shell_get_default ();
++	e_shell_allow_auth_prompt_for (shell, source);
+ }
+ 
+ static void
+diff --git a/mail/e-mail-backend.c b/mail/e-mail-backend.c
+index d3113ba8cc..91d92621e1 100644
+--- a/mail/e-mail-backend.c
++++ b/mail/e-mail-backend.c
+@@ -930,6 +930,17 @@ mail_backend_job_finished_cb (CamelSession *session,
+ 	g_hash_table_remove (priv->jobs, cancellable);
+ }
+ 
++static void
++mail_backend_allow_auth_prompt_cb (EMailSession *session,
++				   ESource *source,
++				   EShell *shell)
++{
++	g_return_if_fail (E_IS_SOURCE (source));
++	g_return_if_fail (E_IS_SHELL (shell));
++
++	e_shell_allow_auth_prompt_for (shell, source);
++}
++
+ static void
+ mail_backend_get_property (GObject *object,
+                            guint property_id,
+@@ -1157,6 +1168,10 @@ mail_backend_constructed (GObject *object)
+ 	registry = e_shell_get_registry (shell);
+ 	priv->session = e_mail_ui_session_new (registry);
+ 
++	g_signal_connect (
++		priv->session, "allow-auth-prompt",
++		G_CALLBACK (mail_backend_allow_auth_prompt_cb), shell);
++
+ 	g_signal_connect (
+ 		priv->session, "flush-outbox",
+ 		G_CALLBACK (mail_send), priv->session);
+diff --git a/mail/e-mail-ui-session.c b/mail/e-mail-ui-session.c
+index 959b2fb6c6..accecfceda 100644
+--- a/mail/e-mail-ui-session.c
++++ b/mail/e-mail-ui-session.c
+@@ -631,6 +631,262 @@ mail_ui_session_user_alert (CamelSession *session,
+ 	g_free (display_name);
+ }
+ 
++static gpointer
++mail_ui_session_call_trust_prompt_in_main_thread_cb (const gchar *source_extension,
++						     const gchar *source_display_name,
++						     const gchar *host,
++						     const gchar *certificate_pem,
++						     gconstpointer pcertificate_errors)
++{
++	EShell *shell;
++	ETrustPromptResponse prompt_response;
++
++	shell = e_shell_get_default ();
++
++	prompt_response = e_trust_prompt_run_modal (gtk_application_get_active_window (GTK_APPLICATION (shell)),
++		source_extension, source_display_name, host, certificate_pem, GPOINTER_TO_UINT (pcertificate_errors), NULL);
++
++	return GINT_TO_POINTER (prompt_response);
++}
++
++static CamelCertTrust
++mail_ui_session_trust_prompt (CamelSession *session,
++			      CamelService *service,
++			      GTlsCertificate *certificate,
++			      GTlsCertificateFlags errors)
++{
++	CamelSettings *settings;
++	CamelCertTrust response;
++	gchar *host, *certificate_pem = NULL;
++	ETrustPromptResponse prompt_response;
++	const gchar *source_extension;
++
++	settings = camel_service_ref_settings (service);
++	g_return_val_if_fail (CAMEL_IS_NETWORK_SETTINGS (settings), 0);
++	host = camel_network_settings_dup_host (
++		CAMEL_NETWORK_SETTINGS (settings));
++	g_object_unref (settings);
++
++	/* XXX No accessor function for this property. */
++	g_object_get (certificate, "certificate-pem", &certificate_pem, NULL);
++	g_return_val_if_fail (certificate_pem != NULL, 0);
++
++	if (CAMEL_IS_TRANSPORT (service))
++		source_extension = E_SOURCE_EXTENSION_MAIL_TRANSPORT;
++	else
++		source_extension = E_SOURCE_EXTENSION_MAIL_ACCOUNT;
++
++	prompt_response = GPOINTER_TO_INT (mail_call_main (MAIL_CALL_p_ppppp,
++                (MailMainFunc) mail_ui_session_call_trust_prompt_in_main_thread_cb,
++                source_extension, camel_service_get_display_name (service), host, certificate_pem, GUINT_TO_POINTER (errors)));
++
++	g_free (certificate_pem);
++	g_free (host);
++
++	switch (prompt_response) {
++		case E_TRUST_PROMPT_RESPONSE_REJECT:
++			response = CAMEL_CERT_TRUST_NEVER;
++			break;
++		case E_TRUST_PROMPT_RESPONSE_ACCEPT:
++			response = CAMEL_CERT_TRUST_FULLY;
++			break;
++		case E_TRUST_PROMPT_RESPONSE_ACCEPT_TEMPORARILY:
++			response = CAMEL_CERT_TRUST_TEMPORARY;
++			break;
++		default:
++			response = CAMEL_CERT_TRUST_UNKNOWN;
++			break;
++	}
++
++	return response;
++}
++
++typedef struct _TryCredentialsData {
++	CamelService *service;
++	const gchar *mechanism;
++} TryCredentialsData;
++
++static gboolean
++mail_ui_session_try_credentials_sync (ECredentialsPrompter *prompter,
++				      ESource *source,
++				      const ENamedParameters *credentials,
++				      gboolean *out_authenticated,
++				      gpointer user_data,
++				      GCancellable *cancellable,
++				      GError **error)
++{
++	TryCredentialsData *data = user_data;
++	gchar *credential_name = NULL;
++	CamelAuthenticationResult result;
++
++	g_return_val_if_fail (E_IS_SOURCE (source), FALSE);
++	g_return_val_if_fail (credentials != NULL, FALSE);
++	g_return_val_if_fail (out_authenticated != NULL, FALSE);
++	g_return_val_if_fail (data != NULL, FALSE);
++	g_return_val_if_fail (CAMEL_IS_SERVICE (data->service), FALSE);
++
++	if (e_source_has_extension (source, E_SOURCE_EXTENSION_AUTHENTICATION)) {
++		ESourceAuthentication *auth_extension;
++
++		auth_extension = e_source_get_extension (source, E_SOURCE_EXTENSION_AUTHENTICATION);
++		credential_name = e_source_authentication_dup_credential_name (auth_extension);
++
++		if (!credential_name || !*credential_name) {
++			g_free (credential_name);
++			credential_name = NULL;
++		}
++	}
++
++	camel_service_set_password (data->service, e_named_parameters_get (credentials,
++		credential_name ? credential_name : E_SOURCE_CREDENTIAL_PASSWORD));
++
++	g_free (credential_name);
++
++	result = camel_service_authenticate_sync (data->service, data->mechanism, cancellable, error);
++
++	*out_authenticated = result == CAMEL_AUTHENTICATION_ACCEPTED;
++
++	if (*out_authenticated) {
++		ESourceCredentialsProvider *credentials_provider;
++		ESource *cred_source;
++
++		credentials_provider = e_credentials_prompter_get_provider (prompter);
++		cred_source = e_source_credentials_provider_ref_credentials_source (credentials_provider, source);
++
++		if (cred_source)
++			e_source_invoke_authenticate_sync (cred_source, credentials, cancellable, NULL);
++
++		g_clear_object (&cred_source);
++	}
++
++	return result == CAMEL_AUTHENTICATION_REJECTED;
++}
++
++static gboolean
++mail_ui_session_authenticate_sync (CamelSession *session,
++				   CamelService *service,
++				   const gchar *mechanism,
++				   GCancellable *cancellable,
++				   GError **error)
++{
++	ESource *source;
++	ESourceRegistry *registry;
++	CamelServiceAuthType *authtype = NULL;
++	CamelAuthenticationResult result;
++	const gchar *uid;
++	gboolean authenticated;
++	gboolean try_empty_password = FALSE;
++	GError *local_error = NULL;
++
++	/* Do not chain up.  Camel's default method is only an example for
++	 * subclasses to follow.  Instead we mimic most of its logic here. */
++
++	registry = e_mail_session_get_registry (E_MAIL_SESSION (session));
++
++	/* Treat a mechanism name of "none" as NULL. */
++	if (g_strcmp0 (mechanism, "none") == 0)
++		mechanism = NULL;
++
++	/* APOP is one case where a non-SASL mechanism name is passed, so
++	 * don't bail if the CamelServiceAuthType struct comes back NULL. */
++	if (mechanism != NULL)
++		authtype = camel_sasl_authtype (mechanism);
++
++	/* If the SASL mechanism does not involve a user
++	 * password, then it gets one shot to authenticate. */
++	if (authtype != NULL && !authtype->need_password) {
++		result = camel_service_authenticate_sync (
++			service, mechanism, cancellable, error);
++		if (result == CAMEL_AUTHENTICATION_REJECTED)
++			g_set_error (
++				error, CAMEL_SERVICE_ERROR,
++				CAMEL_SERVICE_ERROR_CANT_AUTHENTICATE,
++				_("%s authentication failed"), mechanism);
++		return (result == CAMEL_AUTHENTICATION_ACCEPTED);
++	}
++
++	/* Some SASL mechanisms can attempt to authenticate without a
++	 * user password being provided (e.g. single-sign-on credentials),
++	 * but can fall back to a user password.  Handle that case next. */
++	if (mechanism != NULL) {
++		CamelProvider *provider;
++		CamelSasl *sasl;
++		const gchar *service_name;
++
++		provider = camel_service_get_provider (service);
++		service_name = provider->protocol;
++
++		/* XXX Would be nice if camel_sasl_try_empty_password_sync()
++		 *     returned the result in an "out" parameter so it's
++		 *     easier to distinguish errors from a "no" answer.
++		 * YYY There are precisely two states. Either we appear to
++		 *     have credentials (although we don't yet know if the
++		 *     server would *accept* them, of course). Or we don't
++		 *     have any credentials, and we can't even try. There
++		 *     is no middle ground.
++		 *     N.B. For 'have credentials', read 'the ntlm_auth
++		 *          helper exists and at first glance seems to
++		 *          be responding sanely'. */
++		sasl = camel_sasl_new (service_name, mechanism, service);
++		if (sasl != NULL) {
++			try_empty_password =
++				camel_sasl_try_empty_password_sync (
++				sasl, cancellable, &local_error);
++			g_object_unref (sasl);
++		}
++	}
++
++	/* Abort authentication if we got cancelled.
++	 * Otherwise clear any errors and press on. */
++	if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
++		return FALSE;
++
++	g_clear_error (&local_error);
++
++	/* Find a matching ESource for this CamelService. */
++	uid = camel_service_get_uid (service);
++	source = e_source_registry_ref_source (registry, uid);
++
++	if (source == NULL) {
++		g_set_error (
++			error, CAMEL_SERVICE_ERROR,
++			CAMEL_SERVICE_ERROR_CANT_AUTHENTICATE,
++			_("No data source found for UID '%s'"), uid);
++		return FALSE;
++	}
++
++	result = CAMEL_AUTHENTICATION_REJECTED;
++
++	if (try_empty_password) {
++		result = camel_service_authenticate_sync (
++			service, mechanism, cancellable, error);
++	}
++
++	if (result == CAMEL_AUTHENTICATION_REJECTED) {
++		/* We need a password, preferrably one cached in
++		 * the keyring or else by interactive user prompt. */
++		EShell *shell;
++		ECredentialsPrompter *credentials_prompter;
++		TryCredentialsData data;
++
++		shell = e_shell_get_default ();
++		credentials_prompter = e_shell_get_credentials_prompter (shell);
++
++		data.service = service;
++		data.mechanism = mechanism;
++
++		authenticated = e_credentials_prompter_loop_prompt_sync (credentials_prompter,
++			source, E_CREDENTIALS_PROMPTER_PROMPT_FLAG_ALLOW_SOURCE_SAVE,
++			mail_ui_session_try_credentials_sync, &data, cancellable, error);
++	} else {
++		authenticated = (result == CAMEL_AUTHENTICATION_ACCEPTED);
++	}
++
++	g_object_unref (source);
++
++	return authenticated;
++}
++
+ extern gint camel_application_is_exiting;
+ 
+ static void
+@@ -671,6 +927,8 @@ e_mail_ui_session_class_init (EMailUISessionClass *class)
+ 	session_class->get_filter_driver = mail_ui_session_get_filter_driver;
+ 	session_class->lookup_addressbook = mail_ui_session_lookup_addressbook;
+ 	session_class->user_alert = mail_ui_session_user_alert;
++	session_class->trust_prompt = mail_ui_session_trust_prompt;
++	session_class->authenticate_sync = mail_ui_session_authenticate_sync;
+ 
+ 	mail_session_class = E_MAIL_SESSION_CLASS (class);
+ 	mail_session_class->create_vfolder_context = mail_ui_session_create_vfolder_context;
+@@ -942,7 +1200,7 @@ e_mail_ui_session_check_known_address_sync (EMailUISession *session,
+ 
+ 		client = e_client_cache_get_client_sync (
+ 			client_cache, source,
+-			E_SOURCE_EXTENSION_ADDRESS_BOOK,
++			E_SOURCE_EXTENSION_ADDRESS_BOOK, (guint32) -1,
+ 			cancellable, &local_error);
+ 
+ 		if (client == NULL) {
+diff --git a/mail/importers/pine-importer.c b/mail/importers/pine-importer.c
+index dc366ca710..391ea0714b 100644
+--- a/mail/importers/pine-importer.c
++++ b/mail/importers/pine-importer.c
+@@ -196,7 +196,7 @@ import_contacts (void)
+ 		ESource *source;
+ 
+ 		source = E_SOURCE (list->data);
+-		client = e_book_client_connect_sync (source, NULL, &error);
++		client = e_book_client_connect_sync (source, 30, NULL, &error);
+ 	} else {
+ 		/* No address books exist. */
+ 		g_warning ("%s: No address books exist.", G_STRFUNC);
+diff --git a/modules/addressbook/e-book-shell-backend.c b/modules/addressbook/e-book-shell-backend.c
+index fd14a26a34..666120f3f8 100644
+--- a/modules/addressbook/e-book-shell-backend.c
++++ b/modules/addressbook/e-book-shell-backend.c
+@@ -217,14 +217,14 @@ action_contact_new_cb (GtkAction *action,
+ 	if (strcmp (action_name, "contact-new") == 0)
+ 		e_client_cache_get_client (
+ 			client_cache, source,
+-			E_SOURCE_EXTENSION_ADDRESS_BOOK,
++			E_SOURCE_EXTENSION_ADDRESS_BOOK, 30,
+ 			NULL,
+ 			book_shell_backend_new_contact_cb,
+ 			g_object_ref (shell));
+ 	if (strcmp (action_name, "contact-new-list") == 0)
+ 		e_client_cache_get_client (
+ 			client_cache, source,
+-			E_SOURCE_EXTENSION_ADDRESS_BOOK,
++			E_SOURCE_EXTENSION_ADDRESS_BOOK, 30,
+ 			NULL,
+ 			book_shell_backend_new_contact_list_cb,
+ 			g_object_ref (shell));
+diff --git a/modules/addressbook/e-book-shell-view-actions.c b/modules/addressbook/e-book-shell-view-actions.c
+index b5c0e28b0f..8fe5f63bda 100644
+--- a/modules/addressbook/e-book-shell-view-actions.c
++++ b/modules/addressbook/e-book-shell-view-actions.c
+@@ -200,95 +200,42 @@ action_address_book_properties_cb (GtkAction *action,
+ }
+ 
+ static void
+-address_book_handle_refresh_done (ESource *source,
+-				  EActivity *activity,
+-				  const GError *error)
++address_book_refresh_done_cb (GObject *source_object,
++                              GAsyncResult *result,
++                              gpointer user_data)
+ {
++	EClient *client;
++	ESource *source;
++	EActivity *activity;
+ 	EAlertSink *alert_sink;
+ 	const gchar *display_name;
++	GError *local_error = NULL;
++
++	g_return_if_fail (E_IS_CLIENT (source_object));
++
++	client = E_CLIENT (source_object);
++	source = e_client_get_source (client);
++	activity = user_data;
++
++	e_client_refresh_finish (client, result, &local_error);
+ 
+ 	alert_sink = e_activity_get_alert_sink (activity);
+ 	display_name = e_source_get_display_name (source);
+ 
+-	if (e_activity_handle_cancellation (activity, error)) {
++	if (e_activity_handle_cancellation (activity, local_error)) {
+ 		/* nothing to do */
+ 
+-	} else if (error != NULL) {
++	} else if (local_error != NULL) {
+ 		e_alert_submit (
+ 			alert_sink,
+ 			"addressbook:refresh-error",
+-			display_name, error->message, NULL);
++			display_name, local_error->message, NULL);
+ 
+ 	} else {
+ 		e_activity_set_state (activity, E_ACTIVITY_COMPLETED);
+ 	}
+-}
+-
+-static void
+-address_book_refresh_done_cb (GObject *source_object,
+-                              GAsyncResult *result,
+-                              gpointer user_data)
+-{
+-	EClient *client;
+-	ESource *source;
+-	EActivity *activity;
+-	GError *local_error = NULL;
+-
+-	g_return_if_fail (E_IS_CLIENT (source_object));
+-
+-	client = E_CLIENT (source_object);
+-	source = e_client_get_source (client);
+-	activity = user_data;
+-
+-	e_util_allow_auth_prompt_and_refresh_client_finish (client, result, &local_error);
+-
+-	address_book_handle_refresh_done (source, activity, local_error);
+-
+-	g_clear_object (&activity);
+-	g_clear_error (&local_error);
+-}
+-
+-typedef struct _AllowAuthPromptData {
+-	EActivity *activity;
+-	ESourceSelector *selector;
+-} AllowAuthPromptData;
+-
+-static void
+-address_book_allow_auth_prompt_done_cb (GObject *source_object,
+-					GAsyncResult *result,
+-					gpointer user_data)
+-{
+-	ESource *source;
+-	ESourceSelector *selector;
+-	EActivity *activity;
+-	AllowAuthPromptData *data = user_data;
+-	GError *local_error = NULL;
+-
+-	g_return_if_fail (E_IS_SOURCE (source_object));
+-	g_return_if_fail (user_data != NULL);
+-
+-	source = E_SOURCE (source_object);
+-	activity = data->activity;
+-	selector = data->selector;
+-
+-	g_free (data);
+-
+-	e_source_allow_auth_prompt_finish (source, result, &local_error);
+-
+-	address_book_handle_refresh_done (source, activity, local_error);
+-
+-	if (!local_error) {
+-		ESource *primary;
+-
+-		primary = e_source_selector_ref_primary_selection (selector);
+-		if (primary == source)
+-			e_source_selector_set_primary_selection (selector, source);
+-
+-		g_clear_object (&primary);
+-	}
+ 
+ 	g_clear_object (&activity);
+-	g_clear_object (&selector);
+ 	g_clear_error (&local_error);
+ }
+ 
+@@ -305,6 +252,7 @@ action_address_book_refresh_cb (GtkAction *action,
+ 	EShellBackend *shell_backend;
+ 	EShellContent *shell_content;
+ 	EShellView *shell_view;
++	EShell *shell;
+ 	GCancellable *cancellable;
+ 
+ 	book_shell_sidebar = book_shell_view->priv->book_shell_sidebar;
+@@ -313,6 +261,7 @@ action_address_book_refresh_cb (GtkAction *action,
+ 	shell_view = E_SHELL_VIEW (book_shell_view);
+ 	shell_backend = e_shell_view_get_shell_backend (shell_view);
+ 	shell_content = e_shell_view_get_shell_content (shell_view);
++	shell = e_shell_backend_get_shell (shell_backend);
+ 
+ 	source = e_source_selector_ref_primary_selection (selector);
+ 
+@@ -320,24 +269,15 @@ action_address_book_refresh_cb (GtkAction *action,
+ 		client = e_client_selector_ref_cached_client (
+ 			E_CLIENT_SELECTOR (selector), source);
+ 		if (!client) {
+-			AllowAuthPromptData *data;
++			ESource *primary;
+ 
+-			alert_sink = E_ALERT_SINK (shell_content);
+-			activity = e_activity_new ();
+-			cancellable = g_cancellable_new ();
++			e_shell_allow_auth_prompt_for (shell, source);
+ 
+-			e_activity_set_alert_sink (activity, alert_sink);
+-			e_activity_set_cancellable (activity, cancellable);
++			primary = e_source_selector_ref_primary_selection (selector);
++			if (primary == source)
++				e_source_selector_set_primary_selection (selector, source);
+ 
+-			data = g_new0 (AllowAuthPromptData, 1);
+-			data->activity = activity;
+-			data->selector = g_object_ref (selector);
+-
+-			e_source_allow_auth_prompt (source, cancellable, address_book_allow_auth_prompt_done_cb, data);
+-
+-			e_shell_backend_add_activity (shell_backend, activity);
+-
+-			g_object_unref (cancellable);
++			g_clear_object (&primary);
+ 		}
+ 
+ 		g_object_unref (source);
+@@ -355,7 +295,9 @@ action_address_book_refresh_cb (GtkAction *action,
+ 	e_activity_set_alert_sink (activity, alert_sink);
+ 	e_activity_set_cancellable (activity, cancellable);
+ 
+-	e_util_allow_auth_prompt_and_refresh_client (client, cancellable, address_book_refresh_done_cb, activity);
++	e_shell_allow_auth_prompt_for (shell, source);
++
++	e_client_refresh (client, cancellable, address_book_refresh_done_cb, activity);
+ 
+ 	e_shell_backend_add_activity (shell_backend, activity);
+ 
+@@ -418,7 +360,7 @@ map_window_show_contact_editor_cb (EContactMapWindow *window,
+ 	/* FIXME This blocks.  Needs to be asynchronous. */
+ 	client = e_client_cache_get_client_sync (
+ 		client_cache, source,
+-		E_SOURCE_EXTENSION_ADDRESS_BOOK,
++		E_SOURCE_EXTENSION_ADDRESS_BOOK, (guint32) -1,
+ 		NULL, &error);
+ 
+ 	g_object_unref (source);
+@@ -485,7 +427,7 @@ action_address_book_map_cb (GtkAction *action,
+ 	/* FIXME This blocks.  Needs to be asynchronous. */
+ 	client = e_client_cache_get_client_sync (
+ 		client_cache, source,
+-		E_SOURCE_EXTENSION_ADDRESS_BOOK,
++		E_SOURCE_EXTENSION_ADDRESS_BOOK, (guint32) -1,
+ 		NULL, &error);
+ 
+ 	g_object_unref (source);
+diff --git a/modules/addressbook/e-book-shell-view-private.c b/modules/addressbook/e-book-shell-view-private.c
+index b4080a9b6d..59d3584aec 100644
+--- a/modules/addressbook/e-book-shell-view-private.c
++++ b/modules/addressbook/e-book-shell-view-private.c
+@@ -339,7 +339,7 @@ book_shell_view_activate_selected_source (EBookShellView *book_shell_view,
+ 	/* XXX No way to cancel this? */
+ 	e_client_selector_get_client (
+ 		E_CLIENT_SELECTOR (selector),
+-		source, TRUE, NULL,
++		source, TRUE, (guint32) -1, NULL,
+ 		book_shell_view_client_connect_cb,
+ 		g_object_ref (view));
+ 
+diff --git a/modules/cal-config-caldav/e-caldav-chooser-dialog.c b/modules/cal-config-caldav/e-caldav-chooser-dialog.c
+index 66c3381f68..fce3f714ae 100644
+--- a/modules/cal-config-caldav/e-caldav-chooser-dialog.c
++++ b/modules/cal-config-caldav/e-caldav-chooser-dialog.c
+@@ -42,6 +42,10 @@ static void	caldav_chooser_dialog_populated_cb
+ 						(GObject *source_object,
+ 						 GAsyncResult *result,
+ 						 gpointer user_data);
++static void	caldav_chooser_dialog_credentials_prompt_cb
++						(GObject *source_object,
++						 GAsyncResult *result,
++						 gpointer user_data);
+ 
+ G_DEFINE_DYNAMIC_TYPE (
+ 	ECaldavChooserDialog,
+@@ -67,40 +71,124 @@ caldav_chooser_dialog_done (ECaldavChooserDialog *dialog,
+ 	}
+ }
+ 
++/* It's a little weird to have the callback called on the #ESource,
++   but it's simpler than writing a proxy around the e-trust-prompt
++   async call, which would be unnecessary anyway. */
++static void
++caldav_chooser_dialog_trust_prompt_done_cb (GObject *source_object,
++					    GAsyncResult *result,
++					    gpointer user_data)
++{
++	ECaldavChooserDialog *dialog;
++	ECaldavChooser *chooser;
++	ETrustPromptResponse response = E_TRUST_PROMPT_RESPONSE_UNKNOWN;
++	GError *error = NULL;
++
++	g_return_if_fail (E_IS_SOURCE (source_object));
++	g_return_if_fail (E_IS_CALDAV_CHOOSER_DIALOG (user_data));
++
++	dialog = E_CALDAV_CHOOSER_DIALOG (user_data);
++	chooser = e_caldav_chooser_dialog_get_chooser (dialog);
++
++	if (!e_trust_prompt_run_for_source_finish (E_SOURCE (source_object), result, &response, &error)) {
++		if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
++			/* close also the dialog */
++			gtk_dialog_response (GTK_DIALOG (dialog), GTK_RESPONSE_CANCEL);
++		} else {
++			caldav_chooser_dialog_done (dialog, error);
++		}
++	} else if (response == E_TRUST_PROMPT_RESPONSE_ACCEPT ||
++		   response == E_TRUST_PROMPT_RESPONSE_ACCEPT_TEMPORARILY) {
++		e_caldav_chooser_populate (
++			chooser, dialog->priv->cancellable,
++			caldav_chooser_dialog_populated_cb,
++			g_object_ref (dialog));
++	} else {
++		g_warn_if_fail (error == NULL);
++
++		error = e_caldav_chooser_new_ssl_trust_error (chooser);
++
++		caldav_chooser_dialog_done (dialog, error);
++	}
++
++	g_clear_error (&error);
++	g_object_unref (dialog);
++}
++
+ static void
+ caldav_chooser_dialog_authenticate_cb (GObject *source_object,
+-                                       GAsyncResult *result,
+-                                       gpointer user_data)
++				       GAsyncResult *result,
++				       gpointer user_data)
+ {
+-	ESourceRegistry *registry;
+-	ECaldavChooserDialog *dialog;
++	ECaldavChooserDialog *dialog = user_data;
+ 	ECaldavChooser *chooser;
+ 	GError *error = NULL;
+ 
+-	registry = E_SOURCE_REGISTRY (source_object);
+-	dialog = E_CALDAV_CHOOSER_DIALOG (user_data);
++	g_return_if_fail (E_IS_CALDAV_CHOOSER (source_object));
+ 
+-	chooser = e_caldav_chooser_dialog_get_chooser (dialog);
++	chooser = E_CALDAV_CHOOSER (source_object);
+ 
+-	e_source_registry_authenticate_finish (registry, result, &error);
++	if (!e_caldav_chooser_authenticate_finish (chooser, result, &error)) {
++		if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
++			/* close also the dialog */
++			gtk_dialog_response (GTK_DIALOG (dialog), GTK_RESPONSE_CANCEL);
++		} else if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED)) {
++			e_caldav_chooser_run_credentials_prompt (
++				chooser,
++				caldav_chooser_dialog_credentials_prompt_cb,
++				g_object_ref (dialog));
+ 
+-	/* Ignore cancellations, and leave the mouse cursor alone
+-	 * since the GdkWindow may have already been destroyed. */
+-	if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+-		/* do nothing */
++		} else if (g_error_matches (error, SOUP_HTTP_ERROR, SOUP_STATUS_SSL_FAILED)) {
++			e_caldav_chooser_run_trust_prompt (chooser, GTK_WINDOW (dialog),
++				dialog->priv->cancellable,
++				caldav_chooser_dialog_trust_prompt_done_cb,
++				g_object_ref (dialog));
++
++		/* We were either successful or got an unexpected error. */
++		} else {
++			caldav_chooser_dialog_done (dialog, error);
++		}
++	} else {
++		g_warn_if_fail (error == NULL);
+ 
+-	/* Successful authentication, so try populating again. */
+-	} else if (error == NULL) {
+ 		e_caldav_chooser_populate (
+ 			chooser, dialog->priv->cancellable,
+ 			caldav_chooser_dialog_populated_cb,
+ 			g_object_ref (dialog));
++	}
+ 
+-	/* Still not working?  Give up and display an error message. */
++	g_clear_error (&error);
++	g_object_unref (dialog);
++}
++
++static void
++caldav_chooser_dialog_credentials_prompt_cb (GObject *source_object,
++					     GAsyncResult *result,
++					     gpointer user_data)
++{
++	ECaldavChooser *chooser;
++	ECaldavChooserDialog *dialog = user_data;
++	ENamedParameters *credentials = NULL;
++	GError *error = NULL;
++
++	g_return_if_fail (E_IS_CREDENTIALS_PROMPTER (source_object));
++
++	chooser = e_caldav_chooser_dialog_get_chooser (dialog);
++	g_return_if_fail (chooser != NULL);
++
++	if (!e_caldav_chooser_run_credentials_prompt_finish (chooser, result, &credentials, &error)) {
++		if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
++			/* close also the dialog */
++			gtk_dialog_response (GTK_DIALOG (dialog), GTK_RESPONSE_CANCEL);
++		} else {
++			caldav_chooser_dialog_done (dialog, error);
++		}
+ 	} else {
+-		caldav_chooser_dialog_done (dialog, error);
++		e_caldav_chooser_authenticate (chooser, credentials, dialog->priv->cancellable,
++			caldav_chooser_dialog_authenticate_cb, g_object_ref (dialog));
+ 	}
+ 
++	e_named_parameters_free (credentials);
+ 	g_clear_error (&error);
+ 	g_object_unref (dialog);
+ }
+@@ -129,17 +217,15 @@ caldav_chooser_dialog_populated_cb (GObject *source_object,
+ 	 * round-trip to the server, but we don't want to risk prompting
+ 	 * for authentication unnecessarily. */
+ 	} else if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED)) {
+-		ESourceRegistry *registry;
+-		ESource *source;
++		e_caldav_chooser_run_credentials_prompt (
++			chooser,
++			caldav_chooser_dialog_credentials_prompt_cb,
++			g_object_ref (dialog));
+ 
+-		registry = e_caldav_chooser_get_registry (chooser);
+-		source = e_caldav_chooser_get_source (chooser);
+-
+-		e_source_registry_authenticate (
+-			registry, source,
+-			E_SOURCE_AUTHENTICATOR (chooser),
++	} else if (g_error_matches (error, SOUP_HTTP_ERROR, SOUP_STATUS_SSL_FAILED)) {
++		e_caldav_chooser_run_trust_prompt (chooser, GTK_WINDOW (dialog),
+ 			dialog->priv->cancellable,
+-			caldav_chooser_dialog_authenticate_cb,
++			caldav_chooser_dialog_trust_prompt_done_cb,
+ 			g_object_ref (dialog));
+ 
+ 	/* We were either successful or got an unexpected error. */
+diff --git a/modules/cal-config-caldav/e-caldav-chooser.c b/modules/cal-config-caldav/e-caldav-chooser.c
+index 77035c1085..c167834d36 100644
+--- a/modules/cal-config-caldav/e-caldav-chooser.c
++++ b/modules/cal-config-caldav/e-caldav-chooser.c
+@@ -27,6 +27,7 @@
+ #include <libxml/xpathInternals.h>
+ 
+ #include <e-util/e-util.h>
++#include <libedataserverui/libedataserverui.h>
+ 
+ #define E_CALDAV_CHOOSER_GET_PRIVATE(obj) \
+ 	(G_TYPE_INSTANCE_GET_PRIVATE \
+@@ -46,11 +47,17 @@ typedef struct _Context Context;
+ 
+ struct _ECaldavChooserPrivate {
+ 	ESourceRegistry *registry;
++	ECredentialsPrompter *prompter;
+ 	ESource *source;
+ 	ECalClientSourceType source_type;
+ 	SoupSession *session;
+ 	GList *user_address_set;
++	gchar *username;
+ 	gchar *password;
++	gchar *certificate_pem;
++	GTlsCertificateFlags certificate_errors;
++	gchar *error_text;
++	gboolean first_auth_request;
+ };
+ 
+ struct _Context {
+@@ -94,8 +101,6 @@ enum {
+ };
+ 
+ /* Forward Declarations */
+-static void	e_caldav_chooser_authenticator_init
+-				(ESourceAuthenticatorInterface *iface);
+ static void	caldav_chooser_get_collection_details
+ 				(SoupSession *session,
+ 				 SoupMessage *message,
+@@ -103,14 +108,7 @@ static void	caldav_chooser_get_collection_details
+ 				 GSimpleAsyncResult *simple,
+ 				 Context *context);
+ 
+-G_DEFINE_DYNAMIC_TYPE_EXTENDED (
+-	ECaldavChooser,
+-	e_caldav_chooser,
+-	GTK_TYPE_TREE_VIEW,
+-	0,
+-	G_IMPLEMENT_INTERFACE_DYNAMIC (
+-		E_TYPE_SOURCE_AUTHENTICATOR,
+-		e_caldav_chooser_authenticator_init))
++G_DEFINE_DYNAMIC_TYPE (ECaldavChooser, e_caldav_chooser, GTK_TYPE_TREE_VIEW)
+ 
+ static gconstpointer
+ compat_libxml_output_buffer_get_content (xmlOutputBufferPtr buf,
+@@ -316,30 +314,26 @@ caldav_chooser_authenticate_cb (SoupSession *session,
+ {
+ 	ESource *source;
+ 	ESourceAuthentication *extension;
+-	const gchar *extension_name;
+-	const gchar *username;
+-	const gchar *password;
+ 
+ 	source = e_caldav_chooser_get_source (chooser);
+-	extension_name = E_SOURCE_EXTENSION_AUTHENTICATION;
+-	extension = e_source_get_extension (source, extension_name);
+-
+-	username = e_source_authentication_get_user (extension);
+-	password = chooser->priv->password;
++	extension = e_source_get_extension (source, E_SOURCE_EXTENSION_AUTHENTICATION);
+ 
+ 	/* If our password was rejected, let the operation fail. */
+ 	if (retrying)
+ 		return;
+ 
++	if (!chooser->priv->username)
++		chooser->priv->username = e_source_authentication_dup_user (extension);
++
+ 	/* If we don't have a username, let the operation fail. */
+-	if (username == NULL || *username == '\0')
++	if (chooser->priv->username == NULL || *chooser->priv->username == '\0')
+ 		return;
+ 
+ 	/* If we don't have a password, let the operation fail. */
+-	if (password == NULL || *password == '\0')
++	if (chooser->priv->password == NULL || *chooser->priv->password == '\0')
+ 		return;
+ 
+-	soup_auth_authenticate (auth, username, password);
++	soup_auth_authenticate (auth, chooser->priv->username, chooser->priv->password);
+ }
+ 
+ static void
+@@ -369,10 +363,14 @@ caldav_chooser_configure_session (ECaldavChooser *chooser,
+ }
+ 
+ static gboolean
+-caldav_chooser_check_successful (SoupMessage *message,
++caldav_chooser_check_successful (ECaldavChooser *chooser,
++				 SoupMessage *message,
+                                  GError **error)
+ {
+ 	GIOErrorEnum error_code;
++	GTlsCertificate *certificate = NULL;
++
++	g_return_val_if_fail (E_IS_CALDAV_CHOOSER (chooser), FALSE);
+ 
+ 	/* Loosely copied from the GVFS DAV backend. */
+ 
+@@ -403,6 +401,26 @@ caldav_chooser_check_successful (SoupMessage *message,
+ 		case SOUP_STATUS_INSUFFICIENT_STORAGE:
+ 			error_code = G_IO_ERROR_NO_SPACE;
+ 			break;
++		case SOUP_STATUS_SSL_FAILED:
++			g_free (chooser->priv->certificate_pem);
++			chooser->priv->certificate_pem = NULL;
++
++			g_object_get (G_OBJECT (message),
++				"tls-certificate", &certificate,
++				"tls-errors", &chooser->priv->certificate_errors,
++				NULL);
++			if (certificate) {
++				g_object_get (certificate, "certificate-pem", &chooser->priv->certificate_pem, NULL);
++				g_object_unref (certificate);
++			}
++
++			g_free (chooser->priv->error_text);
++			chooser->priv->error_text = g_strdup (message->reason_phrase);
++
++			g_set_error (
++				error, SOUP_HTTP_ERROR, message->status_code,
++				_("HTTP Error: %s"), message->reason_phrase);
++			return FALSE;
+ 		default:
+ 			error_code = G_IO_ERROR_FAILED;
+ 			break;
+@@ -416,14 +434,15 @@ caldav_chooser_check_successful (SoupMessage *message,
+ }
+ 
+ static xmlDocPtr
+-caldav_chooser_parse_xml (SoupMessage *message,
++caldav_chooser_parse_xml (ECaldavChooser *chooser,
++			  SoupMessage *message,
+                           const gchar *expected_name,
+                           GError **error)
+ {
+ 	xmlDocPtr doc;
+ 	xmlNodePtr root;
+ 
+-	if (!caldav_chooser_check_successful (message, error))
++	if (!caldav_chooser_check_successful (chooser, message, error))
+ 		return NULL;
+ 
+ 	doc = xmlReadMemory (
+@@ -828,9 +847,14 @@ caldav_chooser_collection_details_cb (SoupSession *session,
+ 	xmlDocPtr doc;
+ 	xmlXPathContextPtr xp_ctx;
+ 	xmlXPathObjectPtr xp_obj;
++	GObject *chooser_obj;
+ 	GError *error = NULL;
+ 
+-	doc = caldav_chooser_parse_xml (message, "multistatus", &error);
++	chooser_obj = g_async_result_get_source_object (G_ASYNC_RESULT (simple));
++
++	doc = caldav_chooser_parse_xml (E_CALDAV_CHOOSER (chooser_obj), message, "multistatus", &error);
++
++	g_clear_object (&chooser_obj);
+ 
+ 	if (error != NULL) {
+ 		g_warn_if_fail (doc == NULL);
+@@ -910,7 +934,7 @@ caldav_chooser_get_collection_details (SoupSession *session,
+ 		NS_ICAL,   XC ("calendar-color"),
+ 		NULL);
+ 
+-	e_soup_ssl_trust_connect (message, context->source, context->registry, context->cancellable);
++	e_soup_ssl_trust_connect (message, context->source);
+ 
+ 	/* This takes ownership of the message. */
+ 	soup_session_queue_message (
+@@ -931,11 +955,15 @@ caldav_chooser_calendar_home_set_cb (SoupSession *session,
+ 	xmlXPathContextPtr xp_ctx;
+ 	xmlXPathObjectPtr xp_obj;
+ 	gchar *calendar_home_set;
++	GObject *chooser_obj;
+ 	GError *error = NULL;
+ 
+ 	context = g_simple_async_result_get_op_res_gpointer (simple);
++	chooser_obj = g_async_result_get_source_object (G_ASYNC_RESULT (simple));
+ 
+-	doc = caldav_chooser_parse_xml (message, "multistatus", &error);
++	doc = caldav_chooser_parse_xml (E_CALDAV_CHOOSER (chooser_obj), message, "multistatus", &error);
++
++	g_clear_object (&chooser_obj);
+ 
+ 	/* If we were cancelled then we're in a GCancellable::cancelled
+ 	 * signal handler right now and GCancellable has its mutex locked,
+@@ -1096,7 +1124,7 @@ retry_propfind:
+ 		NS_CALDAV, XC ("calendar-user-address-set"),
+ 		NULL);
+ 
+-	e_soup_ssl_trust_connect (message, context->source, context->registry, context->cancellable);
++	e_soup_ssl_trust_connect (message, context->source);
+ 
+ 	/* This takes ownership of the message. */
+ 	soup_session_queue_message (
+@@ -1200,20 +1228,10 @@ caldav_chooser_dispose (GObject *object)
+ 
+ 	priv = E_CALDAV_CHOOSER_GET_PRIVATE (object);
+ 
+-	if (priv->registry != NULL) {
+-		g_object_unref (priv->registry);
+-		priv->registry = NULL;
+-	}
+-
+-	if (priv->source != NULL) {
+-		g_object_unref (priv->source);
+-		priv->source = NULL;
+-	}
+-
+-	if (priv->session != NULL) {
+-		g_object_unref (priv->session);
+-		priv->session = NULL;
+-	}
++	g_clear_object (&priv->registry);
++	g_clear_object (&priv->prompter);
++	g_clear_object (&priv->source);
++	g_clear_object (&priv->session);
+ 
+ 	/* Chain up to parent's dispose() method. */
+ 	G_OBJECT_CLASS (e_caldav_chooser_parent_class)->dispose (object);
+@@ -1230,7 +1248,10 @@ caldav_chooser_finalize (GObject *object)
+ 		priv->user_address_set,
+ 		(GDestroyNotify) g_free);
+ 
++	g_free (priv->username);
+ 	g_free (priv->password);
++	g_free (priv->certificate_pem);
++	g_free (priv->error_text);
+ 
+ 	/* Chain up to parent's finalize() method. */
+ 	G_OBJECT_CLASS (e_caldav_chooser_parent_class)->finalize (object);
+@@ -1254,6 +1275,9 @@ caldav_chooser_constructed (GObject *object)
+ 	caldav_chooser_configure_session (chooser, session);
+ 	chooser->priv->session = session;
+ 
++	chooser->priv->prompter = e_credentials_prompter_new (chooser->priv->registry);
++	e_credentials_prompter_set_auto_prompt (chooser->priv->prompter, FALSE);
++
+ 	tree_view = GTK_TREE_VIEW (object);
+ 
+ 	list_store = gtk_list_store_new (
+@@ -1308,12 +1332,11 @@ caldav_chooser_try_password_cancelled_cb (GCancellable *cancellable,
+ }
+ 
+ static ESourceAuthenticationResult
+-caldav_chooser_try_password_sync (ESourceAuthenticator *auth,
+-                                  const GString *password,
++caldav_chooser_try_password_sync (ECaldavChooser *chooser,
++                                  const ENamedParameters *credentials,
+                                   GCancellable *cancellable,
+                                   GError **error)
+ {
+-	ECaldavChooser *chooser;
+ 	ESourceAuthenticationResult result;
+ 	SoupMessage *message;
+ 	SoupSession *session;
+@@ -1324,22 +1347,35 @@ caldav_chooser_try_password_sync (ESourceAuthenticator *auth,
+ 	gulong cancel_id = 0;
+ 	GError *local_error = NULL;
+ 
+-	chooser = E_CALDAV_CHOOSER (auth);
++	g_return_val_if_fail (E_IS_CALDAV_CHOOSER (chooser), E_SOURCE_AUTHENTICATION_ERROR);
++	g_return_val_if_fail (credentials != NULL, E_SOURCE_AUTHENTICATION_ERROR);
++
++	source = e_caldav_chooser_get_source (chooser);
++	extension_name = E_SOURCE_EXTENSION_WEBDAV_BACKEND;
++	extension = e_source_get_extension (source, extension_name);
+ 
+ 	/* Cache the password for later use in our
+ 	 * SoupSession::authenticate signal handler. */
++	g_free (chooser->priv->username);
++	chooser->priv->username = g_strdup (e_named_parameters_get (credentials, E_SOURCE_CREDENTIAL_USERNAME));
++
+ 	g_free (chooser->priv->password);
+-	chooser->priv->password = g_strdup (password->str);
++	chooser->priv->password = g_strdup (e_named_parameters_get (credentials, E_SOURCE_CREDENTIAL_PASSWORD));
++
++	if (e_named_parameters_get (credentials, E_SOURCE_CREDENTIAL_SSL_TRUST))
++		e_source_webdav_set_ssl_trust (extension, e_named_parameters_get (credentials, E_SOURCE_CREDENTIAL_SSL_TRUST));
++
++	g_free (chooser->priv->certificate_pem);
++	chooser->priv->certificate_pem = NULL;
++	chooser->priv->certificate_errors = 0;
++	g_free (chooser->priv->error_text);
++	chooser->priv->error_text = NULL;
+ 
+ 	/* Create our own SoupSession so we
+ 	 * can try the password synchronously. */
+ 	session = soup_session_new ();
+ 	caldav_chooser_configure_session (chooser, session);
+ 
+-	source = e_caldav_chooser_get_source (chooser);
+-	extension_name = E_SOURCE_EXTENSION_WEBDAV_BACKEND;
+-	extension = e_source_get_extension (source, extension_name);
+-
+ 	soup_uri = e_source_webdav_dup_soup_uri (extension);
+ 	g_return_val_if_fail (soup_uri != NULL, E_SOURCE_AUTHENTICATION_ERROR);
+ 
+@@ -1357,19 +1393,22 @@ caldav_chooser_try_password_sync (ESourceAuthenticator *auth,
+ 			g_object_ref (session),
+ 			(GDestroyNotify) g_object_unref);
+ 
+-	e_soup_ssl_trust_connect (message, source, chooser->priv->registry, cancellable);
++	e_soup_ssl_trust_connect (message, source);
+ 
+ 	soup_session_send_message (session, message);
+ 
+ 	if (cancel_id > 0)
+ 		g_cancellable_disconnect (cancellable, cancel_id);
+ 
+-	if (caldav_chooser_check_successful (message, &local_error)) {
++	if (caldav_chooser_check_successful (chooser, message, &local_error)) {
+ 		result = E_SOURCE_AUTHENTICATION_ACCEPTED;
+ 
+ 	} else if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED)) {
+ 		result = E_SOURCE_AUTHENTICATION_REJECTED;
+-		g_clear_error (&local_error);
++		/* Return also the error here. */
++
++	} else if (g_error_matches (local_error, SOUP_HTTP_ERROR, SOUP_STATUS_SSL_FAILED)) {
++		result = E_SOURCE_AUTHENTICATION_ERROR_SSL_FAILED;
+ 
+ 	} else {
+ 		result = E_SOURCE_AUTHENTICATION_ERROR;
+@@ -1440,16 +1479,11 @@ e_caldav_chooser_class_finalize (ECaldavChooserClass *class)
+ {
+ }
+ 
+-static void
+-e_caldav_chooser_authenticator_init (ESourceAuthenticatorInterface *iface)
+-{
+-	iface->try_password_sync = caldav_chooser_try_password_sync;
+-}
+-
+ static void
+ e_caldav_chooser_init (ECaldavChooser *chooser)
+ {
+ 	chooser->priv = E_CALDAV_CHOOSER_GET_PRIVATE (chooser);
++	chooser->priv->first_auth_request = TRUE;
+ }
+ 
+ void
+@@ -1471,7 +1505,8 @@ e_caldav_chooser_new (ESourceRegistry *registry,
+ 
+ 	return g_object_new (
+ 		E_TYPE_CALDAV_CHOOSER,
+-		"registry", registry, "source", source,
++		"registry", registry,
++		"source", source,
+ 		"source-type", source_type, NULL);
+ }
+ 
+@@ -1483,6 +1518,14 @@ e_caldav_chooser_get_registry (ECaldavChooser *chooser)
+ 	return chooser->priv->registry;
+ }
+ 
++ECredentialsPrompter *
++e_caldav_chooser_get_prompter (ECaldavChooser *chooser)
++{
++	g_return_val_if_fail (E_IS_CALDAV_CHOOSER (chooser), NULL);
++
++	return chooser->priv->prompter;
++}
++
+ ESource *
+ e_caldav_chooser_get_source (ECaldavChooser *chooser)
+ {
+@@ -1545,7 +1588,7 @@ e_caldav_chooser_populate (ECaldavChooser *chooser,
+ 		NS_WEBDAV, XC ("principal-URL"),
+ 		NULL);
+ 
+-	e_soup_ssl_trust_connect (message, source, context->registry, context->cancellable);
++	e_soup_ssl_trust_connect (message, source);
+ 
+ 	/* This takes ownership of the message. */
+ 	soup_session_queue_message (
+@@ -1675,3 +1718,131 @@ e_caldav_chooser_apply_selected (ECaldavChooser *chooser)
+ 	return TRUE;
+ }
+ 
++void
++e_caldav_chooser_run_trust_prompt (ECaldavChooser *chooser,
++				   GtkWindow *parent,
++				   GCancellable *cancellable,
++				   GAsyncReadyCallback callback,
++				   gpointer user_data)
++{
++	g_return_if_fail (E_IS_CALDAV_CHOOSER (chooser));
++
++	e_trust_prompt_run_for_source (parent,
++		chooser->priv->source,
++		chooser->priv->certificate_pem,
++		chooser->priv->certificate_errors,
++		chooser->priv->error_text,
++		FALSE,
++		cancellable,
++		callback,
++		user_data);
++}
++
++/* Free returned pointer with g_error_free() or g_clear_error() */
++GError *
++e_caldav_chooser_new_ssl_trust_error (ECaldavChooser *chooser)
++{
++	g_return_val_if_fail (E_IS_CALDAV_CHOOSER (chooser), NULL);
++	g_return_val_if_fail (chooser->priv->error_text != NULL, NULL);
++
++	return g_error_new_literal (SOUP_HTTP_ERROR, SOUP_STATUS_SSL_FAILED, chooser->priv->error_text);
++}
++
++/* The callback has an ECredentialsPrompter as the source_object. */
++void
++e_caldav_chooser_run_credentials_prompt (ECaldavChooser *chooser,
++					 GAsyncReadyCallback callback,
++					 gpointer user_data)
++{
++	g_return_if_fail (E_IS_CALDAV_CHOOSER (chooser));
++	g_return_if_fail (callback != NULL);
++
++	e_credentials_prompter_prompt (chooser->priv->prompter, chooser->priv->source, chooser->priv->error_text,
++		chooser->priv->first_auth_request ? E_CREDENTIALS_PROMPTER_PROMPT_FLAG_ALLOW_STORED_CREDENTIALS : 0,
++		callback, user_data);
++
++	chooser->priv->first_auth_request = FALSE;
++}
++
++gboolean
++e_caldav_chooser_run_credentials_prompt_finish (ECaldavChooser *chooser,
++						GAsyncResult *result,
++						ENamedParameters **out_credentials,
++						GError **error)
++{
++	ESource *source = NULL;
++
++	g_return_val_if_fail (E_IS_CALDAV_CHOOSER (chooser), FALSE);
++	g_return_val_if_fail (out_credentials != NULL, FALSE);
++
++	if (!e_credentials_prompter_prompt_finish (chooser->priv->prompter, result,
++		&source, out_credentials, error))
++		return FALSE;
++
++	g_return_val_if_fail (source == chooser->priv->source, FALSE);
++
++	return TRUE;
++}
++
++static void
++e_caldav_chooser_authenticate_thread (GTask *task,
++				      gpointer source_object,
++				      gpointer task_data,
++				      GCancellable *cancellable)
++{
++	ECaldavChooser *chooser = source_object;
++	const ENamedParameters *credentials = task_data;
++	gboolean success;
++	GError *local_error = NULL;
++
++	if (caldav_chooser_try_password_sync (chooser, credentials, cancellable, &local_error)
++	    != E_SOURCE_AUTHENTICATION_ACCEPTED && !local_error) {
++		local_error = g_error_new_literal (G_IO_ERROR, G_IO_ERROR_FAILED, _("Unknown error"));
++	}
++
++	if (local_error != NULL) {
++		g_task_return_error (task, local_error);
++	} else {
++		g_task_return_boolean (task, success);
++	}
++}
++
++void
++e_caldav_chooser_authenticate (ECaldavChooser *chooser,
++			       const ENamedParameters *credentials,
++			       GCancellable *cancellable,
++			       GAsyncReadyCallback callback,
++			       gpointer user_data)
++{
++	ENamedParameters *credentials_copy;
++	GTask *task;
++
++	g_return_if_fail (E_IS_CALDAV_CHOOSER (chooser));
++	g_return_if_fail (credentials != NULL);
++	g_return_if_fail (callback != NULL);
++
++	credentials_copy = e_named_parameters_new_clone (credentials);
++
++	task = g_task_new (chooser, cancellable, callback, user_data);
++	g_task_set_source_tag (task, e_caldav_chooser_authenticate);
++	g_task_set_task_data (task, credentials_copy, (GDestroyNotify) e_named_parameters_free);
++
++	g_task_run_in_thread (task, e_caldav_chooser_authenticate_thread);
++
++	g_object_unref (task);
++}
++
++gboolean
++e_caldav_chooser_authenticate_finish (ECaldavChooser *chooser,
++				      GAsyncResult *result,
++				      GError **error)
++{
++	g_return_val_if_fail (E_IS_CALDAV_CHOOSER (chooser), FALSE);
++	g_return_val_if_fail (g_task_is_valid (result, chooser), FALSE);
++
++	g_return_val_if_fail (
++		g_async_result_is_tagged (
++		result, e_caldav_chooser_authenticate), FALSE);
++
++	return g_task_propagate_boolean (G_TASK (result), error);
++}
+diff --git a/modules/cal-config-caldav/e-caldav-chooser.h b/modules/cal-config-caldav/e-caldav-chooser.h
+index 15d2d954cb..246b25abfb 100644
+--- a/modules/cal-config-caldav/e-caldav-chooser.h
++++ b/modules/cal-config-caldav/e-caldav-chooser.h
+@@ -20,6 +20,7 @@
+ 
+ #include <gtk/gtk.h>
+ #include <libecal/libecal.h>
++#include <libedataserverui/libedataserverui.h>
+ 
+ /* Standard GObject macros */
+ #define E_TYPE_CALDAV_CHOOSER \
+@@ -62,6 +63,8 @@ GtkWidget *	e_caldav_chooser_new		(ESourceRegistry *registry,
+ 						 ECalClientSourceType source_type);
+ ESourceRegistry *
+ 		e_caldav_chooser_get_registry	(ECaldavChooser *chooser);
++ECredentialsPrompter *
++		e_caldav_chooser_get_prompter	(ECaldavChooser *chooser);
+ ESource *	e_caldav_chooser_get_source	(ECaldavChooser *chooser);
+ ECalClientSourceType
+ 		e_caldav_chooser_get_source_type
+@@ -76,4 +79,31 @@ gboolean	e_caldav_chooser_populate_finish
+ 						 GError **error);
+ gboolean	e_caldav_chooser_apply_selected	(ECaldavChooser *chooser);
+ 
++void		e_caldav_chooser_run_trust_prompt
++						(ECaldavChooser *chooser,
++						 GtkWindow *parent,
++						 GCancellable *cancellable,
++						 GAsyncReadyCallback callback,
++						 gpointer user_data);
++GError *	e_caldav_chooser_new_ssl_trust_error
++						(ECaldavChooser *chooser);
++void		e_caldav_chooser_run_credentials_prompt
++						(ECaldavChooser *chooser,
++						 GAsyncReadyCallback callback,
++						 gpointer user_data);
++gboolean	e_caldav_chooser_run_credentials_prompt_finish
++						(ECaldavChooser *chooser,
++						 GAsyncResult *result,
++						 ENamedParameters **out_credentials,
++						 GError **error);
++void		e_caldav_chooser_authenticate	(ECaldavChooser *chooser,
++						 const ENamedParameters *credentials,
++						 GCancellable *cancellable,
++						 GAsyncReadyCallback callback,
++						 gpointer user_data);
++gboolean	e_caldav_chooser_authenticate_finish
++						(ECaldavChooser *chooser,
++						 GAsyncResult *result,
++						 GError **error);
++
+ #endif /* E_CALDAV_CHOOSER_H */
+diff --git a/modules/cal-config-caldav/evolution-cal-config-caldav.c b/modules/cal-config-caldav/evolution-cal-config-caldav.c
+index 5cd165e16b..9de01a042c 100644
+--- a/modules/cal-config-caldav/evolution-cal-config-caldav.c
++++ b/modules/cal-config-caldav/evolution-cal-config-caldav.c
+@@ -79,6 +79,13 @@ cal_config_caldav_context_free (Context *context)
+ 	g_slice_free (Context, context);
+ }
+ 
++static GtkWindow *
++caldav_config_get_dialog_parent_cb (ECredentialsPrompter *prompter,
++				    GtkWindow *dialog)
++{
++	return dialog;
++}
++
+ static void
+ cal_config_caldav_run_dialog (GtkButton *button,
+                               Context *context)
+@@ -86,9 +93,11 @@ cal_config_caldav_run_dialog (GtkButton *button,
+ 	ESourceConfig *config;
+ 	ESourceRegistry *registry;
+ 	ECalClientSourceType source_type;
++	ECredentialsPrompter *prompter;
+ 	GtkWidget *dialog;
+ 	GtkWidget *widget;
+ 	gpointer parent;
++	gulong handler_id;
+ 
+ 	config = e_source_config_backend_get_config (context->backend);
+ 	registry = e_source_config_get_registry (config);
+@@ -111,8 +120,15 @@ cal_config_caldav_run_dialog (GtkButton *button,
+ 			dialog, "icon-name",
+ 			G_BINDING_SYNC_CREATE);
+ 
++	prompter = e_caldav_chooser_get_prompter (E_CALDAV_CHOOSER (widget));
++
++	handler_id = g_signal_connect (prompter, "get-dialog-parent",
++		G_CALLBACK (caldav_config_get_dialog_parent_cb), dialog);
++
+ 	gtk_dialog_run (GTK_DIALOG (dialog));
+ 
++	g_signal_handler_disconnect (prompter, handler_id);
++
+ 	gtk_widget_destroy (dialog);
+ }
+ 
+diff --git a/modules/calendar/e-cal-attachment-handler.c b/modules/calendar/e-cal-attachment-handler.c
+index 81e396bb95..ef28ddd9fe 100644
+--- a/modules/calendar/e-cal-attachment-handler.c
++++ b/modules/calendar/e-cal-attachment-handler.c
+@@ -155,7 +155,7 @@ import_component_thread (EAlertSinkThreadJobData *job_data,
+ 
+ 	g_return_if_fail (icd != NULL);
+ 
+-	e_client = e_util_open_client_sync (job_data, e_shell_get_client_cache (icd->shell), icd->extension_name, icd->source, cancellable, error);
++	e_client = e_util_open_client_sync (job_data, e_shell_get_client_cache (icd->shell), icd->extension_name, icd->source, 30, cancellable, error);
+ 	if (e_client)
+ 		client = E_CAL_CLIENT (e_client);
+ 
+diff --git a/modules/calendar/e-cal-base-shell-backend.c b/modules/calendar/e-cal-base-shell-backend.c
+index 15a9f35b8b..a67eb8753b 100644
+--- a/modules/calendar/e-cal-base-shell-backend.c
++++ b/modules/calendar/e-cal-base-shell-backend.c
+@@ -365,7 +365,7 @@ cal_base_shell_backend_handle_uri_thread (EAlertSinkThreadJobData *job_data,
+ 
+ 		client_cache = e_shell_get_client_cache (shell);
+ 
+-		client = e_client_cache_get_client_sync (client_cache, source, extension_name, cancellable, &local_error);
++		client = e_client_cache_get_client_sync (client_cache, source, extension_name, 30, cancellable, &local_error);
+ 		if (client) {
+ 			hud->cal_client = E_CAL_CLIENT (client);
+ 
+diff --git a/modules/calendar/e-cal-base-shell-sidebar.c b/modules/calendar/e-cal-base-shell-sidebar.c
+index f51cab0e13..83fe540679 100644
+--- a/modules/calendar/e-cal-base-shell-sidebar.c
++++ b/modules/calendar/e-cal-base-shell-sidebar.c
+@@ -324,7 +324,7 @@ e_cal_base_shell_sidebar_open_client_thread (EAlertSinkThreadJobData *job_data,
+ 
+ 	selector = E_CLIENT_SELECTOR (e_cal_base_shell_sidebar_get_selector (data->sidebar));
+ 	data->client = e_client_selector_get_client_sync (
+-		selector, data->source, TRUE, cancellable, &local_error);
++		selector, data->source, TRUE, (guint32) -1, cancellable, &local_error);
+ 
+ 	e_util_propagate_open_source_job_error (job_data, data->extension_name, local_error, error);
+ }
+@@ -469,12 +469,12 @@ cal_base_shell_sidebar_transfer_thread (EAlertSinkThreadJobData *job_data,
+ 	g_return_if_fail (titd->icalcomp != NULL);
+ 
+ 	source_client = e_client_selector_get_client_sync (
+-		titd->selector, titd->source, FALSE, cancellable, error);
++		titd->selector, titd->source, FALSE, 30, cancellable, error);
+ 	if (!source_client)
+ 		return;
+ 
+ 	destination_client = e_client_selector_get_client_sync (
+-		titd->selector, titd->destination, FALSE, cancellable, error);
++		titd->selector, titd->destination, FALSE, 30, cancellable, error);
+ 	if (!destination_client) {
+ 		g_object_unref (source_client);
+ 		return;
+diff --git a/modules/calendar/e-cal-base-shell-view.c b/modules/calendar/e-cal-base-shell-view.c
+index dd6957dd90..a0eb9cabd4 100644
+--- a/modules/calendar/e-cal-base-shell-view.c
++++ b/modules/calendar/e-cal-base-shell-view.c
+@@ -133,9 +133,9 @@ e_cal_base_shell_view_get_source_type (EShellView *shell_view)
+ }
+ 
+ static void
+-cal_base_shell_view_allow_auth_prompt_and_refresh_done_cb (GObject *source_object,
+-							   GAsyncResult *result,
+-							   gpointer user_data)
++cal_base_shell_view_refresh_done_cb (GObject *source_object,
++				     GAsyncResult *result,
++				     gpointer user_data)
+ {
+ 	EClient *client;
+ 	EActivity *activity;
+@@ -152,7 +152,7 @@ cal_base_shell_view_allow_auth_prompt_and_refresh_done_cb (GObject *source_objec
+ 	alert_sink = e_activity_get_alert_sink (activity);
+ 	display_name = e_source_get_display_name (source);
+ 
+-	e_util_allow_auth_prompt_and_refresh_client_finish (client, result, &local_error);
++	e_client_refresh_finish (client, result, &local_error);
+ 
+ 	if (e_activity_handle_cancellation (activity, local_error)) {
+ 		g_error_free (local_error);
+@@ -191,6 +191,7 @@ e_cal_base_shell_view_allow_auth_prompt_and_refresh (EShellView *shell_view,
+ {
+ 	EShellBackend *shell_backend;
+ 	EShellContent *shell_content;
++	EShell *shell;
+ 	EActivity *activity;
+ 	EAlertSink *alert_sink;
+ 	GCancellable *cancellable;
+@@ -200,6 +201,7 @@ e_cal_base_shell_view_allow_auth_prompt_and_refresh (EShellView *shell_view,
+ 
+ 	shell_backend = e_shell_view_get_shell_backend (shell_view);
+ 	shell_content = e_shell_view_get_shell_content (shell_view);
++	shell = e_shell_backend_get_shell (shell_backend);
+ 
+ 	alert_sink = E_ALERT_SINK (shell_content);
+ 	activity = e_activity_new ();
+@@ -208,8 +210,10 @@ e_cal_base_shell_view_allow_auth_prompt_and_refresh (EShellView *shell_view,
+ 	e_activity_set_alert_sink (activity, alert_sink);
+ 	e_activity_set_cancellable (activity, cancellable);
+ 
+-	e_util_allow_auth_prompt_and_refresh_client (client, cancellable,
+-		cal_base_shell_view_allow_auth_prompt_and_refresh_done_cb, activity);
++	e_shell_allow_auth_prompt_for (shell, e_client_get_source (client));
++
++	e_client_refresh (client, cancellable,
++		cal_base_shell_view_refresh_done_cb, activity);
+ 
+ 	e_shell_backend_add_activity (shell_backend, activity);
+ 
+diff --git a/modules/contact-photos/e-contact-photo-source.c b/modules/contact-photos/e-contact-photo-source.c
+index 910bc12d3a..95c09113bb 100644
+--- a/modules/contact-photos/e-contact-photo-source.c
++++ b/modules/contact-photos/e-contact-photo-source.c
+@@ -326,7 +326,7 @@ contact_photo_source_get_photo (EPhotoSource *photo_source,
+ 		 * a main loop so signal emissions can work. */
+ 		e_client_cache_get_client (
+ 			client_cache, source,
+-			E_SOURCE_EXTENSION_ADDRESS_BOOK,
++			E_SOURCE_EXTENSION_ADDRESS_BOOK, (guint32) -1,
+ 			cancellable,
+ 			contact_photo_source_get_client_cb,
+ 			g_object_ref (simple));
+diff --git a/modules/itip-formatter/itip-view.c b/modules/itip-formatter/itip-view.c
+index 8d96a4cd13..f2136a18b1 100644
+--- a/modules/itip-formatter/itip-view.c
++++ b/modules/itip-formatter/itip-view.c
+@@ -3515,7 +3515,7 @@ start_calendar_server (EMailPartItip *pitip,
+ 	client_cache = itip_view_get_client_cache (view);
+ 
+ 	e_client_cache_get_client (
+-		client_cache, source, extension_name,
++		client_cache, source, extension_name, 30,
+ 		pitip->cancellable, func, data);
+ }
+ 
+@@ -3950,13 +3950,6 @@ find_cal_opened_cb (GObject *source_object,
+ 		return;
+ 	}
+ 
+-	/* Do not process read-only calendars */
+-	if (e_client_is_readonly (client)) {
+-		g_object_unref (client);
+-		decrease_find_data (fd);
+-		return;
+-	}
+-
+ 	cal_client = E_CAL_CLIENT (client);
+ 
+ 	source = e_client_get_source (client);
+@@ -3971,6 +3964,13 @@ find_cal_opened_cb (GObject *source_object,
+ 			e_source_conflict_search_get_include_me (extension);
+ 	}
+ 
++	/* Do not process read-only calendars */
++	if (e_client_is_readonly (E_CLIENT (cal_client))) {
++		g_object_unref (cal_client);
++		decrease_find_data (fd);
++		return;
++	}
++
+  	/* Check for conflicts */
+  	/* If the query fails, we'll just ignore it */
+  	/* FIXME What happens for recurring conflicts? */
+@@ -3991,6 +3991,7 @@ find_cal_opened_cb (GObject *source_object,
+ 	}
+ 
+ 	decrease_find_data (fd);
++	g_clear_object (&cal_client);
+ }
+ 
+ static void
+diff --git a/modules/mail/e-mail-shell-view-actions.c b/modules/mail/e-mail-shell-view-actions.c
+index b1be4906d8..40c3664642 100644
+--- a/modules/mail/e-mail-shell-view-actions.c
++++ b/modules/mail/e-mail-shell-view-actions.c
+@@ -156,54 +156,6 @@ account_refresh_folder_info_received_cb (GObject *source,
+ 	g_clear_object (&activity);
+ }
+ 
+-typedef struct _RefreshData
+-{
+-	EActivity *activity;
+-	CamelStore *store;
+-} RefreshData;
+-
+-static void
+-account_refresh_allow_auth_prompt_done_cb (GObject *source_object,
+-					   GAsyncResult *result,
+-					   gpointer user_data)
+-{
+-	RefreshData *data = user_data;
+-	EActivity *activity;
+-	CamelStore *store;
+-	GError *local_error = NULL;
+-
+-	g_return_if_fail (data != NULL);
+-
+-	activity = data->activity;
+-	store = data->store;
+-
+-	g_free (data);
+-
+-	e_source_allow_auth_prompt_finish (E_SOURCE (source_object), result, &local_error);
+-
+-	if (e_activity_handle_cancellation (activity, local_error)) {
+-		g_error_free (local_error);
+-		g_clear_object (&activity);
+-	} else {
+-		GCancellable *cancellable;
+-
+-		if (local_error) {
+-			g_debug ("%s: Failed with: %s", G_STRFUNC, local_error->message);
+-			g_clear_error (&local_error);
+-		}
+-
+-		cancellable = e_activity_get_cancellable (activity);
+-
+-		camel_store_get_folder_info (
+-			store, NULL,
+-			CAMEL_STORE_FOLDER_INFO_RECURSIVE,
+-			G_PRIORITY_DEFAULT, cancellable,
+-			account_refresh_folder_info_received_cb, activity);
+-	}
+-
+-	g_object_unref (store);
+-}
+-
+ static void
+ action_mail_account_refresh_cb (GtkAction *action,
+                                 EMailShellView *mail_shell_view)
+@@ -218,7 +170,6 @@ action_mail_account_refresh_cb (GtkAction *action,
+ 	EShell *shell;
+ 	CamelStore *store;
+ 	GCancellable *cancellable;
+-	RefreshData *data;
+ 
+ 	mail_shell_content = mail_shell_view->priv->mail_shell_content;
+ 	mail_shell_sidebar = mail_shell_view->priv->mail_shell_sidebar;
+@@ -231,18 +182,21 @@ action_mail_account_refresh_cb (GtkAction *action,
+ 	activity = e_mail_reader_new_activity (E_MAIL_READER (mail_view));
+ 	cancellable = e_activity_get_cancellable (activity);
+ 
+-	data = g_new0 (RefreshData, 1);
+-	data->activity = activity;
+-	data->store = store;
+-
+ 	shell = e_shell_backend_get_shell (e_shell_view_get_shell_backend (E_SHELL_VIEW (mail_shell_view)));
+ 	registry = e_shell_get_registry (shell);
+ 	source = e_source_registry_ref_source (registry, camel_service_get_uid (CAMEL_SERVICE (store)));
+ 	g_return_if_fail (source != NULL);
+ 
+-	e_source_allow_auth_prompt (source, cancellable, account_refresh_allow_auth_prompt_done_cb, data);
++	e_shell_allow_auth_prompt_for (shell, source);
++
++	camel_store_get_folder_info (
++		store, NULL,
++		CAMEL_STORE_FOLDER_INFO_RECURSIVE,
++		G_PRIORITY_DEFAULT, cancellable,
++		account_refresh_folder_info_received_cb, activity);
+ 
+ 	g_clear_object (&source);
++	g_clear_object (&store);
+ }
+ 
+ static void
+diff --git a/modules/vcard-inline/e-mail-part-vcard.c b/modules/vcard-inline/e-mail-part-vcard.c
+index 4768295076..f5729a67ce 100644
+--- a/modules/vcard-inline/e-mail-part-vcard.c
++++ b/modules/vcard-inline/e-mail-part-vcard.c
+@@ -147,7 +147,7 @@ save_vcard_cb (GDBusConnection *connection,
+ 		(GCopyFunc) g_object_ref, NULL);
+ 
+ 	e_book_client_connect (
+-		source, NULL, client_connect_cb, contact_list);
++		source, 30, NULL, client_connect_cb, contact_list);
+ }
+ 
+ static void
+diff --git a/plugins/bbdb/bbdb.c b/plugins/bbdb/bbdb.c
+index d5b896cd73..6e7582c47f 100644
+--- a/plugins/bbdb/bbdb.c
++++ b/plugins/bbdb/bbdb.c
+@@ -363,7 +363,7 @@ bbdb_do_it (EBookClient *client,
+ 
+ 			client_addressbook = (EBookClient *) e_client_cache_get_client_sync (
+ 					client_cache, (ESource *) aux_addressbooks->data,
+-					E_SOURCE_EXTENSION_ADDRESS_BOOK,
++					E_SOURCE_EXTENSION_ADDRESS_BOOK, 30,
+ 					NULL, &error);
+ 
+ 			if (error != NULL) {
+@@ -505,7 +505,7 @@ bbdb_create_book_client (gint type,
+ 
+ 	client = e_client_cache_get_client_sync (
+ 		client_cache, source,
+-		E_SOURCE_EXTENSION_ADDRESS_BOOK,
++		E_SOURCE_EXTENSION_ADDRESS_BOOK, 30,
+ 		cancellable, error);
+ 
+ 	g_object_unref (source);
+diff --git a/plugins/mail-to-task/mail-to-task.c b/plugins/mail-to-task/mail-to-task.c
+index ceaa01f487..a8c9f623a7 100644
+--- a/plugins/mail-to-task/mail-to-task.c
++++ b/plugins/mail-to-task/mail-to-task.c
+@@ -843,7 +843,7 @@ do_mail_to_event (AsyncData *data)
+ 	GError *error = NULL;
+ 
+ 	client = e_client_cache_get_client_sync (data->client_cache,
+-		data->source, data->extension_name, NULL, &error);
++		data->source, data->extension_name, 30, NULL, &error);
+ 
+ 	/* Sanity check. */
+ 	g_return_val_if_fail (
+diff --git a/plugins/publish-calendar/publish-format-fb.c b/plugins/publish-calendar/publish-format-fb.c
+index 0a064a9571..a0cabdd85d 100644
+--- a/plugins/publish-calendar/publish-format-fb.c
++++ b/plugins/publish-calendar/publish-format-fb.c
+@@ -91,7 +91,7 @@ write_calendar (const gchar *uid,
+ 		EClientCache *client_cache;
+ 
+ 		client_cache = e_shell_get_client_cache (shell);
+-		client = e_client_cache_get_client_sync (client_cache, source, E_SOURCE_EXTENSION_CALENDAR, NULL, error);
++		client = e_client_cache_get_client_sync (client_cache, source, E_SOURCE_EXTENSION_CALENDAR, 30, NULL, error);
+ 
+ 		g_object_unref (source);
+ 	} else {
+diff --git a/plugins/publish-calendar/publish-format-ical.c b/plugins/publish-calendar/publish-format-ical.c
+index 06215a6002..3f06cdba9e 100644
+--- a/plugins/publish-calendar/publish-format-ical.c
++++ b/plugins/publish-calendar/publish-format-ical.c
+@@ -94,7 +94,7 @@ write_calendar (const gchar *uid,
+ 		EClientCache *client_cache;
+ 
+ 		client_cache = e_shell_get_client_cache (shell);
+-		client = e_client_cache_get_client_sync (client_cache, source, E_SOURCE_EXTENSION_CALENDAR, NULL, error);
++		client = e_client_cache_get_client_sync (client_cache, source, E_SOURCE_EXTENSION_CALENDAR, 30, NULL, error);
+ 
+ 		g_object_unref (source);
+ 	} else {
+diff --git a/plugins/save-calendar/csv-format.c b/plugins/save-calendar/csv-format.c
+index 498f5e5638..1a1b163dba 100644
+--- a/plugins/save-calendar/csv-format.c
++++ b/plugins/save-calendar/csv-format.c
+@@ -332,7 +332,7 @@ do_save_calendar_csv (FormatHandler *handler,
+ 	/* open source client */
+ 	primary_source = e_source_selector_ref_primary_selection (selector);
+ 	source_client = e_client_cache_get_client_sync (client_cache,
+-		primary_source, e_source_selector_get_extension_name (selector), NULL, &error);
++		primary_source, e_source_selector_get_extension_name (selector), 30, NULL, &error);
+ 	g_object_unref (primary_source);
+ 
+ 	/* Sanity check. */
+diff --git a/plugins/save-calendar/ical-format.c b/plugins/save-calendar/ical-format.c
+index fb79479455..8e3d64d27b 100644
+--- a/plugins/save-calendar/ical-format.c
++++ b/plugins/save-calendar/ical-format.c
+@@ -104,7 +104,7 @@ do_save_calendar_ical (FormatHandler *handler,
+ 	/* open source client */
+ 	primary_source = e_source_selector_ref_primary_selection (selector);
+ 	source_client = e_client_cache_get_client_sync (client_cache,
+-		primary_source, e_source_selector_get_extension_name (selector), NULL, &error);
++		primary_source, e_source_selector_get_extension_name (selector), 30, NULL, &error);
+ 	g_object_unref (primary_source);
+ 
+ 	/* Sanity check. */
+diff --git a/plugins/save-calendar/rdf-format.c b/plugins/save-calendar/rdf-format.c
+index 947c4ffe29..3365b48955 100644
+--- a/plugins/save-calendar/rdf-format.c
++++ b/plugins/save-calendar/rdf-format.c
+@@ -199,7 +199,7 @@ do_save_calendar_rdf (FormatHandler *handler,
+ 	/* open source client */
+ 	primary_source = e_source_selector_ref_primary_selection (selector);
+ 	source_client = e_client_cache_get_client_sync (client_cache,
+-		primary_source, e_source_selector_get_extension_name (selector), NULL, &error);
++		primary_source, e_source_selector_get_extension_name (selector), 30, NULL, &error);
+ 	g_object_unref (primary_source);
+ 
+ 	/* Sanity check. */
+diff --git a/po/POTFILES.in b/po/POTFILES.in
+index cd37de00df..4c22ce323f 100644
+--- a/po/POTFILES.in
++++ b/po/POTFILES.in
+@@ -314,7 +314,6 @@ e-util/widgets.error.xml
+ evolution.appdata.xml.in
+ libemail-engine/camel-null-store.c
+ libemail-engine/camel-sasl-xoauth2.c
+-libemail-engine/e-mail-authenticator.c
+ libemail-engine/e-mail-folder-utils.c
+ libemail-engine/e-mail-session.c
+ libemail-engine/e-mail-session-utils.c
+diff --git a/shell/e-shell-window.c b/shell/e-shell-window.c
+index 1b445d3ea2..4b6b6af341 100644
+--- a/shell/e-shell-window.c
++++ b/shell/e-shell-window.c
+@@ -1659,7 +1659,7 @@ shell_window_connect_client_thread (EAlertSinkThreadJobData *job_data,
+ 	client_cache = e_shell_get_client_cache (shell);
+ 
+ 	cc_data->client = e_client_cache_get_client_sync (client_cache,
+-		cc_data->source, cc_data->extension_name, cancellable, &local_error);
++		cc_data->source, cc_data->extension_name, 30, cancellable, &local_error);
+ 
+ 	e_util_propagate_open_source_job_error (job_data, cc_data->extension_name, local_error, error);
+ }
+diff --git a/shell/e-shell.c b/shell/e-shell.c
+index ee9947473b..ed90be6b5c 100644
+--- a/shell/e-shell.c
++++ b/shell/e-shell.c
+@@ -51,8 +51,10 @@
+ struct _EShellPrivate {
+ 	GQueue alerts;
+ 	ESourceRegistry *registry;
++	ECredentialsPrompter *credentials_prompter;
+ 	EClientCache *client_cache;
+ 	GtkWidget *preferences_window;
++	GCancellable *cancellable;
+ 
+ 	/* Shell Backends */
+ 	GList *loaded_backends;              /* not referenced */
+@@ -70,6 +72,9 @@ struct _EShellPrivate {
+ 	guint prepare_quit_timeout_id;
+ 
+ 	gulong backend_died_handler_id;
++	gulong allow_auth_prompt_handler_id;
++	gulong get_dialog_parent_handler_id;
++	gulong credentials_required_handler_id;
+ 
+ 	guint auto_reconnect : 1;
+ 	guint express_mode : 1;
+@@ -90,7 +95,8 @@ enum {
+ 	PROP_MODULE_DIRECTORY,
+ 	PROP_NETWORK_AVAILABLE,
+ 	PROP_ONLINE,
+-	PROP_REGISTRY
++	PROP_REGISTRY,
++	PROP_CREDENTIALS_PROMPTER
+ };
+ 
+ enum {
+@@ -597,6 +603,422 @@ shell_backend_died_cb (EClientCache *client_cache,
+ 	e_shell_submit_alert (shell, alert);
+ }
+ 
++static void
++shell_allow_auth_prompt_cb (EClientCache *client_cache,
++			    ESource *source,
++			    EShell *shell)
++{
++	g_return_if_fail (E_IS_SOURCE (source));
++	g_return_if_fail (E_IS_SHELL (shell));
++
++	e_shell_allow_auth_prompt_for (shell, source);
++}
++
++static void
++shell_source_connection_status_notify_cb (ESource *source,
++					  GParamSpec *param,
++					  EAlert *alert)
++{
++	g_return_if_fail (E_IS_ALERT (alert));
++
++	if (e_source_get_connection_status (source) == E_SOURCE_CONNECTION_STATUS_DISCONNECTED ||
++	    e_source_get_connection_status (source) == E_SOURCE_CONNECTION_STATUS_CONNECTING ||
++	    e_source_get_connection_status (source) == E_SOURCE_CONNECTION_STATUS_CONNECTED)
++		e_alert_response (alert, GTK_RESPONSE_CLOSE);
++}
++
++static void
++shell_submit_source_connection_alert (EShell *shell,
++				      ESource *source,
++				      EAlert *alert)
++{
++	g_return_if_fail (E_IS_SHELL (shell));
++	g_return_if_fail (E_IS_SOURCE (source));
++	g_return_if_fail (E_IS_ALERT (alert));
++
++	e_signal_connect_notify_object (source, "notify::connection-status",
++		G_CALLBACK (shell_source_connection_status_notify_cb), alert, 0);
++
++	e_shell_submit_alert (shell, alert);
++}
++
++static void
++shell_source_invoke_authenticate_cb (GObject *source_object,
++				     GAsyncResult *result,
++				     gpointer user_data)
++{
++	ESource *source;
++	EShell *shell = user_data;
++	GError *error = NULL;
++
++	g_return_if_fail (E_IS_SOURCE (source_object));
++
++	source = E_SOURCE (source_object);
++
++	if (!e_source_invoke_authenticate_finish (source, result, &error)) {
++		/* Can be cancelled only if the shell is disposing/disposed */
++		if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
++			EAlert *alert;
++
++			g_return_if_fail (E_IS_SHELL (shell));
++
++			alert = e_alert_new ("shell:source-invoke-authenticate-failed",
++				e_source_get_display_name (source),
++				error->message,
++				NULL);
++			e_shell_submit_alert (shell, alert);
++			g_object_unref (alert);
++		}
++
++		g_clear_error (&error);
++	}
++}
++
++#define SOURCE_ALERT_KEY_SOURCE			"source-alert-key-source"
++#define SOURCE_ALERT_KEY_CERTIFICATE_PEM	"source-alert-key-certificate-pem"
++#define SOURCE_ALERT_KEY_CERTIFICATE_ERRORS	"source-alert-key-certificate-errors"
++#define SOURCE_ALERT_KEY_ERROR_TEXT		"source-alert-key-error-text"
++
++static void
++shell_trust_prompt_done_cb (GObject *source_object,
++			    GAsyncResult *result,
++			    gpointer user_data)
++{
++	ESource *source;
++	EShell *shell = user_data;
++	ETrustPromptResponse response = E_TRUST_PROMPT_RESPONSE_UNKNOWN;
++	ENamedParameters *credentials;
++	GError *error = NULL;
++
++	g_return_if_fail (E_IS_SOURCE (source_object));
++
++	source = E_SOURCE (source_object);
++
++	if (!e_trust_prompt_run_for_source_finish (source, result, &response, &error)) {
++		/* Can be cancelled only if the shell is disposing/disposed */
++		if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
++			EAlert *alert;
++
++			g_return_if_fail (E_IS_SHELL (shell));
++
++			alert = e_alert_new ("shell:source-trust-prompt-failed",
++				e_source_get_display_name (source),
++				error->message,
++				NULL);
++			e_shell_submit_alert (shell, alert);
++			g_object_unref (alert);
++		}
++
++		g_clear_error (&error);
++		return;
++	}
++
++	g_return_if_fail (E_IS_SHELL (shell));
++
++	if (response == E_TRUST_PROMPT_RESPONSE_UNKNOWN) {
++		e_credentials_prompter_set_auto_prompt_disabled_for (shell->priv->credentials_prompter, source, TRUE);
++		return;
++	}
++
++	/* If a credentials prompt is required, then it'll be shown immediately. */
++	e_credentials_prompter_set_auto_prompt_disabled_for (shell->priv->credentials_prompter, source, FALSE);
++
++	credentials = e_named_parameters_new ();
++
++	e_source_invoke_authenticate (source, credentials, shell->priv->cancellable,
++		shell_source_invoke_authenticate_cb, shell);
++
++	e_named_parameters_free (credentials);
++}
++
++static void
++shell_credentials_prompt_done_cb (GObject *source_object,
++				  GAsyncResult *result,
++				  gpointer user_data)
++{
++	EShell *shell = user_data;
++	ESource *source = NULL;
++	ENamedParameters *credentials = NULL;
++	GError *error = NULL;
++
++	g_return_if_fail (E_IS_SHELL (shell));
++
++	if (e_credentials_prompter_prompt_finish (E_CREDENTIALS_PROMPTER (source_object), result, &source, &credentials, &error)) {
++		e_source_invoke_authenticate (source, credentials, shell->priv->cancellable,
++			shell_source_invoke_authenticate_cb, shell);
++	} else if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
++		EAlert *alert;
++
++		g_return_if_fail (E_IS_SHELL (shell));
++
++		alert = e_alert_new ("shell:source-credentials-prompt-failed",
++			e_source_get_display_name (source),
++			error->message,
++			NULL);
++		e_shell_submit_alert (shell, alert);
++		g_object_unref (alert);
++	}
++
++	e_named_parameters_free (credentials);
++	g_clear_object (&source);
++	g_clear_object (&shell);
++	g_clear_error (&error);
++}
++
++static void
++shell_connection_error_alert_response_cb (EAlert *alert,
++					  gint response_id,
++					  EShell *shell)
++{
++	ESource *source;
++
++	g_return_if_fail (E_IS_SHELL (shell));
++
++	if (response_id != GTK_RESPONSE_APPLY)
++		return;
++
++	source = g_object_get_data (G_OBJECT (alert), SOURCE_ALERT_KEY_SOURCE);
++	g_return_if_fail (E_IS_SOURCE (source));
++
++	e_credentials_prompter_set_auto_prompt_disabled_for (shell->priv->credentials_prompter, source, FALSE);
++
++	e_credentials_prompter_prompt (shell->priv->credentials_prompter, source, NULL,
++		E_CREDENTIALS_PROMPTER_PROMPT_FLAG_ALLOW_STORED_CREDENTIALS,
++		shell_credentials_prompt_done_cb, g_object_ref (shell));
++}
++
++static void
++shell_connect_trust_error_alert_response_cb (EAlert *alert,
++					     gint response_id,
++					     EShell *shell)
++{
++	ESource *source;
++	const gchar *certificate_pem;
++	GTlsCertificateFlags certificate_errors;
++	const gchar *error_text;
++
++	g_return_if_fail (E_IS_SHELL (shell));
++
++	if (response_id != GTK_RESPONSE_APPLY)
++		return;
++
++	source = g_object_get_data (G_OBJECT (alert), SOURCE_ALERT_KEY_SOURCE);
++	certificate_pem = g_object_get_data (G_OBJECT (alert), SOURCE_ALERT_KEY_CERTIFICATE_PEM);
++	certificate_errors = GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (alert), SOURCE_ALERT_KEY_CERTIFICATE_ERRORS));
++	error_text = g_object_get_data (G_OBJECT (alert), SOURCE_ALERT_KEY_ERROR_TEXT);
++
++	g_return_if_fail (E_IS_SOURCE (source));
++
++	g_object_set_data_full (G_OBJECT (source), SOURCE_ALERT_KEY_CERTIFICATE_PEM, g_strdup (certificate_pem), g_free);
++
++	e_trust_prompt_run_for_source (gtk_application_get_active_window (GTK_APPLICATION (shell)),
++		source, certificate_pem, certificate_errors, error_text, TRUE,
++		shell->priv->cancellable, shell_trust_prompt_done_cb, shell);
++}
++
++static void
++shell_process_credentials_required_errors (EShell *shell,
++					   ESource *source,
++					   ESourceCredentialsReason reason,
++					   const gchar *certificate_pem,
++					   GTlsCertificateFlags certificate_errors,
++					   const GError *op_error)
++{
++	g_return_if_fail (E_IS_SHELL (shell));
++	g_return_if_fail (E_IS_SOURCE (source));
++
++	/* Skip disabled sources */
++	if (!e_source_registry_check_enabled (shell->priv->registry, source))
++		return;
++
++	switch (reason) {
++	case E_SOURCE_CREDENTIALS_REASON_UNKNOWN:
++		/* This should not be here */
++		g_warn_if_reached ();
++		return;
++	case E_SOURCE_CREDENTIALS_REASON_REQUIRED:
++	case E_SOURCE_CREDENTIALS_REASON_REJECTED:
++		/* These are handled by the credentials prompter, if not disabled */
++		if (e_credentials_prompter_get_auto_prompt_disabled_for (shell->priv->credentials_prompter, source))
++			break;
++
++		return;
++	case E_SOURCE_CREDENTIALS_REASON_SSL_FAILED:
++	case E_SOURCE_CREDENTIALS_REASON_ERROR:
++		break;
++	}
++
++	if (reason == E_SOURCE_CREDENTIALS_REASON_ERROR) {
++		EAlert *alert;
++
++		alert = e_alert_new ("shell:source-connection-error",
++				e_source_get_display_name (source),
++				op_error && *(op_error->message) ? op_error->message : _("Unknown error"),
++				NULL);
++
++		g_signal_connect (alert, "response", G_CALLBACK (shell_connection_error_alert_response_cb), shell);
++		g_object_set_data_full (G_OBJECT (alert), SOURCE_ALERT_KEY_SOURCE, g_object_ref (source), g_object_unref);
++
++		shell_submit_source_connection_alert (shell, source, alert);
++		g_object_unref (alert);
++	} else if (reason == E_SOURCE_CREDENTIALS_REASON_SSL_FAILED) {
++		g_return_if_fail (e_source_has_extension (source, E_SOURCE_EXTENSION_AUTHENTICATION));
++
++		if (e_credentials_prompter_get_auto_prompt_disabled_for (shell->priv->credentials_prompter, source)) {
++			/* Only show an alert */
++			EAlert *alert;
++			gchar *cert_errors_str;
++
++			cert_errors_str = e_trust_prompt_describe_certificate_errors (certificate_errors);
++
++			alert = e_alert_new ("shell:source-connection-trust-error",
++					e_source_get_display_name (source),
++					(cert_errors_str && *cert_errors_str) ? cert_errors_str :
++					op_error && *(op_error->message) ? op_error->message : _("Unknown error"),
++					NULL);
++
++			g_signal_connect (alert, "response", G_CALLBACK (shell_connect_trust_error_alert_response_cb), shell);
++
++			g_object_set_data_full (G_OBJECT (alert), SOURCE_ALERT_KEY_SOURCE, g_object_ref (source), g_object_unref);
++			g_object_set_data_full (G_OBJECT (alert), SOURCE_ALERT_KEY_CERTIFICATE_PEM, g_strdup (certificate_pem), g_free);
++			g_object_set_data (G_OBJECT (alert), SOURCE_ALERT_KEY_CERTIFICATE_ERRORS, GUINT_TO_POINTER (certificate_errors));
++			g_object_set_data_full (G_OBJECT (alert), SOURCE_ALERT_KEY_ERROR_TEXT, op_error ? g_strdup (op_error->message) : NULL, g_free);
++
++			shell_submit_source_connection_alert (shell, source, alert);
++
++			g_free (cert_errors_str);
++			g_object_unref (alert);
++		} else {
++			g_object_set_data_full (G_OBJECT (source), SOURCE_ALERT_KEY_CERTIFICATE_PEM, g_strdup (certificate_pem), g_free);
++
++			e_trust_prompt_run_for_source (gtk_application_get_active_window (GTK_APPLICATION (shell)),
++				source, certificate_pem, certificate_errors, op_error ? op_error->message : NULL, TRUE,
++				shell->priv->cancellable, shell_trust_prompt_done_cb, shell);
++		}
++	} else if (reason == E_SOURCE_CREDENTIALS_REASON_REQUIRED ||
++		   reason == E_SOURCE_CREDENTIALS_REASON_REJECTED) {
++		EAlert *alert;
++
++		alert = e_alert_new ("shell:source-connection-error",
++				e_source_get_display_name (source),
++				op_error && *(op_error->message) ? op_error->message : _("Credentials are required to connect to the destination host."),
++				NULL);
++
++		g_signal_connect (alert, "response", G_CALLBACK (shell_connection_error_alert_response_cb), shell);
++		g_object_set_data_full (G_OBJECT (alert), SOURCE_ALERT_KEY_SOURCE, g_object_ref (source), g_object_unref);
++
++		shell_submit_source_connection_alert (shell, source, alert);
++		g_object_unref (alert);
++	} else {
++		g_warn_if_reached ();
++	}
++}
++
++static void
++shell_get_last_credentials_required_arguments_cb (GObject *source_object,
++						  GAsyncResult *result,
++						  gpointer user_data)
++{
++	EShell *shell = user_data;
++	ESource *source;
++	ESourceCredentialsReason reason = E_SOURCE_CREDENTIALS_REASON_UNKNOWN;
++	gchar *certificate_pem = NULL;
++	GTlsCertificateFlags certificate_errors = 0;
++	GError *op_error = NULL;
++	GError *error = NULL;
++
++	g_return_if_fail (E_IS_SOURCE (source_object));
++
++	source = E_SOURCE (source_object);
++
++	if (!e_source_get_last_credentials_required_arguments_finish (source, result, &reason,
++		&certificate_pem, &certificate_errors, &op_error, &error)) {
++		/* Can be cancelled only if the shell is disposing/disposed */
++		if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
++			EAlert *alert;
++
++			g_return_if_fail (E_IS_SHELL (shell));
++
++			alert = e_alert_new ("shell:source-get-values-failed",
++				e_source_get_display_name (source),
++				error->message,
++				NULL);
++			e_shell_submit_alert (shell, alert);
++			g_object_unref (alert);
++		}
++
++		g_clear_error (&error);
++		return;
++	}
++
++	g_return_if_fail (E_IS_SHELL (shell));
++
++	if (reason != E_SOURCE_CREDENTIALS_REASON_UNKNOWN)
++		shell_process_credentials_required_errors (shell, source, reason, certificate_pem, certificate_errors, op_error);
++
++	g_free (certificate_pem);
++	g_clear_error (&op_error);
++}
++
++static void
++shell_process_failed_authentications (EShell *shell)
++{
++	GList *sources, *link;
++
++	g_return_if_fail (E_IS_SHELL (shell));
++
++	sources = e_source_registry_list_enabled (shell->priv->registry, NULL);
++
++	for (link = sources; link; link = g_list_next (link)) {
++		ESource *source = link->data;
++
++		if (source && (
++		    e_source_get_connection_status (source) == E_SOURCE_CONNECTION_STATUS_DISCONNECTED ||
++		    e_source_get_connection_status (source) == E_SOURCE_CONNECTION_STATUS_SSL_FAILED)) {
++			/* Only show alerts, do not open windows */
++			e_credentials_prompter_set_auto_prompt_disabled_for (shell->priv->credentials_prompter, source, TRUE);
++
++			e_source_get_last_credentials_required_arguments (source, shell->priv->cancellable,
++				shell_get_last_credentials_required_arguments_cb, shell);
++		}
++	}
++
++	g_list_free_full (sources, g_object_unref);
++}
++
++static void
++shell_credentials_required_cb (ESourceRegistry *registry,
++			       ESource *source,
++			       ESourceCredentialsReason reason,
++			       const gchar *certificate_pem,
++			       GTlsCertificateFlags certificate_errors,
++			       const GError *op_error,
++			       EShell *shell)
++{
++	g_return_if_fail (E_IS_SHELL (shell));
++
++	shell_process_credentials_required_errors (shell, source, reason, certificate_pem, certificate_errors, op_error);
++}
++
++static GtkWindow *
++shell_get_dialog_parent_cb (ECredentialsPrompter *prompter,
++			    EShell *shell)
++{
++	GList *windows, *link;
++
++	g_return_val_if_fail (E_IS_SHELL (shell), NULL);
++
++	windows = gtk_application_get_windows (GTK_APPLICATION (shell));
++	for (link = windows; link; link = g_list_next (link)) {
++		GtkWindow *window = link->data;
++
++		if (E_IS_SHELL_WINDOW (window))
++			return window;
++	}
++
++	return NULL;
++}
++
+ static void
+ shell_sm_quit_cb (EShell *shell,
+                   gpointer user_data)
+@@ -712,6 +1134,12 @@ shell_get_property (GObject *object,
+ 				value, e_shell_get_registry (
+ 				E_SHELL (object)));
+ 			return;
++
++		case PROP_CREDENTIALS_PROMPTER:
++			g_value_set_object (
++				value, e_shell_get_credentials_prompter (
++				E_SHELL (object)));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -735,6 +1163,11 @@ shell_dispose (GObject *object)
+ 		priv->prepare_quit_timeout_id = 0;
+ 	}
+ 
++	if (priv->cancellable) {
++		g_cancellable_cancel (priv->cancellable);
++		g_clear_object (&priv->cancellable);
++	}
++
+ 	while ((alert = g_queue_pop_head (&priv->alerts)) != NULL) {
+ 		g_signal_handlers_disconnect_by_func (
+ 			alert, shell_alert_response_cb, object);
+@@ -754,7 +1187,29 @@ shell_dispose (GObject *object)
+ 		priv->backend_died_handler_id = 0;
+ 	}
+ 
++	if (priv->allow_auth_prompt_handler_id > 0) {
++		g_signal_handler_disconnect (
++			priv->client_cache,
++			priv->allow_auth_prompt_handler_id);
++		priv->allow_auth_prompt_handler_id = 0;
++	}
++
++	if (priv->credentials_required_handler_id > 0) {
++		g_signal_handler_disconnect (
++			priv->registry,
++			priv->credentials_required_handler_id);
++		priv->credentials_required_handler_id = 0;
++	}
++
++	if (priv->get_dialog_parent_handler_id > 0) {
++		g_signal_handler_disconnect (
++			priv->credentials_prompter,
++			priv->get_dialog_parent_handler_id);
++		priv->get_dialog_parent_handler_id = 0;
++	}
++
+ 	g_clear_object (&priv->registry);
++	g_clear_object (&priv->credentials_prompter);
+ 	g_clear_object (&priv->client_cache);
+ 	g_clear_object (&priv->preferences_window);
+ 
+@@ -905,13 +1360,27 @@ shell_initable_init (GInitable *initable,
+ 		return FALSE;
+ 
+ 	shell->priv->registry = g_object_ref (registry);
++	shell->priv->credentials_prompter = e_credentials_prompter_new (registry);
+ 	shell->priv->client_cache = e_client_cache_new (registry);
+ 
++	shell->priv->credentials_required_handler_id = g_signal_connect (
++		shell->priv->registry, "credentials-required",
++		G_CALLBACK (shell_credentials_required_cb), shell);
++
++	shell->priv->get_dialog_parent_handler_id = g_signal_connect (
++		shell->priv->credentials_prompter, "get-dialog-parent",
++		G_CALLBACK (shell_get_dialog_parent_cb), shell);
++
+ 	handler_id = g_signal_connect (
+ 		shell->priv->client_cache, "backend-died",
+ 		G_CALLBACK (shell_backend_died_cb), shell);
+ 	shell->priv->backend_died_handler_id = handler_id;
+ 
++	handler_id = g_signal_connect (
++		shell->priv->client_cache, "allow-auth-prompt",
++		G_CALLBACK (shell_allow_auth_prompt_cb), shell);
++	shell->priv->allow_auth_prompt_handler_id = handler_id;
++
+ 	/* Configure WebKit's default SoupSession. */
+ 
+ 	proxy_source = e_source_registry_ref_builtin_proxy (registry);
+@@ -1069,6 +1538,24 @@ e_shell_class_init (EShellClass *class)
+ 			G_PARAM_READABLE |
+ 			G_PARAM_STATIC_STRINGS));
+ 
++	/**
++	 * EShell:credentials-prompter
++	 *
++	 * The #ECredentialsPrompter managing #ESource credential requests.
++	 *
++	 * Since: 3.14
++	 **/
++	g_object_class_install_property (
++		object_class,
++		PROP_CREDENTIALS_PROMPTER,
++		g_param_spec_object (
++			"credentials-prompter",
++			"Credentials Prompter",
++			"Credentials Prompter",
++			E_TYPE_CREDENTIALS_PROMPTER,
++			G_PARAM_READABLE |
++			G_PARAM_STATIC_STRINGS));
++
+ 	/**
+ 	 * EShell::event
+ 	 * @shell: the #EShell which emitted the signal
+@@ -1232,6 +1719,7 @@ e_shell_init (EShell *shell)
+ 
+ 	g_queue_init (&shell->priv->alerts);
+ 
++	shell->priv->cancellable = g_cancellable_new ();
+ 	shell->priv->preferences_window = e_preferences_window_new (shell);
+ 	shell->priv->backends_by_name = backends_by_name;
+ 	shell->priv->backends_by_scheme = backends_by_scheme;
+@@ -1442,6 +1930,54 @@ e_shell_get_registry (EShell *shell)
+ 	return shell->priv->registry;
+ }
+ 
++/**
++ * e_shell_get_credentials_prompter:
++ * @shell: an #EShell
++ *
++ * Returns the shell's #ECredentialsPrompter which responds
++ * to #ESource instances credential requests.
++ *
++ * Returns: the #ECredentialsPrompter
++ *
++ * Since: 3.14
++ **/
++ECredentialsPrompter *
++e_shell_get_credentials_prompter (EShell *shell)
++{
++	g_return_val_if_fail (E_IS_SHELL (shell), NULL);
++
++	return shell->priv->credentials_prompter;
++}
++
++/**
++ * e_shell_allow_auth_prompt_for:
++ * @shell: an #EShell
++ * @source: an #ESource
++ *
++ * Allows direct credentials prompt for @source. That means,
++ * when the @source will emit 'credentials-required' signal,
++ * then a user will be asked accordingly. When the auth prompt
++ * is disabled, aonly an #EAlert is shown.
++ *
++ * Since: 3.14
++ **/
++void
++e_shell_allow_auth_prompt_for (EShell *shell,
++			       ESource *source)
++{
++	g_return_if_fail (E_IS_SHELL (shell));
++	g_return_if_fail (E_IS_SOURCE (source));
++
++	e_credentials_prompter_set_auto_prompt_disabled_for (shell->priv->credentials_prompter, source, FALSE);
++
++	if (e_source_get_connection_status (source) == E_SOURCE_CONNECTION_STATUS_AWAITING_CREDENTIALS) {
++		e_credentials_prompter_process_source (shell->priv->credentials_prompter, source);
++	} else if (e_source_get_connection_status (source) == E_SOURCE_CONNECTION_STATUS_SSL_FAILED) {
++		e_source_get_last_credentials_required_arguments (source, shell->priv->cancellable,
++			shell_get_last_credentials_required_arguments_cb, shell);
++	}
++}
++
+ /**
+  * e_shell_create_shell_window:
+  * @shell: an #EShell
+@@ -1499,6 +2035,14 @@ e_shell_create_shell_window (EShell *shell,
+ 
+ 	gtk_widget_show (shell_window);
+ 
++	if (g_list_length (gtk_application_get_windows (GTK_APPLICATION (shell))) == 1) {
++		/* It's the first window, process outstanding credential requests now */
++		e_credentials_prompter_process_awaiting_credentials (shell->priv->credentials_prompter);
++
++		/* Also check alerts for failed authentications */
++		shell_process_failed_authentications (shell);
++	}
++
+ 	return shell_window;
+ 
+ remote:  /* Send a message to the other Evolution process. */
+diff --git a/shell/e-shell.h b/shell/e-shell.h
+index 4ae9c3116d..1d336e2f8e 100644
+--- a/shell/e-shell.h
++++ b/shell/e-shell.h
+@@ -22,6 +22,7 @@
+ #define E_SHELL_H
+ 
+ #include <libedataserver/libedataserver.h>
++#include <libedataserverui/libedataserverui.h>
+ 
+ #include <e-util/e-util.h>
+ 
+@@ -117,6 +118,10 @@ EShellBackend *	e_shell_get_backend_by_scheme	(EShell *shell,
+ EClientCache *	e_shell_get_client_cache	(EShell *shell);
+ ESourceRegistry *
+ 		e_shell_get_registry		(EShell *shell);
++ECredentialsPrompter *
++		e_shell_get_credentials_prompter(EShell *shell);
++void		e_shell_allow_auth_prompt_for	(EShell *shell,
++						 ESource *source);
+ GtkWidget *	e_shell_create_shell_window	(EShell *shell,
+ 						 const gchar *view_name);
+ guint		e_shell_handle_uris		(EShell *shell,
+diff --git a/shell/shell.error.xml b/shell/shell.error.xml
+index a0c59cfc57..8ce679e2b9 100644
+--- a/shell/shell.error.xml
++++ b/shell/shell.error.xml
+@@ -35,4 +35,36 @@ If you choose to continue, you may not have access to some of your old data.
+   <button _label="Keep _Waiting" response="GTK_RESPONSE_CANCEL"/>
+  </error>
+ 
++ <error id="source-get-values-failed" type="warning">
++  <_primary>Failed to get values from '{0}'</_primary>
++  <secondary>{1}</secondary>
++ </error>
++
++ <error id="source-invoke-authenticate-failed" type="warning">
++  <_primary>Failed to invoke authenticate for '{0}'</_primary>
++  <secondary>{1}</secondary>
++ </error>
++
++ <error id="source-connection-error" type="error">
++  <_primary>Failed to connect to '{0}'</_primary>
++  <secondary>{1}</secondary>
++  <button _label="_Reconnect" response="GTK_RESPONSE_APPLY"/>
++ </error>
++
++ <error id="source-credentials-prompt-failed" type="warning">
++  <_primary>Failed to prompt for credentials for '{0}'</_primary>
++  <secondary>{1}</secondary>
++ </error>
++
++ <error id="source-trust-prompt-failed" type="warning">
++  <_primary>Failed to finish trust prompt for '{0}'</_primary>
++  <secondary>{1}</secondary>
++ </error>
++
++ <error id="source-connection-trust-error" type="error">
++  <_primary>SSL certificate for '{0}' is not trusted.</_primary>
++  <_secondary>Reason: {1}</_secondary>
++  <button _label="_View Certificate" response="GTK_RESPONSE_APPLY"/>
++ </error>
++
+ </error-list>
+-- 
+2.15.0
+

@@ -1,0 +1,197 @@
+From 431d9d28a644d070285408d46a6cf8dbcfb7059f Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 5 May 2015 11:10:39 +0200
+Subject: [PATCH 0729/1800] Bug 674927 - Add an option for default snooze time
+ interval
+
+---
+ calendar/alarm-notify/alarm-notify-dialog.c      | 21 ++++++++++--
+ calendar/alarm-notify/config-data.c              |  8 +++++
+ calendar/alarm-notify/config-data.h              |  2 ++
+ data/org.gnome.evolution.calendar.gschema.xml.in |  5 +++
+ modules/calendar/e-calendar-preferences.c        |  6 ++++
+ modules/calendar/e-calendar-preferences.ui       | 43 ++++++++++++++++++++++++
+ 6 files changed, 82 insertions(+), 3 deletions(-)
+
+diff --git a/calendar/alarm-notify/alarm-notify-dialog.c b/calendar/alarm-notify/alarm-notify-dialog.c
+index c28d361481..d094ce6309 100644
+--- a/calendar/alarm-notify/alarm-notify-dialog.c
++++ b/calendar/alarm-notify/alarm-notify-dialog.c
+@@ -209,8 +209,6 @@ print_pressed_cb (GtkButton *button,
+ 	(* funcinfo->func) (ALARM_NOTIFY_PRINT, -1, funcinfo->func_data);
+ }
+ 
+-#define DEFAULT_SNOOZE_MINS 5
+-
+ static void
+ snooze_pressed_cb (GtkButton *button,
+                    gpointer user_data)
+@@ -236,7 +234,7 @@ snooze_pressed_cb (GtkButton *button,
+ 	snooze_timeout += 60 * (gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON (an->snooze_time_hrs)));
+ 	snooze_timeout += 60 * 24 * (gtk_spin_button_get_value_as_int (GTK_SPIN_BUTTON (an->snooze_time_days)));
+ 	if (!snooze_timeout)
+-		snooze_timeout = DEFAULT_SNOOZE_MINS;
++		snooze_timeout = config_data_get_default_snooze_minutes ();
+ 	(* funcinfo->func) (ALARM_NOTIFY_SNOOZE, snooze_timeout, funcinfo->func_data);
+ }
+ 
+@@ -288,6 +286,7 @@ notified_alarms_dialog_new (void)
+ {
+ 	GtkWidget *container;
+ 	GtkWidget *image;
++	gint snooze_minutes;
+ 	GtkCellRenderer *renderer = gtk_cell_renderer_text_new ();
+ 	AlarmNotificationsDialog *na = NULL;
+ 	AlarmNotify *an = g_new0 (AlarmNotify, 1);
+@@ -333,6 +332,22 @@ notified_alarms_dialog_new (void)
+ 		return NULL;
+ 	}
+ 
++	snooze_minutes = config_data_get_default_snooze_minutes ();
++	if (snooze_minutes > 0) {
++		gint value;
++
++		value = snooze_minutes / (60 * 24);
++		snooze_minutes -= 60 * 24 * value;
++
++		gtk_spin_button_set_value (GTK_SPIN_BUTTON (an->snooze_time_days), value);
++
++		value = snooze_minutes / 60;
++		snooze_minutes -= 60 * value;
++
++		gtk_spin_button_set_value (GTK_SPIN_BUTTON (an->snooze_time_hrs), value);
++		gtk_spin_button_set_value (GTK_SPIN_BUTTON (an->snooze_time_min), snooze_minutes);
++	}
++
+ 	e_buffer_tagger_connect (GTK_TEXT_VIEW (an->description));
+ 
+ 	gtk_tree_view_set_model (GTK_TREE_VIEW (an->treeview), model);
+diff --git a/calendar/alarm-notify/config-data.c b/calendar/alarm-notify/config-data.c
+index d52dbba193..aa6d1a95f1 100644
+--- a/calendar/alarm-notify/config-data.c
++++ b/calendar/alarm-notify/config-data.c
+@@ -108,6 +108,14 @@ config_data_get_notify_with_tray (void)
+ 	return g_settings_get_boolean (calendar_settings, "notify-with-tray");
+ }
+ 
++gint
++config_data_get_default_snooze_minutes (void)
++{
++	ensure_inited ();
++
++	return g_settings_get_int (calendar_settings, "default-snooze-minutes");
++}
++
+ static void
+ source_written_cb (GObject *source_object,
+                    GAsyncResult *result,
+diff --git a/calendar/alarm-notify/config-data.h b/calendar/alarm-notify/config-data.h
+index e1af223d57..2ea9de7a53 100644
+--- a/calendar/alarm-notify/config-data.h
++++ b/calendar/alarm-notify/config-data.h
+@@ -34,6 +34,8 @@ icaltimezone *	config_data_get_timezone	(void);
+ gboolean	config_data_get_24_hour_format	(void);
+ gboolean	config_data_get_notify_with_tray
+ 						(void);
++gint		config_data_get_default_snooze_minutes
++						(void);
+ void		config_data_set_last_notification_time
+ 						(ECalClient *cal,
+ 						 time_t t);
+diff --git a/data/org.gnome.evolution.calendar.gschema.xml.in b/data/org.gnome.evolution.calendar.gschema.xml.in
+index 34528ee452..96ca96d2bc 100644
+--- a/data/org.gnome.evolution.calendar.gschema.xml.in
++++ b/data/org.gnome.evolution.calendar.gschema.xml.in
+@@ -104,6 +104,11 @@
+       <_summary>Default reminder units</_summary>
+       <_description>Units for a default reminder, "minutes", "hours" or "days"</_description>
+     </key>
++    <key name="default-snooze-minutes" type="i">
++      <default>5</default>
++      <_summary>Default reminder snooze interval, in minutes</_summary>
++      <_description>Default reminder snooze interval, in minutes, to be filled in the reminder notification dialog</_description>
++    </key>
+     <key name="editor-show-categories" type="b">
+       <default>false</default>
+       <_summary>Show categories field in the event/meeting/task editor</_summary>
+diff --git a/modules/calendar/e-calendar-preferences.c b/modules/calendar/e-calendar-preferences.c
+index 5034074b4d..df44feda8a 100644
+--- a/modules/calendar/e-calendar-preferences.c
++++ b/modules/calendar/e-calendar-preferences.c
+@@ -911,6 +911,12 @@ calendar_preferences_construct (ECalendarPreferences *prefs,
+ 		widget, "active",
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
++	widget = e_builder_get_widget (prefs->builder, "default-snooze-minutes-spin");
++	g_settings_bind (
++		settings, "default-snooze-minutes",
++		widget, "value",
++		G_SETTINGS_BIND_DEFAULT);
++
+ 	prefs->scrolled_window = e_builder_get_widget (prefs->builder, "calendar-source-scrolled-window");
+ 
+ 	/* Free/Busy tab */
+diff --git a/modules/calendar/e-calendar-preferences.ui b/modules/calendar/e-calendar-preferences.ui
+index 0df60883ca..f3561dea31 100644
+--- a/modules/calendar/e-calendar-preferences.ui
++++ b/modules/calendar/e-calendar-preferences.ui
+@@ -19,6 +19,12 @@
+     <property name="step_increment">1</property>
+     <property name="page_increment">10</property>
+   </object>
++  <object class="GtkAdjustment" id="adjustment4">
++    <property name="value">1</property>
++    <property name="upper">999999</property>
++    <property name="step_increment">1</property>
++    <property name="page_increment">10</property>
++  </object>
+   <object class="GtkListStore" id="model2">
+     <columns>
+       <!-- column-name gchararray -->
+@@ -1343,6 +1349,43 @@
+                     <property name="position">2</property>
+                   </packing>
+                 </child>
++                <child>
++                  <object class="GtkHBox" id="hbox10">
++                    <property name="visible">True</property>
++                    <property name="spacing">4</property>
++                    <child>
++                      <object class="GtkLabel" id="default-snooze-minutes-label">
++                        <property name="label" translatable="yes">Default _snooze time (in minutes)</property>
++                        <property name="visible">True</property>
++                        <property name="use_underline">True</property>
++                        <property name="mnemonic-widget">default-snooze-minutes-spin</property>
++                      </object>
++                      <packing>
++                        <property name="expand">False</property>
++                        <property name="fill">False</property>
++                        <property name="position">0</property>
++                      </packing>
++                    </child>
++                    <child>
++                      <object class="GtkSpinButton" id="default-snooze-minutes-spin">
++                        <property name="visible">True</property>
++                        <property name="can_focus">True</property>
++                        <property name="adjustment">adjustment4</property>
++                        <property name="climb_rate">1</property>
++                      </object>
++                      <packing>
++                        <property name="expand">False</property>
++                        <property name="fill">False</property>
++                        <property name="position">1</property>
++                      </packing>
++                    </child>
++                  </object>
++                  <packing>
++                    <property name="fill">False</property>
++                    <property name="expand">False</property>
++                    <property name="position">3</property>
++                  </packing>
++                </child>
+               </object>
+             </child>
+           </object>
+-- 
+2.15.0
+

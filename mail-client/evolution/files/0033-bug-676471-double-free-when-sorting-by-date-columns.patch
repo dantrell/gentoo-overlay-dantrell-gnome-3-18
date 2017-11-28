@@ -1,0 +1,276 @@
+From 7af5d37018c310609c989ab891466df3abc15604 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 4 Nov 2014 15:34:58 +0100
+Subject: [PATCH 0033/1800] Bug 676471 - Double free when sorting by date
+ columns in calendar
+
+---
+ calendar/gui/e-cal-model-calendar.c  | 16 +++-----
+ calendar/gui/e-cal-model-tasks.c     | 18 +++-----
+ calendar/gui/e-cal-model.c           | 79 ++++++++++++++++++++----------------
+ calendar/gui/e-cal-model.h           |  4 ++
+ calendar/gui/e-cell-date-edit-text.c |  7 +++-
+ 5 files changed, 64 insertions(+), 60 deletions(-)
+
+diff --git a/calendar/gui/e-cal-model-calendar.c b/calendar/gui/e-cal-model-calendar.c
+index 2e237842db..47a25c7b0d 100644
+--- a/calendar/gui/e-cal-model-calendar.c
++++ b/calendar/gui/e-cal-model-calendar.c
+@@ -93,7 +93,7 @@ get_dtend (ECalModelCalendar *model,
+ 			comp_data->dtend->zone = NULL;
+ 	}
+ 
+-	return comp_data->dtend;
++	return e_cal_model_copy_cell_date_value (comp_data->dtend);
+ }
+ 
+ static gpointer
+@@ -358,16 +358,7 @@ cal_model_calendar_duplicate_value (ETableModel *etm,
+ 
+ 	switch (col) {
+ 	case E_CAL_MODEL_CALENDAR_FIELD_DTEND :
+-		if (value) {
+-			ECellDateEditValue *dv, *orig_dv;
+-
+-			orig_dv = (ECellDateEditValue *) value;
+-			dv = g_new0 (ECellDateEditValue, 1);
+-			*dv = *orig_dv;
+-
+-			return dv;
+-		}
+-		break;
++		return e_cal_model_copy_cell_date_value (value);
+ 	case E_CAL_MODEL_CALENDAR_FIELD_LOCATION :
+ 	case E_CAL_MODEL_CALENDAR_FIELD_TRANSPARENCY :
+ 		return g_strdup (value);
+@@ -390,6 +381,9 @@ cal_model_calendar_free_value (ETableModel *etm,
+ 
+ 	switch (col) {
+ 	case E_CAL_MODEL_CALENDAR_FIELD_DTEND :
++		if (value)
++			g_free (value);
++		break;
+ 	case E_CAL_MODEL_CALENDAR_FIELD_LOCATION :
+ 	case E_CAL_MODEL_CALENDAR_FIELD_TRANSPARENCY :
+ 		break;
+diff --git a/calendar/gui/e-cal-model-tasks.c b/calendar/gui/e-cal-model-tasks.c
+index 4232389f8b..20c2a4a199 100644
+--- a/calendar/gui/e-cal-model-tasks.c
++++ b/calendar/gui/e-cal-model-tasks.c
+@@ -207,7 +207,7 @@ get_completed (ECalModelComponent *comp_data)
+ 			comp_data->completed->zone = NULL;
+ 	}
+ 
+-	return comp_data->completed;
++	return e_cal_model_copy_cell_date_value (comp_data->completed);
+ }
+ 
+ static ECellDateEditValue *
+@@ -237,7 +237,7 @@ get_due (ECalModelComponent *comp_data)
+ 			comp_data->due->zone = NULL;
+ 	}
+ 
+-	return comp_data->due;
++	return e_cal_model_copy_cell_date_value (comp_data->due);
+ }
+ 
+ static gpointer
+@@ -1009,16 +1009,7 @@ cal_model_tasks_duplicate_value (ETableModel *etm,
+ 		return g_strdup (value);
+ 	case E_CAL_MODEL_TASKS_FIELD_COMPLETED :
+ 	case E_CAL_MODEL_TASKS_FIELD_DUE :
+-		if (value) {
+-			ECellDateEditValue *dv, *orig_dv;
+-
+-			orig_dv = (ECellDateEditValue *) value;
+-			dv = g_new0 (ECellDateEditValue, 1);
+-			*dv = *orig_dv;
+-
+-			return dv;
+-		}
+-		break;
++		return e_cal_model_copy_cell_date_value (value);
+ 
+ 	case E_CAL_MODEL_TASKS_FIELD_COMPLETE :
+ 	case E_CAL_MODEL_TASKS_FIELD_PERCENT :
+@@ -1044,6 +1035,9 @@ cal_model_tasks_free_value (ETableModel *etm,
+ 	switch (col) {
+ 	case E_CAL_MODEL_TASKS_FIELD_COMPLETED :
+ 	case E_CAL_MODEL_TASKS_FIELD_DUE :
++		if (value)
++			g_free (value);
++		break;
+ 	case E_CAL_MODEL_TASKS_FIELD_GEO :
+ 	case E_CAL_MODEL_TASKS_FIELD_PRIORITY :
+ 	case E_CAL_MODEL_TASKS_FIELD_STATUS :
+diff --git a/calendar/gui/e-cal-model.c b/calendar/gui/e-cal-model.c
+index bd25d22f24..44253bb013 100644
+--- a/calendar/gui/e-cal-model.c
++++ b/calendar/gui/e-cal-model.c
+@@ -365,7 +365,7 @@ get_dtstart (ECalModel *model,
+ 			comp_data->dtstart->zone = NULL;
+ 	}
+ 
+-	return comp_data->dtstart;
++	return e_cal_model_copy_cell_date_value (comp_data->dtstart);
+ }
+ 
+ static ECellDateEditValue *
+@@ -373,40 +373,39 @@ get_datetime_from_utc (ECalModel *model,
+                        ECalModelComponent *comp_data,
+                        icalproperty_kind propkind,
+                        struct icaltimetype (*get_value) (const icalproperty *prop),
+-                                                         ECellDateEditValue **buffer)
++		       ECellDateEditValue **buffer)
+ {
+-	ECalModelPrivate *priv;
+-	struct icaltimetype tt_value;
+-	icalproperty *prop;
+-	ECellDateEditValue *res;
++	g_return_val_if_fail (buffer != NULL, NULL);
+ 
+-	g_return_val_if_fail (buffer!= NULL, NULL);
++	if (!*buffer) {
++		ECalModelPrivate *priv;
++		struct icaltimetype tt_value;
++		icalproperty *prop;
++		ECellDateEditValue *res;
+ 
+-	if (*buffer)
+-		return *buffer;
++		priv = model->priv;
+ 
+-	priv = model->priv;
++		prop = icalcomponent_get_first_property (comp_data->icalcomp, propkind);
++		if (!prop)
++			return NULL;
+ 
+-	prop = icalcomponent_get_first_property (comp_data->icalcomp, propkind);
+-	if (!prop)
+-		return NULL;
++		tt_value = get_value (prop);
+ 
+-	tt_value = get_value (prop);
++		/* these are always in UTC, thus convert to default zone, if any and done */
++		if (priv->zone)
++			icaltimezone_convert_time (&tt_value, icaltimezone_get_utc_timezone (), priv->zone);
+ 
+-	/* these are always in UTC, thus convert to default zone, if any and done */
+-	if (priv->zone)
+-		icaltimezone_convert_time (&tt_value, icaltimezone_get_utc_timezone (), priv->zone);
++		if (!icaltime_is_valid_time (tt_value) || icaltime_is_null_time (tt_value))
++			return NULL;
+ 
+-	if (!icaltime_is_valid_time (tt_value) || icaltime_is_null_time (tt_value))
+-		return NULL;
++		res = g_new0 (ECellDateEditValue, 1);
++		res->tt = tt_value;
++		res->zone = NULL;
+ 
+-	res = g_new0 (ECellDateEditValue, 1);
+-	res->tt = tt_value;
+-	res->zone = NULL;
++		*buffer = res;
++	}
+ 
+-	*buffer = res;
+-
+-	return res;
++	return e_cal_model_copy_cell_date_value (*buffer);
+ }
+ 
+ static gpointer
+@@ -1509,16 +1508,7 @@ cal_model_duplicate_value (ETableModel *etm,
+ 	case E_CAL_MODEL_FIELD_DTSTART :
+ 	case E_CAL_MODEL_FIELD_CREATED :
+ 	case E_CAL_MODEL_FIELD_LASTMODIFIED :
+-		if (value) {
+-			ECellDateEditValue *dv, *orig_dv;
+-
+-			orig_dv = (ECellDateEditValue *) value;
+-			dv = g_new0 (ECellDateEditValue, 1);
+-			*dv = *orig_dv;
+-
+-			return dv;
+-		}
+-		break;
++		return e_cal_model_copy_cell_date_value (value);
+ 	}
+ 
+ 	return NULL;
+@@ -1542,8 +1532,8 @@ cal_model_free_value (ETableModel *etm,
+ 	case E_CAL_MODEL_FIELD_HAS_ALARMS :
+ 	case E_CAL_MODEL_FIELD_ICON :
+ 	case E_CAL_MODEL_FIELD_COLOR :
++		break;
+ 	case E_CAL_MODEL_FIELD_DTSTART:
+-		break;
+ 	case E_CAL_MODEL_FIELD_CREATED :
+ 	case E_CAL_MODEL_FIELD_LASTMODIFIED :
+ 		if (value)
+@@ -3365,3 +3355,20 @@ e_cal_model_emit_object_created (ECalModel *model,
+ 
+ 	g_signal_emit (model, signals[OBJECT_CREATED], 0, where);
+ }
++
++
++ECellDateEditValue *
++e_cal_model_copy_cell_date_value (const ECellDateEditValue *value)
++{
++	ECellDateEditValue *copy;
++
++	if (!value)
++		return NULL;
++
++
++	copy = g_new0 (ECellDateEditValue, 1);
++	copy->tt = value->tt;
++	copy->zone = value->zone;
++
++	return copy;
++}
+diff --git a/calendar/gui/e-cal-model.h b/calendar/gui/e-cal-model.h
+index f7a6351268..860c30214d 100644
+--- a/calendar/gui/e-cal-model.h
++++ b/calendar/gui/e-cal-model.h
+@@ -323,6 +323,10 @@ void		e_cal_model_util_set_value	(GHashTable *values,
+ gpointer	e_cal_model_util_get_value	(GHashTable *values,
+ 						 gint column);
+ 
++ECellDateEditValue *
++		e_cal_model_copy_cell_date_value
++						(const ECellDateEditValue *value);
++
+ G_END_DECLS
+ 
+ #endif /* E_CAL_MODEL_H */
+diff --git a/calendar/gui/e-cell-date-edit-text.c b/calendar/gui/e-cell-date-edit-text.c
+index 1d13953dd7..103e27dd97 100644
+--- a/calendar/gui/e-cell-date-edit-text.c
++++ b/calendar/gui/e-cell-date-edit-text.c
+@@ -115,6 +115,7 @@ cell_date_edit_text_get_text (ECellText *cell,
+ 	ECellDateEditValue *dv = e_table_model_value_at (model, col, row);
+ 	icaltimezone *timezone;
+ 	struct tm tmp_tm;
++	gchar *res;
+ 
+ 	if (!dv)
+ 		return g_strdup ("");
+@@ -127,9 +128,13 @@ cell_date_edit_text_get_text (ECellText *cell,
+ 	 * it will be set to the current timezone. See set_value (). */
+ 	tmp_tm = icaltimetype_to_tm_with_zone (&dv->tt, dv->zone, timezone);
+ 
+-	return e_datetime_format_format_tm (
++	res = e_datetime_format_format_tm (
+ 		"calendar", "table", dv->tt.is_date ?
+ 		DTFormatKindDate : DTFormatKindDateTime, &tmp_tm);
++
++	e_table_model_free_value (model, col, dv);
++
++	return res;
+ }
+ 
+ static void
+-- 
+2.15.0
+

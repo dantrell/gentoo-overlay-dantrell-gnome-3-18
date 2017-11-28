@@ -1,0 +1,31 @@
+From 7353a6dc303329663420aef923467cce573e1e1f Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 27 Apr 2015 11:58:40 +0200
+Subject: [PATCH 0707/1800] EMailRequest -  SVG images in HTML email are not
+ displayed
+
+We have to set the right mime type to the content, otherwise it
+would be replaced with text/html one later.
+---
+ mail/e-mail-request.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/mail/e-mail-request.c b/mail/e-mail-request.c
+index 9a97f4fa05..65dac64a95 100644
+--- a/mail/e-mail-request.c
++++ b/mail/e-mail-request.c
+@@ -156,6 +156,11 @@ handle_mail_request (GSimpleAsyncResult *simple,
+ 			dw = camel_medium_get_content (CAMEL_MEDIUM (mime_part));
+ 			g_return_if_fail (dw);
+ 
++			if (!mime_type) {
++				g_free (request->priv->mime_type);
++				request->priv->mime_type = camel_data_wrapper_get_mime_type (dw);
++			}
++
+ 			camel_data_wrapper_decode_to_output_stream_sync (
+ 				dw, output_stream, cancellable, NULL);
+ 
+-- 
+2.15.0
+

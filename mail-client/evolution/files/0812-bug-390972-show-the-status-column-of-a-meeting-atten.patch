@@ -1,0 +1,26 @@
+From 1b60e81a7b66fb1a34c99fa68e6671e92728a1b1 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 15 Jun 2015 17:37:52 +0200
+Subject: [PATCH 0812/1800] Bug 390972 - Show the Status column of a meeting
+ attendee by default
+
+---
+ data/org.gnome.evolution.calendar.gschema.xml.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/data/org.gnome.evolution.calendar.gschema.xml.in b/data/org.gnome.evolution.calendar.gschema.xml.in
+index 96ca96d2bc..cd5e341ff6 100644
+--- a/data/org.gnome.evolution.calendar.gschema.xml.in
++++ b/data/org.gnome.evolution.calendar.gschema.xml.in
+@@ -125,7 +125,7 @@
+       <_description>Whether to show RSVP field in the event/task/meeting editor</_description>
+     </key>
+     <key name="editor-show-status" type="b">
+-      <default>false</default>
++      <default>true</default>
+       <_summary>Show status field in the event/task/meeting editor</_summary>
+       <_description>Whether to show status field in the event/task/meeting editor</_description>
+     </key>
+-- 
+2.15.0
+

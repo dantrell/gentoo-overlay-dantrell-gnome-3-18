@@ -1,0 +1,26 @@
+From c517a105a36e8eb9360ef6b1036ccc55f8f9f443 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 1 Mar 2016 13:16:40 +0100
+Subject: [PATCH 0991/1800] EHTMLEditorSelection - Remove the GObject data
+ after using it to avoid possible mis-function
+
+---
+ web-extensions/composer/e-html-editor-selection-dom-functions.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 9a4fbce6ac..b9389c7ff1 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -2457,7 +2457,7 @@ wrap_lines (WebKitDOMDocument *document,
+ 			}
+ 
+ 			/* Allow anchors to break on any character. */
+-			if (g_object_get_data (G_OBJECT (node), "-x-evo-anchor-text"))
++			if (g_object_steal_data (G_OBJECT (node), "-x-evo-anchor-text"))
+ 				offset = max_length;
+ 			else {
+ 				/* Find where we can line-break the node so that it
+-- 
+2.15.0
+

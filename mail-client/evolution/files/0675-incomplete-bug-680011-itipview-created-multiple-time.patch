@@ -1,0 +1,25 @@
+From 624e6533d25db4058e7b892065dcde17a3c05e8a Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 24 Feb 2016 18:01:58 +0100
+Subject: [PATCH 0675/1800] [Incomplete] Bug 680011 - ItipView created multiple
+ times for an attached invitation
+
+---
+ modules/itip-formatter/e-mail-part-itip.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/modules/itip-formatter/e-mail-part-itip.c b/modules/itip-formatter/e-mail-part-itip.c
+index b7e9113a95..18330e81fc 100644
+--- a/modules/itip-formatter/e-mail-part-itip.c
++++ b/modules/itip-formatter/e-mail-part-itip.c
+@@ -85,6 +85,7 @@ mail_part_itip_bind_dom_element (EMailPart *part,
+ 	pitip = E_MAIL_PART_ITIP (part);
+ 
+ 	/* FIXME XXX WK2 checks */
++	/* FIXME WK2 apply commit abbc5db Bug 680011 - ItipView created multiple times for an attached invitation */
+ #if 0
+ 	if (!WEBKIT_DOM_IS_HTML_IFRAME_ELEMENT (element))
+ 		element = webkit_dom_element_query_selector (
+-- 
+2.15.0
+

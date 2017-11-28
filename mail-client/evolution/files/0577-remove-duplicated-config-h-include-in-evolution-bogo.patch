@@ -1,0 +1,25 @@
+From c60e21929f304f96c5007532bda6da76f5513c0b Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 26 Mar 2015 07:56:56 +0100
+Subject: [PATCH 0577/1800] Remove duplicated config.h include in
+ evolution-bogofilter.c
+
+---
+ modules/bogofilter/evolution-bogofilter.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/modules/bogofilter/evolution-bogofilter.c b/modules/bogofilter/evolution-bogofilter.c
+index d10e8ccd7c..a57fba3706 100644
+--- a/modules/bogofilter/evolution-bogofilter.c
++++ b/modules/bogofilter/evolution-bogofilter.c
+@@ -19,7 +19,6 @@
+ #include <config.h>
+ #endif
+ 
+-#include <config.h>
+ #include <sys/types.h>
+ #include <sys/wait.h>
+ #include <glib/gi18n-lib.h>
+-- 
+2.15.0
+

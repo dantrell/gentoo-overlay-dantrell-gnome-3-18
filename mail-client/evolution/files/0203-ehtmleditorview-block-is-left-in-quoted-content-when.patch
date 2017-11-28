@@ -1,0 +1,33 @@
+From 43f13a990130f45120486e970802b5cfa18dbd8d Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 23 Mar 2015 15:41:46 +0100
+Subject: [PATCH 0203/1800] EHTMLEditorView - Block is left in quoted content
+ when deleting the last in quoted content when signature is presented
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 3b8e3efc8f..cfeeba43c1 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -6115,9 +6115,13 @@ fix_structure_after_delete_before_quoted_content (WebKitDOMDocument *document)
+ 
+ 			parent = webkit_dom_node_get_parent_node (end_block);
+ 			while (parent && WEBKIT_DOM_IS_HTML_QUOTE_ELEMENT (parent)) {
+-				parent = webkit_dom_node_get_parent_node (parent);
+-				if (webkit_dom_node_get_next_sibling (parent))
++				WebKitDOMNode *next_parent = webkit_dom_node_get_parent_node (parent);
++
++				if (webkit_dom_node_get_next_sibling (parent) &&
++				    !WEBKIT_DOM_IS_HTML_BODY_ELEMENT (next_parent))
+ 					goto restore;
++
++				parent = next_parent;
+ 			}
+ 		}
+ 		node = webkit_dom_node_get_next_sibling (
+-- 
+2.15.0
+

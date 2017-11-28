@@ -1,0 +1,27 @@
+From 14e99a4915894292b6f9c4dde243bb43f4f3d54f Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 8 Jun 2015 14:25:16 +0200
+Subject: [PATCH 0787/1800] Bug 750560 - EFilterInput is storing multiple
+ values instead of one
+
+---
+ e-util/e-filter-input.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/e-util/e-filter-input.c b/e-util/e-filter-input.c
+index 3772ce19ba..dac0d5b5a1 100644
+--- a/e-util/e-filter-input.c
++++ b/e-util/e-filter-input.c
+@@ -300,6 +300,9 @@ filter_input_clone (EFilterElement *element)
+ 	clone_input->allow_empty = input->allow_empty;
+ 	clone_input->code_gen_func = g_strdup (input->code_gen_func);
+ 
++	g_list_free_full (clone_input->values, g_free);
++	clone_input->values = NULL;
++
+ 	for (link = input->values; link != NULL; link = g_list_next (link)) {
+ 		clone_input->values = g_list_prepend (clone_input->values, g_strdup (link->data));
+ 	}
+-- 
+2.15.0
+

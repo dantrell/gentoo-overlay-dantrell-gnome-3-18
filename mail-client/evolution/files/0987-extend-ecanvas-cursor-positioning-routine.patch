@@ -1,0 +1,184 @@
+From 89a54ddb5595d5cd0f230e29c49e6a9d040539c9 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 3 Sep 2015 14:26:42 +0200
+Subject: [PATCH 0987/1800] Extend ECanvas cursor positioning routine
+
+The change introduced within bug #677862
+---
+ e-util/e-canvas-utils.c | 42 +++++++++++++++++++++++++++++++++++++-----
+ e-util/e-canvas-utils.h |  7 +++++++
+ e-util/e-table-item.c   | 30 +++++++++++++++++++++++++++++-
+ 3 files changed, 73 insertions(+), 6 deletions(-)
+
+diff --git a/e-util/e-canvas-utils.c b/e-util/e-canvas-utils.c
+index 84428e7bbb..fa753c597c 100644
+--- a/e-util/e-canvas-utils.c
++++ b/e-util/e-canvas-utils.c
+@@ -183,14 +183,24 @@ typedef struct {
+ 	GnomeCanvas *canvas;
+ } DoubsAndCanvas;
+ 
++static void
++doubs_and_canvas_free (gpointer ptr)
++{
++	DoubsAndCanvas *dac = ptr;
++
++	if (dac) {
++		g_object_unref (dac->canvas);
++		g_free (dac);
++	}
++}
++
+ static gboolean
+ show_area_timeout (gpointer data)
+ {
+ 	DoubsAndCanvas *dac = data;
+ 
+ 	e_canvas_show_area (dac->canvas, dac->x1, dac->y1, dac->x2, dac->y2);
+-	g_object_unref (dac->canvas);
+-	g_free (dac);
++
+ 	return FALSE;
+ }
+ 
+@@ -202,10 +212,27 @@ e_canvas_item_show_area_delayed (GnomeCanvasItem *item,
+                                  gdouble y2,
+                                  gint delay)
+ {
++	GSource *source;
++
++	source = e_canvas_item_show_area_delayed_ex (item, x1, y1, x2, y2, delay);
++	if (source)
++		g_source_unref (source);
++}
++
++/* Use g_source_unref() when done with the returned pointer. */
++GSource *
++e_canvas_item_show_area_delayed_ex (GnomeCanvasItem *item,
++                                 gdouble x1,
++                                 gdouble y1,
++                                 gdouble x2,
++                                 gdouble y2,
++                                 gint delay)
++{
++	GSource *source;
+ 	DoubsAndCanvas *dac;
+ 
+-	g_return_if_fail (item != NULL);
+-	g_return_if_fail (GNOME_IS_CANVAS_ITEM (item));
++	g_return_val_if_fail (item != NULL, NULL);
++	g_return_val_if_fail (GNOME_IS_CANVAS_ITEM (item), NULL);
+ 
+ 	gnome_canvas_item_i2w (item, &x1, &y1);
+ 	gnome_canvas_item_i2w (item, &x2, &y2);
+@@ -217,5 +244,10 @@ e_canvas_item_show_area_delayed (GnomeCanvasItem *item,
+ 	dac->y2 = y2;
+ 	dac->canvas = g_object_ref (item->canvas);
+ 
+-	e_named_timeout_add (delay, show_area_timeout, dac);
++	source = g_timeout_source_new (delay);
++	g_source_set_callback (source, show_area_timeout, dac, doubs_and_canvas_free);
++	g_source_set_name (source, G_STRFUNC);
++	g_source_attach (source, NULL);
++
++	return source;
+ }
+diff --git a/e-util/e-canvas-utils.h b/e-util/e-canvas-utils.h
+index d416601d46..475f3cbc34 100644
+--- a/e-util/e-canvas-utils.h
++++ b/e-util/e-canvas-utils.h
+@@ -44,6 +44,13 @@ void      e_canvas_item_show_area_delayed  (GnomeCanvasItem *item,
+ 					    gdouble           x2,
+ 					    gdouble           y2,
+ 					    gint             delay);
++GSource * e_canvas_item_show_area_delayed_ex
++					   (GnomeCanvasItem *item,
++					    gdouble           x1,
++					    gdouble           y1,
++					    gdouble           x2,
++					    gdouble           y2,
++					    gint             delay);
+ /* Returns TRUE if the area is already shown on the screen (including
+  * spacing.)  This is equivelent to returning FALSE iff show_area
+  * would do anything. */
+diff --git a/e-util/e-table-item.c b/e-util/e-table-item.c
+index 681e2471f5..5ff9b48254 100644
+--- a/e-util/e-table-item.c
++++ b/e-util/e-table-item.c
+@@ -63,6 +63,16 @@ G_DEFINE_TYPE (
+ #define e_table_item_leave_edit_(x) (e_table_item_leave_edit((x)))
+ #endif
+ 
++#define E_TABLE_ITEM_GET_PRIVATE(obj) \
++	(G_TYPE_INSTANCE_GET_PRIVATE \
++	((obj), E_TYPE_TABLE_ITEM, ETableItemPrivate))
++
++typedef struct _ETableItemPrivate ETableItemPrivate;
++
++struct _ETableItemPrivate {
++	GSource *show_cursor_delay_source;
++};
++
+ static void eti_check_cursor_bounds (ETableItem *eti);
+ static void eti_cancel_drag_due_to_model_change (ETableItem *eti);
+ 
+@@ -966,8 +976,15 @@ eti_request_region_show (ETableItem *eti,
+                          gint end_row,
+                          gint delay)
+ {
++	ETableItemPrivate *priv = E_TABLE_ITEM_GET_PRIVATE (eti);
+ 	gint x1, y1, x2, y2;
+ 
++	if (priv->show_cursor_delay_source) {
++		g_source_destroy (priv->show_cursor_delay_source);
++		g_source_unref (priv->show_cursor_delay_source);
++		priv->show_cursor_delay_source = NULL;
++	}
++
+ 	eti_get_region (
+ 		eti,
+ 		start_col, start_row,
+@@ -975,7 +992,7 @@ eti_request_region_show (ETableItem *eti,
+ 		&x1, &y1, &x2, &y2);
+ 
+ 	if (delay)
+-		e_canvas_item_show_area_delayed (
++		priv->show_cursor_delay_source = e_canvas_item_show_area_delayed_ex (
+ 			GNOME_CANVAS_ITEM (eti), x1, y1, x2, y2, delay);
+ 	else
+ 		e_canvas_item_show_area (
+@@ -1535,6 +1552,13 @@ static void
+ eti_dispose (GObject *object)
+ {
+ 	ETableItem *eti = E_TABLE_ITEM (object);
++	ETableItemPrivate *priv = E_TABLE_ITEM_GET_PRIVATE (eti);
++
++	if (priv->show_cursor_delay_source) {
++		g_source_destroy (priv->show_cursor_delay_source);
++		g_source_unref (priv->show_cursor_delay_source);
++		priv->show_cursor_delay_source = NULL;
++	}
+ 
+ 	eti_remove_header_model (eti);
+ 	eti_remove_table_model (eti);
+@@ -1689,6 +1713,8 @@ eti_get_property (GObject *object,
+ static void
+ e_table_item_init (ETableItem *eti)
+ {
++	/* eti->priv = E_TABLE_ITEM_GET_PRIVATE (eti); */
++
+ 	eti->motion_row = -1;
+ 	eti->motion_col = -1;
+ 	eti->editing_col = -1;
+@@ -3100,6 +3126,8 @@ e_table_item_class_init (ETableItemClass *class)
+ 	GnomeCanvasItemClass *item_class = GNOME_CANVAS_ITEM_CLASS (class);
+ 	GObjectClass *object_class = G_OBJECT_CLASS (class);
+ 
++	g_type_class_add_private (class, sizeof (ETableItemPrivate));
++
+ 	object_class->dispose = eti_dispose;
+ 	object_class->set_property = eti_set_property;
+ 	object_class->get_property = eti_get_property;
+-- 
+2.15.0
+

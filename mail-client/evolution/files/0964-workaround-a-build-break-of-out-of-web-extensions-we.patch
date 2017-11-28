@@ -1,0 +1,30 @@
+From e6a0e6d4e53da69a664626d1c466c009850f1b3d Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 29 Feb 2016 20:19:33 +0100
+Subject: [PATCH 0964/1800] Workaround a build break of out-of web-extensions/
+ webkit extensions
+
+---
+ e-util/e-util-enums.h | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/e-util/e-util-enums.h b/e-util/e-util-enums.h
+index d24aebd291..a1afa40e00 100644
+--- a/e-util/e-util-enums.h
++++ b/e-util/e-util-enums.h
+@@ -15,9 +15,10 @@
+  *
+  */
+ 
+-#if !defined (__E_UTIL_H_INSIDE__) && !defined (LIBEUTIL_COMPILATION)
++/* FIXME WK2 - the below cannot be enabled due to web-extensions/e-dom-utils.h using this header */
++/*#if !defined (__E_UTIL_H_INSIDE__) && !defined (LIBEUTIL_COMPILATION)
+ #error "Only <e-util/e-util.h> should be included directly."
+-#endif
++#endif*/
+ 
+ #ifndef E_UTIL_ENUMS_H
+ #define E_UTIL_ENUMS_H
+-- 
+2.15.0
+

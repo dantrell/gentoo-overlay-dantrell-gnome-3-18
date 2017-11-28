@@ -1,0 +1,990 @@
+From 280ec98067d775d20261715a1f8f96e815ea6efe Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 9 Dec 2014 09:19:20 +0100
+Subject: [PATCH 0133/1800] Bug 550796 - Implement free form filter expression
+
+---
+ e-util/e-filter-input.c                  |  88 ++++-
+ e-util/e-filter-input.h                  |   1 +
+ mail/Makefile.am                         |   2 +
+ mail/e-mail-free-form-exp.c              | 557 +++++++++++++++++++++++++++++++
+ mail/e-mail-free-form-exp.h              |  33 ++
+ mail/filtertypes.xml.in                  |   7 +
+ mail/searchtypes.xml.in                  |  17 +
+ mail/vfoldertypes.xml.in                 |   7 +
+ modules/mail/e-mail-shell-view-actions.c |   7 +
+ modules/mail/e-mail-shell-view-actions.h |   2 +
+ modules/mail/e-mail-shell-view-private.h |   1 +
+ modules/mail/e-mail-shell-view.c         |   2 +
+ po/POTFILES.in                           |   1 +
+ ui/evolution-mail.ui                     |   1 +
+ 14 files changed, 724 insertions(+), 2 deletions(-)
+ create mode 100644 mail/e-mail-free-form-exp.c
+ create mode 100644 mail/e-mail-free-form-exp.h
+
+diff --git a/e-util/e-filter-input.c b/e-util/e-filter-input.c
+index 6dbcc7e88a..1bfa029fd2 100644
+--- a/e-util/e-filter-input.c
++++ b/e-util/e-filter-input.c
+@@ -30,9 +30,11 @@
+ 
+ #include <gtk/gtk.h>
+ #include <glib/gi18n.h>
++#include <gmodule.h>
+ 
+ #include "e-alert.h"
+ #include "e-filter-input.h"
++#include "e-filter-part.h"
+ 
+ G_DEFINE_TYPE (
+ 	EFilterInput,
+@@ -59,6 +61,7 @@ filter_input_finalize (GObject *object)
+ 	EFilterInput *input = E_FILTER_INPUT (object);
+ 
+ 	xmlFree (input->type);
++	g_free (input->code_gen_func);
+ 
+ 	g_list_foreach (input->values, (GFunc) g_free, NULL);
+ 	g_list_free (input->values);
+@@ -164,6 +167,9 @@ filter_input_eq (EFilterElement *element_a,
+ 	if (link_a != NULL || link_b != NULL)
+ 		return FALSE;
+ 
++	if (g_strcmp0 (input_a->code_gen_func, input_b->code_gen_func) != 0)
++		return FALSE;
++
+ 	return input_a->allow_empty == input_b->allow_empty;
+ }
+ 
+@@ -172,8 +178,12 @@ filter_input_xml_create (EFilterElement *element,
+                          xmlNodePtr node)
+ {
+ 	EFilterInput *input = E_FILTER_INPUT (element);
++	xmlNodePtr n;
+ 	gchar *allow_empty;
+ 
++	g_free (input->code_gen_func);
++	input->code_gen_func = NULL;
++
+ 	/* Chain up to parent's method. */
+ 	E_FILTER_ELEMENT_CLASS (e_filter_input_parent_class)->xml_create (element, node);
+ 
+@@ -181,13 +191,29 @@ filter_input_xml_create (EFilterElement *element,
+ 
+ 	input->allow_empty = !allow_empty || g_strcmp0 (allow_empty, "true") == 0;
+ 	xmlFree (allow_empty);
++
++	for (n = node->children; n; n = n->next) {
++		if (g_str_equal (n->name, "code")) {
++			xmlChar *func = xmlGetProp (n, (xmlChar *) "func");
++
++			if (func && *func) {
++				if (input->code_gen_func)
++					g_free (input->code_gen_func);
++				input->code_gen_func = g_strdup ((gchar *) func);
++			}
++
++			if (func)
++				xmlFree (func);
++			break;
++		}
++	}
+ }
+ 
+ static xmlNodePtr
+ filter_input_xml_encode (EFilterElement *element)
+ {
+ 	EFilterInput *input = E_FILTER_INPUT (element);
+-	xmlNodePtr value;
++	xmlNodePtr value, cur;
+ 	GList *link;
+ 	const gchar *type;
+ 
+@@ -200,7 +226,6 @@ filter_input_xml_encode (EFilterElement *element)
+ 
+ 	for (link = input->values; link != NULL; link = g_list_next (link)) {
+ 		xmlChar *str = link->data;
+-		xmlNodePtr cur;
+ 
+ 		cur = xmlNewChild (value, NULL, (xmlChar *) type, NULL);
+ 
+@@ -256,6 +281,34 @@ filter_input_xml_decode (EFilterElement *element,
+ 	return 0;
+ }
+ 
++static EFilterElement *
++filter_input_clone (EFilterElement *element)
++{
++	EFilterInput *input = E_FILTER_INPUT (element);
++	EFilterInput *clone_input;
++	EFilterElement *clone;
++	GList *link;
++
++	/* Chain up to parent's clone() method. */
++	clone = E_FILTER_ELEMENT_CLASS (e_filter_input_parent_class)->clone (element);
++
++	clone_input = E_FILTER_INPUT (clone);
++
++	if (clone_input->type)
++		xmlFree (clone_input->type);
++	clone_input->type = input->type ? (gchar *) xmlStrdup ((const xmlChar *) input->type) : NULL;
++	clone_input->allow_empty = input->allow_empty;
++	clone_input->code_gen_func = g_strdup (input->code_gen_func);
++
++	for (link = input->values; link != NULL; link = g_list_next (link)) {
++		clone_input->values = g_list_prepend (clone_input->values, g_strdup (link->data));
++	}
++
++	clone_input->values = g_list_reverse (clone_input->values);
++
++	return clone;
++}
++
+ static GtkWidget *
+ filter_input_get_widget (EFilterElement *element)
+ {
+@@ -281,10 +334,38 @@ filter_input_format_sexp (EFilterElement *element,
+ 	EFilterInput *input = E_FILTER_INPUT (element);
+ 	GList *link;
+ 
++	if (input->code_gen_func)
++		return;
++
+ 	for (link = input->values; link != NULL; link = g_list_next (link))
+ 		camel_sexp_encode_string (out, link->data);
+ }
+ 
++static void
++filter_input_build_code (EFilterElement *element,
++			 GString *out,
++			 EFilterPart *part)
++{
++	EFilterInput *input = E_FILTER_INPUT (element);
++	GModule *module;
++	void (*code_gen_func) (EFilterElement *element, GString *out, EFilterPart *part);
++
++	if (!input->code_gen_func)
++		return;
++
++	module = g_module_open (NULL, G_MODULE_BIND_LAZY);
++
++	if (g_module_symbol (module, input->code_gen_func, (gpointer) &code_gen_func)) {
++		code_gen_func (E_FILTER_ELEMENT (input), out, part);
++	} else {
++		g_warning (
++			"input dynamic code function '%s' not found",
++			input->code_gen_func);
++	}
++
++	g_module_close (module);
++}
++
+ static void
+ e_filter_input_class_init (EFilterInputClass *class)
+ {
+@@ -300,8 +381,10 @@ e_filter_input_class_init (EFilterInputClass *class)
+ 	filter_element_class->xml_create = filter_input_xml_create;
+ 	filter_element_class->xml_encode = filter_input_xml_encode;
+ 	filter_element_class->xml_decode = filter_input_xml_decode;
++	filter_element_class->clone = filter_input_clone;
+ 	filter_element_class->get_widget = filter_input_get_widget;
+ 	filter_element_class->format_sexp = filter_input_format_sexp;
++	filter_element_class->build_code = filter_input_build_code;
+ }
+ 
+ static void
+@@ -309,6 +392,7 @@ e_filter_input_init (EFilterInput *input)
+ {
+ 	input->values = g_list_prepend (NULL, g_strdup (""));
+ 	input->allow_empty = TRUE;
++	input->code_gen_func = NULL;
+ }
+ 
+ /**
+diff --git a/e-util/e-filter-input.h b/e-util/e-filter-input.h
+index 456da413d6..ea0470b7ca 100644
+--- a/e-util/e-filter-input.h
++++ b/e-util/e-filter-input.h
+@@ -61,6 +61,7 @@ struct _EFilterInput {
+ 	gchar *type;		/* name of type */
+ 	GList *values;		/* strings */
+ 	gboolean allow_empty;	/* whether can have empty value */
++	gchar *code_gen_func;   /* function name to build the 'code' */
+ };
+ 
+ struct _EFilterInputClass {
+diff --git a/mail/Makefile.am b/mail/Makefile.am
+index d0b7220c89..58cd98d3fb 100644
+--- a/mail/Makefile.am
++++ b/mail/Makefile.am
+@@ -86,6 +86,7 @@ mailinclude_HEADERS =					\
+ 	e-mail-enumtypes.h				\
+ 	e-mail-folder-create-dialog.h			\
+ 	e-mail-folder-pane.h				\
++	e-mail-free-form-exp.h				\
+ 	e-mail-junk-options.h				\
+ 	e-mail-label-action.h				\
+ 	e-mail-label-dialog.h				\
+@@ -163,6 +164,7 @@ libevolution_mail_la_SOURCES =				\
+ 	e-mail-enumtypes.c				\
+ 	e-mail-folder-create-dialog.c			\
+ 	e-mail-folder-pane.c				\
++	e-mail-free-form-exp.c				\
+ 	e-mail-junk-options.c				\
+ 	e-mail-label-action.c				\
+ 	e-mail-label-dialog.c				\
+diff --git a/mail/e-mail-free-form-exp.c b/mail/e-mail-free-form-exp.c
+new file mode 100644
+index 0000000000..fb7864b89b
+--- /dev/null
++++ b/mail/e-mail-free-form-exp.c
+@@ -0,0 +1,557 @@
++/*
++ * Copyright (C) 2014 Red Hat, Inc. (www.redhat.com)
++ *
++ * This library is free software: you can redistribute it and/or modify it
++ * under the terms of the GNU Lesser General Public License as published by
++ * the Free Software Foundation.
++ *
++ * This library is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
++ * for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public License
++ * along with this library. If not, see <http://www.gnu.org/licenses/>.
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <glib.h>
++#include <glib/gi18n-lib.h>
++
++#include <string.h>
++
++#include <camel/camel.h>
++#include <e-util/e-util.h>
++#include <libedataserver/libedataserver.h>
++
++#include "e-mail-free-form-exp.h"
++
++static gchar *
++mail_ffe_build_header_sexp (const gchar *word,
++			    const gchar *options,
++			    const gchar * const *header_names)
++{
++	GString *sexp = NULL, *encoded_word;
++	const gchar *compare_type = NULL;
++	gint ii;
++
++	g_return_val_if_fail (header_names != NULL, NULL);
++	g_return_val_if_fail (header_names[0] != NULL, NULL);
++
++	if (!word)
++		return NULL;
++
++	if (options) {
++		struct _KnownOptions {
++			const gchar *compare_type;
++			const gchar *alt_name;
++		} known_options[] = {
++			{ "contains",    "c" },
++			{ "has-words",   "w" },
++			{ "matches",     "m" },
++			{ "starts-with", "sw" },
++			{ "ends-with",   "ew" },
++			{ "soundex",     "se" },
++			{ "regex",       "r" },
++			{ "full-regex",  "fr" }
++		};
++
++		for (ii = 0; ii < G_N_ELEMENTS (known_options); ii++) {
++			if (g_ascii_strcasecmp (options, known_options[ii].compare_type) == 0 ||
++			    (known_options[ii].alt_name && g_ascii_strcasecmp (options, known_options[ii].alt_name) == 0)) {
++				compare_type = known_options[ii].compare_type;
++				break;
++			}
++		}
++	}
++
++	if (!compare_type)
++		compare_type = "contains";
++
++	encoded_word = g_string_new ("");
++	camel_sexp_encode_string (encoded_word, word);
++
++	if (!header_names[1]) {
++		if (!sexp)
++			sexp = g_string_new ("");
++	} else if (!sexp) {
++		sexp = g_string_new ("(or ");
++	} else {
++		g_string_append (sexp, "(or ");
++	}
++
++	for (ii = 0; header_names[ii]; ii++) {
++		g_string_append_printf (sexp, "(match-all (header-%s \"%s\" %s))", compare_type, header_names[ii], encoded_word->str);
++	}
++
++	if (header_names[1])
++		g_string_append (sexp, ")");
++
++	g_string_free (encoded_word, TRUE);
++
++	return sexp ? g_string_free (sexp, FALSE) : NULL;
++}
++
++static gchar *
++mail_ffe_recips (const gchar *word,
++		 const gchar *options,
++		 const gchar *hint)
++{
++	const gchar *header_names[] = { "To", "Cc", "Subject", NULL };
++
++	/* Include Subject only in the default expression. */
++	if (!hint)
++		header_names[2] = NULL;
++
++	return mail_ffe_build_header_sexp (word, options, header_names);
++}
++
++static gchar *
++mail_ffe_from (const gchar *word,
++	       const gchar *options,
++	       const gchar *hint)
++{
++	const gchar *header_names[] = { "From", NULL };
++
++	return mail_ffe_build_header_sexp (word, options, header_names);
++}
++
++static gchar *
++mail_ffe_to (const gchar *word,
++	     const gchar *options,
++	     const gchar *hint)
++{
++	const gchar *header_names[] = { "To", NULL };
++
++	return mail_ffe_build_header_sexp (word, options, header_names);
++}
++
++static gchar *
++mail_ffe_cc (const gchar *word,
++	       const gchar *options,
++	       const gchar *hint)
++{
++	const gchar *header_names[] = { "Cc", NULL };
++
++	return mail_ffe_build_header_sexp (word, options, header_names);
++}
++
++static gchar *
++mail_ffe_subject (const gchar *word,
++		  const gchar *options,
++		  const gchar *hint)
++{
++	const gchar *header_names[] = { "Subject", NULL };
++
++	return mail_ffe_build_header_sexp (word, options, header_names);
++}
++
++static gchar *
++mail_ffe_header (const gchar *word,
++		 const gchar *options,
++		 const gchar *hint)
++{
++	const gchar *header_names[] = { NULL, NULL };
++	const gchar *equal;
++	gchar *header_name, *sexp;
++
++	equal = word ? strchr (word, '=') : NULL;
++	if (!equal)
++		return NULL;
++
++	header_name = g_strndup (word, equal - word);
++	header_names[0] = header_name;
++
++	sexp = mail_ffe_build_header_sexp (equal + 1, options, header_names);
++
++	g_free (header_name);
++
++	return sexp;
++}
++
++static gchar *
++mail_ffe_exists (const gchar *word,
++		 const gchar *options,
++		 const gchar *hint)
++{
++	GString *encoded_word;
++	gchar *sexp;
++
++	if (!word)
++		return NULL;
++
++	encoded_word = g_string_new ("");
++	camel_sexp_encode_string (encoded_word, word);
++
++	sexp = g_strdup_printf ("(match-all (header-exists %s))", encoded_word->str);
++
++	g_string_free (encoded_word, TRUE);
++
++	return sexp;
++}
++
++static gchar *
++mail_ffe_tag (const gchar *word,
++	      const gchar *options,
++	      const gchar *hint)
++{
++	GString *encoded_word;
++	gchar *sexp;
++
++	if (!word)
++		return NULL;
++
++	encoded_word = g_string_new ("");
++	camel_sexp_encode_string (encoded_word, word);
++
++	sexp = g_strdup_printf ("(match-all (not (= (user-tag %s) \"\")))", encoded_word->str);
++
++	g_string_free (encoded_word, TRUE);
++
++	return sexp;
++}
++
++static gchar *
++mail_ffe_flag (const gchar *word,
++	       const gchar *options,
++	       const gchar *hint)
++{
++	const gchar *system_flags[] = {
++		/* Translators: This is a name of a flag, the same as all strings in the 'ffe' context.
++		   The translated value should not contain spaces. */
++		NC_("ffe", "Answered"),
++		NC_("ffe", "Deleted"),
++		NC_("ffe", "Draft"),
++		NC_("ffe", "Flagged"),
++		NC_("ffe", "Seen"),
++		NC_("ffe", "Attachment")
++	};
++	GString *encoded_word;
++	gchar *sexp = NULL;
++	gint ii;
++
++	if (!word)
++		return NULL;
++
++	encoded_word = g_string_new ("");
++	camel_sexp_encode_string (encoded_word, word);
++
++	for (ii = 0; ii < G_N_ELEMENTS (system_flags); ii++) {
++		if (g_ascii_strcasecmp (word, system_flags[ii]) == 0 ||
++		    g_ascii_strcasecmp (word, g_dpgettext2 (NULL, "ffe", system_flags[ii])) == 0) {
++			sexp = g_strdup_printf ("(match-all (system-flag \"%s\"))", system_flags[ii]);
++			break;
++		}
++	}
++
++	if (!sexp)
++		sexp = g_strdup_printf ("(match-all (not (= (user-tag %s) \"\")))", encoded_word->str);
++
++	g_string_free (encoded_word, TRUE);
++
++	return sexp;
++}
++
++static gchar *
++mail_ffe_label (const gchar *word,
++		const gchar *options,
++		const gchar *hint)
++{
++	GString *encoded_word;
++	gchar *sexp;
++
++	if (!word)
++		return NULL;
++
++	encoded_word = g_string_new ("");
++	camel_sexp_encode_string (encoded_word, word);
++
++	sexp = g_strdup_printf ("(match-all (or ((= (user-tag \"label\") %s) (user-flag (+ \"$Label\" %s)) (user-flag  %s)))",
++		encoded_word->str, encoded_word->str, encoded_word->str);
++
++	g_string_free (encoded_word, TRUE);
++
++	return sexp;
++}
++
++static gchar *
++mail_ffe_size (const gchar *word,
++	       const gchar *options,
++	       const gchar *hint)
++{
++	GString *encoded_word;
++	gchar *sexp;
++	const gchar *cmp = "=";
++
++	if (!word)
++		return NULL;
++
++	if (options) {
++		if (g_ascii_strcasecmp (options, "<") == 0 ||
++		    g_ascii_strcasecmp (options, ">") == 0)
++			cmp = options;
++	}
++
++	encoded_word = g_string_new ("");
++	camel_sexp_encode_string (encoded_word, word);
++
++	sexp = g_strdup_printf ("(match-all (%s (get-size) (cast-int %s)))", cmp, encoded_word->str);
++
++	g_string_free (encoded_word, TRUE);
++
++	return sexp;
++}
++
++static gchar *
++mail_ffe_score (const gchar *word,
++		const gchar *options,
++		const gchar *hint)
++{
++	GString *encoded_word;
++	gchar *sexp;
++	const gchar *cmp = "=";
++
++	if (!word)
++		return NULL;
++
++	if (options) {
++		if (g_ascii_strcasecmp (options, "<") == 0 ||
++		    g_ascii_strcasecmp (options, ">") == 0)
++			cmp = options;
++	}
++
++	encoded_word = g_string_new ("");
++	camel_sexp_encode_string (encoded_word, word);
++
++	sexp = g_strdup_printf ("(match-all (%s (cast-int (user-tag \"score\")) (cast-int %s)))", cmp, encoded_word->str);
++
++	g_string_free (encoded_word, TRUE);
++
++	return sexp;
++}
++
++static gchar *
++mail_ffe_body (const gchar *word,
++	       const gchar *options,
++	       const gchar *hint)
++{
++	GString *encoded_word;
++	gchar *sexp;
++	const gchar *cmp = "contains";
++
++	if (!word)
++		return NULL;
++
++	if (options) {
++		if (g_ascii_strcasecmp (options, "regex") == 0 ||
++		    g_ascii_strcasecmp (options, "re") == 0 ||
++		    g_ascii_strcasecmp (options, "r") == 0)
++			cmp = "regex";
++	}
++
++	encoded_word = g_string_new ("");
++	camel_sexp_encode_string (encoded_word, word);
++
++	sexp = g_strdup_printf ("(match-all (body-%s %s))", cmp, encoded_word->str);
++
++	g_string_free (encoded_word, TRUE);
++
++	return sexp;
++}
++
++static gboolean
++mail_ffe_decode_date_time (const gchar *word,
++			   GTimeVal *tv)
++{
++	struct tm tm;
++
++	g_return_val_if_fail (word != NULL, FALSE);
++	g_return_val_if_fail (tv != NULL, FALSE);
++
++	/* YYYY-MM-DD */
++	if (strlen (word) == 10 && word[4] == '-' && word[7] == '-') {
++		gint yy, mm, dd;
++
++		yy = atoi (word);
++		mm = atoi (word + 5);
++		dd = atoi (word + 8);
++
++		if (g_date_valid_dmy (dd, mm, yy)) {
++			GDate *date;
++
++			date = g_date_new_dmy (dd, mm, yy);
++			g_date_to_struct_tm (date, &tm);
++			g_date_free (date);
++
++			tv->tv_sec = mktime (&tm);
++			tv->tv_usec = 0;
++
++			return TRUE;
++		}
++	}
++
++	if (g_time_val_from_iso8601 (word, tv))
++		return TRUE;
++
++	if (e_time_parse_date_and_time (word, &tm) == E_TIME_PARSE_OK ||
++	    e_time_parse_date (word, &tm) == E_TIME_PARSE_OK) {
++		tv->tv_sec = mktime (&tm);
++		tv->tv_usec = 0;
++
++		return TRUE;
++	}
++
++	return FALSE;
++}
++
++static gchar *
++mail_ffe_process_date (const gchar *get_date_fnc,
++		       const gchar *word,
++		       const gchar *options)
++{
++	gint64 rel_days;
++	gchar *endptr = NULL;
++	const gchar *op = ">";
++	GTimeVal tv;
++
++	g_return_val_if_fail (get_date_fnc != NULL, NULL);
++
++	if (options) {
++		if (g_ascii_strcasecmp (options, "<") == 0) {
++			op = "<";
++		} else if (g_ascii_strcasecmp (options, "=") == 0) {
++			op = "=";
++		} else if (g_ascii_strcasecmp (options, ">") == 0) {
++			op = ">";
++		}
++	}
++
++	rel_days = g_ascii_strtoll (word, &endptr, 10);
++	if (rel_days != 0 && endptr && !*endptr) {
++		return g_strdup_printf ("(match-all (%s (%s) (%s (get-current-date) %" G_GINT64_FORMAT ")))", op, get_date_fnc,
++			rel_days < 0 ? "+" : "-", (rel_days < 0 ? -1 : 1) * rel_days * 24 * 60 * 60);
++	}
++
++	if (!mail_ffe_decode_date_time (word, &tv))
++		return g_strdup_printf ("(match-all (%s (%s) (get-current-date)))", op, get_date_fnc);
++
++	return g_strdup_printf ("(match-all (%s (%s) %" G_GINT64_FORMAT "))", op, get_date_fnc, (gint64) tv.tv_sec);
++}
++
++static gchar *
++mail_ffe_sent (const gchar *word,
++	       const gchar *options,
++	       const gchar *hint)
++{
++	if (!word)
++		return NULL;
++
++	return mail_ffe_process_date ("get-sent-date", word, options);
++}
++
++static gchar *
++mail_ffe_received (const gchar *word,
++		   const gchar *options,
++		   const gchar *hint)
++{
++	if (!word)
++		return NULL;
++
++	return mail_ffe_process_date ("get-received-date", word, options);
++}
++
++static gchar *
++mail_ffe_attachment (const gchar *word,
++		     const gchar *options,
++		     const gchar *hint)
++{
++	gboolean is_neg = FALSE;
++
++	if (!word)
++		return NULL;
++
++	if (g_ascii_strcasecmp (word, "no") == 0 ||
++	    g_ascii_strcasecmp (word, "false") == 0 ||
++	    g_ascii_strcasecmp (word, C_("ffe", "no")) == 0 ||
++	    g_ascii_strcasecmp (word, C_("ffe", "false")) == 0 ||
++	    g_ascii_strcasecmp (word, "0") == 0) {
++		is_neg = TRUE;
++	}
++
++	return g_strdup_printf ("(match-all %s(system-flag \"Attachment\")%s)", is_neg ? "(not " : "", is_neg ? ")" : "");
++}
++
++static const EFreeFormExpSymbol mail_ffe_symbols[] = {
++	{ "",		"1",	mail_ffe_recips },
++	{ "from:f",	NULL,	mail_ffe_from },
++	{ "to:t",	NULL,	mail_ffe_to },
++	{ "cc:c:",	NULL,	mail_ffe_cc },
++	{ "recips:r",	NULL,	mail_ffe_recips },
++	{ "subject:s",	NULL,	mail_ffe_subject },
++	{ "header:h",	NULL,	mail_ffe_header },
++	{ "exists:e",	NULL,	mail_ffe_exists },
++	{ "tag",	NULL,	mail_ffe_tag },
++	{ "flag",	NULL,	mail_ffe_flag },
++	{ "label:l",	NULL,	mail_ffe_label },
++	{ "size:sz",	NULL,	mail_ffe_size },
++	{ "score:sc",	NULL,	mail_ffe_score },
++	{ "body:b",	NULL,	mail_ffe_body },
++	{ "sent",	NULL,	mail_ffe_sent },
++	{ "received:rcv", NULL,	mail_ffe_received },
++	{ "attachment:a", NULL,	mail_ffe_attachment },
++	{ NULL,		NULL,	NULL}
++};
++
++static gchar *
++get_filter_input_value (EFilterPart *part,
++			const gchar *name)
++{
++	EFilterElement *elem;
++	EFilterInput *input;
++	GString *value;
++	GList *link;
++
++	g_return_val_if_fail (part != NULL, NULL);
++	g_return_val_if_fail (name != NULL, NULL);
++
++	elem = e_filter_part_find_element (part, name);
++	g_return_val_if_fail (elem != NULL, NULL);
++	g_return_val_if_fail (E_IS_FILTER_INPUT (elem), NULL);
++
++	input = E_FILTER_INPUT (elem);
++	value = g_string_new ("");
++
++	for (link = input->values; link; link = g_list_next (link)) {
++		const gchar *val = link->data;
++
++		if (val && *val) {
++			if (value->len > 0)
++				g_string_append_c (value, ' ');
++			g_string_append (value, val);
++		}
++	}
++
++	return g_string_free (value, FALSE);
++}
++
++void
++e_mail_free_form_exp_to_sexp (EFilterElement *element,
++			      GString *out,
++			      EFilterPart *part)
++{
++	gchar *ffe, *sexp;
++
++	ffe = get_filter_input_value (part, "ffe");
++	g_return_if_fail (ffe != NULL);
++
++	sexp = e_free_form_exp_to_sexp (ffe, mail_ffe_symbols);
++	if (sexp)
++		g_string_append (out, sexp);
++
++	g_free (sexp);
++	g_free (ffe);
++}
+diff --git a/mail/e-mail-free-form-exp.h b/mail/e-mail-free-form-exp.h
+new file mode 100644
+index 0000000000..5192202c5e
+--- /dev/null
++++ b/mail/e-mail-free-form-exp.h
+@@ -0,0 +1,33 @@
++/*
++ * Copyright (C) 2014 Red Hat, Inc. (www.redhat.com)
++ *
++ * This library is free software: you can redistribute it and/or modify it
++ * under the terms of the GNU Lesser General Public License as published by
++ * the Free Software Foundation.
++ *
++ * This library is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
++ * for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public License
++ * along with this library. If not, see <http://www.gnu.org/licenses/>.
++ *
++ */
++
++#ifndef E_MAIL_FREE_FORM_EXP_H
++#define E_MAIL_FREE_FORM_EXP_H
++
++#include <glib.h>
++
++#include <e-util/e-util.h>
++
++G_BEGIN_DECLS
++
++void		e_mail_free_form_exp_to_sexp	(EFilterElement *element,
++						 GString *out,
++						 EFilterPart *part);
++
++G_END_DECLS
++
++#endif /* E_MAIL_FREE_FORM_EXP_H */
+diff --git a/mail/filtertypes.xml.in b/mail/filtertypes.xml.in
+index 25be7808a8..ec2e70e85f 100644
+--- a/mail/filtertypes.xml.in
++++ b/mail/filtertypes.xml.in
+@@ -581,6 +581,13 @@
+    <input type="code" name="code"/>
+  </part>
+ 
++ <part name="mail-free-form-exp">
++  <_title>Free Form Expression</_title>
++  <input type="string" name="ffe">
++    <code func="e_mail_free_form_exp_to_sexp"/>
++  </input>
++ </part>
++
+  <part name="sent-date">
+   <_title>Date sent</_title>
+   <input type="optionlist" name="date-spec-type">
+diff --git a/mail/searchtypes.xml.in b/mail/searchtypes.xml.in
+index ef116f424d..f5cb719982 100644
+--- a/mail/searchtypes.xml.in
++++ b/mail/searchtypes.xml.in
+@@ -656,6 +656,13 @@
+    <input type="code" name="code"/>
+  </part>
+ 
++ <part name="mail-free-form-exp">
++  <_title>Free Form Expression</_title>
++  <input type="string" name="ffe">
++    <code func="e_mail_free_form_exp_to_sexp"/>
++  </input>
++ </part>
++
+  <part name="sent-date">
+   <_title>Date sent</_title>
+   <input type="optionlist" name="date-spec-type">
+@@ -1012,5 +1019,15 @@
+       <sources/>
+     </rule>
+ 
++    <rule grouping="any" source="demand">
++      <_title>Free form expression</_title>
++      <partset>
++        <part name="mail-free-form-exp">
++          <value name="ffe" type="string"/>
++        </part>
++      </partset>
++      <sources/>
++    </rule>
++
+   </ruleset>
+ </filterdescription>
+diff --git a/mail/vfoldertypes.xml.in b/mail/vfoldertypes.xml.in
+index 51460c7a96..8910073cc4 100644
+--- a/mail/vfoldertypes.xml.in
++++ b/mail/vfoldertypes.xml.in
+@@ -652,6 +652,13 @@
+    <input type="code" name="code"/>
+  </part>
+ 
++ <part name="mail-free-form-exp">
++  <_title>Free Form Expression</_title>
++  <input type="string" name="ffe">
++    <code func="e_mail_free_form_exp_to_sexp"/>
++  </input>
++ </part>
++
+  <part name="sent-date">
+   <_title>Date sent</_title>
+   <input type="optionlist" name="date-spec-type">
+diff --git a/modules/mail/e-mail-shell-view-actions.c b/modules/mail/e-mail-shell-view-actions.c
+index 28da400e86..b1be4906d8 100644
+--- a/modules/mail/e-mail-shell-view-actions.c
++++ b/modules/mail/e-mail-shell-view-actions.c
+@@ -2090,6 +2090,13 @@ static GtkRadioActionEntry mail_search_entries[] = {
+ 	  NULL,  /* XXX Add a tooltip! */
+ 	  MAIL_SEARCH_BODY_CONTAINS },
+ 
++	{ "mail-search-free-form-expr",
++	  NULL,
++	  N_("Free form expression"),
++	  NULL,
++	  NULL,  /* XXX Add a tooltip! */
++	  MAIL_SEARCH_FREE_FORM_EXPR },
++
+ 	{ "mail-search-message-contains",
+ 	  NULL,
+ 	  N_("Message contains"),
+diff --git a/modules/mail/e-mail-shell-view-actions.h b/modules/mail/e-mail-shell-view-actions.h
+index ad54d89927..aa75a2b555 100644
+--- a/modules/mail/e-mail-shell-view-actions.h
++++ b/modules/mail/e-mail-shell-view-actions.h
+@@ -246,6 +246,8 @@
+ 	E_SHELL_WINDOW_ACTION ((window), "mail-scope-current-message")
+ #define E_SHELL_WINDOW_ACTION_MAIL_SEARCH_BODY_CONTAINS(window) \
+ 	E_SHELL_WINDOW_ACTION ((window), "mail-search-body-contains")
++#define E_SHELL_WINDOW_ACTION_MAIL_SEARCH_FREE_FORM_EXPR(window) \
++	E_SHELL_WINDOW_ACTION ((window), "mail-search-free-form-expr")
+ #define E_SHELL_WINDOW_ACTION_MAIL_SEARCH_MESSAGE_CONTAINS(window) \
+ 	E_SHELL_WINDOW_ACTION ((window), "mail-search-message-contains")
+ #define E_SHELL_WINDOW_ACTION_MAIL_SEARCH_RECIPIENTS_CONTAIN(window) \
+diff --git a/modules/mail/e-mail-shell-view-private.h b/modules/mail/e-mail-shell-view-private.h
+index dc55d29160..94fcb58abf 100644
+--- a/modules/mail/e-mail-shell-view-private.h
++++ b/modules/mail/e-mail-shell-view-private.h
+@@ -96,6 +96,7 @@ enum {
+ 	MAIL_SEARCH_SUBJECT_CONTAINS,
+ 	MAIL_SEARCH_SENDER_CONTAINS,
+ 	MAIL_SEARCH_BODY_CONTAINS,
++	MAIL_SEARCH_FREE_FORM_EXPR,
+ 	MAIL_NUM_SEARCH_RULES
+ };
+ 
+diff --git a/modules/mail/e-mail-shell-view.c b/modules/mail/e-mail-shell-view.c
+index 7477e68a5b..8dd6b0f3df 100644
+--- a/modules/mail/e-mail-shell-view.c
++++ b/modules/mail/e-mail-shell-view.c
+@@ -448,6 +448,8 @@ mail_shell_view_execute_search (EShellView *shell_view)
+ 			element = e_filter_part_find_element (part, "sender");
+ 		else if (strcmp (part->name, "to") == 0)
+ 			element = e_filter_part_find_element (part, "recipient");
++		else if (strcmp (part->name, "mail-free-form-exp") == 0)
++			element = e_filter_part_find_element (part, "ffe");
+ 
+ 		if (strcmp (part->name, "body") == 0) {
+ 			struct _camel_search_words *words;
+diff --git a/po/POTFILES.in b/po/POTFILES.in
+index 195c2690ef..978d245b99 100644
+--- a/po/POTFILES.in
++++ b/po/POTFILES.in
+@@ -346,6 +346,7 @@ mail/e-mail-config-welcome-page.c
+ mail/e-mail-config-window.c
+ mail/e-mail-display.c
+ mail/e-mail-folder-create-dialog.c
++mail/e-mail-free-form-exp.c
+ mail/e-mail-junk-options.c
+ mail/e-mail-label-dialog.c
+ mail/e-mail-label-list-store.c
+diff --git a/ui/evolution-mail.ui b/ui/evolution-mail.ui
+index e3d5dca99b..70fd30d300 100644
+--- a/ui/evolution-mail.ui
++++ b/ui/evolution-mail.ui
+@@ -148,6 +148,7 @@
+     <menuitem action='mail-search-subject-contains'/>
+     <menuitem action='mail-search-sender-contains'/>
+     <menuitem action='mail-search-body-contains'/>
++    <menuitem action='mail-search-free-form-expr'/>
+     <separator/>
+     <menuitem action='search-advanced'/>
+   </popup>
+-- 
+2.15.0
+

@@ -1,0 +1,37 @@
+From 3c0d1d2b1b480e7ab602b4ceadedb41ed4aaa7cf Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 14 Aug 2015 13:44:36 +0200
+Subject: [PATCH 0945/1800] Bug 753609 - Entered text reset on column leave in
+ list view
+
+---
+ e-util/e-table-one.c | 11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
+
+diff --git a/e-util/e-table-one.c b/e-util/e-table-one.c
+index e2b02ea5f7..338ad66d87 100644
+--- a/e-util/e-table-one.c
++++ b/e-util/e-table-one.c
+@@ -143,15 +143,12 @@ table_one_free_value (ETableModel *etm,
+ 	ETableOne *one = E_TABLE_ONE (etm);
+ 
+ 	if (one->source) {
+-		e_table_model_free_value (one->source, col, value);
+-		if (one->data && one->data[col] != value && one->data[col]) {
+-			e_table_model_free_value (one->source, col, one->data[col]);
+-			one->data[col] = NULL;
++		if (!one->data || one->data[col] != value) {
++			e_table_model_free_value (one->source, col, value);
+ 		}
++	} else if (one->data) {
++		one->data[col] = NULL;
+ 	}
+-
+-	if (one->data)
+-		one->data[col] = one->source ? e_table_model_initialize_value (one->source, col) : NULL;
+ }
+ 
+ static gpointer
+-- 
+2.15.0
+

@@ -1,0 +1,32 @@
+From 7caf89d03eedcd01ae0b21ff6507ec6bbc96ca09 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marek=20=C4=8Cernock=C3=BD?= <marek@manet.cz>
+Date: Tue, 20 Jan 2015 19:20:16 +0100
+Subject: [PATCH 0185/1800] Updated Czech translation
+
+---
+ po/cs.po | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/po/cs.po b/po/cs.po
+index c6e7b965e8..6ac879dc10 100644
+--- a/po/cs.po
++++ b/po/cs.po
+@@ -12457,13 +12457,11 @@ msgstr "Z_arovnání:"
+ #. Shaded
+ #: ../e-util/e-html-editor-hrule-dialog.c:402
+ msgid "S_haded"
+-msgstr ""
++msgstr "S_tínovaná"
+ 
+ #: ../e-util/e-html-editor-hrule-dialog.c:419
+-#, fuzzy
+-#| msgid "Folder Properties"
+ msgid "Rule properties"
+-msgstr "Vlastnosti složky"
++msgstr "Vlastnosti oddělovací čáry"
+ 
+ #: ../e-util/e-html-editor-image-dialog.c:471
+ #: ../e-util/e-html-editor-paragraph-dialog.c:66
+-- 
+2.15.0
+

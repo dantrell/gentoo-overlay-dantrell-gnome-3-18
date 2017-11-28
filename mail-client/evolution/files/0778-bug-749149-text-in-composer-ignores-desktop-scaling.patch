@@ -1,0 +1,50 @@
+From e93dc905385ca3ded4247498ddffe60382aa0df5 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 16:54:21 +0100
+Subject: [PATCH 0778/1800] Bug 749149 - Text in composer ignores desktop
+ scaling factor
+
+---
+ e-util/e-html-editor-view.c | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 9def9dd4ba..0e10e7a753 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -2399,7 +2399,7 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 	const gchar *styles[] = { "normal", "oblique", "italic" };
+ 	const gchar *smoothing = NULL;
+ 	GString *stylesheet;
+-	PangoFontDescription *ms, *vw;
++	PangoFontDescription *min_size, *ms, *vw;
+ 	WebKitSettings *settings;
+ 	WebKitUserContentManager *manager;
+ 	WebKitUserStyleSheet *style_sheet;
+@@ -2763,6 +2763,11 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 		"}\n",
+ 		e_web_view_get_citation_color_for_level (5));
+ 
++	if (pango_font_description_get_size (ms) < pango_font_description_get_size (vw) || !view->priv->html_mode)
++		min_size = ms;
++	else
++		min_size = vw;
++
+ 	settings = webkit_web_view_get_settings (WEBKIT_WEB_VIEW (view));
+ 	g_object_set (
+ 		G_OBJECT (settings),
+@@ -2773,9 +2778,8 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 		pango_font_description_get_family (vw),
+ 		"monospace-font-family",
+ 		pango_font_description_get_family (ms),
+-		"default-monospace-font-size",
+-		e_util_normalize_font_size (
+-			GTK_WIDGET (view), pango_font_description_get_size (ms) / PANGO_SCALE),
++		"default-monospace-font-size", pango_font_description_get_size (ms) / PANGO_SCALE,
++		"minimum-font-size", pango_font_description_get_size (min_size) / PANGO_SCALE,
+ 		NULL);
+ 
+ 	manager = webkit_web_view_get_user_content_manager (WEBKIT_WEB_VIEW (view));
+-- 
+2.15.0
+

@@ -1,0 +1,160 @@
+From 138733a3d90e707591c514f69221607056753124 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 9 Jul 2015 15:30:26 +0200
+Subject: [PATCH 0868/1800] Bug 752119 - Avoid usage of
+ gtk_style_context_get_background_color()
+
+---
+ e-util/e-calendar-item.c      | 31 +++++++++++++++----------------
+ e-util/e-cell-popup.c         |  5 -----
+ e-util/e-reflow.c             |  4 ----
+ e-util/e-table-click-to-add.c |  8 ++++----
+ shell/e-shell-searchbar.c     |  8 ++------
+ 5 files changed, 21 insertions(+), 35 deletions(-)
+
+diff --git a/e-util/e-calendar-item.c b/e-util/e-calendar-item.c
+index b0a44d2cc6..10e2a5d0b7 100644
+--- a/e-util/e-calendar-item.c
++++ b/e-util/e-calendar-item.c
+@@ -1098,8 +1098,7 @@ e_calendar_item_draw (GnomeCanvasItem *canvas_item,
+ 		PANGO_PIXELS (pango_font_metrics_get_ascent (font_metrics)) +
+ 		PANGO_PIXELS (pango_font_metrics_get_descent (font_metrics));
+ 
+-	gtk_style_context_get_background_color (
+-		style_context, GTK_STATE_NORMAL, &bg_color);
++	e_utils_get_theme_color (widget, "theme_bg_color", E_UTILS_DEFAULT_THEME_BG_COLOR, &bg_color);
+ 
+ 	gtk_style_context_get_border (
+ 		style_context, GTK_STATE_NORMAL, &border);
+@@ -1114,20 +1113,6 @@ e_calendar_item_draw (GnomeCanvasItem *canvas_item,
+ 	cairo_fill (cr);
+ 	cairo_restore (cr);
+ 
+-	/* Draw the shadow around the entire item. */
+-	gtk_style_context_save (style_context);
+-	gtk_style_context_add_class (
+-		style_context, GTK_STYLE_CLASS_ENTRY);
+-	cairo_save (cr);
+-	gtk_render_frame (
+-		style_context, cr,
+-		(gdouble) calitem->x1 - x,
+-		(gdouble) calitem->y1 - y,
+-		(gdouble) calitem->x2 - calitem->x1 + 1,
+-		(gdouble) calitem->y2 - calitem->y1 + 1);
+-	cairo_restore (cr);
+-	gtk_style_context_restore (style_context);
+-
+ 	row_y = canvas_item->y1 + border.top;
+ 	bar_height =
+ 		border.top + border.bottom +
+@@ -1172,6 +1157,20 @@ e_calendar_item_draw (GnomeCanvasItem *canvas_item,
+ 		row_y += calitem->month_height;
+ 	}
+ 
++	/* Draw the shadow around the entire item. */
++	gtk_style_context_save (style_context);
++	gtk_style_context_add_class (
++		style_context, GTK_STYLE_CLASS_ENTRY);
++	cairo_save (cr);
++	gtk_render_frame (
++		style_context, cr,
++		(gdouble) calitem->x1 - x,
++		(gdouble) calitem->y1 - y,
++		(gdouble) calitem->x2 - calitem->x1 + 1,
++		(gdouble) calitem->y2 - calitem->y1 + 1);
++	cairo_restore (cr);
++	gtk_style_context_restore (style_context);
++
+ 	pango_font_metrics_unref (font_metrics);
+ }
+ 
+diff --git a/e-util/e-cell-popup.c b/e-util/e-cell-popup.c
+index 1b311d26bd..476b6c43bf 100644
+--- a/e-util/e-cell-popup.c
++++ b/e-util/e-cell-popup.c
+@@ -282,7 +282,6 @@ ecp_draw (ECellView *ecv,
+ 
+ 	if (show_popup_arrow) {
+ 		GtkStyleContext *style_context;
+-		GdkRGBA color;
+ 		gint arrow_x;
+ 		gint arrow_y;
+ 		gint arrow_size;
+@@ -306,11 +305,7 @@ ecp_draw (ECellView *ecv,
+ 		gtk_style_context_add_class (
+ 			style_context, GTK_STYLE_CLASS_CELL);
+ 
+-		gtk_style_context_get_background_color (
+-			style_context, GTK_STATE_FLAG_NORMAL, &color);
+-
+ 		cairo_save (cr);
+-		gdk_cairo_set_source_rgba (cr, &color);
+ 		gtk_render_background (
+ 			style_context, cr,
+ 			(gdouble) arrow_x,
+diff --git a/e-util/e-reflow.c b/e-util/e-reflow.c
+index 0d0be54d80..974ddc343b 100644
+--- a/e-util/e-reflow.c
++++ b/e-util/e-reflow.c
+@@ -1272,10 +1272,6 @@ e_reflow_draw (GnomeCanvasItem *item,
+ 
+ 	cairo_save (cr);
+ 
+-	gtk_style_context_get_background_color (
+-		style_context, GTK_STATE_FLAG_ACTIVE, &color);
+-	gdk_cairo_set_source_rgba (cr, &color);
+-
+ 	for (; i < reflow->column_count; i++) {
+ 		if (running_width > x + width)
+ 			break;
+diff --git a/e-util/e-table-click-to-add.c b/e-util/e-table-click-to-add.c
+index a47106df8a..5d4eb9af79 100644
+--- a/e-util/e-table-click-to-add.c
++++ b/e-util/e-table-click-to-add.c
+@@ -83,8 +83,8 @@ etcta_style_updated (ETableClickToAdd *etcta)
+ 
+ 	widget = GTK_WIDGET (GNOME_CANVAS_ITEM (etcta)->canvas);
+ 
+-	e_utils_get_theme_color_color (widget, "theme_selected_fg_color", E_UTILS_DEFAULT_THEME_FG_COLOR, &fg);
+-	e_utils_get_theme_color_color (widget, "theme_selected_bg_color", E_UTILS_DEFAULT_THEME_BG_COLOR, &bg);
++	e_utils_get_theme_color_color (widget, "theme_selected_fg_color", E_UTILS_DEFAULT_THEME_SELECTED_FG_COLOR, &fg);
++	e_utils_get_theme_color_color (widget, "theme_selected_bg_color", E_UTILS_DEFAULT_THEME_SELECTED_BG_COLOR, &bg);
+ 
+ 	if (etcta->rect)
+ 		gnome_canvas_item_set (
+@@ -262,8 +262,8 @@ create_rect_and_text (ETableClickToAdd *etcta)
+ 
+ 	widget = GTK_WIDGET (GNOME_CANVAS_ITEM (etcta)->canvas);
+ 
+-	e_utils_get_theme_color_color (widget, "theme_selected_fg_color", E_UTILS_DEFAULT_THEME_FG_COLOR, &fg);
+-	e_utils_get_theme_color_color (widget, "theme_selected_bg_color", E_UTILS_DEFAULT_THEME_BG_COLOR, &bg);
++	e_utils_get_theme_color_color (widget, "theme_selected_fg_color", E_UTILS_DEFAULT_THEME_SELECTED_FG_COLOR, &fg);
++	e_utils_get_theme_color_color (widget, "theme_selected_bg_color", E_UTILS_DEFAULT_THEME_SELECTED_BG_COLOR, &bg);
+ 
+ 	if (!etcta->rect)
+ 		etcta->rect = gnome_canvas_item_new (
+diff --git a/shell/e-shell-searchbar.c b/shell/e-shell-searchbar.c
+index 9fc1f98d99..e3d9f1a6de 100644
+--- a/shell/e-shell-searchbar.c
++++ b/shell/e-shell-searchbar.c
+@@ -237,15 +237,11 @@ shell_searchbar_update_search_widgets (EShellSearchbar *searchbar)
+ 		(e_shell_view_get_search_rule (shell_view) != NULL);
+ 
+ 	if (sensitive) {
+-		GtkStyleContext *style;
+ 		GdkRGBA bg, fg;
+ 		gchar *css;
+ 
+-		style = gtk_widget_get_style_context (widget);
+-		gtk_style_context_get_background_color (
+-			style, GTK_STATE_FLAG_SELECTED, &bg);
+-		gtk_style_context_get_color (
+-			style, GTK_STATE_FLAG_SELECTED, &fg);
++		e_utils_get_theme_color (widget, "theme_selected_bg_color", E_UTILS_DEFAULT_THEME_SELECTED_BG_COLOR, &bg);
++		e_utils_get_theme_color (widget, "theme_selected_fg_color", E_UTILS_DEFAULT_THEME_SELECTED_FG_COLOR, &fg);
+ 
+ 		css = g_strdup_printf (
+ 			"GtkEntry#searchbar_searchentry_active { "
+-- 
+2.15.0
+

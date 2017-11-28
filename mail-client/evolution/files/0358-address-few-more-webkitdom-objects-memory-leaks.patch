@@ -1,0 +1,61 @@
+From e9335d6faf8f13b55abe95d919c972d97beff071 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 26 Mar 2015 10:11:36 +0100
+Subject: [PATCH 0358/1800] Address few more WebKitDOM objects memory leaks
+
+Filled and discussed in bug 744401.
+---
+ web-extensions/e-dom-utils.c | 18 ++++++++++++++++--
+ 1 file changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/web-extensions/e-dom-utils.c b/web-extensions/e-dom-utils.c
+index 030e229fd2..bf1a0376ed 100644
+--- a/web-extensions/e-dom-utils.c
++++ b/web-extensions/e-dom-utils.c
+@@ -340,6 +340,11 @@ e_dom_utils_create_and_add_css_style_sheet (WebKitDOMDocument *document,
+ 	style_element = webkit_dom_document_get_element_by_id (document, style_sheet_id);
+ 
+ 	if (!style_element) {
++		WebKitDOMText *dom_text;
++		WebKitDOMHTMLHeadElement *head;
++
++		dom_text = webkit_dom_document_create_text_node (document, "");
++
+ 		/* Create new <style> element */
+ 		style_element = webkit_dom_document_create_element (document, "style", NULL);
+ 		webkit_dom_element_set_id (
+@@ -351,13 +356,19 @@ e_dom_utils_create_and_add_css_style_sheet (WebKitDOMDocument *document,
+ 		webkit_dom_node_append_child (
+ 			WEBKIT_DOM_NODE (style_element),
+ 			/* WebKit hack - we have to insert empty TextNode into style element */
+-			WEBKIT_DOM_NODE (webkit_dom_document_create_text_node (document, "")),
++			WEBKIT_DOM_NODE (dom_text),
+ 			NULL);
+ 
++		head = webkit_dom_document_get_head (document);
++
+ 		webkit_dom_node_append_child (
+-			WEBKIT_DOM_NODE (webkit_dom_document_get_head (document)),
++			WEBKIT_DOM_NODE (head),
+ 			WEBKIT_DOM_NODE (style_element),
+ 			NULL);
++
++		g_object_unref (head);
++		g_object_unref (dom_text);
++		g_object_unref (style_element);
+ 	}
+ }
+ 
+@@ -420,6 +431,9 @@ add_css_rule_into_style_sheet (WebKitDOMDocument *document,
+ 	/* Insert the rule at the end, so it will override previously inserted */
+ 	webkit_dom_css_style_sheet_add_rule (
+ 		WEBKIT_DOM_CSS_STYLE_SHEET (sheet), selector, style, length, NULL);
++
++	g_object_unref (sheet);
++	g_object_unref (style_element);
+ }
+ 
+ static void
+-- 
+2.15.0
+

@@ -1,0 +1,342 @@
+From 7ed5fe1f65b62b5ce045b1b9ded15df953dff1dc Mon Sep 17 00:00:00 2001
+From: Mike Gorse <mgorse@suse.com>
+Date: Mon, 5 Jan 2015 15:24:23 +0100
+Subject: [PATCH 0156/1800] Bug 741080 - Do not use deprecated atk functions
+
+---
+ addressbook/gui/widgets/ea-addressbook.c |  7 +++---
+ calendar/gui/ea-calendar.c               | 37 +++++++++++---------------------
+ calendar/gui/ea-day-view-main-item.c     | 11 +++++-----
+ calendar/gui/ea-week-view-main-item.c    | 11 +++++-----
+ e-util/ea-calendar-cell.c                | 17 +++------------
+ e-util/ea-calendar-item.c                | 15 ++++++++++++-
+ e-util/ea-calendar-item.h                |  5 +++++
+ e-util/gal-a11y-e-cell-toggle.c          |  2 --
+ e-util/gal-a11y-e-cell.c                 |  4 ++--
+ e-util/gal-a11y-e-table-click-to-add.c   |  2 +-
+ e-util/gal-a11y-e-table-item.c           |  6 ++++--
+ 11 files changed, 57 insertions(+), 60 deletions(-)
+
+diff --git a/addressbook/gui/widgets/ea-addressbook.c b/addressbook/gui/widgets/ea-addressbook.c
+index 266a9c03ec..60d78c1226 100644
+--- a/addressbook/gui/widgets/ea-addressbook.c
++++ b/addressbook/gui/widgets/ea-addressbook.c
+@@ -79,9 +79,10 @@ ea_addressbook_focus_watcher (GSignalInvocationHint *ihint,
+ 		GnomeCanvasItem *item = GNOME_CANVAS_ITEM (object);
+ 		ea_event = atk_gobject_accessible_for_object (object);
+ 		if (event->type == GDK_FOCUS_CHANGE) {
+-			if ((event->focus_change.in) &&
+-			    (E_IS_MINICARD (item->canvas->focused_item)))
+-				atk_focus_tracker_notify (ea_event);
++			if (E_IS_MINICARD (item->canvas->focused_item))
++				atk_object_notify_state_change (ea_event,
++					ATK_STATE_FOCUSED,
++					event->focus_change.in);
+ 		}
+ 	}
+ 
+diff --git a/calendar/gui/ea-calendar.c b/calendar/gui/ea-calendar.c
+index 4250062abe..ce80773403 100644
+--- a/calendar/gui/ea-calendar.c
++++ b/calendar/gui/ea-calendar.c
+@@ -131,15 +131,12 @@ ea_calendar_focus_watcher (GSignalInvocationHint *ihint,
+ 
+ 		canvas_item = GNOME_CANVAS_ITEM (object);
+ 		if (event->type == GDK_FOCUS_CHANGE) {
+-			if (event->focus_change.in) {
+-				ea_event =
+-					ea_calendar_helpers_get_accessible_for (canvas_item);
+-				if (!ea_event)
+-					/* not canvas item we want */
+-					return TRUE;
+-
+-			}
+-			atk_focus_tracker_notify (ea_event);
++			ea_event =
++				ea_calendar_helpers_get_accessible_for (canvas_item);
++			if (!ea_event)
++				/* not canvas item we want */
++				return TRUE;
++			atk_object_notify_state_change (ea_event, ATK_STATE_FOCUSED, event->focus_change.in);
+ 		}
+ 	}
+ 	else if (E_IS_DAY_VIEW (object)) {
+@@ -153,17 +150,12 @@ ea_calendar_focus_watcher (GSignalInvocationHint *ihint,
+ 	}
+ 	else if (E_IS_DAY_VIEW_MAIN_ITEM (object)) {
+ 		if (event->type == GDK_FOCUS_CHANGE) {
+-			if (event->focus_change.in) {
+-				/* we should emit focus on main item */
+-				ea_event = atk_gobject_accessible_for_object (object);
+-			}
+-			else
+-				/* focus out */
+-				ea_event = NULL;
++			/* we should emit focus on main item */
++			ea_event = atk_gobject_accessible_for_object (object);
+ #ifdef ACC_DEBUG
+ 			printf ("EvoAcc: focus notify on day main item %p\n", (gpointer) object);
+ #endif
+-			atk_focus_tracker_notify (ea_event);
++			atk_object_notify_state_change (ea_event, ATK_STATE_FOCUSED, event->focus_change.in);
+ 		}
+ 	} else if (E_IS_WEEK_VIEW (object)) {
+ 		EWeekView *week_view = E_WEEK_VIEW (object);
+@@ -176,14 +168,9 @@ ea_calendar_focus_watcher (GSignalInvocationHint *ihint,
+ 	}
+ 	else if (E_IS_WEEK_VIEW_MAIN_ITEM (object)) {
+ 		if (event->type == GDK_FOCUS_CHANGE) {
+-			if (event->focus_change.in) {
+-				/* we should emit focus on main item */
+-				ea_event = atk_gobject_accessible_for_object (object);
+-			}
+-			else
+-				/* focus out */
+-				ea_event = NULL;
+-			atk_focus_tracker_notify (ea_event);
++			/* we should emit focus on main item */
++			ea_event = atk_gobject_accessible_for_object (object);
++			atk_object_notify_state_change (ea_event, ATK_STATE_FOCUSED, event->focus_change.in);
+ 		}
+ 	}
+ 	return TRUE;
+diff --git a/calendar/gui/ea-day-view-main-item.c b/calendar/gui/ea-day-view-main-item.c
+index acd2048f1c..ecd8a5f5ad 100644
+--- a/calendar/gui/ea-day-view-main-item.c
++++ b/calendar/gui/ea-day-view-main-item.c
+@@ -424,7 +424,6 @@ ea_day_view_main_item_time_change_cb (EDayView *day_view,
+ 			item_cell);
+ 		g_signal_emit_by_name (data, "selection_changed");
+ 
+-		atk_focus_tracker_notify (item_cell);
+ 		g_object_unref (item_cell);
+ 	}
+ 
+@@ -769,8 +768,9 @@ table_interface_get_column_extent_at (AtkTable *table,
+ 		ATK_OBJECT (ea_main_item),
+ 		index);
+ 	if (child)
+-		atk_component_get_size (
+-			ATK_COMPONENT (child), &width, &height);
++		atk_component_get_extents (
++			ATK_COMPONENT (child), NULL, NULL, &width, &height,
++			ATK_XY_SCREEN);
+ 
+ 	return width;
+ }
+@@ -792,8 +792,9 @@ table_interface_get_row_extent_at (AtkTable *table,
+ 		ATK_OBJECT (ea_main_item),
+ 		index);
+ 	if (child)
+-		atk_component_get_size (
+-			ATK_COMPONENT (child), &width, &height);
++		atk_component_get_extents (
++			ATK_COMPONENT (child), NULL, NULL, &width, &height,
++			ATK_XY_SCREEN);
+ 
+ 	return height;
+ }
+diff --git a/calendar/gui/ea-week-view-main-item.c b/calendar/gui/ea-week-view-main-item.c
+index f0a73f64d3..d70e7ef5b0 100644
+--- a/calendar/gui/ea-week-view-main-item.c
++++ b/calendar/gui/ea-week-view-main-item.c
+@@ -453,7 +453,6 @@ ea_week_view_main_item_time_change_cb (EWeekView *week_view,
+ 			"active-descendant-changed",
+ 			item_cell);
+ 		g_signal_emit_by_name (data, "selection_changed");
+-		atk_focus_tracker_notify (item_cell);
+ 		g_object_unref (item_cell);
+ 	}
+ }
+@@ -762,8 +761,9 @@ table_interface_get_column_extent_at (AtkTable *table,
+ 	child = atk_object_ref_accessible_child (
+ 		ATK_OBJECT (ea_main_item), index);
+ 	if (child)
+-		atk_component_get_size (
+-			ATK_COMPONENT (child), &width, &height);
++		atk_component_get_extents (
++			ATK_COMPONENT (child), NULL, NULL, &width, &height,
++			ATK_XY_SCREEN);
+ 
+ 	return width;
+ }
+@@ -783,8 +783,9 @@ table_interface_get_row_extent_at (AtkTable *table,
+ 	child = atk_object_ref_accessible_child (
+ 		ATK_OBJECT (ea_main_item), index);
+ 	if (child)
+-		atk_component_get_size (
+-			ATK_COMPONENT (child), &width, &height);
++		atk_component_get_extents (
++			ATK_COMPONENT (child), NULL, NULL, &width, &height,
++			ATK_XY_SCREEN);
+ 
+ 	return height;
+ }
+diff --git a/e-util/ea-calendar-cell.c b/e-util/ea-calendar-cell.c
+index 5248602893..e15b1ae66e 100644
+--- a/e-util/ea-calendar-cell.c
++++ b/e-util/ea-calendar-cell.c
+@@ -232,20 +232,13 @@ ea_calendar_cell_get_name (AtkObject *accessible)
+ 		return NULL;
+ 
+ 	if (!accessible->name) {
+-		AtkObject *atk_obj;
+-		EaCalendarItem *ea_calitem;
+ 		ECalendarCell *cell;
+-		gint day_index;
+ 		gint year, month, day;
+ 		gchar buffer[128];
+ 
+ 		cell = E_CALENDAR_CELL (g_obj);
+-		atk_obj = ea_calendar_cell_get_parent (accessible);
+-		ea_calitem = EA_CALENDAR_ITEM (atk_obj);
+-		day_index = atk_table_get_index_at (
+-			ATK_TABLE (ea_calitem),
+-			cell->row, cell->column);
+-		e_calendar_item_get_date_for_offset (cell->calitem, day_index,
++		e_calendar_item_get_date_for_cell (cell->calitem, cell->row,
++						     cell->column,
+ 						     &year, &month, &day);
+ 
+ 		g_snprintf (buffer, 128, "%d-%d-%d", year, month + 1, day);
+@@ -335,7 +328,6 @@ component_interface_get_extents (AtkComponent *component,
+ 	ECalendarCell *cell;
+ 	ECalendarItem *calitem;
+ 	EaCalendarItem *ea_calitem;
+-	gint day_index;
+ 	gint year, month, day;
+ 	gint canvas_x, canvas_y, canvas_width, canvas_height;
+ 
+@@ -352,10 +344,7 @@ component_interface_get_extents (AtkComponent *component,
+ 	calitem = cell->calitem;
+ 	atk_obj = atk_gobject_accessible_for_object (G_OBJECT (calitem));
+ 	ea_calitem = EA_CALENDAR_ITEM (atk_obj);
+-	day_index = atk_table_get_index_at (
+-		ATK_TABLE (ea_calitem),
+-		cell->row, cell->column);
+-	e_calendar_item_get_date_for_offset (calitem, day_index,
++	e_calendar_item_get_date_for_cell (calitem, cell->row, cell->column,
+ 					     &year, &month, &day);
+ 
+ 	if (!e_calendar_item_get_day_extents (calitem,
+diff --git a/e-util/ea-calendar-item.c b/e-util/ea-calendar-item.c
+index f32d655a4d..79bf1cb68a 100644
+--- a/e-util/ea-calendar-item.c
++++ b/e-util/ea-calendar-item.c
+@@ -1136,7 +1136,7 @@ ea_calendar_item_get_row_label (EaCalendarItem *ea_calitem,
+ 
+ 	calitem = E_CALENDAR_ITEM (g_obj);
+ 
+-	index = atk_table_get_index_at (ATK_TABLE (ea_calitem), row, 0);
++	index = table_interface_get_index_at (ATK_TABLE (ea_calitem), row, 0);
+ 	if (!e_calendar_item_get_date_for_offset (calitem, index,
+ 						  &year, &month, &day))
+ 		return FALSE;
+@@ -1286,6 +1286,19 @@ e_calendar_item_get_date_for_offset (ECalendarItem *calitem,
+ 	return TRUE;
+ }
+ 
++gboolean
++e_calendar_item_get_date_for_cell (ECalendarItem *calitem,
++                                     gint row,
++                                     gint column,
++                                     gint *year,
++                                     gint *month,
++                                     gint *day)
++{
++	gint index = table_interface_get_index_at (ATK_TABLE (calitem), row, column);
++
++	return e_calendar_item_get_date_for_offset (calitem, index, year, month, day);
++}
++
+ /* the arg month is from 0 to 11 */
+ static gboolean
+ e_calendar_item_get_offset_for_date (ECalendarItem *calitem,
+diff --git a/e-util/ea-calendar-item.h b/e-util/ea-calendar-item.h
+index 4d2a20fe09..2fd89aa619 100644
+--- a/e-util/ea-calendar-item.h
++++ b/e-util/ea-calendar-item.h
+@@ -62,6 +62,11 @@ gboolean e_calendar_item_get_date_for_offset (ECalendarItem *calitem,
+ 					      gint day_offset,
+ 					      gint *year, gint *month,
+ 					      gint *day);
++gboolean e_calendar_item_get_date_for_cell (ECalendarItem *calitem,
++					      gint row,
++					      gint column,
++					      gint *year, gint *month,
++					      gint *day);
+ gint e_calendar_item_get_n_days_from_week_start (ECalendarItem *calitem,
+ 						 gint year, gint month);
+ 
+diff --git a/e-util/gal-a11y-e-cell-toggle.c b/e-util/gal-a11y-e-cell-toggle.c
+index 88e2716f90..333ece2ea8 100644
+--- a/e-util/gal-a11y-e-cell-toggle.c
++++ b/e-util/gal-a11y-e-cell-toggle.c
+@@ -132,8 +132,6 @@ model_change_cb (ETableModel *etm,
+ 		value = GPOINTER_TO_INT (
+ 			e_table_model_value_at (cell->cell_view->e_table_model,
+ 						cell->model_col, cell->row));
+-		/* Cheat gnopernicus, or it will ignore the state change signal  */
+-		atk_focus_tracker_notify (ATK_OBJECT (cell));
+ 
+ 		if (value)
+ 			gal_a11y_e_cell_add_state (cell, ATK_STATE_CHECKED, TRUE);
+diff --git a/e-util/gal-a11y-e-cell.c b/e-util/gal-a11y-e-cell.c
+index 3d21f732ad..617d547ef7 100644
+--- a/e-util/gal-a11y-e-cell.c
++++ b/e-util/gal-a11y-e-cell.c
+@@ -184,9 +184,9 @@ gal_a11y_e_cell_get_extents (AtkComponent *component,
+ 			width, height);
+ 	}
+ 
+-	atk_component_get_position (
++	atk_component_get_extents (
+ 		ATK_COMPONENT (a11y->parent),
+-		x, y, coord_type);
++		x, y, NULL, NULL, coord_type);
+ 	if (x && *x != G_MININT)
+ 		*x += xval;
+ 	if (y && *y != G_MININT)
+diff --git a/e-util/gal-a11y-e-table-click-to-add.c b/e-util/gal-a11y-e-table-click-to-add.c
+index 6386ebb024..120bf15676 100644
+--- a/e-util/gal-a11y-e-table-click-to-add.c
++++ b/e-util/gal-a11y-e-table-click-to-add.c
+@@ -316,7 +316,7 @@ etcta_selection_cursor_changed (ESelectionModel *esm,
+ 		cell_a11y = g_object_get_data (
+ 			G_OBJECT (row_a11y), "gail-focus-object");
+ 		if (cell_a11y) {
+-			atk_focus_tracker_notify (cell_a11y);
++			atk_object_notify_state_change (cell_a11y, ATK_STATE_FOCUSED, TRUE);
+ 		}
+ 	}
+ }
+diff --git a/e-util/gal-a11y-e-table-item.c b/e-util/gal-a11y-e-table-item.c
+index 6990d4d9be..a2ff9d56ed 100644
+--- a/e-util/gal-a11y-e-table-item.c
++++ b/e-util/gal-a11y-e-table-item.c
+@@ -224,7 +224,7 @@ eti_a11y_reset_focus_object (GalA11yETableItem *a11y,
+ 		g_object_set_data (G_OBJECT (a11y), "gail-focus-object", NULL);
+ 
+ 	if (notify && cell)
+-		atk_focus_tracker_notify (cell);
++		g_signal_emit_by_name (a11y, "active-descendant-changed", cell);
+ }
+ 
+ static void
+@@ -337,10 +337,12 @@ eti_ref_accessible_at_point (AtkComponent *component,
+ 	if (!item)
+ 		return NULL;
+ 
+-	atk_component_get_position (
++	atk_component_get_extents (
+ 		component,
+ 		&x_origin,
+ 		&y_origin,
++		NULL,
++		NULL,
+ 		coord_type);
+ 	x -= x_origin;
+ 	y -= y_origin;
+-- 
+2.15.0
+

@@ -1,0 +1,55 @@
+From 069ff4a03a9a6538470f2a71ad21b886811e7849 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 9 Dec 2015 16:07:48 +0100
+Subject: [PATCH 0596/1800] EMFormat - Remove unwanted whitespaces from HTML
+ code
+
+---
+ em-format/e-mail-formatter-print.c | 2 +-
+ em-format/e-mail-formatter.c       | 8 ++++----
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/em-format/e-mail-formatter-print.c b/em-format/e-mail-formatter-print.c
+index da074c7da3..033ef3cf75 100644
+--- a/em-format/e-mail-formatter-print.c
++++ b/em-format/e-mail-formatter-print.c
+@@ -122,7 +122,7 @@ mail_formatter_print_run (EMailFormatter *formatter,
+ 		"<meta name=\"generator\" content=\"Evolution Mail\" />\n"
+ 		"<title>Evolution Mail Display</title>\n"
+ 		"<link type=\"text/css\" rel=\"stylesheet\" "
+-		"      media=\"print\" href=\"" STYLESHEET_URI "\"/>\n"
++		" media=\"print\" href=\"" STYLESHEET_URI "\"/>\n"
+ 		"</head>\n"
+ 		"<body style=\"background: #FFF; color: #000;\">";
+ 
+diff --git a/em-format/e-mail-formatter.c b/em-format/e-mail-formatter.c
+index dcf4f6a5cc..9502c0542d 100644
+--- a/em-format/e-mail-formatter.c
++++ b/em-format/e-mail-formatter.c
+@@ -1134,9 +1134,9 @@ e_mail_formatter_get_sub_html_header (EMailFormatter *formatter)
+ 		"<meta name=\"generator\" content=\"Evolution Mail\"/>\n"
+ 		"<title>Evolution Mail Display</title>\n"
+ 		"<link type=\"text/css\" rel=\"stylesheet\" "
+-		"      href=\"" STYLESHEET_URI "\"/>\n"
++		" href=\"" STYLESHEET_URI "\"/>\n"
+ 		"<style type=\"text/css\">\n"
+-		"  table th { font-weight: bold; }\n"
++		" table th { font-weight: bold; }\n"
+ 		"</style>\n"
+ 		"</head>"
+ 		"<body class=\"-e-web-view-background-color -e-web-view-text-color\">";
+@@ -1152,9 +1152,9 @@ e_mail_formatter_get_html_header (EMailFormatter *formatter)
+ 		"<meta name=\"generator\" content=\"Evolution Mail\"/>\n"
+ 		"<title>Evolution Mail Display</title>\n"
+ 		"<link type=\"text/css\" rel=\"stylesheet\" "
+-		"      href=\"" STYLESHEET_URI "\"/>\n"
++		" href=\"" STYLESHEET_URI "\"/>\n"
+ 		"<style type=\"text/css\">\n"
+-		"  table th { font-weight: bold; }\n"
++		" table th { font-weight: bold; }\n"
+ 		"</style>\n"
+ 		"</head>"
+ 		"<body class=\"-e-mail-formatter-body-color "
+-- 
+2.15.0
+

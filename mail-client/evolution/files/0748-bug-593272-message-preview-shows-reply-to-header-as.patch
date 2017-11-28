@@ -1,0 +1,26 @@
+From 5c9eed5ea87cdca7e021c0564bd3377a68243111 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 13 May 2015 19:34:01 +0200
+Subject: [PATCH 0748/1800] Bug 593272 - Message preview shows Reply-to header
+ as is
+
+---
+ em-format/e-mail-formatter-utils.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/em-format/e-mail-formatter-utils.c b/em-format/e-mail-formatter-utils.c
+index 10252f7c0a..58eb636fee 100644
+--- a/em-format/e-mail-formatter-utils.c
++++ b/em-format/e-mail-formatter-utils.c
+@@ -282,7 +282,7 @@ e_mail_formatter_format_header (EMailFormatter *formatter,
+ 	e_mail_formatter_canon_header_name (canon_name);
+ 
+ 	for (i = 0; addrspec_hdrs[i]; i++) {
+-		if (g_str_equal (canon_name, addrspec_hdrs[i])) {
++		if (g_ascii_strcasecmp (canon_name, addrspec_hdrs[i]) == 0) {
+ 			addrspec = TRUE;
+ 			break;
+ 		}
+-- 
+2.15.0
+

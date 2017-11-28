@@ -1,0 +1,134 @@
+From e65ed8b6b7d7f0dee293dd7085b170d9c033de42 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 3 Mar 2015 19:10:36 +0100
+Subject: [PATCH 0405/1800] Use translated window titles in HTML editor dialogs
+
+The N_() only marks the string as "to be translated", but doesn't
+translate it, it's the _() used for.
+---
+ e-util/e-html-editor-cell-dialog.c        | 2 +-
+ e-util/e-html-editor-find-dialog.c        | 2 +-
+ e-util/e-html-editor-image-dialog.c       | 2 +-
+ e-util/e-html-editor-link-dialog.c        | 2 +-
+ e-util/e-html-editor-page-dialog.c        | 2 +-
+ e-util/e-html-editor-paragraph-dialog.c   | 2 +-
+ e-util/e-html-editor-spell-check-dialog.c | 2 +-
+ e-util/e-html-editor-table-dialog.c       | 2 +-
+ e-util/e-html-editor-text-dialog.c        | 2 +-
+ 9 files changed, 9 insertions(+), 9 deletions(-)
+
+diff --git a/e-util/e-html-editor-cell-dialog.c b/e-util/e-html-editor-cell-dialog.c
+index f24411c34b..0b58149ed1 100644
+--- a/e-util/e-html-editor-cell-dialog.c
++++ b/e-util/e-html-editor-cell-dialog.c
+@@ -979,7 +979,7 @@ e_html_editor_cell_dialog_new (EHTMLEditor *editor)
+ 		g_object_new (
+ 			E_TYPE_HTML_EDITOR_CELL_DIALOG,
+ 			"editor", editor,
+-			"title", N_("Cell Properties"),
++			"title", _("Cell Properties"),
+ 			NULL));
+ }
+ 
+diff --git a/e-util/e-html-editor-find-dialog.c b/e-util/e-html-editor-find-dialog.c
+index e82bb1ada5..70fe47ce86 100644
+--- a/e-util/e-html-editor-find-dialog.c
++++ b/e-util/e-html-editor-find-dialog.c
+@@ -268,7 +268,7 @@ e_html_editor_find_dialog_new (EHTMLEditor *editor)
+ 			E_TYPE_HTML_EDITOR_FIND_DIALOG,
+ 			"editor", editor,
+ 			"icon-name", "edit-find",
+-			"title", N_("Find"),
++			"title", _("Find"),
+ 			NULL));
+ }
+ 
+diff --git a/e-util/e-html-editor-image-dialog.c b/e-util/e-html-editor-image-dialog.c
+index 0d10bc6a2b..84d2296e00 100644
+--- a/e-util/e-html-editor-image-dialog.c
++++ b/e-util/e-html-editor-image-dialog.c
+@@ -936,7 +936,7 @@ e_html_editor_image_dialog_new (EHTMLEditor *editor)
+ 		g_object_new (
+ 			E_TYPE_HTML_EDITOR_IMAGE_DIALOG,
+ 			"editor", editor,
+-			"title", N_("Image Properties"),
++			"title", _("Image Properties"),
+ 			NULL));
+ }
+ 
+diff --git a/e-util/e-html-editor-link-dialog.c b/e-util/e-html-editor-link-dialog.c
+index bd5d4e1935..0c79a577da 100644
+--- a/e-util/e-html-editor-link-dialog.c
++++ b/e-util/e-html-editor-link-dialog.c
+@@ -288,6 +288,6 @@ e_html_editor_link_dialog_new (EHTMLEditor *editor)
+ 			E_TYPE_HTML_EDITOR_LINK_DIALOG,
+ 			"editor", editor,
+ 			"icon-name", "insert-link",
+-			"title", N_("Link Properties"),
++			"title", _("Link Properties"),
+ 			NULL));
+ }
+diff --git a/e-util/e-html-editor-page-dialog.c b/e-util/e-html-editor-page-dialog.c
+index f5bb78d411..c844a7b799 100644
+--- a/e-util/e-html-editor-page-dialog.c
++++ b/e-util/e-html-editor-page-dialog.c
+@@ -577,6 +577,6 @@ e_html_editor_page_dialog_new (EHTMLEditor *editor)
+ 		g_object_new (
+ 			E_TYPE_HTML_EDITOR_PAGE_DIALOG,
+ 			"editor", editor,
+-			"title", N_("Page Properties"),
++			"title", _("Page Properties"),
+ 			NULL));
+ }
+diff --git a/e-util/e-html-editor-paragraph-dialog.c b/e-util/e-html-editor-paragraph-dialog.c
+index 6bbf039bdb..654bde5016 100644
+--- a/e-util/e-html-editor-paragraph-dialog.c
++++ b/e-util/e-html-editor-paragraph-dialog.c
+@@ -152,6 +152,6 @@ e_html_editor_paragraph_dialog_new (EHTMLEditor *editor)
+ 		g_object_new (
+ 			E_TYPE_HTML_EDITOR_PARAGRAPH_DIALOG,
+ 			"editor", editor,
+-			"title", N_("Paragraph Properties"),
++			"title", _("Paragraph Properties"),
+ 			NULL));
+ }
+diff --git a/e-util/e-html-editor-spell-check-dialog.c b/e-util/e-html-editor-spell-check-dialog.c
+index 1bd7dc2f70..0304c2c4a0 100644
+--- a/e-util/e-html-editor-spell-check-dialog.c
++++ b/e-util/e-html-editor-spell-check-dialog.c
+@@ -528,7 +528,7 @@ e_html_editor_spell_check_dialog_new (EHTMLEditor *editor)
+ 	return g_object_new (
+ 		E_TYPE_HTML_EDITOR_SPELL_CHECK_DIALOG,
+ 		"editor", editor,
+-		"title", N_("Spell Checking"),
++		"title", _("Spell Checking"),
+ 		NULL);
+ }
+ 
+diff --git a/e-util/e-html-editor-table-dialog.c b/e-util/e-html-editor-table-dialog.c
+index 3cc3bdf30a..ab7c420167 100644
+--- a/e-util/e-html-editor-table-dialog.c
++++ b/e-util/e-html-editor-table-dialog.c
+@@ -1010,6 +1010,6 @@ e_html_editor_table_dialog_new (EHTMLEditor *editor)
+ 		g_object_new (
+ 			E_TYPE_HTML_EDITOR_TABLE_DIALOG,
+ 			"editor", editor,
+-			"title", N_("Table Properties"),
++			"title", _("Table Properties"),
+ 			NULL));
+ }
+diff --git a/e-util/e-html-editor-text-dialog.c b/e-util/e-html-editor-text-dialog.c
+index e0eb5fcf9e..9a8e361f14 100644
+--- a/e-util/e-html-editor-text-dialog.c
++++ b/e-util/e-html-editor-text-dialog.c
+@@ -293,6 +293,6 @@ e_html_editor_text_dialog_new (EHTMLEditor *editor)
+ 		g_object_new (
+ 			E_TYPE_HTML_EDITOR_TEXT_DIALOG,
+ 			"editor", editor,
+-			"title", N_("Text Properties"),
++			"title", _("Text Properties"),
+ 			NULL));
+ }
+-- 
+2.15.0
+

@@ -1,0 +1,142 @@
+From 9261658a1c71a75954810d6776967f86149bab45 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 7 Jul 2015 20:07:56 +0200
+Subject: [PATCH 0866/1800] Bug 752018 - Events at midnight and 0 minutes
+ duration hidden in UI
+
+---
+ calendar/gui/e-cal-data-model.c   | 8 ++++----
+ calendar/gui/e-day-view-layout.c  | 5 ++++-
+ calendar/gui/e-day-view.c         | 9 +++++++--
+ calendar/gui/e-week-view-layout.c | 2 +-
+ calendar/gui/e-week-view.c        | 6 ++++--
+ calendar/gui/tag-calendar.c       | 2 +-
+ 6 files changed, 21 insertions(+), 11 deletions(-)
+
+diff --git a/calendar/gui/e-cal-data-model.c b/calendar/gui/e-cal-data-model.c
+index d0130909e7..c33a4eb742 100644
+--- a/calendar/gui/e-cal-data-model.c
++++ b/calendar/gui/e-cal-data-model.c
+@@ -2526,8 +2526,8 @@ cal_data_model_foreach_component (ECalDataModel *data_model,
+ 				continue;
+ 
+ 			if ((in_range_start == in_range_end && in_range_start == (time_t) 0) ||
+-			    (comp_data->instance_start < in_range_end &&
+-			     comp_data->instance_end > in_range_start)) {
++			    (comp_data->instance_start < in_range_end && comp_data->instance_end > in_range_start) ||
++			    (comp_data->instance_start == comp_data->instance_end && comp_data->instance_end == in_range_start)) {
+ 				if (!func (data_model, view_data->client, id, comp_data->component,
+ 					   comp_data->instance_start, comp_data->instance_end, user_data))
+ 					checked_all = FALSE;
+@@ -2544,8 +2544,8 @@ cal_data_model_foreach_component (ECalDataModel *data_model,
+ 					continue;
+ 
+ 				if ((in_range_start == in_range_end && in_range_start == (time_t) 0) ||
+-				    (comp_data->instance_start < in_range_end &&
+-				     comp_data->instance_end > in_range_start)) {
++				    (comp_data->instance_start < in_range_end && comp_data->instance_end > in_range_start) ||
++				    (comp_data->instance_start == comp_data->instance_end && comp_data->instance_end == in_range_start)) {
+ 					if (!func (data_model, view_data->client, id, comp_data->component,
+ 						   comp_data->instance_start, comp_data->instance_end, user_data))
+ 						checked_all = FALSE;
+diff --git a/calendar/gui/e-day-view-layout.c b/calendar/gui/e-day-view-layout.c
+index 3c4d58fa99..c891242723 100644
+--- a/calendar/gui/e-day-view-layout.c
++++ b/calendar/gui/e-day-view-layout.c
+@@ -353,11 +353,14 @@ e_day_view_find_long_event_days (EDayViewEvent *event,
+ 			end_day = day;
+ 	}
+ 
++	if (event->start == event->end)
++		end_day = start_day;
++
+ 	/* Sanity check. */
+ 	if (start_day < 0 || start_day >= days_shown
+ 	    || end_day < 0 || end_day >= days_shown
+ 	    || end_day < start_day) {
+-		g_warning ("Invalid date range for event");
++		g_warning ("Invalid date range for event, start/end days: %d / %d", start_day, end_day);
+ 		return FALSE;
+ 	}
+ 
+diff --git a/calendar/gui/e-day-view.c b/calendar/gui/e-day-view.c
+index b9a5cdc926..8c44bcd4e5 100644
+--- a/calendar/gui/e-day-view.c
++++ b/calendar/gui/e-day-view.c
+@@ -5690,7 +5690,9 @@ e_day_view_add_event (ESourceRegistry *registry,
+ 	/* Check that the event times are valid. */
+ 	g_return_if_fail (start <= end);
+ 	g_return_if_fail (start < add_event_data->day_view->upper);
+-	g_return_if_fail (end > add_event_data->day_view->lower);
++
++	if (end != start || end < add_event_data->day_view->lower)
++		g_return_if_fail (end > add_event_data->day_view->lower);
+ 
+ 	zone = e_calendar_view_get_timezone (E_CALENDAR_VIEW (add_event_data->day_view));
+ 	start_tt = icaltime_from_timet_with_zone (start, FALSE, zone);
+@@ -5743,9 +5745,12 @@ e_day_view_add_event (ESourceRegistry *registry,
+ 		if (start >= add_event_data->day_view->day_starts[day]
+ 		    && end <= add_event_data->day_view->day_starts[day + 1]) {
+ 
++			if (start == end && start == add_event_data->day_view->day_starts[day + 1])
++				continue;
++
+ 			/* Special case for when the appointment ends at
+ 			 * midnight, i.e. the start of the next day. */
+-			if (end == add_event_data->day_view->day_starts[day + 1]) {
++			if (end == add_event_data->day_view->day_starts[day + 1] && start != end) {
+ 
+ 				/* If the event last the entire day, then we
+ 				 * skip it here so it gets added to the top
+diff --git a/calendar/gui/e-week-view-layout.c b/calendar/gui/e-week-view-layout.c
+index 3dc9a59988..ca649309f3 100644
+--- a/calendar/gui/e-week-view-layout.c
++++ b/calendar/gui/e-week-view-layout.c
+@@ -130,7 +130,7 @@ e_week_view_layout_event (EWeekViewEvent *event,
+ 		event->start, FALSE, days_shown,
+ 		day_starts);
+ 	end_day = e_week_view_find_day (
+-		event->end, TRUE, days_shown,
++		event->end, event->start != event->end, days_shown,
+ 					day_starts);
+ 	start_day = CLAMP (start_day, 0, days_shown - 1);
+ 	end_day = CLAMP (end_day, 0, days_shown - 1);
+diff --git a/calendar/gui/e-week-view.c b/calendar/gui/e-week-view.c
+index b95094cb6b..68e9ad839f 100644
+--- a/calendar/gui/e-week-view.c
++++ b/calendar/gui/e-week-view.c
+@@ -3160,14 +3160,16 @@ e_week_view_add_event (ECalClient *client,
+ 
+ 	g_return_if_fail (start <= end);
+ 	g_return_if_fail (start < add_event_data->week_view->day_starts[num_days]);
+-	g_return_if_fail (end > add_event_data->week_view->day_starts[0]);
++
++	if (end != start || end < add_event_data->week_view->day_starts[0])
++		g_return_if_fail (end > add_event_data->week_view->day_starts[0]);
+ 
+ 	start_tt = icaltime_from_timet_with_zone (
+ 		start, FALSE,
+ 		e_calendar_view_get_timezone (E_CALENDAR_VIEW (add_event_data->week_view)));
+ 	end_tt = icaltime_from_timet_with_zone (
+ 		end, FALSE,
+-						e_calendar_view_get_timezone (E_CALENDAR_VIEW (add_event_data->week_view)));
++		e_calendar_view_get_timezone (E_CALENDAR_VIEW (add_event_data->week_view)));
+ 
+ 	if (add_event_data->comp_data) {
+ 		event.comp_data = g_object_ref (add_event_data->comp_data);
+diff --git a/calendar/gui/tag-calendar.c b/calendar/gui/tag-calendar.c
+index 259fddcb8d..2f00f042f3 100644
+--- a/calendar/gui/tag-calendar.c
++++ b/calendar/gui/tag-calendar.c
+@@ -403,7 +403,7 @@ get_component_julian_range (ECalClient *client,
+ 		zone, &instance_start, &start_is_date, &instance_end, &end_is_date, NULL);
+ 
+ 	*start_julian = encode_timet_to_julian (instance_start, start_is_date, zone);
+-	*end_julian = encode_timet_to_julian (instance_end - 1, end_is_date, zone);
++	*end_julian = encode_timet_to_julian (instance_end - (instance_end == instance_start ? 0 : - 1), end_is_date, zone);
+ }
+ 
+ static void
+-- 
+2.15.0
+

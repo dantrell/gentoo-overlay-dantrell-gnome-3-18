@@ -1,0 +1,242 @@
+From 2893d9e64bdd61d16088143292f25a7f58065619 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 5 Aug 2015 18:51:49 +0200
+Subject: [PATCH 0919/1800] Bug 752425 - Prompt user when To/Cc field contains
+ many recipients
+
+---
+ data/org.gnome.evolution.mail.gschema.xml.in | 10 +++++
+ mail/em-composer-utils.c                     | 61 ++++++++++++++++++++++++++++
+ mail/mail-config.ui                          | 26 +++++++++---
+ mail/mail.error.xml                          |  7 ++++
+ modules/mail/em-composer-prefs.c             |  6 +++
+ 5 files changed, 105 insertions(+), 5 deletions(-)
+
+diff --git a/data/org.gnome.evolution.mail.gschema.xml.in b/data/org.gnome.evolution.mail.gschema.xml.in
+index 65e1dd76d8..086527744e 100644
+--- a/data/org.gnome.evolution.mail.gschema.xml.in
++++ b/data/org.gnome.evolution.mail.gschema.xml.in
+@@ -185,6 +185,11 @@
+       <_summary>Number of characters for wrapping</_summary>
+       <_description>Will autowrap lines after given number of characters.</_description>
+     </key>
++    <key name="composer-many-to-cc-recips-num" type="i">
++      <default>10</default>
++      <_summary>Number of To and CC recipients to ask 'prompt-on-many-to-cc-recips' from</_summary>
++      <_description>When to ask, when the number of To and CC recipients reaches this value.</_description>
++    </key>
+     <key name="composer-toolbar-show-sign-encrypt" type="b">
+       <default>false</default>
+       <_summary>Whether to always show Sign and Encrypt buttons on the toolbar</_summary>
+@@ -486,6 +491,11 @@
+       <_summary>Prompt when switching composer mode and the content needs to lose its formatting</_summary>
+       <_description>It disables/enables the repeated prompts to warn that you are switching composer mode and the content needs to lose its formatting.</_description>
+     </key>
++    <key name="prompt-on-many-to-cc-recips" type="b">
++      <default>true</default>
++      <_summary>Prompt when sending to many To and CC recipients</_summary>
++      <_description>Enable or disable the prompt when sending to many To and CC recipients. The 'composer-many-to-cc-recips-num' defines the threshold.</_description>
++    </key>
+     <key name="browser-close-on-reply-policy" enum="org.gnome.evolution.mail.AutomaticActionPolicy">
+       <default>'ask'</default>
+       <_summary>Policy for automatically closing the message browser window when forwarding or replying to the displayed message.</_summary>
+diff --git a/mail/em-composer-utils.c b/mail/em-composer-utils.c
+index 12c69400f3..473a9032ec 100644
+--- a/mail/em-composer-utils.c
++++ b/mail/em-composer-utils.c
+@@ -192,10 +192,12 @@ composer_presend_check_recipients (EMsgComposer *composer,
+ 	EComposerHeaderTable *table;
+ 	EComposerHeader *post_to_header;
+ 	GString *invalid_addrs = NULL;
++	GSettings *settings;
+ 	gboolean check_passed = FALSE;
+ 	gint hidden = 0;
+ 	gint shown = 0;
+ 	gint num = 0;
++	gint num_to_cc = 0;
+ 	gint num_bcc = 0;
+ 	gint num_post = 0;
+ 	gint ii;
+@@ -205,6 +207,37 @@ composer_presend_check_recipients (EMsgComposer *composer,
+ 	 * when we get the message (e.g. passphrase to sign a message). */
+ 
+ 	table = e_msg_composer_get_header_table (composer);
++
++	recipients = e_composer_header_table_get_destinations_to (table);
++	if (recipients) {
++		for (ii = 0; recipients[ii] != NULL; ii++) {
++			const gchar *addr;
++
++			addr = e_destination_get_address (recipients[ii]);
++			if (addr == NULL || *addr == '\0')
++				continue;
++
++			num_to_cc++;
++		}
++
++		e_destination_freev (recipients);
++	}
++
++	recipients = e_composer_header_table_get_destinations_cc (table);
++	if (recipients) {
++		for (ii = 0; recipients[ii] != NULL; ii++) {
++			const gchar *addr;
++
++			addr = e_destination_get_address (recipients[ii]);
++			if (addr == NULL || *addr == '\0')
++				continue;
++
++			num_to_cc++;
++		}
++
++		e_destination_freev (recipients);
++	}
++
+ 	recipients = e_composer_header_table_get_destinations (table);
+ 
+ 	cia = camel_internet_address_new ();
+@@ -323,6 +356,34 @@ composer_presend_check_recipients (EMsgComposer *composer,
+ 		g_string_free (invalid_addrs, TRUE);
+ 	}
+ 
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
++	if (num_to_cc >= g_settings_get_int (settings, "composer-many-to-cc-recips-num")) {
++		gchar *num_str;
++
++		g_clear_object (&settings);
++
++		num_str = g_strdup_printf ("%d", num_to_cc);
++
++		if (!e_util_prompt_user (
++			GTK_WINDOW (composer),
++			"org.gnome.evolution.mail",
++			"prompt-on-many-to-cc-recips",
++			"mail:ask-many-to-cc-recips",
++			num_str, NULL)) {
++			GtkAction *action;
++
++			g_free (num_str);
++
++			action = E_COMPOSER_ACTION_VIEW_BCC (composer);
++			gtk_toggle_action_set_active (GTK_TOGGLE_ACTION (action), TRUE);
++
++			goto finished;
++		}
++
++		g_free (num_str);
++	}
++	g_clear_object (&settings);
++
+ 	if (num > 0 && (num == num_bcc || shown == 0)) {
+ 		/* this means that the only recipients are Bcc's */
+ 		if (!ask_confirm_for_only_bcc (composer, shown == 0))
+diff --git a/mail/mail-config.ui b/mail/mail-config.ui
+index 94cc0d76d8..c99c3b7b51 100644
+--- a/mail/mail-config.ui
++++ b/mail/mail-config.ui
+@@ -1009,6 +1009,22 @@
+                     <property name="position">1</property>
+                   </packing>
+                 </child>
++                <child>
++                  <object class="GtkCheckButton" id="chkPromptManyToCCRecips">
++                    <property name="label" translatable="yes" comments="This is in the context of: Ask for confirmation before...">Sending a message to many _To and CC recipients</property>
++                    <property name="visible">True</property>
++                    <property name="can_focus">True</property>
++                    <property name="receives_default">False</property>
++                    <property name="use_underline">True</property>
++                    <property name="xalign">0.5</property>
++                    <property name="draw_indicator">True</property>
++                  </object>
++                  <packing>
++                    <property name="expand">False</property>
++                    <property name="fill">False</property>
++                    <property name="position">2</property>
++                  </packing>
++                </child>
+                 <child>
+                   <object class="GtkCheckButton" id="chkPromptPrivateListReply">
+                     <property name="label" translatable="yes" comments="This is in the context of: Ask for confirmation before...">Sending a _private reply to a mailing list message</property>
+@@ -1022,7 +1038,7 @@
+                   <packing>
+                     <property name="expand">False</property>
+                     <property name="fill">False</property>
+-                    <property name="position">2</property>
++                    <property name="position">3</property>
+                   </packing>
+                 </child>
+                 <child>
+@@ -1038,7 +1054,7 @@
+                   <packing>
+                     <property name="expand">False</property>
+                     <property name="fill">False</property>
+-                    <property name="position">3</property>
++                    <property name="position">4</property>
+                   </packing>
+                 </child>
+                 <child>
+@@ -1054,7 +1070,7 @@
+                   <packing>
+                     <property name="expand">False</property>
+                     <property name="fill">False</property>
+-                    <property name="position">4</property>
++                    <property name="position">5</property>
+                   </packing>
+                 </child>
+                 <child>
+@@ -1070,7 +1086,7 @@
+                   <packing>
+                     <property name="expand">False</property>
+                     <property name="fill">False</property>
+-                    <property name="position">5</property>
++                    <property name="position">6</property>
+                   </packing>
+                 </child>
+                 <child>
+@@ -1086,7 +1102,7 @@
+                   <packing>
+                     <property name="expand">False</property>
+                     <property name="fill">False</property>
+-                    <property name="position">6</property>
++                    <property name="position">7</property>
+                   </packing>
+                 </child>
+               </object>
+diff --git a/mail/mail.error.xml b/mail/mail.error.xml
+index ac889ce176..020ddb8325 100644
+--- a/mail/mail.error.xml
++++ b/mail/mail.error.xml
+@@ -42,6 +42,13 @@ Many email systems add an Apparently-To header to messages that only have BCC re
+     <button _label="_Send" response="GTK_RESPONSE_YES"/>
+   </error>
+ 
++  <error id="ask-many-to-cc-recips" type="warning" default="GTK_RESPONSE_YES">
++    <_primary>Are you sure you want to send a message with {0} To and CC recipients?</_primary>
++    <_secondary>You are trying to send a message to {0} recipients in To and CC fields. This would result in all recipients seeing the email addresses of each other. In some cases this behaviour is undesired, especially if they do not know each other or if privacy is a concern. Consider adding recipients to the BCC field instead.</_secondary>
++    <button response="GTK_RESPONSE_CANCEL" _label="_Cancel"/>
++    <button response="GTK_RESPONSE_YES" _label="_Send"></button>
++  </error>
++
+   <error id="ask-send-invalid-recip-one" type="question" default="GTK_RESPONSE_YES">
+     <_primary>Are you sure you want to send a message with invalid address?</_primary>
+     <_secondary xml:space="preserve">The following recipient was not recognized as a valid mail address:
+diff --git a/modules/mail/em-composer-prefs.c b/modules/mail/em-composer-prefs.c
+index c7537841a5..d284002bef 100644
+--- a/modules/mail/em-composer-prefs.c
++++ b/modules/mail/em-composer-prefs.c
+@@ -1146,6 +1146,12 @@ em_composer_prefs_construct (EMComposerPrefs *prefs,
+ 		widget, "active",
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
++	widget = e_builder_get_widget (prefs->builder, "chkPromptManyToCCRecips");
++	g_settings_bind (
++		settings, "prompt-on-many-to-cc-recips",
++		widget, "active",
++		G_SETTINGS_BIND_DEFAULT);
++
+ 	widget = e_builder_get_widget (prefs->builder, "chkPromptSendInvalidRecip");
+ 	g_settings_bind (
+ 		settings, "prompt-on-invalid-recip",
+-- 
+2.15.0
+

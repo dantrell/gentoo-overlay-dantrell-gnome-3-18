@@ -1,0 +1,49 @@
+From d0ea5706eb467ad9268c13f2db5af5a112e9b96e Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 7 Apr 2015 16:24:39 +0200
+Subject: [PATCH 0650/1800] Bump libgweather version to 3.10 and replace one
+ deprecated function from it
+
+---
+ configure.ac                                              | 2 +-
+ modules/cal-config-weather/evolution-cal-config-weather.c | 4 +---
+ 2 files changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index d2264551b0..588a4ecc24 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -61,7 +61,7 @@ m4_define([champlain_minimum_version], [0.12])
+ m4_define([clutter_gtk_minimum_version], [0.90])
+ m4_define([geocode_glib_minimum_version], [3.10])
+ m4_define([gladeui_minimum_version], [3.10.0])
+-m4_define([gweather_minimum_version], [3.8])
++m4_define([gweather_minimum_version], [3.10])
+ m4_define([gnome_autoar_minimum_version], [0.1])
+ m4_define([libcanberra_gtk_minimum_version], [0.25])
+ m4_define([libnotify_minimum_version], [0.7])
+diff --git a/modules/cal-config-weather/evolution-cal-config-weather.c b/modules/cal-config-weather/evolution-cal-config-weather.c
+index 89b6d2a380..263d74d076 100644
+--- a/modules/cal-config-weather/evolution-cal-config-weather.c
++++ b/modules/cal-config-weather/evolution-cal-config-weather.c
+@@ -238,7 +238,7 @@ cal_config_weather_insert_widgets (ESourceConfigBackend *backend,
+ 		G_OBJECT (backend), uid, context,
+ 		(GDestroyNotify) cal_config_weather_context_free);
+ 
+-	world = gweather_location_new_world (TRUE);
++	world = gweather_location_get_world ();
+ 
+ 	e_cal_source_config_add_offline_toggle (
+ 		E_CAL_SOURCE_CONFIG (config), scratch_source);
+@@ -294,8 +294,6 @@ cal_config_weather_insert_widgets (ESourceConfigBackend *backend,
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+-
+-	gweather_location_unref (world);
+ }
+ 
+ static gboolean
+-- 
+2.15.0
+

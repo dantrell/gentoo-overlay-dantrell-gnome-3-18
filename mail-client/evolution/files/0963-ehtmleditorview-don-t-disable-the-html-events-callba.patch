@@ -1,0 +1,27 @@
+From da179798eabf06f2dc688ebc0ed8ef86d7fb12be Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 29 Feb 2016 19:55:28 +0100
+Subject: [PATCH 0963/1800] EHTMLEditorView - Don't disable the HTML events
+ callback when removing content with BackSpace key
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index d07c6740f6..1c4074318f 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -8364,8 +8364,7 @@ dom_process_on_key_press (WebKitDOMDocument *document,
+ 				return TRUE;
+ 			}
+ 			dom_selection_restore (document);
+-		} else
+-			dom_remove_input_event_listener_from_body (document, extension);
++		}
+ 
+ 		/* BackSpace in indented block decrease indent level by one */
+ 		if (dom_selection_is_indented (document) &&
+-- 
+2.15.0
+

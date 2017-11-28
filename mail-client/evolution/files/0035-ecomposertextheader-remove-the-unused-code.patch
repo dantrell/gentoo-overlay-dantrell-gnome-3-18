@@ -1,0 +1,28 @@
+From 189181b2ee7e3cdacb84372dd73e6fece532f36d Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 5 Nov 2014 08:27:26 +0100
+Subject: [PATCH 0035/1800] EComposerTextHeader - Remove the unused code
+
+---
+ composer/e-composer-text-header.c | 5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/composer/e-composer-text-header.c b/composer/e-composer-text-header.c
+index e378d11989..f0bd6a32dc 100644
+--- a/composer/e-composer-text-header.c
++++ b/composer/e-composer-text-header.c
+@@ -28,11 +28,6 @@
+ #define E_COMPOSER_TEXT_HEADER_GET_ENTRY(header) \
+ 	(GTK_ENTRY (E_COMPOSER_HEADER (header)->input_widget))
+ 
+-struct _EComposerTextHeaderPrivate {
+-	GtkLinkButton *linkbtn;
+-	guint destination_index;
+-};
+-
+ G_DEFINE_TYPE (
+ 	EComposerTextHeader,
+ 	e_composer_text_header,
+-- 
+2.15.0
+

@@ -1,0 +1,29 @@
+From 23f523a3f747966f7b5709a46f29fd64726b5095 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 3 Nov 2014 16:18:40 +0100
+Subject: [PATCH 0023/1800] Bug 739569 - Reply joins lines incorrectly
+
+When new citation starts or the current one ends we have to end the
+current paragraph and don't try to preserve the paragraphs across the
+citations.
+---
+ e-util/e-html-editor-view.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 6f62401af8..207c9f3ae0 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -4145,6 +4145,9 @@ parse_html_into_paragraphs (EHTMLEditorView *view,
+ 			if (first_element)
+ 				citation_was_first_element = TRUE;
+ 
++			if (paragraph)
++				append_new_paragraph (blockquote, &paragraph);
++
+ 			citation_mark = g_utf8_substring (
+ 				citation, 0, g_utf8_pointer_to_offset (citation, rest));
+ 
+-- 
+2.15.0
+

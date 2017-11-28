@@ -1,0 +1,471 @@
+From 694fbd53fe16c18d7138c26d16c63ef19781b7cd Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 26 Mar 2015 12:16:51 +0100
+Subject: [PATCH 0586/1800] Bug 710365 - Add a way to View attached images in
+ 100% zoom
+
+---
+ e-util/e-attachment-button.c | 65 ++++++++++++++++++++++++++++++++++++++----
+ e-util/e-attachment-button.h |  5 ++++
+ e-util/e-attachment-view.c   | 67 +++++++++++++++++++++++++++++++++++++++++++-
+ e-util/e-attachment.c        | 50 ++++++++++++++++++++++++++++++++-
+ e-util/e-attachment.h        |  3 ++
+ mail/e-mail-display.c        | 62 ++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 245 insertions(+), 7 deletions(-)
+
+diff --git a/e-util/e-attachment-button.c b/e-util/e-attachment-button.c
+index 25017d7eb3..1e259a2c71 100644
+--- a/e-util/e-attachment-button.c
++++ b/e-util/e-attachment-button.c
+@@ -39,6 +39,7 @@ struct _EAttachmentButtonPrivate {
+ 
+ 	GBinding *can_show_binding;
+ 	GBinding *shown_binding;
++	GBinding *zoom_to_window_binding;
+ 
+ 	GtkWidget *expand_button;
+ 	GtkWidget *toggle_button;
+@@ -47,6 +48,7 @@ struct _EAttachmentButtonPrivate {
+ 
+ 	guint expandable : 1;
+ 	guint expanded : 1;
++	guint zoom_to_window : 1;
+ };
+ 
+ enum {
+@@ -54,7 +56,8 @@ enum {
+ 	PROP_ATTACHMENT,
+ 	PROP_EXPANDABLE,
+ 	PROP_EXPANDED,
+-	PROP_VIEW
++	PROP_VIEW,
++	PROP_ZOOM_TO_WINDOW
+ };
+ 
+ G_DEFINE_TYPE (
+@@ -388,6 +391,12 @@ attachment_button_set_property (GObject *object,
+ 				E_ATTACHMENT_BUTTON (object),
+ 				g_value_get_object (value));
+ 			return;
++
++		case PROP_ZOOM_TO_WINDOW:
++			e_attachment_button_set_zoom_to_window (
++				E_ATTACHMENT_BUTTON (object),
++				g_value_get_boolean (value));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -427,6 +436,13 @@ attachment_button_get_property (GObject *object,
+ 				e_attachment_button_get_view (
+ 				E_ATTACHMENT_BUTTON (object)));
+ 			return;
++
++		case PROP_ZOOM_TO_WINDOW:
++			g_value_set_boolean (
++				value,
++				e_attachment_button_get_zoom_to_window (
++				E_ATTACHMENT_BUTTON (object)));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -548,6 +564,17 @@ e_attachment_button_class_init (EAttachmentButtonClass *class)
+ 			NULL,
+ 			E_TYPE_ATTACHMENT_VIEW,
+ 			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_ZOOM_TO_WINDOW,
++		g_param_spec_boolean (
++			"zoom-to-window",
++			"Zoom to window",
++			NULL,
++			TRUE,
++			G_PARAM_READWRITE |
++			G_PARAM_CONSTRUCT));
+ }
+ 
+ static void
+@@ -745,10 +772,9 @@ e_attachment_button_set_attachment (EAttachmentButton *button,
+ 	}
+ 
+ 	if (button->priv->attachment != NULL) {
+-		g_object_unref (button->priv->can_show_binding);
+-		button->priv->can_show_binding = NULL;
+-		g_object_unref (button->priv->shown_binding);
+-		button->priv->shown_binding = NULL;
++		g_clear_object (&button->priv->can_show_binding);
++		g_clear_object (&button->priv->shown_binding);
++		g_clear_object (&button->priv->zoom_to_window_binding);
+ 		g_signal_handler_disconnect (
+ 			button->priv->attachment,
+ 			button->priv->reference_handler_id);
+@@ -781,6 +807,13 @@ e_attachment_button_set_attachment (EAttachmentButton *button,
+ 			button);
+ 		button->priv->reference_handler_id = handler_id;
+ 
++		binding = e_binding_bind_property (
++			attachment, "zoom-to-window",
++			button, "zoom-to-window",
++			G_BINDING_BIDIRECTIONAL |
++			G_BINDING_SYNC_CREATE);
++		button->priv->zoom_to_window_binding = binding;
++
+ 		attachment_button_update_cell_view (button);
+ 		attachment_button_update_pixbufs (button);
+ 	}
+@@ -868,3 +901,25 @@ e_attachment_button_set_expanded (EAttachmentButton *button,
+ 
+ 	g_object_notify (G_OBJECT (button), "expanded");
+ }
++
++gboolean
++e_attachment_button_get_zoom_to_window (EAttachmentButton *button)
++{
++	g_return_val_if_fail (E_IS_ATTACHMENT_BUTTON (button), FALSE);
++
++	return button->priv->zoom_to_window;
++}
++
++void
++e_attachment_button_set_zoom_to_window (EAttachmentButton *button,
++					gboolean zoom_to_window)
++{
++	g_return_if_fail (E_IS_ATTACHMENT_BUTTON (button));
++
++	if ((button->priv->zoom_to_window ? 1 : 0) == (zoom_to_window ? 1 : 0))
++		return;
++
++	button->priv->zoom_to_window = zoom_to_window;
++
++	g_object_notify (G_OBJECT (button), "zoom-to-window");
++}
+diff --git a/e-util/e-attachment-button.h b/e-util/e-attachment-button.h
+index f56908d7af..15084732bc 100644
+--- a/e-util/e-attachment-button.h
++++ b/e-util/e-attachment-button.h
+@@ -84,6 +84,11 @@ gboolean	e_attachment_button_get_expanded
+ void		e_attachment_button_set_expanded
+ 						(EAttachmentButton *button,
+ 						 gboolean expanded);
++gboolean	e_attachment_button_get_zoom_to_window
++						(EAttachmentButton *button);
++void		e_attachment_button_set_zoom_to_window
++						(EAttachmentButton *button,
++						 gboolean zoom_to_window);
+ 
+ G_END_DECLS
+ 
+diff --git a/e-util/e-attachment-view.c b/e-util/e-attachment-view.c
+index 44a5563040..8bdffdfe9d 100644
+--- a/e-util/e-attachment-view.c
++++ b/e-util/e-attachment-view.c
+@@ -51,6 +51,8 @@ static const gchar *ui =
+ "    <menuitem action='properties'/>"
+ "    <separator/>"
+ "    <placeholder name='inline-actions'>"
++"      <menuitem action='zoom-to-100'/>"
++"      <menuitem action='zoom-to-window'/>"
+ "      <menuitem action='show'/>"
+ "      <menuitem action='show-all'/>"
+ "      <separator/>"
+@@ -363,6 +365,40 @@ action_show_all_cb (GtkAction *action,
+ 	g_list_free (list);
+ }
+ 
++static void
++action_zoom_to_100_cb (GtkAction *action,
++		       EAttachmentView *view)
++{
++	EAttachment *attachment;
++	GList *list;
++
++	list = e_attachment_view_get_selected_attachments (view);
++	g_return_if_fail (g_list_length (list) == 1);
++	attachment = list->data;
++
++	e_attachment_set_zoom_to_window (attachment, FALSE);
++
++	g_list_foreach (list, (GFunc) g_object_unref, NULL);
++	g_list_free (list);
++}
++
++static void
++action_zoom_to_window_cb (GtkAction *action,
++			  EAttachmentView *view)
++{
++	EAttachment *attachment;
++	GList *list;
++
++	list = e_attachment_view_get_selected_attachments (view);
++	g_return_if_fail (g_list_length (list) == 1);
++	attachment = list->data;
++
++	e_attachment_set_zoom_to_window (attachment, TRUE);
++
++	g_list_foreach (list, (GFunc) g_object_unref, NULL);
++	g_list_free (list);
++}
++
+ static GtkActionEntry standard_entries[] = {
+ 
+ 	{ "cancel",
+@@ -455,7 +491,21 @@ static GtkActionEntry inline_entries[] = {
+ 	  N_("Vie_w All Inline"),
+ 	  NULL,
+ 	  NULL,  /* XXX Add a tooltip! */
+-	  G_CALLBACK (action_show_all_cb) }
++	  G_CALLBACK (action_show_all_cb) },
++
++	{ "zoom-to-100",
++	  NULL,
++	  N_("_Zoom to 100%"),
++	  NULL,
++	  N_("Zoom the image to its natural size"),
++	  G_CALLBACK (action_zoom_to_100_cb) },
++
++	{ "zoom-to-window",
++	  NULL,
++	  N_("_Zoom to window"),
++	  NULL,
++	  N_("Zoom large images to not be wider than the window width"),
++	  G_CALLBACK (action_zoom_to_window_cb) }
+ };
+ 
+ static void
+@@ -675,6 +725,8 @@ attachment_view_update_actions (EAttachmentView *view)
+ 	gboolean busy = FALSE;
+ 	gboolean can_show = FALSE;
+ 	gboolean shown = FALSE;
++	gboolean is_image = FALSE;
++	gboolean zoom_to_window = FALSE;
+ 	gboolean visible;
+ 
+ 	g_return_if_fail (E_IS_ATTACHMENT_VIEW (view));
+@@ -703,11 +755,18 @@ attachment_view_update_actions (EAttachmentView *view)
+ 	n_selected = g_list_length (list);
+ 
+ 	if (n_selected == 1) {
++		gchar *mime_type;
++
+ 		attachment = g_object_ref (list->data);
++		mime_type = e_attachment_dup_mime_type (attachment);
+ 		busy |= e_attachment_get_loading (attachment);
+ 		busy |= e_attachment_get_saving (attachment);
+ 		can_show = e_attachment_get_can_show (attachment);
+ 		shown = e_attachment_get_shown (attachment);
++		zoom_to_window = e_attachment_get_zoom_to_window (attachment);
++		is_image = can_show && mime_type && g_ascii_strncasecmp (mime_type, "image/", 6) == 0;
++
++		g_free (mime_type);
+ 	} else
+ 		attachment = NULL;
+ 
+@@ -741,6 +800,12 @@ attachment_view_update_actions (EAttachmentView *view)
+ 	action = e_attachment_view_get_action (view, "show");
+ 	gtk_action_set_visible (action, can_show && !shown);
+ 
++	action = e_attachment_view_get_action (view, "zoom-to-100");
++	gtk_action_set_visible (action, can_show && shown && is_image && zoom_to_window);
++
++	action = e_attachment_view_get_action (view, "zoom-to-window");
++	gtk_action_set_visible (action, can_show && shown && is_image && !zoom_to_window);
++
+ 	/* Show this action if there are multiple viewable
+ 	 * attachments, and at least one of them is hidden. */
+ 	visible = (n_shown + n_hidden > 1) && (n_hidden > 0);
+diff --git a/e-util/e-attachment.c b/e-util/e-attachment.c
+index bce35c6e7e..31014c5a7c 100644
+--- a/e-util/e-attachment.c
++++ b/e-util/e-attachment.c
+@@ -78,6 +78,7 @@ struct _EAttachmentPrivate {
+ 	guint loading : 1;
+ 	guint saving : 1;
+ 	guint shown : 1;
++	guint zoom_to_window : 1;
+ 
+ 	guint save_self      : 1;
+ 	guint save_extracted : 1;
+@@ -115,7 +116,8 @@ enum {
+ 	PROP_SAVE_EXTRACTED,
+ 	PROP_SAVING,
+ 	PROP_SHOWN,
+-	PROP_SIGNED
++	PROP_SIGNED,
++	PROP_ZOOM_TO_WINDOW
+ };
+ 
+ G_DEFINE_TYPE (
+@@ -725,6 +727,12 @@ attachment_set_property (GObject *object,
+ 				E_ATTACHMENT (object),
+ 				g_value_get_boolean (value));
+ 			return;
++
++		case PROP_ZOOM_TO_WINDOW:
++			e_attachment_set_zoom_to_window (
++				E_ATTACHMENT (object),
++				g_value_get_boolean (value));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -841,6 +849,13 @@ attachment_get_property (GObject *object,
+ 				e_attachment_get_signed (
+ 				E_ATTACHMENT (object)));
+ 			return;
++
++		case PROP_ZOOM_TO_WINDOW:
++			g_value_set_boolean (
++				value,
++				e_attachment_get_zoom_to_window (
++				E_ATTACHMENT (object)));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -1073,6 +1088,17 @@ e_attachment_class_init (EAttachmentClass *class)
+ 			CAMEL_CIPHER_VALIDITY_SIGN_NONE,
+ 			G_PARAM_READWRITE |
+ 			G_PARAM_CONSTRUCT));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_ZOOM_TO_WINDOW,
++		g_param_spec_boolean (
++			"zoom-to-window",
++			"Zoom to window",
++			NULL,
++			TRUE,
++			G_PARAM_READWRITE |
++			G_PARAM_CONSTRUCT));
+ }
+ 
+ static void
+@@ -1619,6 +1645,28 @@ e_attachment_set_shown (EAttachment *attachment,
+ 	g_object_notify (G_OBJECT (attachment), "shown");
+ }
+ 
++gboolean
++e_attachment_get_zoom_to_window (EAttachment *attachment)
++{
++	g_return_val_if_fail (E_IS_ATTACHMENT (attachment), FALSE);
++
++	return attachment->priv->zoom_to_window;
++}
++
++void
++e_attachment_set_zoom_to_window (EAttachment *attachment,
++				 gboolean zoom_to_window)
++{
++	g_return_if_fail (E_IS_ATTACHMENT (attachment));
++
++	if ((attachment->priv->zoom_to_window ? 1 : 0) == (zoom_to_window ? 1 : 0))
++		return;
++
++	attachment->priv->zoom_to_window = zoom_to_window;
++
++	g_object_notify (G_OBJECT (attachment), "zoom-to-window");
++}
++
+ gboolean
+ e_attachment_get_save_self (EAttachment *attachment)
+ {
+diff --git a/e-util/e-attachment.h b/e-util/e-attachment.h
+index 9fc4ea04b4..172c5fcc6e 100644
+--- a/e-util/e-attachment.h
++++ b/e-util/e-attachment.h
+@@ -99,6 +99,9 @@ gboolean	e_attachment_get_saving		(EAttachment *attachment);
+ gboolean	e_attachment_get_shown		(EAttachment *attachment);
+ void		e_attachment_set_shown		(EAttachment *attachment,
+ 						 gboolean shown);
++gboolean	e_attachment_get_zoom_to_window	(EAttachment *attachment);
++void		e_attachment_set_zoom_to_window	(EAttachment *attachment,
++						 gboolean zoom_to_window);
+ gboolean	e_attachment_get_save_self	(EAttachment *attachment);
+ void		e_attachment_set_save_self	(EAttachment *attachment,
+ 						 gboolean save_self);
+diff --git a/mail/e-mail-display.c b/mail/e-mail-display.c
+index 833bfa4812..d23efe81e9 100644
+--- a/mail/e-mail-display.c
++++ b/mail/e-mail-display.c
+@@ -465,6 +465,64 @@ attachment_button_expanded (GObject *object,
+ 		css, "display", expanded ? "block" : "none", "", NULL);
+ }
+ 
++static void
++attachment_button_zoom_to_window_cb (GObject *object,
++				     GParamSpec *pspec,
++				     gpointer user_data)
++{
++	EAttachmentButton *button = E_ATTACHMENT_BUTTON (object);
++	EMailDisplay *display = user_data;
++	WebKitDOMDocument *document;
++	WebKitDOMElement *element, *child;
++	WebKitDOMCSSStyleDeclaration *css;
++	const gchar *attachment_part_id;
++	gchar *element_id;
++	gboolean zoom_to_window;
++
++	d (
++		printf ("Attachment button %s has been set to %s!\n",
++		(gchar *) g_object_get_data (object, "uri"),
++		(e_attachment_botton_get_zoom_to_window (attachment) ? "zoom-to-window" : "zoom to 100%")));
++
++	if (!gtk_widget_get_visible (GTK_WIDGET (button)))
++		return;
++
++	zoom_to_window = e_attachment_button_get_zoom_to_window (button);
++
++	document = webkit_web_view_get_dom_document (WEBKIT_WEB_VIEW (display));
++	attachment_part_id = g_object_get_data (object, "attachment_id");
++
++	element_id = g_strconcat (attachment_part_id, ".wrapper", NULL);
++	element = find_element_by_id (document, element_id);
++	g_free (element_id);
++
++	if (!WEBKIT_DOM_IS_ELEMENT (element)) {
++		d (
++			printf ("%s: Content <div> of attachment %s does not exist!!\n",
++			G_STRFUNC, (gchar *) g_object_get_data (object, "uri")));
++		return;
++	}
++
++	child = webkit_dom_element_get_first_element_child (element);
++	if (!child || !WEBKIT_DOM_IS_HTML_IMAGE_ELEMENT (child)) {
++		d (
++			printf ("%s: Content <div> of attachment %s does not contain image, but %s\n",
++			G_STRFUNC, (gchar *) g_object_get_data (object, "uri"),
++			child ? G_OBJECT_TYPE_NAME (child) : "[null]"));
++		g_clear_object (&child);
++		return;
++	}
++
++	css = webkit_dom_element_get_style (child);
++	if (zoom_to_window) {
++		webkit_dom_css_style_declaration_set_property (css, "max-width", "100%", "", NULL);
++	} else {
++		g_free (webkit_dom_css_style_declaration_remove_property (css, "max-width", NULL));
++	}
++	g_object_unref (css);
++	g_clear_object (&child);
++}
++
+ static void
+ mail_display_attachment_count_changed (EAttachmentStore *store,
+                                        GParamSpec *pspec,
+@@ -684,6 +742,10 @@ mail_display_plugin_widget_requested (WebKitWebView *web_view,
+ 				widget, "notify::visible",
+ 				G_CALLBACK (attachment_button_expanded),
+ 				display);
++			g_signal_connect (
++				widget, "notify::zoom-to-window",
++				G_CALLBACK (attachment_button_zoom_to_window_cb),
++				display);
+ 
+ 			mime_part = e_mail_part_ref_mime_part (part);
+ 
+-- 
+2.15.0
+

@@ -1,0 +1,49 @@
+From eb7465a4531ecd96310ab65f7000afb1d6da1968 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 19:27:56 +0100
+Subject: [PATCH 0830/1800] EHTMLEditorSelection - Blocks are wrongly wrapped
+ when the last character is space
+
+---
+ .../composer/e-html-editor-selection-dom-functions.c | 20 +++++++++++---------
+ 1 file changed, 11 insertions(+), 9 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index dd12648524..a2576bca69 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -2383,20 +2383,22 @@ wrap_lines (WebKitDOMDocument *document,
+ 							mark_and_remove_leading_space (document, nd);
+ 						g_free (nd_content);
+ 						nd_content = webkit_dom_node_get_text_content (nd);
+-						if (g_strcmp0 (nd_content, UNICODE_NBSP) == 0)
++						if (g_strcmp0 (nd_content, UNICODE_NBSP) == 0 || !*nd_content)
+ 							remove_node (nd);
+ 						g_free (nd_content);
+ 					}
+ 
+-					webkit_dom_node_insert_before (
+-						webkit_dom_node_get_parent_node (node),
+-						WEBKIT_DOM_NODE (element),
+-						nd,
+-						NULL);
++					if (nd) {
++						webkit_dom_node_insert_before (
++							webkit_dom_node_get_parent_node (node),
++							WEBKIT_DOM_NODE (element),
++							nd,
++							NULL);
+ 
+-					node = webkit_dom_node_get_next_sibling (
+-						WEBKIT_DOM_NODE (element));
+-					offset = 0;
++						node = webkit_dom_node_get_next_sibling (
++							WEBKIT_DOM_NODE (element));
++						offset = 0;
++					}
+ 				} else {
+ 					webkit_dom_node_append_child (
+ 						webkit_dom_node_get_parent_node (node),
+-- 
+2.15.0
+

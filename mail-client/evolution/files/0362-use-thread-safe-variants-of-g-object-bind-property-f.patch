@@ -1,0 +1,3479 @@
+From 3ca1ba311a394a352b0779df40338e29a9698981 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 24 Feb 2015 09:54:41 +0100
+Subject: [PATCH 0362/1800] Use thread safe variants of
+ g_object_bind_property*() functions from evolution-data-server
+
+Conflicts:
+	composer/e-composer-private.c
+	e-util/e-web-view.c
+	mail/e-http-request.c
+---
+ calendar/gui/dialogs/comp-editor.c                 |  4 +--
+ calendar/gui/dialogs/event-editor.c                |  4 +--
+ calendar/gui/dialogs/recurrence-page.c             |  2 +-
+ calendar/gui/dialogs/task-editor.c                 |  2 +-
+ calendar/gui/dialogs/task-page.c                   |  2 +-
+ calendar/gui/e-cal-list-view.c                     |  6 ++--
+ calendar/gui/e-memo-table.c                        |  6 ++--
+ calendar/gui/e-task-table.c                        |  6 ++--
+ composer/e-composer-actions.c                      | 20 ++++++------
+ composer/e-composer-header-table.c                 |  4 +--
+ composer/e-composer-header.c                       |  4 +--
+ composer/e-composer-private.c                      | 13 ++++----
+ e-util/e-activity-bar.c                            |  2 +-
+ e-util/e-activity-proxy.c                          |  2 +-
+ e-util/e-attachment-bar.c                          | 16 ++++-----
+ e-util/e-attachment-button.c                       |  8 ++---
+ e-util/e-attachment-paned.c                        | 18 +++++-----
+ e-util/e-attachment-view.c                         |  2 +-
+ e-util/e-book-source-config.c                      |  4 +--
+ e-util/e-cal-source-config.c                       |  4 +--
+ e-util/e-config.c                                  |  3 +-
+ e-util/e-dateedit.c                                |  2 +-
+ e-util/e-html-editor-actions.c                     | 38 +++++++++++-----------
+ e-util/e-html-editor-cell-dialog.c                 |  4 +--
+ e-util/e-html-editor.c                             |  5 +--
+ e-util/e-mail-signature-combo-box.c                |  2 +-
+ e-util/e-mail-signature-script-dialog.c            |  2 +-
+ e-util/e-misc-utils.c                              | 18 +++++-----
+ e-util/e-proxy-editor.c                            |  8 ++---
+ e-util/e-proxy-link-selector.c                     |  2 +-
+ e-util/e-proxy-preferences.c                       | 16 ++++-----
+ e-util/e-search-bar.c                              |  4 +--
+ e-util/e-source-combo-box.c                        |  2 +-
+ e-util/e-source-config-dialog.c                    |  2 +-
+ e-util/e-source-config.c                           | 12 +++----
+ e-util/e-tree-view-frame.c                         |  6 ++--
+ e-util/e-url-entry.c                               |  2 +-
+ e-util/e-web-view.c                                |  8 ++---
+ e-util/test-mail-signatures.c                      |  2 +-
+ e-util/test-source-combo-box.c                     |  2 +-
+ e-util/test-source-selector.c                      |  6 ++--
+ e-util/test-tree-view-frame.c                      | 10 +++---
+ libemail-engine/e-mail-session.c                   |  2 +-
+ mail/e-http-request.c                              |  8 ++++-
+ mail/e-mail-account-manager.c                      |  2 +-
+ mail/e-mail-account-store.c                        |  2 +-
+ mail/e-mail-config-activity-page.c                 |  4 +--
+ mail/e-mail-config-assistant.c                     | 14 ++++----
+ mail/e-mail-config-auth-check.c                    |  2 +-
+ mail/e-mail-config-confirm-page.c                  |  2 +-
+ mail/e-mail-config-defaults-page.c                 | 14 ++++----
+ mail/e-mail-config-identity-page.c                 | 18 +++++-----
+ mail/e-mail-config-notebook.c                      | 10 +++---
+ mail/e-mail-config-provider-page.c                 | 20 ++++++------
+ mail/e-mail-config-security-page.c                 | 24 +++++++-------
+ mail/e-mail-config-service-notebook.c              |  2 +-
+ mail/e-mail-config-service-page.c                  | 10 +++---
+ mail/e-mail-config-sidebar.c                       |  2 +-
+ mail/e-mail-config-window.c                        |  2 +-
+ mail/e-mail-display.c                              | 12 +++----
+ mail/e-mail-junk-options.c                         |  2 +-
+ mail/e-mail-label-action.c                         |  4 ++-
+ mail/e-mail-paned-view.c                           |  4 +--
+ mail/e-mail-reader.c                               |  4 +--
+ mail/e-mail-tag-editor.c                           |  4 +--
+ mail/e-mail-ui-session.c                           |  2 +-
+ mail/em-folder-properties.c                        |  2 +-
+ mail/em-folder-selector.c                          |  6 ++--
+ mail/em-subscription-editor.c                      |  2 +-
+ modules/addressbook/e-book-shell-content.c         |  6 ++--
+ modules/addressbook/e-book-shell-view-actions.c    |  6 ++--
+ .../backup-restore/e-mail-config-restore-page.c    |  4 +--
+ modules/backup-restore/evolution-backup-restore.c  |  2 +-
+ modules/bogofilter/evolution-bogofilter.c          |  2 +-
+ modules/book-config-ldap/e-source-ldap.c           |  4 +--
+ .../book-config-ldap/evolution-book-config-ldap.c  | 16 ++++-----
+ .../evolution-book-config-webdav.c                 |  4 +--
+ .../evolution-cal-config-caldav.c                  |  6 ++--
+ .../evolution-cal-config-contacts.c                |  2 +-
+ .../cal-config-google/e-google-chooser-button.c    |  4 +--
+ .../cal-config-local/evolution-cal-config-local.c  |  8 ++---
+ .../evolution-cal-config-weather.c                 |  4 +--
+ .../evolution-cal-config-webcal.c                  |  2 +-
+ modules/calendar/e-cal-base-shell-content.c        |  2 +-
+ modules/calendar/e-cal-shell-content.c             | 10 +++---
+ modules/calendar/e-cal-shell-view.c                |  6 ++--
+ modules/calendar/e-memo-shell-content.c            |  4 +--
+ modules/calendar/e-memo-shell-view-actions.c       |  4 +--
+ modules/calendar/e-task-shell-content.c            |  4 +--
+ modules/calendar/e-task-shell-view-actions.c       |  4 +--
+ modules/mail-config/e-mail-config-google-summary.c |  6 ++--
+ .../mail-config/e-mail-config-remote-accounts.c    |  8 ++---
+ .../mail-config/e-mail-config-sendmail-backend.c   | 14 ++++----
+ modules/mail-config/e-mail-config-smtp-backend.c   | 10 +++---
+ modules/mail-config/e-mail-config-yahoo-summary.c  |  4 +--
+ modules/mail/e-mail-shell-sidebar.c                |  2 +-
+ modules/mail/e-mail-shell-view-actions.c           | 24 +++++++-------
+ modules/mail/e-mail-shell-view-private.c           |  8 ++---
+ modules/mail/em-composer-prefs.c                   |  4 +--
+ modules/mail/em-mailer-prefs.c                     |  2 +-
+ modules/settings/e-settings-mail-reader.c          |  2 +-
+ modules/spamassassin/evolution-spamassassin.c      |  2 +-
+ .../e-mail-config-import-progress-page.c           |  6 ++--
+ plugins/mail-notification/mail-notification.c      |  2 +-
+ shell/e-shell-searchbar.c                          | 16 ++++-----
+ shell/e-shell-sidebar.c                            |  6 ++--
+ shell/e-shell-window-actions.c                     | 20 ++++++------
+ shell/e-shell-window-private.c                     |  8 ++---
+ shell/e-shell-window.c                             | 14 ++++----
+ shell/e-shell.c                                    |  2 +-
+ 110 files changed, 369 insertions(+), 360 deletions(-)
+
+diff --git a/calendar/gui/dialogs/comp-editor.c b/calendar/gui/dialogs/comp-editor.c
+index 5c0925d187..31185ec41f 100644
+--- a/calendar/gui/dialogs/comp-editor.c
++++ b/calendar/gui/dialogs/comp-editor.c
+@@ -2161,7 +2161,7 @@ comp_editor_init (CompEditor *editor)
+ 		g_object_unref (emblemed_icon);
+ 
+ 		save_action = gtk_action_group_get_action (action_group, "save");
+-		g_object_bind_property (
++		e_binding_bind_property (
+ 			save_action, "sensitive",
+ 			action, "sensitive",
+ 			G_BINDING_SYNC_CREATE);
+@@ -2307,7 +2307,7 @@ comp_editor_init (CompEditor *editor)
+ 	action_group = comp_editor_get_action_group (editor, "individual");
+ 	action_group_2 = e_attachment_view_get_action_group (view, "editable");
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		action_group, "sensitive",
+ 		action_group_2, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/calendar/gui/dialogs/event-editor.c b/calendar/gui/dialogs/event-editor.c
+index 9d82be7956..64dec71451 100644
+--- a/calendar/gui/dialogs/event-editor.c
++++ b/calendar/gui/dialogs/event-editor.c
+@@ -342,7 +342,7 @@ event_editor_constructor (GType type,
+ 		comp_editor_append_page (editor, page, _("Free/Busy"), TRUE);
+ 		schedule_page_update_free_busy (priv->sched_page);
+ 
+-		g_object_bind_property (
++		e_binding_bind_property (
+ 			action_group, "visible",
+ 			comp_editor_page_get_widget (page), "visible",
+ 			G_BINDING_SYNC_CREATE);
+@@ -421,7 +421,7 @@ event_editor_constructed (GObject *object)
+ 
+ 	priv = EVENT_EDITOR_GET_PRIVATE (object);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "client",
+ 		priv->model, "client",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/calendar/gui/dialogs/recurrence-page.c b/calendar/gui/dialogs/recurrence-page.c
+index bce7414efa..179f02158f 100644
+--- a/calendar/gui/dialogs/recurrence-page.c
++++ b/calendar/gui/dialogs/recurrence-page.c
+@@ -2567,7 +2567,7 @@ init_widgets (RecurrencePage *rpage)
+ 		GTK_TREE_VIEW (priv->exception_list),
+ 		GTK_TREE_MODEL (priv->exception_list_store));
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		editor, "use-24-hour-format",
+ 		priv->exception_list_store, "use-24-hour-format",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/calendar/gui/dialogs/task-editor.c b/calendar/gui/dialogs/task-editor.c
+index 347dab4d04..14081e4628 100644
+--- a/calendar/gui/dialogs/task-editor.c
++++ b/calendar/gui/dialogs/task-editor.c
+@@ -162,7 +162,7 @@ task_editor_constructed (GObject *object)
+ 		comp_editor_set_group_item (editor, TRUE);
+ 	}
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "client",
+ 		priv->model, "client",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/calendar/gui/dialogs/task-page.c b/calendar/gui/dialogs/task-page.c
+index ae1924b422..27e33521f3 100644
+--- a/calendar/gui/dialogs/task-page.c
++++ b/calendar/gui/dialogs/task-page.c
+@@ -2594,7 +2594,7 @@ init_widgets (TaskPage *tpage)
+ 
+ 	/* Classification */
+ 	action = comp_editor_get_action (editor, "classify-public");
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		action, "current-value",
+ 		priv->classification_combo, "active",
+ 		G_BINDING_BIDIRECTIONAL | G_BINDING_SYNC_CREATE,
+diff --git a/calendar/gui/e-cal-list-view.c b/calendar/gui/e-cal-list-view.c
+index 1694b52735..2b75345b57 100644
+--- a/calendar/gui/e-cal-list-view.c
++++ b/calendar/gui/e-cal-list-view.c
+@@ -196,13 +196,13 @@ setup_e_table (ECalListView *cal_list_view)
+ 		"bg_color_column", E_CAL_MODEL_FIELD_COLOR,
+ 		NULL);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		model, "timezone",
+ 		cell, "timezone",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		model, "use-24-hour-format",
+ 		cell, "use-24-hour-format",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -212,7 +212,7 @@ setup_e_table (ECalListView *cal_list_view)
+ 	e_cell_popup_set_child (E_CELL_POPUP (popup_cell), cell);
+ 	g_object_unref (cell);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		model, "use-24-hour-format",
+ 		popup_cell, "use-24-hour-format",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/calendar/gui/e-memo-table.c b/calendar/gui/e-memo-table.c
+index 223b3a1662..d2f259a7bb 100644
+--- a/calendar/gui/e-memo-table.c
++++ b/calendar/gui/e-memo-table.c
+@@ -296,13 +296,13 @@ memo_table_constructed (GObject *object)
+ 	cell = e_cell_date_edit_text_new (NULL, GTK_JUSTIFY_LEFT);
+ 	g_object_set (cell, "bg_color_column", E_CAL_MODEL_FIELD_COLOR, NULL);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		model, "timezone",
+ 		cell, "timezone",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		model, "use-24-hour-format",
+ 		cell, "use-24-hour-format",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -312,7 +312,7 @@ memo_table_constructed (GObject *object)
+ 	e_cell_popup_set_child (E_CELL_POPUP (popup_cell), cell);
+ 	g_object_unref (cell);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		model, "use-24-hour-format",
+ 		popup_cell, "use-24-hour-format",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/calendar/gui/e-task-table.c b/calendar/gui/e-task-table.c
+index 8180a7a956..bd1ad143a0 100644
+--- a/calendar/gui/e-task-table.c
++++ b/calendar/gui/e-task-table.c
+@@ -445,13 +445,13 @@ task_table_constructed (GObject *object)
+ 		"bg_color_column", E_CAL_MODEL_FIELD_COLOR,
+ 		NULL);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		model, "timezone",
+ 		cell, "timezone",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		model, "use-24-hour-format",
+ 		cell, "use-24-hour-format",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -461,7 +461,7 @@ task_table_constructed (GObject *object)
+ 	e_cell_popup_set_child (E_CELL_POPUP (popup_cell), cell);
+ 	g_object_unref (cell);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		model, "use-24-hour-format",
+ 		popup_cell, "use-24-hour-format",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/composer/e-composer-actions.c b/composer/e-composer-actions.c
+index dab3d449d0..d9dd67777e 100644
+--- a/composer/e-composer-actions.c
++++ b/composer/e-composer-actions.c
+@@ -664,19 +664,19 @@ e_composer_actions_init (EMsgComposer *composer)
+ 
+ 	#define init_toolbar_option(x, always_visible)	\
+ 		gtk_action_set_visible (ACTION (TOOLBAR_ ## x), always_visible); \
+-		g_object_bind_property ( \
++		e_binding_bind_property ( \
+ 			ACTION (x), "active", \
+ 			ACTION (TOOLBAR_ ## x), "active", \
+ 			G_BINDING_SYNC_CREATE | G_BINDING_BIDIRECTIONAL); \
+-		g_object_bind_property ( \
++		e_binding_bind_property ( \
+ 			ACTION (x), "label", \
+ 			ACTION (TOOLBAR_ ## x), "label", \
+ 			G_BINDING_SYNC_CREATE); \
+-		g_object_bind_property ( \
++		e_binding_bind_property ( \
+ 			ACTION (x), "tooltip", \
+ 			ACTION (TOOLBAR_ ## x), "tooltip", \
+ 			G_BINDING_SYNC_CREATE); \
+-		g_object_bind_property ( \
++		e_binding_bind_property ( \
+ 			ACTION (x), "sensitive", \
+ 			ACTION (TOOLBAR_ ## x), "sensitive", \
+ 			G_BINDING_SYNC_CREATE); \
+@@ -722,32 +722,32 @@ e_composer_actions_init (EMsgComposer *composer)
+ 		g_object_unref (gcr_gnupg_icon);
+ 	}
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "html-mode",
+ 		ACTION (PICTURE_GALLERY), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "editable",
+ 		e_html_editor_get_action (editor, "edit-menu"), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "editable",
+ 		e_html_editor_get_action (editor, "format-menu"), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "editable",
+ 		e_html_editor_get_action (editor, "insert-menu"), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "editable",
+ 		e_html_editor_get_action (editor, "options-menu"), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "editable",
+ 		e_html_editor_get_action (editor, "picture-gallery"), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/composer/e-composer-header-table.c b/composer/e-composer-header-table.c
+index bf0ab0b3a1..49fe82759f 100644
+--- a/composer/e-composer-header-table.c
++++ b/composer/e-composer-header-table.c
+@@ -837,12 +837,12 @@ composer_header_table_constructed (GObject *object)
+ 		table->priv->headers[ii]->input_widget,
+ 		"right-attach", 2, NULL);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		table->priv->headers[ii]->input_widget, "visible",
+ 		table->priv->signature_label, "visible",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		table->priv->headers[ii]->input_widget, "visible",
+ 		table->priv->signature_combo_box, "visible",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/composer/e-composer-header.c b/composer/e-composer-header.c
+index c3516182a9..d11429769c 100644
+--- a/composer/e-composer-header.c
++++ b/composer/e-composer-header.c
+@@ -242,12 +242,12 @@ composer_header_constructed (GObject *object)
+ 
+ 	header->title_widget = g_object_ref_sink (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		header, "visible",
+ 		header->title_widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		header, "visible",
+ 		header->input_widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/composer/e-composer-private.c b/composer/e-composer-private.c
+index 1ae2428e79..72cfc609af 100644
+--- a/composer/e-composer-private.c
++++ b/composer/e-composer-private.c
+@@ -211,7 +211,7 @@ e_composer_private_constructed (EMsgComposer *composer)
+ 	header = e_composer_header_table_get_header (
+ 		E_COMPOSER_HEADER_TABLE (widget),
+ 		E_COMPOSER_HEADER_SUBJECT);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "spell-checker",
+ 		header->input_widget, "spell-checker",
+ 		G_BINDING_SYNC_CREATE);
+@@ -229,8 +229,9 @@ e_composer_private_constructed (EMsgComposer *composer)
+ 	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+ 	priv->attachment_paned = g_object_ref_sink (widget);
+ 	gtk_widget_show (widget);
++
+ /* FIXME WK2
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "editable",
+ 		widget, "sensitive",
+ 		G_BINDING_SYNC_CREATE);*/
+@@ -321,13 +322,13 @@ e_composer_private_constructed (EMsgComposer *composer)
+ 				continue;
+ 		}
+ 
+-		g_object_bind_property (
++		e_binding_bind_property (
+ 			header, "sensitive",
+ 			action, "sensitive",
+ 			G_BINDING_BIDIRECTIONAL |
+ 			G_BINDING_SYNC_CREATE);
+ 
+-		g_object_bind_property (
++		e_binding_bind_property (
+ 			header, "visible",
+ 			action, "active",
+ 			G_BINDING_BIDIRECTIONAL |
+@@ -338,13 +339,13 @@ e_composer_private_constructed (EMsgComposer *composer)
+ 	 * asynchronous activity is in progress. We enforce this with
+ 	 * a simple inverted binding to EMsgComposer's "busy" property. */
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		composer, "busy",
+ 		priv->async_actions, "sensitive",
+ 		G_BINDING_SYNC_CREATE |
+ 		G_BINDING_INVERT_BOOLEAN);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		composer, "busy",
+ 		priv->header_table, "sensitive",
+ 		G_BINDING_SYNC_CREATE |
+diff --git a/e-util/e-activity-bar.c b/e-util/e-activity-bar.c
+index e3b0124913..d601e7677f 100644
+--- a/e-util/e-activity-bar.c
++++ b/e-util/e-activity-bar.c
+@@ -322,7 +322,7 @@ e_activity_bar_init (EActivityBar *bar)
+ 	bar->priv->spinner = widget;
+ 
+ 	/* The spinner is only visible when the image is not. */
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		bar->priv->image, "visible",
+ 		bar->priv->spinner, "visible",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/e-util/e-activity-proxy.c b/e-util/e-activity-proxy.c
+index 8ebaed1250..33aa7f0683 100644
+--- a/e-util/e-activity-proxy.c
++++ b/e-util/e-activity-proxy.c
+@@ -331,7 +331,7 @@ e_activity_proxy_init (EActivityProxy *proxy)
+ 	proxy->priv->spinner = widget;
+ 
+ 	/* The spinner is only visible when the image is not. */
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		proxy->priv->image, "visible",
+ 		proxy->priv->spinner, "visible",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/e-util/e-attachment-bar.c b/e-util/e-attachment-bar.c
+index f67227902b..422d3e29d9 100644
+--- a/e-util/e-attachment-bar.c
++++ b/e-util/e-attachment-bar.c
+@@ -312,49 +312,49 @@ attachment_bar_constructed (GObject *object)
+ 
+ 	/* Set up property-to-property bindings. */
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "active-view",
+ 		priv->combo_box, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "dragging",
+ 		priv->icon_view, "dragging",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "dragging",
+ 		priv->tree_view, "dragging",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "editable",
+ 		priv->icon_view, "editable",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "editable",
+ 		priv->tree_view, "editable",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "expanded",
+ 		priv->expander, "expanded",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "expanded",
+ 		priv->combo_box, "visible",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "expanded",
+ 		priv->vbox, "visible",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/e-util/e-attachment-button.c b/e-util/e-attachment-button.c
+index 8377a27760..97167faf83 100644
+--- a/e-util/e-attachment-button.c
++++ b/e-util/e-attachment-button.c
+@@ -575,7 +575,7 @@ e_attachment_button_init (EAttachmentButton *button)
+ 	button->priv->expand_button = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		button, "expandable",
+ 		widget, "sensitive",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -607,7 +607,7 @@ e_attachment_button_init (EAttachmentButton *button)
+ 	g_object_set (renderer, "is-expander", TRUE, NULL);
+ 	gtk_cell_layout_pack_start (cell_layout, renderer, FALSE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		button, "expanded",
+ 		renderer, "is-expanded",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -761,14 +761,14 @@ e_attachment_button_set_attachment (EAttachmentButton *button,
+ 		GBinding *binding;
+ 		gulong handler_id;
+ 
+-		binding = g_object_bind_property (
++		binding = e_binding_bind_property (
+ 			attachment, "can-show",
+ 			button, "expandable",
+ 			G_BINDING_BIDIRECTIONAL |
+ 			G_BINDING_SYNC_CREATE);
+ 		button->priv->can_show_binding = binding;
+ 
+-		binding = g_object_bind_property (
++		binding = e_binding_bind_property (
+ 			attachment, "shown",
+ 			button, "expanded",
+ 			G_BINDING_BIDIRECTIONAL |
+diff --git a/e-util/e-attachment-paned.c b/e-util/e-attachment-paned.c
+index 99d90c1576..77fcdc8284 100644
+--- a/e-util/e-attachment-paned.c
++++ b/e-util/e-attachment-paned.c
+@@ -367,55 +367,55 @@ attachment_paned_constructed (GObject *object)
+ 
+ 	/* Set up property-to-property bindings. */
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "active-view",
+ 		priv->combo_box, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "active-view",
+ 		priv->notebook, "page",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "dragging",
+ 		priv->icon_view, "dragging",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "dragging",
+ 		priv->tree_view, "dragging",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "editable",
+ 		priv->icon_view, "editable",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "editable",
+ 		priv->tree_view, "editable",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "expanded",
+ 		priv->expander, "expanded",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "expanded",
+ 		priv->combo_box, "sensitive",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "expanded",
+ 		priv->notebook, "visible",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/e-util/e-attachment-view.c b/e-util/e-attachment-view.c
+index 704c0e239f..44a5563040 100644
+--- a/e-util/e-attachment-view.c
++++ b/e-util/e-attachment-view.c
+@@ -901,7 +901,7 @@ e_attachment_view_init (EAttachmentView *view)
+ 
+ 	action_group = e_attachment_view_add_action_group (view, "editable");
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "editable",
+ 		action_group, "visible",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/e-util/e-book-source-config.c b/e-util/e-book-source-config.c
+index 798eb60b90..a4f8ea1600 100644
+--- a/e-util/e-book-source-config.c
++++ b/e-util/e-book-source-config.c
+@@ -178,7 +178,7 @@ book_source_config_init_candidate (ESourceConfig *config,
+ 	extension_name = E_SOURCE_EXTENSION_AUTOCOMPLETE;
+ 	extension = e_source_get_extension (scratch_source, extension_name);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "include-me",
+ 		priv->autocomplete_button, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -278,7 +278,7 @@ e_book_source_config_add_offline_toggle (EBookSourceConfig *config,
+ 		E_SOURCE_CONFIG (config), scratch_source, NULL, widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "stay-synchronized",
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/e-util/e-cal-source-config.c b/e-util/e-cal-source-config.c
+index d156160234..f619d53245 100644
+--- a/e-util/e-cal-source-config.c
++++ b/e-util/e-cal-source-config.c
+@@ -277,7 +277,7 @@ cal_source_config_init_candidate (ESourceConfig *config,
+ 	extension_name = e_source_config_get_backend_extension_name (config);
+ 	extension = e_source_get_extension (scratch_source, extension_name);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		extension, "color",
+ 		priv->color_button, "color",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -422,7 +422,7 @@ e_cal_source_config_add_offline_toggle (ECalSourceConfig *config,
+ 		E_SOURCE_CONFIG (config), scratch_source, NULL, widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "stay-synchronized",
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/e-util/e-config.c b/e-util/e-config.c
+index be1647ad6c..008fa745ba 100644
+--- a/e-util/e-config.c
++++ b/e-util/e-config.c
+@@ -28,6 +28,7 @@
+ 
+ #include <gtk/gtk.h>
+ #include <glib/gi18n.h>
++#include <libedataserver/libedataserver.h>
+ 
+ #include "e-config.h"
+ 
+@@ -1148,7 +1149,7 @@ config_hook_section_factory (EConfig *config,
+ 	/* This is why we have a custom factory for sections.
+ 	 * When the plugin is disabled the frame is invisible. */
+ 	plugin = group->hook->hook.plugin;
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		plugin, "enabled",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/e-util/e-dateedit.c b/e-util/e-dateedit.c
+index d9decd353f..ccf83f4ac5 100644
+--- a/e-util/e-dateedit.c
++++ b/e-util/e-dateedit.c
+@@ -718,7 +718,7 @@ create_children (EDateEdit *dedit)
+ 	g_signal_connect (
+ 		priv->none_button, "clicked",
+ 		G_CALLBACK (on_date_popup_none_button_clicked), dedit);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		dedit, "allow-no-date-set",
+ 		priv->none_button, "visible",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/e-util/e-html-editor-actions.c b/e-util/e-html-editor-actions.c
+index b577b4d217..393277ffde 100644
+--- a/e-util/e-html-editor-actions.c
++++ b/e-util/e-html-editor-actions.c
+@@ -1722,7 +1722,7 @@ editor_actions_init (EHTMLEditor *editor)
+ 	gtk_ui_manager_insert_action_group (manager, action_group, 0);
+ 
+ 	action = gtk_action_group_get_action (action_group, "mode-html");
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "html-mode",
+ 		action, "current-value",
+ 		G_BINDING_BIDIRECTIONAL | G_BINDING_SYNC_CREATE);
+@@ -1819,80 +1819,80 @@ editor_actions_init (EHTMLEditor *editor)
+ 	gtk_action_set_sensitive (ACTION (UNINDENT), FALSE);
+ 	gtk_action_set_sensitive (ACTION (FIND_AGAIN), FALSE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "can-redo",
+ 		ACTION (REDO), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "can-undo",
+ 		ACTION (UNDO), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "can-copy",
+ 		ACTION (COPY), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "can-cut",
+ 		ACTION (CUT), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "can-paste",
+ 		ACTION (PASTE), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+ 	/* This is connected to JUSTIFY_LEFT action only, but
+ 	 * it automatically applies on all actions in the group. */
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		editor->priv->selection, "alignment",
+ 		ACTION (JUSTIFY_LEFT), "current-value",
+ 		G_BINDING_SYNC_CREATE | G_BINDING_BIDIRECTIONAL);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		editor->priv->selection, "bold",
+ 		ACTION (BOLD), "active",
+ 		G_BINDING_SYNC_CREATE | G_BINDING_BIDIRECTIONAL);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		editor->priv->selection, "font-size",
+ 		ACTION (FONT_SIZE_GROUP), "current-value",
+ 		G_BINDING_SYNC_CREATE | G_BINDING_BIDIRECTIONAL);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		editor->priv->selection, "block-format",
+ 		ACTION (STYLE_NORMAL), "current-value",
+ 		G_BINDING_SYNC_CREATE | G_BINDING_BIDIRECTIONAL);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		editor->priv->selection, "indented",
+ 		ACTION (UNINDENT), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		editor->priv->selection, "italic",
+ 		ACTION (ITALIC), "active",
+ 		G_BINDING_SYNC_CREATE | G_BINDING_BIDIRECTIONAL);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		editor->priv->selection, "monospaced",
+ 		ACTION (MONOSPACED), "active",
+ 		G_BINDING_SYNC_CREATE | G_BINDING_BIDIRECTIONAL);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		editor->priv->selection, "strikethrough",
+ 		ACTION (STRIKETHROUGH), "active",
+ 		G_BINDING_SYNC_CREATE | G_BINDING_BIDIRECTIONAL);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		editor->priv->selection, "underline",
+ 		ACTION (UNDERLINE), "active",
+ 		G_BINDING_SYNC_CREATE | G_BINDING_BIDIRECTIONAL);
+ 
+ 	/* Disable all actions and toolbars when editor is not editable */
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "editable",
+ 		editor->priv->core_editor_actions, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "editable",
+ 		editor->priv->html_actions, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "editable",
+ 		editor->priv->spell_check_actions, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		view, "editable",
+ 		editor->priv->suggestion_actions, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/e-util/e-html-editor-cell-dialog.c b/e-util/e-html-editor-cell-dialog.c
+index 740723e580..f24411c34b 100644
+--- a/e-util/e-html-editor-cell-dialog.c
++++ b/e-util/e-html-editor-cell-dialog.c
+@@ -856,7 +856,7 @@ e_html_editor_cell_dialog_init (EHTMLEditorCellDialog *dialog)
+ 	g_signal_connect_swapped (
+ 		widget, "value-changed",
+ 		G_CALLBACK (html_editor_cell_dialog_set_width), dialog);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		dialog->priv->width_check, "active",
+ 		widget, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+@@ -870,7 +870,7 @@ e_html_editor_cell_dialog_init (EHTMLEditorCellDialog *dialog)
+ 	g_signal_connect_swapped (
+ 		widget, "changed",
+ 		G_CALLBACK (html_editor_cell_dialog_set_width), dialog);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		dialog->priv->width_check, "active",
+ 		widget, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/e-util/e-html-editor.c b/e-util/e-html-editor.c
+index 8e74309426..1918320c6e 100644
+--- a/e-util/e-html-editor.c
++++ b/e-util/e-html-editor.c
+@@ -23,6 +23,7 @@
+ 
+ #include <camel/camel.h>
+ #include <enchant/enchant.h>
++#include <libedataserver/libedataserver.h>
+ 
+ #include "e-html-editor.h"
+ 
+@@ -689,11 +690,11 @@ html_editor_constructed (GObject *object)
+ 	gtk_toolbar_insert (toolbar, tool_item, 0);
+ 	priv->color_combo_box = g_object_ref (widget);
+ 	gtk_widget_show_all (GTK_WIDGET (tool_item));
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		priv->color_combo_box, "current-color",
+ 		priv->selection, "font-color",
+ 		G_BINDING_SYNC_CREATE | G_BINDING_BIDIRECTIONAL);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		priv->html_editor_view, "editable",
+ 		priv->color_combo_box, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/e-util/e-mail-signature-combo-box.c b/e-util/e-mail-signature-combo-box.c
+index fcd3dd0788..fda55a44ea 100644
+--- a/e-util/e-mail-signature-combo-box.c
++++ b/e-util/e-mail-signature-combo-box.c
+@@ -259,7 +259,7 @@ mail_signature_combo_box_constructed (GObject *object)
+ 	gtk_cell_layout_add_attribute (
+ 		cell_layout, cell_renderer, "text", COLUMN_DISPLAY_NAME);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		combo_box, "identity-uid",
+ 		combo_box, "active-id",
+ 		G_BINDING_DEFAULT,
+diff --git a/e-util/e-mail-signature-script-dialog.c b/e-util/e-mail-signature-script-dialog.c
+index fe915798b6..72040f9a09 100644
+--- a/e-util/e-mail-signature-script-dialog.c
++++ b/e-util/e-mail-signature-script-dialog.c
+@@ -407,7 +407,7 @@ mail_signature_script_dialog_constructed (GObject *object)
+ 	dialog->priv->entry = widget;  /* not referenced */
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		widget, "text",
+ 		source, "display-name",
+ 		G_BINDING_DEFAULT);
+diff --git a/e-util/e-misc-utils.c b/e-util/e-misc-utils.c
+index 72a610ba98..95b7ce77a4 100644
+--- a/e-util/e-misc-utils.c
++++ b/e-util/e-misc-utils.c
+@@ -2634,14 +2634,14 @@ e_binding_transform_text_non_null (GBinding *binding,
+  * @source_property: the text property on the source to bind
+  * @target: the target #GObject
+  * @target_property: the text property on the target to bind
+- * @flags: flags to pass to g_object_bind_property_full()
++ * @flags: flags to pass to e_binding_bind_property_full()
+  *
+- * Installs a new text property object binding, using g_object_bind_property_full(),
++ * Installs a new text property object binding, using e_binding_bind_property_full(),
+  * with transform functions to make sure that a NULL pointer is not
+  * passed in either way. Instead of NULL an empty string is used.
+  *
+  * Returns: the #GBinding instance representing the binding between the two #GObject instances;
+- *    there applies the same rules to it as for the result of g_object_bind_property_full().
++ *    there applies the same rules to it as for the result of e_binding_bind_property_full().
+  **/
+ GBinding *
+ e_binding_bind_object_text_property (gpointer source,
+@@ -2668,12 +2668,12 @@ e_binding_bind_object_text_property (gpointer source,
+ 	g_return_val_if_fail (property != NULL, NULL);
+ 	g_return_val_if_fail (property->value_type == G_TYPE_STRING, NULL);
+ 
+-	return g_object_bind_property_full (source, source_property,
+-					    target, target_property,
+-					    flags,
+-					    e_binding_transform_text_non_null,
+-					    e_binding_transform_text_non_null,
+-					    NULL, NULL);
++	return e_binding_bind_property_full (source, source_property,
++					     target, target_property,
++					     flags,
++					     e_binding_transform_text_non_null,
++					     e_binding_transform_text_non_null,
++					     NULL, NULL);
+ }
+ 
+ typedef struct _EConnectNotifyData {
+diff --git a/e-util/e-proxy-editor.c b/e-util/e-proxy-editor.c
+index c53c0e3ba9..0dd7481caf 100644
+--- a/e-util/e-proxy-editor.c
++++ b/e-util/e-proxy-editor.c
+@@ -357,7 +357,7 @@ proxy_editor_constructed (GObject *object)
+ 			G_CALLBACK (proxy_editor_open_desktop_settings_cb),
+ 			editor);
+ 
+-		g_object_bind_property_full (
++		e_binding_bind_property_full (
+ 			editor->priv->method_combo_box, "active-id",
+ 			widget, "visible",
+ 			G_BINDING_DEFAULT,
+@@ -382,7 +382,7 @@ proxy_editor_constructed (GObject *object)
+ 	gtk_grid_set_column_spacing (GTK_GRID (widget), 6);
+ 	gtk_grid_attach (GTK_GRID (editor), widget, 0, ++row, 2, 1);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		editor->priv->method_combo_box, "active-id",
+ 		widget, "visible",
+ 		G_BINDING_DEFAULT,
+@@ -520,7 +520,7 @@ proxy_editor_constructed (GObject *object)
+ 	gtk_grid_set_column_spacing (GTK_GRID (widget), 6);
+ 	gtk_grid_attach (GTK_GRID (editor), widget, 0, ++row, 2, 1);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		editor->priv->method_combo_box, "active-id",
+ 		widget, "visible",
+ 		G_BINDING_DEFAULT,
+@@ -566,7 +566,7 @@ proxy_editor_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (editor), widget, 1, ++row, 2, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		editor->priv->method_combo_box, "active-id",
+ 		widget, "visible",
+ 		G_BINDING_DEFAULT,
+diff --git a/e-util/e-proxy-link-selector.c b/e-util/e-proxy-link-selector.c
+index e4e025e9e0..bea3d8f041 100644
+--- a/e-util/e-proxy-link-selector.c
++++ b/e-util/e-proxy-link-selector.c
+@@ -139,7 +139,7 @@ proxy_link_selector_constructed (GObject *object)
+ 	/* Hide toggle buttons when the target source is the same as
+ 	 * the fallback source since toggling the buttons would have
+ 	 * no effect in that particular case. */
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		selector, "target-source",
+ 		selector, "show-toggles",
+ 		G_BINDING_SYNC_CREATE,
+diff --git a/e-util/e-proxy-preferences.c b/e-util/e-proxy-preferences.c
+index f3c478792c..1dd259fdfe 100644
+--- a/e-util/e-proxy-preferences.c
++++ b/e-util/e-proxy-preferences.c
+@@ -458,7 +458,7 @@ proxy_preferences_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (container), widget, 0, 0, 1, 3);
+ 	preferences->priv->proxy_selector = widget;  /* do not reference */
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		preferences, "show-advanced",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -475,7 +475,7 @@ proxy_preferences_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (container), widget, 1, 0, 1, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		preferences->priv->proxy_selector, "selected",
+ 		widget, "label",
+ 		G_BINDING_SYNC_CREATE,
+@@ -491,7 +491,7 @@ proxy_preferences_constructed (GObject *object)
+ 	preferences->priv->proxy_editor = widget;  /* do not reference */
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		preferences->priv->proxy_selector, "selected",
+ 		widget, "source",
+ 		G_BINDING_SYNC_CREATE);
+@@ -510,7 +510,7 @@ proxy_preferences_constructed (GObject *object)
+ 	gtk_widget_set_vexpand (widget, TRUE);
+ 	gtk_container_add (GTK_CONTAINER (container), widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		preferences, "show-advanced",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -543,13 +543,13 @@ proxy_preferences_constructed (GObject *object)
+ 	gtk_container_add (GTK_CONTAINER (container2), widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		preferences->priv->proxy_selector, "selected",
+ 		widget, "target-source",
+ 		G_BINDING_SYNC_CREATE);
+ 
+ 	/* This is bound to the GtkBox created above. */
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		widget, "show-toggles",
+ 		container, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -564,14 +564,14 @@ proxy_preferences_constructed (GObject *object)
+ 	gtk_box_pack_start (GTK_BOX (preferences), widget, FALSE, FALSE, 0);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		preferences, "show-advanced",
+ 		widget, "label",
+ 		G_BINDING_SYNC_CREATE,
+ 		proxy_preferences_switch_to_label,
+ 		NULL, NULL, NULL);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		preferences, "show-advanced",
+ 		widget, "has-tooltip",
+ 		G_BINDING_SYNC_CREATE |
+diff --git a/e-util/e-search-bar.c b/e-util/e-search-bar.c
+index fae4560e51..8c54ce9d16 100644
+--- a/e-util/e-search-bar.c
++++ b/e-util/e-search-bar.c
+@@ -422,7 +422,7 @@ search_bar_constructed (GObject *object)
+ 
+ 	priv = E_SEARCH_BAR_GET_PRIVATE (object);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "case-sensitive",
+ 		priv->case_sensitive_button, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -630,7 +630,7 @@ e_search_bar_init (ESearchBar *search_bar)
+ 	search_bar->priv->entry = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		search_bar, "active-search",
+ 		widget, "secondary-icon-sensitive",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/e-util/e-source-combo-box.c b/e-util/e-source-combo-box.c
+index 622e9dd886..48f53247ca 100644
+--- a/e-util/e-source-combo-box.c
++++ b/e-util/e-source-combo-box.c
+@@ -347,7 +347,7 @@ source_combo_box_constructed (GObject *object)
+ 		"sensitive", COLUMN_SENSITIVE,
+ 		NULL);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		combo_box, "show-colors",
+ 		renderer, "visible",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/e-util/e-source-config-dialog.c b/e-util/e-source-config-dialog.c
+index 98aea98beb..d7b4d55b69 100644
+--- a/e-util/e-source-config-dialog.c
++++ b/e-util/e-source-config-dialog.c
+@@ -269,7 +269,7 @@ source_config_dialog_constructed (GObject *object)
+ 
+ 	/* Don't use G_BINDING_SYNC_CREATE here.  The ESourceConfig widget
+ 	 * is not ready to run check_complete() until after it's realized. */
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		config, "complete",
+ 		widget, "sensitive",
+ 		G_BINDING_DEFAULT);
+diff --git a/e-util/e-source-config.c b/e-util/e-source-config.c
+index de0f7b7968..8802283877 100644
+--- a/e-util/e-source-config.c
++++ b/e-util/e-source-config.c
+@@ -1079,7 +1079,7 @@ e_source_config_insert_widget (ESourceConfig *config,
+ 	hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
+ 	gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, TRUE, 0);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		widget, "visible",
+ 		hbox, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -1316,7 +1316,7 @@ e_source_config_add_refresh_interval (ESourceConfig *config,
+ 	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "interval-minutes",
+ 		widget, "interval-minutes",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -1343,7 +1343,7 @@ e_source_config_add_secure_connection (ESourceConfig *config,
+ 	e_source_config_insert_widget (config, scratch_source, NULL, widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "secure",
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -1413,7 +1413,7 @@ e_source_config_add_secure_connection_for_webdav (ESourceConfig *config,
+ 	e_source_config_insert_widget (config, scratch_source, NULL, widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "secure",
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -1423,7 +1423,7 @@ e_source_config_add_secure_connection_for_webdav (ESourceConfig *config,
+ 	authentication_extension =
+ 		e_source_get_extension (scratch_source, extension_name);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		extension, "secure",
+ 		authentication_extension, "port",
+ 		G_BINDING_DEFAULT,
+@@ -1439,7 +1439,7 @@ e_source_config_add_secure_connection_for_webdav (ESourceConfig *config,
+ 	e_source_config_insert_widget (config, scratch_source, NULL, widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		extension, "ssl-trust",
+ 		widget, "sensitive",
+ 		G_BINDING_SYNC_CREATE,
+diff --git a/e-util/e-tree-view-frame.c b/e-util/e-tree-view-frame.c
+index bde8b9fafa..716f48007c 100644
+--- a/e-util/e-tree-view-frame.c
++++ b/e-util/e-tree-view-frame.c
+@@ -573,12 +573,12 @@ tree_view_frame_constructed (GObject *object)
+ 	tree_view_frame->priv->scrolled_window = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		tree_view_frame, "hscrollbar-policy",
+ 		widget, "hscrollbar-policy",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		tree_view_frame, "vscrollbar-policy",
+ 		widget, "vscrollbar-policy",
+ 		G_BINDING_SYNC_CREATE);
+@@ -597,7 +597,7 @@ tree_view_frame_constructed (GObject *object)
+ 	gtk_style_context_set_junction_sides (
+ 		style_context, GTK_JUNCTION_TOP);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		tree_view_frame, "toolbar-visible",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/e-util/e-url-entry.c b/e-util/e-url-entry.c
+index 1d5ada5907..6e8d94c0fa 100644
+--- a/e-util/e-url-entry.c
++++ b/e-util/e-url-entry.c
+@@ -115,7 +115,7 @@ e_url_entry_init (EUrlEntry *url_entry)
+ 		url_entry, "icon-release",
+ 		G_CALLBACK (url_entry_icon_release_cb), NULL);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		url_entry, "text",
+ 		url_entry, "secondary-icon-sensitive",
+ 		G_BINDING_SYNC_CREATE,
+diff --git a/e-util/e-web-view.c b/e-util/e-web-view.c
+index e8900fd0a8..fa67d5f7a8 100644
+--- a/e-util/e-web-view.c
++++ b/e-util/e-web-view.c
+@@ -992,7 +992,7 @@ web_view_constructed (GObject *object)
+ 
+ 	web_settings = webkit_web_view_get_settings (WEBKIT_WEB_VIEW (object));
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		web_settings, "enable-caret-browsing",
+ 		E_WEB_VIEW (object), "caret-mode",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -2169,7 +2169,7 @@ e_web_view_init (EWebView *web_view)
+ 	gtk_action_group_add_action (action_group, GTK_ACTION (popup_action));
+ 	g_object_unref (popup_action);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		web_view, "open-proxy",
+ 		popup_action, "related-action",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -2186,7 +2186,7 @@ e_web_view_init (EWebView *web_view)
+ 	gtk_action_group_add_action (action_group, GTK_ACTION (popup_action));
+ 	g_object_unref (popup_action);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		web_view, "print-proxy",
+ 		popup_action, "related-action",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -2201,7 +2201,7 @@ e_web_view_init (EWebView *web_view)
+ 	gtk_action_group_add_action (action_group, GTK_ACTION (popup_action));
+ 	g_object_unref (popup_action);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		web_view, "save-as-proxy",
+ 		popup_action, "related-action",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/e-util/test-mail-signatures.c b/e-util/test-mail-signatures.c
+index a398c72629..97702fb4e2 100644
+--- a/e-util/test-mail-signatures.c
++++ b/e-util/test-mail-signatures.c
+@@ -183,7 +183,7 @@ main (gint argc,
+ 	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		identity_combo, "active-id",
+ 		signature_combo, "identity-uid",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/e-util/test-source-combo-box.c b/e-util/test-source-combo-box.c
+index 764d252518..3535b574c9 100644
+--- a/e-util/test-source-combo-box.c
++++ b/e-util/test-source-combo-box.c
+@@ -63,7 +63,7 @@ on_idle_create_widget (ESourceRegistry *registry)
+ 	button = gtk_toggle_button_new_with_label ("Show Colors");
+ 	gtk_box_pack_start (GTK_BOX (box), button, FALSE, FALSE, 0);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		combo_box, "show-colors",
+ 		button, "active",
+ 		G_BINDING_SYNC_CREATE |
+diff --git a/e-util/test-source-selector.c b/e-util/test-source-selector.c
+index 8c081630f9..b698adda0a 100644
+--- a/e-util/test-source-selector.c
++++ b/e-util/test-source-selector.c
+@@ -326,7 +326,7 @@ create_page (ESourceRegistry *registry,
+ 		NULL);
+ 	gtk_grid_attach (grid, widget, 1, 2, 1, 1);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		selector, "show-colors",
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -342,7 +342,7 @@ create_page (ESourceRegistry *registry,
+ 		NULL);
+ 	gtk_grid_attach (grid, widget, 1, 3, 1, 1);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		selector, "show-icons",
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -358,7 +358,7 @@ create_page (ESourceRegistry *registry,
+ 		NULL);
+ 	gtk_grid_attach (grid, widget, 1, 4, 1, 1);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		selector, "show-toggles",
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/e-util/test-tree-view-frame.c b/e-util/test-tree-view-frame.c
+index fa0f846d45..b9464bca97 100644
+--- a/e-util/test-tree-view-frame.c
++++ b/e-util/test-tree-view-frame.c
+@@ -226,7 +226,7 @@ build_test_window (void)
+ 	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		tree_view_frame, "toolbar-visible",
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -237,7 +237,7 @@ build_test_window (void)
+ 	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		tree_view, "reorderable",
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -276,7 +276,7 @@ build_test_window (void)
+ 	gtk_grid_attach (GTK_GRID (grid), widget, 1, 0, 1, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		selection, "mode",
+ 		widget, "active-id",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -304,7 +304,7 @@ build_test_window (void)
+ 	gtk_grid_attach (GTK_GRID (grid), widget, 1, 1, 1, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		tree_view_frame, "hscrollbar-policy",
+ 		widget, "active-id",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -332,7 +332,7 @@ build_test_window (void)
+ 	gtk_grid_attach (GTK_GRID (grid), widget, 1, 2, 1, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		tree_view_frame, "vscrollbar-policy",
+ 		widget, "active-id",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/libemail-engine/e-mail-session.c b/libemail-engine/e-mail-session.c
+index c931524064..b381b36081 100644
+--- a/libemail-engine/e-mail-session.c
++++ b/libemail-engine/e-mail-session.c
+@@ -1174,7 +1174,7 @@ mail_session_add_service (CamelSession *session,
+ 		/* Track the proxy resolver for this service. */
+ 		mail_session_configure_proxy_resolver (registry, service);
+ 
+-		g_object_bind_property (
++		e_binding_bind_property (
+ 			source, "display-name",
+ 			service, "display-name",
+ 			G_BINDING_SYNC_CREATE);
+diff --git a/mail/e-http-request.c b/mail/e-http-request.c
+index f9ae4a30cb..97cd9c9350 100644
+--- a/mail/e-http-request.c
++++ b/mail/e-http-request.c
+@@ -361,13 +361,19 @@ handle_http_request (GSimpleAsyncResult *res,
+ 		GError *error;
+ 		GMainContext *context;
+ 
++		message = soup_message_new (SOUP_METHOD_GET, uri);
++		if (!message) {
++			g_debug ("%s: Skipping invalid URI '%s'", G_STRFUNC, uri);
++			goto cleanup;
++		}
++
+ 		context = g_main_context_new ();
+ 		g_main_context_push_thread_default (context);
+ 
+ 		temp_session = soup_session_new_with_options (
+ 			SOUP_SESSION_TIMEOUT, 90, NULL);
+ 
+-		g_object_bind_property (
++		e_binding_bind_property (
+ 			soup_session, "proxy-resolver",
+ 			temp_session, "proxy-resolver",
+ 			G_BINDING_SYNC_CREATE);
+diff --git a/mail/e-mail-account-manager.c b/mail/e-mail-account-manager.c
+index 19a0c6ab36..48ca8e6136 100644
+--- a/mail/e-mail-account-manager.c
++++ b/mail/e-mail-account-manager.c
+@@ -603,7 +603,7 @@ mail_account_manager_constructed (GObject *object)
+ 	/* Chain up to parent's constructed() method. */
+ 	G_OBJECT_CLASS (e_mail_account_manager_parent_class)->constructed (object);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		store, "busy",
+ 		manager, "sensitive",
+ 		G_BINDING_SYNC_CREATE |
+diff --git a/mail/e-mail-account-store.c b/mail/e-mail-account-store.c
+index 4a685844c0..5b51f6ea49 100644
+--- a/mail/e-mail-account-store.c
++++ b/mail/e-mail-account-store.c
+@@ -485,7 +485,7 @@ mail_account_store_constructed (GObject *object)
+ 
+ 	/* Bind the default mail account ESource to our default
+ 	 * CamelService, with help from some transform functions. */
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		registry, "default-mail-account",
+ 		store, "default-service",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/mail/e-mail-config-activity-page.c b/mail/e-mail-config-activity-page.c
+index 8fef1e4d13..37a0ee7d19 100644
+--- a/mail/e-mail-config-activity-page.c
++++ b/mail/e-mail-config-activity-page.c
+@@ -68,7 +68,7 @@ mail_config_activity_page_constructed (GObject *object)
+ 	page->priv->activity_bar = widget;  /* do not reference */
+ 	/* EActivityBar controls its own visibility. */
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		widget, "visible",
+ 		frame, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -83,7 +83,7 @@ mail_config_activity_page_constructed (GObject *object)
+ 	page->priv->alert_bar = widget;  /* do not reference */
+ 	/* EAlertBar controls its own visibility. */
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		widget, "visible",
+ 		frame, "visible",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/mail/e-mail-config-assistant.c b/mail/e-mail-config-assistant.c
+index be2aa5cfdf..9cd2fde9e9 100644
+--- a/mail/e-mail-config-assistant.c
++++ b/mail/e-mail-config-assistant.c
+@@ -733,7 +733,7 @@ mail_config_assistant_constructed (GObject *object)
+ 	e_mail_config_assistant_add_page (assistant, page);
+ 	assistant->priv->lookup_page = g_object_ref (page);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		autodiscover_check, "active",
+ 		page, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -782,7 +782,7 @@ mail_config_assistant_constructed (GObject *object)
+ 			backend_extension, backend_name);
+ 
+ 		/* Keep display names synchronized. */
+-		g_object_bind_property (
++		e_binding_bind_property (
+ 			identity_source, "display-name",
+ 			scratch_source, "display-name",
+ 			G_BINDING_BIDIRECTIONAL |
+@@ -810,7 +810,7 @@ mail_config_assistant_constructed (GObject *object)
+ 
+ 		/* Each Receiving Options page is only visible when its
+ 		 * service backend is active on the Receiving Email page. */
+-		g_object_bind_property_full (
++		e_binding_bind_property_full (
+ 			assistant->priv->receiving_page, "active-backend",
+ 			page, "visible",
+ 			G_BINDING_SYNC_CREATE,
+@@ -859,7 +859,7 @@ mail_config_assistant_constructed (GObject *object)
+ 			backend_extension, backend_name);
+ 
+ 		/* Keep display names synchronized. */
+-		g_object_bind_property (
++		e_binding_bind_property (
+ 			identity_source, "display-name",
+ 			scratch_source, "display-name",
+ 			G_BINDING_BIDIRECTIONAL |
+@@ -882,17 +882,17 @@ mail_config_assistant_constructed (GObject *object)
+ 	e_mail_config_assistant_add_page (assistant, page);
+ 	assistant->priv->summary_page = g_object_ref (page);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		assistant, "account-backend",
+ 		page, "account-backend",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		assistant, "identity-source",
+ 		page, "identity-source",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		assistant, "transport-backend",
+ 		page, "transport-backend",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/mail/e-mail-config-auth-check.c b/mail/e-mail-config-auth-check.c
+index c69414ec0b..f547843936 100644
+--- a/mail/e-mail-config-auth-check.c
++++ b/mail/e-mail-config-auth-check.c
+@@ -340,7 +340,7 @@ mail_config_auth_check_constructed (GObject *object)
+ 	auth_check->priv->combo_box = widget;  /* do not reference */
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		widget, "active-id",
+ 		auth_check, "active-mechanism",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/mail/e-mail-config-confirm-page.c b/mail/e-mail-config-confirm-page.c
+index d99638cfcb..1882f0fc44 100644
+--- a/mail/e-mail-config-confirm-page.c
++++ b/mail/e-mail-config-confirm-page.c
+@@ -122,7 +122,7 @@ mail_config_confirm_page_constructed (GObject *object)
+ 	gtk_box_pack_start (GTK_BOX (page), widget, FALSE, FALSE, 0);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		page, "text",
+ 		widget, "label",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/mail/e-mail-config-defaults-page.c b/mail/e-mail-config-defaults-page.c
+index 9ca110ccf3..e9cfbf41fe 100644
+--- a/mail/e-mail-config-defaults-page.c
++++ b/mail/e-mail-config-defaults-page.c
+@@ -329,7 +329,7 @@ mail_config_defaults_page_add_real_folder (EMailConfigDefaultsPage *page,
+ 	gtk_box_pack_start (GTK_BOX (box), check_button, FALSE, FALSE, 0);
+ 	gtk_widget_show (check_button);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		settings, use_property_name,
+ 		check_button, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -345,7 +345,7 @@ mail_config_defaults_page_add_real_folder (EMailConfigDefaultsPage *page,
+ 	/* XXX CamelSettings only stores the folder's path name, but the
+ 	 *     EMFolderSelectionButton requires a full folder URI, so we
+ 	 *     have to do some fancy transforms for the binding to work. */
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		settings, property_name,
+ 		folder_button, "folder-uri",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -355,7 +355,7 @@ mail_config_defaults_page_add_real_folder (EMailConfigDefaultsPage *page,
+ 		g_object_ref (page),
+ 		(GDestroyNotify) g_object_unref);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		check_button, "active",
+ 		folder_button, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+@@ -619,7 +619,7 @@ mail_config_defaults_page_constructed (GObject *object)
+ 		gtk_widget_set_sensitive (widget, FALSE);
+ 	}
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		submission_ext, "replies-to-origin-folder",
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -716,7 +716,7 @@ mail_config_defaults_page_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (container), widget, 0, 2, 1, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		composition_ext, "cc",
+ 		widget, "text",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -741,7 +741,7 @@ mail_config_defaults_page_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (container), widget, 0, 4, 1, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		composition_ext, "bcc",
+ 		widget, "text",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -809,7 +809,7 @@ mail_config_defaults_page_constructed (GObject *object)
+ 		enum_value->value_nick, _("Ask for each message"));
+ 	g_type_class_unref (enum_class);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		mdn_ext, "response-policy",
+ 		widget, "active-id",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/mail/e-mail-config-identity-page.c b/mail/e-mail-config-identity-page.c
+index 70d89c7df3..a14d96bd40 100644
+--- a/mail/e-mail-config-identity-page.c
++++ b/mail/e-mail-config-identity-page.c
+@@ -288,7 +288,7 @@ mail_config_identity_page_constructed (GObject *object)
+ 	gtk_misc_set_alignment (GTK_MISC (widget), 0.0, 0.5);
+ 	gtk_box_pack_start (GTK_BOX (page), widget, FALSE, FALSE, 0);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		page, "show-instructions",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -300,7 +300,7 @@ mail_config_identity_page_constructed (GObject *object)
+ 	gtk_grid_set_column_spacing (GTK_GRID (widget), 6);
+ 	gtk_box_pack_start (GTK_BOX (page), widget, FALSE, FALSE, 0);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		page, "show-account-info",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -405,7 +405,7 @@ mail_config_identity_page_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (container), widget, 0, 2, 1, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		page, "show-email-address",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -424,7 +424,7 @@ mail_config_identity_page_constructed (GObject *object)
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		page, "show-email-address",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -510,7 +510,7 @@ mail_config_identity_page_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (container), widget, 0, 3, 1, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		page, "show-signatures",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -524,13 +524,13 @@ mail_config_identity_page_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (container), widget, 1, 3, 1, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "signature-uid",
+ 		widget, "active-id",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		page, "show-signatures",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -540,7 +540,7 @@ mail_config_identity_page_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (container), widget, 2, 3, 1, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		page, "show-signatures",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -560,7 +560,7 @@ mail_config_identity_page_constructed (GObject *object)
+ 		"active", TRUE,
+ 		NULL);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		page, "show-autodiscover-check",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/mail/e-mail-config-notebook.c b/mail/e-mail-config-notebook.c
+index ec487725d9..1d6bbe23b0 100644
+--- a/mail/e-mail-config-notebook.c
++++ b/mail/e-mail-config-notebook.c
+@@ -351,18 +351,18 @@ mail_config_notebook_constructed (GObject *object)
+ 	 * be authoritative since technically that's the one
+ 	 * shown on the Identity page. */
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		notebook->priv->identity_source, "display-name",
+ 		notebook->priv->account_source, "display-name",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		notebook->priv->identity_source, "display-name",
+ 		notebook->priv->transport_source, "display-name",
+ 		G_BINDING_SYNC_CREATE);
+ 
+ 	if (notebook->priv->collection_source != NULL)
+-		g_object_bind_property (
++		e_binding_bind_property (
+ 			notebook->priv->identity_source, "display-name",
+ 			notebook->priv->collection_source, "display-name",
+ 			G_BINDING_SYNC_CREATE);
+@@ -391,7 +391,7 @@ mail_config_notebook_constructed (GObject *object)
+ 	if (add_receiving_page) {
+ 		e_mail_config_notebook_add_page (notebook, page);
+ 
+-		g_object_bind_property (
++		e_binding_bind_property (
+ 			mail_identity_extension, "address",
+ 			page, "email-address",
+ 			G_BINDING_SYNC_CREATE);
+@@ -427,7 +427,7 @@ mail_config_notebook_constructed (GObject *object)
+ 		if (add_sending_page) {
+ 			e_mail_config_notebook_add_page (notebook, page);
+ 
+-			g_object_bind_property (
++			e_binding_bind_property (
+ 				mail_identity_extension, "address",
+ 				page, "email-address",
+ 				G_BINDING_SYNC_CREATE);
+diff --git a/mail/e-mail-config-provider-page.c b/mail/e-mail-config-provider-page.c
+index 4f923ae90b..46858ae217 100644
+--- a/mail/e-mail-config-provider-page.c
++++ b/mail/e-mail-config-provider-page.c
+@@ -76,7 +76,7 @@ mail_config_provider_page_handle_dependency (EMailConfigProviderPage *page,
+ 	backend = e_mail_config_provider_page_get_backend (page);
+ 	settings = e_mail_config_service_backend_get_settings (backend);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		settings, depname,
+ 		widget, "sensitive",
+ 		binding_flags);
+@@ -133,7 +133,7 @@ mail_config_provider_page_add_checkbox (EMailConfigProviderPage *page,
+ 	gtk_box_pack_start (GTK_BOX (page), widget, FALSE, FALSE, 0);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		settings, entry->name,
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -275,7 +275,7 @@ mail_config_provider_page_add_checkspin (EMailConfigProviderPage *page,
+ 	if (use_pspec != NULL) {
+ 		prefix = gtk_check_button_new_with_mnemonic (pre);
+ 
+-		g_object_bind_property (
++		e_binding_bind_property (
+ 			settings, use_pspec->name,
+ 			prefix, "active",
+ 			G_BINDING_BIDIRECTIONAL |
+@@ -290,14 +290,14 @@ mail_config_provider_page_add_checkspin (EMailConfigProviderPage *page,
+ 	gtk_box_pack_start (GTK_BOX (hbox), spin, FALSE, TRUE, 0);
+ 	gtk_widget_show (spin);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		settings, entry->name,
+ 		spin, "value",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+ 	if (use_pspec != NULL)
+-		g_object_bind_property (
++		e_binding_bind_property (
+ 			prefix, "active",
+ 			spin, "sensitive",
+ 			G_BINDING_SYNC_CREATE);
+@@ -349,7 +349,7 @@ mail_config_provider_page_add_entry (EMailConfigProviderPage *page,
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		input, "sensitive",
+ 		label, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+@@ -427,7 +427,7 @@ mail_config_provider_page_add_options (EMailConfigProviderPage *page,
+ 	gtk_box_pack_start (GTK_BOX (hbox), combo, FALSE, FALSE, 0);
+ 	gtk_widget_show (combo);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		settings, entry->name,
+ 		combo, "active-id",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -502,7 +502,7 @@ mail_config_provider_page_add_widgets (EMailConfigProviderPage *page)
+ 	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "enabled",
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -512,12 +512,12 @@ mail_config_provider_page_add_widgets (EMailConfigProviderPage *page)
+ 	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "enabled",
+ 		widget, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "interval-minutes",
+ 		widget, "value",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/mail/e-mail-config-security-page.c b/mail/e-mail-config-security-page.c
+index ef2f759b11..f3f5af0280 100644
+--- a/mail/e-mail-config-security-page.c
++++ b/mail/e-mail-config-security-page.c
+@@ -352,7 +352,7 @@ mail_config_security_page_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (container), widget, 0, 1, 1, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		composition_ext, "sign-imip",
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -441,7 +441,7 @@ mail_config_security_page_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (container), widget, 1, 2, 1, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		openpgp_ext, "signing-algorithm",
+ 		widget, "active-id",
+ 		G_BINDING_SYNC_CREATE |
+@@ -457,7 +457,7 @@ mail_config_security_page_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (container), widget, 0, 3, 2, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		openpgp_ext, "sign-by-default",
+ 		widget, "active",
+ 		G_BINDING_SYNC_CREATE |
+@@ -469,7 +469,7 @@ mail_config_security_page_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (container), widget, 0, 4, 2, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		openpgp_ext, "encrypt-to-self",
+ 		widget, "active",
+ 		G_BINDING_SYNC_CREATE |
+@@ -481,7 +481,7 @@ mail_config_security_page_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (container), widget, 0, 5, 2, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		openpgp_ext, "always-trust",
+ 		widget, "active",
+ 		G_BINDING_SYNC_CREATE |
+@@ -581,7 +581,7 @@ mail_config_security_page_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (container), widget, 1, 2, 1, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		smime_ext, "signing-algorithm",
+ 		widget, "active-id",
+ 		G_BINDING_SYNC_CREATE |
+@@ -597,13 +597,13 @@ mail_config_security_page_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (container), widget, 0, 3, 4, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		smime_ext, "sign-by-default",
+ 		widget, "active",
+ 		G_BINDING_SYNC_CREATE |
+ 		G_BINDING_BIDIRECTIONAL);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		smime_ext, "signing-certificate",
+ 		widget, "sensitive",
+ 		G_BINDING_SYNC_CREATE,
+@@ -662,13 +662,13 @@ mail_config_security_page_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (container), widget, 0, 5, 4, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		smime_ext, "encrypt-by-default",
+ 		widget, "active",
+ 		G_BINDING_SYNC_CREATE |
+ 		G_BINDING_BIDIRECTIONAL);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		smime_ext, "encryption-certificate",
+ 		widget, "sensitive",
+ 		G_BINDING_SYNC_CREATE,
+@@ -682,13 +682,13 @@ mail_config_security_page_constructed (GObject *object)
+ 	gtk_grid_attach (GTK_GRID (container), widget, 0, 6, 4, 1);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		smime_ext, "encrypt-to-self",
+ 		widget, "active",
+ 		G_BINDING_SYNC_CREATE |
+ 		G_BINDING_BIDIRECTIONAL);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		smime_ext, "encryption-certificate",
+ 		widget, "sensitive",
+ 		G_BINDING_SYNC_CREATE,
+diff --git a/mail/e-mail-config-service-notebook.c b/mail/e-mail-config-service-notebook.c
+index a4cac0cd8d..0591554832 100644
+--- a/mail/e-mail-config-service-notebook.c
++++ b/mail/e-mail-config-service-notebook.c
+@@ -208,7 +208,7 @@ mail_config_service_notebook_constructed (GObject *object)
+ 	gtk_notebook_set_show_border (GTK_NOTEBOOK (object), FALSE);
+ 
+ 	/* Current page is still -1 so skip G_BINDING_SYNC_CREATE. */
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		object, "page",
+ 		object, "active-backend",
+ 		G_BINDING_BIDIRECTIONAL,
+diff --git a/mail/e-mail-config-service-page.c b/mail/e-mail-config-service-page.c
+index 5e0457e7d6..d7747a5228 100644
+--- a/mail/e-mail-config-service-page.c
++++ b/mail/e-mail-config-service-page.c
+@@ -151,7 +151,7 @@ mail_config_service_page_new_candidate (EMailConfigServicePage *page,
+ 
+ 	/* Keep display names synchronized. */
+ 	if (opt_collection != NULL)
+-		g_object_bind_property (
++		e_binding_bind_property (
+ 			scratch_source, "display-name",
+ 			opt_collection, "display-name",
+ 			G_BINDING_BIDIRECTIONAL |
+@@ -696,7 +696,7 @@ e_mail_config_service_page_init (EMailConfigServicePage *page)
+ 	/* Keep the notebook's active page number synchronized with our
+ 	 * own "active-backend" property.  Avoid G_BINDING_SYNC_CREATE
+ 	 * since we haven't added any notebook pages. */
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		page, "active-backend",
+ 		page->priv->notebook, "active-backend",
+ 		G_BINDING_BIDIRECTIONAL);
+@@ -704,7 +704,7 @@ e_mail_config_service_page_init (EMailConfigServicePage *page)
+ 	/* Keep the combo box's active row number synchronized with our
+ 	 * own "active-backend" property.  Avoid G_BINDING_SYNC_CREATE
+ 	 * since we haven't added any combo box rows. */
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		page, "active-backend",
+ 		page->priv->type_combo, "active-id",
+ 		G_BINDING_BIDIRECTIONAL,
+@@ -713,7 +713,7 @@ e_mail_config_service_page_init (EMailConfigServicePage *page)
+ 		NULL, (GDestroyNotify) NULL);
+ 
+ 	/* This keeps the description field up-to-date. */
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		page->priv->type_combo, "active-id",
+ 		page->priv->desc_label, "label",
+ 		G_BINDING_DEFAULT,
+@@ -723,7 +723,7 @@ e_mail_config_service_page_init (EMailConfigServicePage *page)
+ 
+ 	/* For the "Server Type", either the combo
+ 	 * box or the label is visible, never both. */
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		page->priv->type_combo, "visible",
+ 		page->priv->type_label, "visible",
+ 		G_BINDING_SYNC_CREATE |
+diff --git a/mail/e-mail-config-sidebar.c b/mail/e-mail-config-sidebar.c
+index 5c23085677..8d6bd042ca 100644
+--- a/mail/e-mail-config-sidebar.c
++++ b/mail/e-mail-config-sidebar.c
+@@ -275,7 +275,7 @@ mail_config_sidebar_constructed (GObject *object)
+ 			notebook, page, (guint) ii, sidebar);
+ 	}
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		sidebar, "active",
+ 		notebook, "page",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/mail/e-mail-config-window.c b/mail/e-mail-config-window.c
+index d0cb7dbbaf..a65461e49f 100644
+--- a/mail/e-mail-config-window.c
++++ b/mail/e-mail-config-window.c
+@@ -387,7 +387,7 @@ mail_config_window_constructed (GObject *object)
+ 	widget = gtk_dialog_get_widget_for_response (
+ 		GTK_DIALOG (window), GTK_RESPONSE_OK);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		window->priv->notebook, "complete",
+ 		widget, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/mail/e-mail-display.c b/mail/e-mail-display.c
+index 2f2e3136d8..9d8bed43cf 100644
+--- a/mail/e-mail-display.c
++++ b/mail/e-mail-display.c
+@@ -414,7 +414,7 @@ plugin_widget_set_parent_element (GtkWidget *widget,
+ 	g_object_set_data (G_OBJECT (widget), "parent_element", element);
+ 	g_object_set_data (G_OBJECT (element), "widget", widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		element, "hidden",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE |
+@@ -1792,7 +1792,6 @@ web_view_process_http_uri_scheme_request (GTask *task,
+ 		GIOStream *cache_stream;
+ 		GError *error;
+ 		GMainContext *context;
+-		GProxyResolver *proxy_resolver = NULL;
+ 
+ 		message = soup_message_new (SOUP_METHOD_GET, uri);
+ 		if (!message) {
+@@ -1807,11 +1806,10 @@ web_view_process_http_uri_scheme_request (GTask *task,
+ 			SOUP_SESSION_TIMEOUT, 90, NULL);
+ #if 0
+ /* FIXME WK2 */
+-		/* Do not use g_object_bind_property() here, because it's not thread safe and
+-		 + this one-time setting may be sufficient too. */
+-		g_object_get (soup_session, "proxy-resolver", &proxy_resolver, NULL);
+-		g_object_set (temp_session, "proxy-resolver", proxy_resolver, NULL);
+-		g_clear_object (&proxy_resolver);
++		e_binding_bind_property (
++			soup_session, "proxy-resolver",
++			temp_session, "proxy-resolver",
++			G_BINDING_SYNC_CREATE);
+ 
+ #endif
+ 		soup_message_headers_append (
+diff --git a/mail/e-mail-junk-options.c b/mail/e-mail-junk-options.c
+index d4ec7b87e8..975bd368c2 100644
+--- a/mail/e-mail-junk-options.c
++++ b/mail/e-mail-junk-options.c
+@@ -181,7 +181,7 @@ mail_junk_options_rebuild (EMailJunkOptions *options)
+ 	if (session != NULL) {
+ 		GBinding *binding;
+ 
+-		binding = g_object_bind_property_full (
++		binding = e_binding_bind_property_full (
+ 			session, "junk-filter",
+ 			combo_box, "active-id",
+ 			G_BINDING_BIDIRECTIONAL |
+diff --git a/mail/e-mail-label-action.c b/mail/e-mail-label-action.c
+index 766fb7e0d2..9aceb3949c 100644
+--- a/mail/e-mail-label-action.c
++++ b/mail/e-mail-label-action.c
+@@ -22,6 +22,8 @@
+ #include <config.h>
+ #endif
+ 
++#include <libedataserver/libedataserver.h>
++
+ #include "e-mail-label-action.h"
+ 
+ #define E_MAIL_LABEL_ACTION_GET_PRIVATE(obj) \
+@@ -73,7 +75,7 @@ mail_label_action_menu_item_realize_cb (GtkWidget *menu_item)
+ 	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		action, "label",
+ 		widget, "label",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/mail/e-mail-paned-view.c b/mail/e-mail-paned-view.c
+index 9a8fd2d1e1..3530ad08cb 100644
+--- a/mail/e-mail-paned-view.c
++++ b/mail/e-mail-paned-view.c
+@@ -673,7 +673,7 @@ mail_paned_view_constructed (GObject *object)
+ 	priv->paned = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "orientation",
+ 		widget, "orientation",
+ 		G_BINDING_SYNC_CREATE);
+@@ -705,7 +705,7 @@ mail_paned_view_constructed (GObject *object)
+ 	gtk_widget_show (GTK_WIDGET (priv->display));
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "preview-visible",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index 476ad5a6cc..86b3ef3edd 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -3997,7 +3997,7 @@ e_mail_reader_init (EMailReader *reader,
+ 		g_slice_new0 (EMailReaderPrivate),
+ 		(GDestroyNotify) mail_reader_private_free);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		reader, "group-by-threads",
+ 		message_list, "group-by-threads",
+ 		G_BINDING_SYNC_CREATE);
+@@ -4192,7 +4192,7 @@ e_mail_reader_init (EMailReader *reader,
+ 	action_name = "mail-caret-mode";
+ 	action = e_mail_reader_get_action (reader, action_name);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		action, "active",
+ 		display, "caret-mode",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/mail/e-mail-tag-editor.c b/mail/e-mail-tag-editor.c
+index 75583431a3..7414d7e24b 100644
+--- a/mail/e-mail-tag-editor.c
++++ b/mail/e-mail-tag-editor.c
+@@ -260,7 +260,7 @@ e_mail_tag_editor_init (EMailTagEditor *editor)
+ 	gtk_box_pack_start (GTK_BOX (content_area), widget, TRUE, TRUE, 6);
+ 
+ 	widget = e_builder_get_widget (builder, "pixmap");
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		window, "icon-name",
+ 		widget, "icon-name",
+ 		G_BINDING_SYNC_CREATE);
+@@ -290,7 +290,7 @@ e_mail_tag_editor_init (EMailTagEditor *editor)
+ 	editor->priv->target_date = E_DATE_EDIT (widget);
+ 
+ 	widget = e_builder_get_widget (builder, "completed");
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		editor, "completed",
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/mail/e-mail-ui-session.c b/mail/e-mail-ui-session.c
+index 5e3cbe3147..b5b02ffc1c 100644
+--- a/mail/e-mail-ui-session.c
++++ b/mail/e-mail-ui-session.c
+@@ -453,7 +453,7 @@ mail_ui_session_constructed (GObject *object)
+ 	shell = e_shell_get_default ();
+ 
+ 	/* synchronize online state first, before any CamelService is created */
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell, "online",
+ 		session, "online",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/mail/em-folder-properties.c b/mail/em-folder-properties.c
+index 1ff917ed23..e3ca6a0bd7 100644
+--- a/mail/em-folder-properties.c
++++ b/mail/em-folder-properties.c
+@@ -257,7 +257,7 @@ emfp_get_folder_item (EConfig *ec,
+ 		switch (properties[ii]->value_type) {
+ 			case G_TYPE_BOOLEAN:
+ 				widget = gtk_check_button_new_with_mnemonic (blurb);
+-				g_object_bind_property (
++				e_binding_bind_property (
+ 					context->folder,
+ 					properties[ii]->name,
+ 					widget, "active",
+diff --git a/mail/em-folder-selector.c b/mail/em-folder-selector.c
+index abe03414e2..6f78e3568f 100644
+--- a/mail/em-folder-selector.c
++++ b/mail/em-folder-selector.c
+@@ -326,7 +326,7 @@ folder_selector_constructed (GObject *object)
+ 		GTK_DIALOG (selector), GTK_RESPONSE_OK);
+ 
+ 	/* No need to synchronize properties. */
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		selector, "default-button-label",
+ 		widget, "label",
+ 		G_BINDING_DEFAULT);
+@@ -354,7 +354,7 @@ folder_selector_constructed (GObject *object)
+ 		G_CALLBACK (folder_selector_action_add_cb),
+ 		selector);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		selector, "can-create",
+ 		widget, "toolbar-visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -387,7 +387,7 @@ folder_selector_constructed (GObject *object)
+ 	selector->priv->caption_label = g_object_ref (widget);
+ 	gtk_widget_hide (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		selector, "caption",
+ 		widget, "label",
+ 		G_BINDING_DEFAULT);
+diff --git a/mail/em-subscription-editor.c b/mail/em-subscription-editor.c
+index 9a84439bd3..5b870594bb 100644
+--- a/mail/em-subscription-editor.c
++++ b/mail/em-subscription-editor.c
+@@ -1792,7 +1792,7 @@ em_subscription_editor_init (EMSubscriptionEditor *editor)
+ 	editor->priv->notebook = widget;
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		editor->priv->combo_box, "active",
+ 		editor->priv->notebook, "page",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/modules/addressbook/e-book-shell-content.c b/modules/addressbook/e-book-shell-content.c
+index 781d8d9eba..706c228a1c 100644
+--- a/modules/addressbook/e-book-shell-content.c
++++ b/modules/addressbook/e-book-shell-content.c
+@@ -266,7 +266,7 @@ book_shell_content_constructed (GObject *object)
+ 	priv->paned = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "orientation",
+ 		widget, "orientation",
+ 		G_BINDING_SYNC_CREATE);
+@@ -289,7 +289,7 @@ book_shell_content_constructed (GObject *object)
+ 		EAB_CONTACT_DISPLAY (widget),
+ 		priv->preview_show_maps);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "preview-show-maps",
+ 		widget, "show-maps",
+ 		G_BINDING_SYNC_CREATE);
+@@ -310,7 +310,7 @@ book_shell_content_constructed (GObject *object)
+ 	priv->preview_pane = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "preview-visible",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/modules/addressbook/e-book-shell-view-actions.c b/modules/addressbook/e-book-shell-view-actions.c
+index 8fe5f63bda..a2ae672cca 100644
+--- a/modules/addressbook/e-book-shell-view-actions.c
++++ b/modules/addressbook/e-book-shell-view-actions.c
+@@ -1349,17 +1349,17 @@ e_book_shell_view_actions_init (EBookShellView *book_shell_view)
+ 
+ 	/* Fine tuning. */
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (CONTACT_PREVIEW), "active",
+ 		ACTION (CONTACT_VIEW_CLASSIC), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (CONTACT_PREVIEW), "active",
+ 		ACTION (CONTACT_VIEW_VERTICAL), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (CONTACT_PREVIEW), "active",
+ 		ACTION (CONTACT_PREVIEW_SHOW_MAPS), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/modules/backup-restore/e-mail-config-restore-page.c b/modules/backup-restore/e-mail-config-restore-page.c
+index 2fc21beed0..f6a1ece648 100644
+--- a/modules/backup-restore/e-mail-config-restore-page.c
++++ b/modules/backup-restore/e-mail-config-restore-page.c
+@@ -209,12 +209,12 @@ mail_config_restore_page_constructed (GObject *object)
+ 	page->priv->alert_bar = widget;  /* not referenced */
+ 	/* EActivityBar controls its own visibility. */
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		widget, "visible",
+ 		container, "visible",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		page->priv->toggle_button, "active",
+ 		page->priv->file_chooser, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/modules/backup-restore/evolution-backup-restore.c b/modules/backup-restore/evolution-backup-restore.c
+index a3a23eb4b8..da83a47efa 100644
+--- a/modules/backup-restore/evolution-backup-restore.c
++++ b/modules/backup-restore/evolution-backup-restore.c
+@@ -382,7 +382,7 @@ evolution_backup_restore_assistant_constructed (GObject *object)
+ 		ready_page = e_mail_config_restore_ready_page_new ();
+ 		e_mail_config_assistant_add_page (assistant, ready_page);
+ 
+-		g_object_bind_property_full (
++		e_binding_bind_property_full (
+ 			restore_page, "filename",
+ 			ready_page, "visible",
+ 			G_BINDING_SYNC_CREATE,
+diff --git a/modules/bogofilter/evolution-bogofilter.c b/modules/bogofilter/evolution-bogofilter.c
+index 14166cfd48..d10e8ccd7c 100644
+--- a/modules/bogofilter/evolution-bogofilter.c
++++ b/modules/bogofilter/evolution-bogofilter.c
+@@ -384,7 +384,7 @@ bogofilter_new_config_widget (EMailJunkFilter *junk_filter)
+ 	gtk_box_pack_start (GTK_BOX (box), widget, FALSE, FALSE, 0);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		junk_filter, "convert-to-unicode",
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/modules/book-config-ldap/e-source-ldap.c b/modules/book-config-ldap/e-source-ldap.c
+index d5700e8a5a..0aa81268cc 100644
+--- a/modules/book-config-ldap/e-source-ldap.c
++++ b/modules/book-config-ldap/e-source-ldap.c
+@@ -250,7 +250,7 @@ source_ldap_constructed (GObject *object)
+ 	extension_name = E_SOURCE_EXTENSION_AUTHENTICATION;
+ 	other_extension = e_source_get_extension (source, extension_name);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		other_extension, "method",
+ 		this_extension, "authentication",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -262,7 +262,7 @@ source_ldap_constructed (GObject *object)
+ 	extension_name = E_SOURCE_EXTENSION_SECURITY;
+ 	other_extension = e_source_get_extension (source, extension_name);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		other_extension, "method",
+ 		this_extension, "security",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/modules/book-config-ldap/evolution-book-config-ldap.c b/modules/book-config-ldap/evolution-book-config-ldap.c
+index d76cbdba3d..e7807027ab 100644
+--- a/modules/book-config-ldap/evolution-book-config-ldap.c
++++ b/modules/book-config-ldap/evolution-book-config-ldap.c
+@@ -625,7 +625,7 @@ book_config_ldap_insert_widgets (ESourceConfigBackend *backend,
+ 	context->security_combo = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		context->port_combo, "active",
+ 		context->security_combo, "active",
+ 		G_BINDING_DEFAULT,
+@@ -747,7 +747,7 @@ book_config_ldap_insert_widgets (ESourceConfigBackend *backend,
+ 
+ 	/* Only sensitive when we have complete
+ 	 * server and authentication details. */
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		config, "complete",
+ 		context->search_base_button, "sensitive",
+ 		G_BINDING_DEFAULT);
+@@ -850,7 +850,7 @@ book_config_ldap_insert_widgets (ESourceConfigBackend *backend,
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		extension, "port",
+ 		context->port_combo, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -874,19 +874,19 @@ book_config_ldap_insert_widgets (ESourceConfigBackend *backend,
+ 	extension_name = E_SOURCE_EXTENSION_LDAP_BACKEND;
+ 	extension = e_source_get_extension (scratch_source, extension_name);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "authentication",
+ 		context->auth_combo, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "can-browse",
+ 		context->can_browse_toggle, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "limit",
+ 		context->limit_spinbutton, "value",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -900,7 +900,7 @@ book_config_ldap_insert_widgets (ESourceConfigBackend *backend,
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "scope",
+ 		context->search_scope_combo, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -912,7 +912,7 @@ book_config_ldap_insert_widgets (ESourceConfigBackend *backend,
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "security",
+ 		context->security_combo, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/modules/book-config-webdav/evolution-book-config-webdav.c b/modules/book-config-webdav/evolution-book-config-webdav.c
+index cf955adcf6..15d0c026fb 100644
+--- a/modules/book-config-webdav/evolution-book-config-webdav.c
++++ b/modules/book-config-webdav/evolution-book-config-webdav.c
+@@ -151,13 +151,13 @@ book_config_webdav_insert_widgets (ESourceConfigBackend *backend,
+ 	extension_name = E_SOURCE_EXTENSION_WEBDAV_BACKEND;
+ 	extension = e_source_get_extension (scratch_source, extension_name);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "avoid-ifmatch",
+ 		context->avoid_ifmatch, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		extension, "soup-uri",
+ 		context->url_entry, "text",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/modules/cal-config-caldav/evolution-cal-config-caldav.c b/modules/cal-config-caldav/evolution-cal-config-caldav.c
+index 9de01a042c..652ab9e762 100644
+--- a/modules/cal-config-caldav/evolution-cal-config-caldav.c
++++ b/modules/cal-config-caldav/evolution-cal-config-caldav.c
+@@ -115,7 +115,7 @@ cal_config_caldav_run_dialog (GtkButton *button,
+ 		E_CALDAV_CHOOSER (widget), parent);
+ 
+ 	if (parent != NULL)
+-		g_object_bind_property (
++		e_binding_bind_property (
+ 			parent, "icon-name",
+ 			dialog, "icon-name",
+ 			G_BINDING_SYNC_CREATE);
+@@ -271,7 +271,7 @@ cal_config_caldav_insert_widgets (ESourceConfigBackend *backend,
+ 	extension_name = E_SOURCE_EXTENSION_WEBDAV_BACKEND;
+ 	extension = e_source_get_extension (scratch_source, extension_name);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "calendar-auto-schedule",
+ 		context->auto_schedule_toggle, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -283,7 +283,7 @@ cal_config_caldav_insert_widgets (ESourceConfigBackend *backend,
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		extension, "soup-uri",
+ 		context->url_entry, "text",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/modules/cal-config-contacts/evolution-cal-config-contacts.c b/modules/cal-config-contacts/evolution-cal-config-contacts.c
+index 91f5940433..032b6fc58b 100644
+--- a/modules/cal-config-contacts/evolution-cal-config-contacts.c
++++ b/modules/cal-config-contacts/evolution-cal-config-contacts.c
+@@ -179,7 +179,7 @@ book_config_birthdays_init_candidate (ESourceConfig *config,
+ 	extension_name = E_SOURCE_EXTENSION_CONTACTS_BACKEND;
+ 	extension = e_source_get_extension (scratch_source, extension_name);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "include-me",
+ 		birthdays->button, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/modules/cal-config-google/e-google-chooser-button.c b/modules/cal-config-google/e-google-chooser-button.c
+index 98e6b1dde5..d173f96d2b 100644
+--- a/modules/cal-config-google/e-google-chooser-button.c
++++ b/modules/cal-config-google/e-google-chooser-button.c
+@@ -154,7 +154,7 @@ google_chooser_button_constructed (GObject *object)
+ 	if (display_name != NULL && *display_name != '\0')
+ 		binding_flags |= G_BINDING_SYNC_CREATE;
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		webdav_extension, "display-name",
+ 		button->priv->label, "label",
+ 		binding_flags);
+@@ -211,7 +211,7 @@ google_chooser_button_clicked (GtkButton *button)
+ 	dialog = e_google_chooser_dialog_new (E_GOOGLE_CHOOSER (widget), parent);
+ 
+ 	if (parent != NULL)
+-		g_object_bind_property (
++		e_binding_bind_property (
+ 			parent, "icon-name",
+ 			dialog, "icon-name",
+ 			G_BINDING_SYNC_CREATE);
+diff --git a/modules/cal-config-local/evolution-cal-config-local.c b/modules/cal-config-local/evolution-cal-config-local.c
+index a37d0be090..ecfcb4183b 100644
+--- a/modules/cal-config-local/evolution-cal-config-local.c
++++ b/modules/cal-config-local/evolution-cal-config-local.c
+@@ -174,7 +174,7 @@ cal_config_local_insert_widgets (ESourceConfigBackend *backend,
+ 	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		context->custom_file_checkbox, "active",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -205,7 +205,7 @@ cal_config_local_insert_widgets (ESourceConfigBackend *backend,
+ 		G_CALLBACK (cal_config_local_file_set_cb),
+ 		context->custom_file_checkbox);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		context->custom_file_checkbox, "active",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -217,7 +217,7 @@ cal_config_local_insert_widgets (ESourceConfigBackend *backend,
+ 	context->writable_checkbox = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		context->custom_file_checkbox, "active",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -225,7 +225,7 @@ cal_config_local_insert_widgets (ESourceConfigBackend *backend,
+ 	extension_name = E_SOURCE_EXTENSION_LOCAL_BACKEND;
+ 	extension = e_source_get_extension (scratch_source, extension_name);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		extension, "custom-file",
+ 		context->custom_file_checkbox, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/modules/cal-config-weather/evolution-cal-config-weather.c b/modules/cal-config-weather/evolution-cal-config-weather.c
+index a2654cda14..12a4925a9b 100644
+--- a/modules/cal-config-weather/evolution-cal-config-weather.c
++++ b/modules/cal-config-weather/evolution-cal-config-weather.c
+@@ -280,7 +280,7 @@ cal_config_weather_insert_widgets (ESourceConfigBackend *backend,
+ 			E_SOURCE_WEATHER (extension),
+ 			cal_config_weather_get_units_from_locale ());
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		extension, "location",
+ 		context->location_entry, "location",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -290,7 +290,7 @@ cal_config_weather_insert_widgets (ESourceConfigBackend *backend,
+ 		gweather_location_ref (world),
+ 		(GDestroyNotify) gweather_location_unref);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "units",
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/modules/cal-config-webcal/evolution-cal-config-webcal.c b/modules/cal-config-webcal/evolution-cal-config-webcal.c
+index f14baf7404..2b84455948 100644
+--- a/modules/cal-config-webcal/evolution-cal-config-webcal.c
++++ b/modules/cal-config-webcal/evolution-cal-config-webcal.c
+@@ -138,7 +138,7 @@ cal_config_webcal_insert_widgets (ESourceConfigBackend *backend,
+ 	extension_name = E_SOURCE_EXTENSION_WEBDAV_BACKEND;
+ 	extension = e_source_get_extension (scratch_source, extension_name);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		extension, "soup-uri",
+ 		context->url_entry, "text",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/modules/calendar/e-cal-base-shell-content.c b/modules/calendar/e-cal-base-shell-content.c
+index c4b77c5bb0..70cda06c23 100644
+--- a/modules/calendar/e-cal-base-shell-content.c
++++ b/modules/calendar/e-cal-base-shell-content.c
+@@ -322,7 +322,7 @@ cal_base_shell_content_constructed (GObject *object)
+ 	cal_base_shell_content->priv->model = klass->new_cal_model (
+ 		cal_base_shell_content->priv->data_model, registry, shell);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		cal_base_shell_content->priv->model, "timezone",
+ 		cal_base_shell_content->priv->data_model, "timezone",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/modules/calendar/e-cal-shell-content.c b/modules/calendar/e-cal-shell-content.c
+index bbf89081af..7c651402b8 100644
+--- a/modules/calendar/e-cal-shell-content.c
++++ b/modules/calendar/e-cal-shell-content.c
+@@ -1162,7 +1162,7 @@ cal_shell_content_setup_foreign_sources (EShellWindow *shell_window,
+ 	foreign_content = e_shell_view_get_shell_content (foreign_view);
+ 	foreign_model = e_cal_base_shell_content_get_model (E_CAL_BASE_SHELL_CONTENT (foreign_content));
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		foreign_model, "default-source-uid",
+ 		model, "default-source-uid",
+ 		G_BINDING_SYNC_CREATE);
+@@ -1247,7 +1247,7 @@ cal_shell_content_view_created (ECalBaseShellContent *cal_base_shell_content)
+ 	gal_view_instance_load (view_instance);
+ 
+ 	/* Keep the toolbar view buttons in sync with the calendar. */
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		cal_shell_content, "current-view-id",
+ 		ACTION (CALENDAR_VIEW_DAY), "current-value",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -1501,12 +1501,12 @@ cal_shell_content_constructed (GObject *object)
+ 	cal_shell_content->priv->task_model =
+ 		e_cal_model_tasks_new (cal_shell_content->priv->task_data_model, e_shell_get_registry (shell), shell);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		cal_shell_content->priv->memo_model, "timezone",
+ 		cal_shell_content->priv->memo_data_model, "timezone",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		cal_shell_content->priv->task_model, "timezone",
+ 		cal_shell_content->priv->task_data_model, "timezone",
+ 		G_BINDING_SYNC_CREATE);
+@@ -1539,7 +1539,7 @@ cal_shell_content_constructed (GObject *object)
+ 
+ 	e_cal_shell_content_create_calendar_views (cal_shell_content);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		cal_shell_content, "current-view-id",
+ 		cal_shell_content->priv->calendar_notebook, "page",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/modules/calendar/e-cal-shell-view.c b/modules/calendar/e-cal-shell-view.c
+index b33d2e84ea..fde1069303 100644
+--- a/modules/calendar/e-cal-shell-view.c
++++ b/modules/calendar/e-cal-shell-view.c
+@@ -46,17 +46,17 @@ cal_shell_view_add_action_button (GtkBox *box,
+ 	gtk_box_pack_start (box, button, FALSE, FALSE, 0);
+ 	gtk_widget_show (button);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		action, "visible",
+ 		button, "visible",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		action, "sensitive",
+ 		button, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		action, "tooltip",
+ 		button, "tooltip-text",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/modules/calendar/e-memo-shell-content.c b/modules/calendar/e-memo-shell-content.c
+index 8433a4eb6c..6db340eeed 100644
+--- a/modules/calendar/e-memo-shell-content.c
++++ b/modules/calendar/e-memo-shell-content.c
+@@ -473,7 +473,7 @@ memo_shell_content_constructed (GObject *object)
+ 	memo_shell_content->priv->paned = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "orientation",
+ 		widget, "orientation",
+ 		G_BINDING_SYNC_CREATE);
+@@ -511,7 +511,7 @@ memo_shell_content_constructed (GObject *object)
+ 	memo_shell_content->priv->preview_pane = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "preview-visible",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/modules/calendar/e-memo-shell-view-actions.c b/modules/calendar/e-memo-shell-view-actions.c
+index 7ae86220f9..51e71f0e31 100644
+--- a/modules/calendar/e-memo-shell-view-actions.c
++++ b/modules/calendar/e-memo-shell-view-actions.c
+@@ -883,12 +883,12 @@ e_memo_shell_view_actions_init (EMemoShellView *memo_shell_view)
+ 
+ 	/* Fine tuning. */
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (MEMO_PREVIEW), "active",
+ 		ACTION (MEMO_VIEW_CLASSIC), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (MEMO_PREVIEW), "active",
+ 		ACTION (MEMO_VIEW_VERTICAL), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/modules/calendar/e-task-shell-content.c b/modules/calendar/e-task-shell-content.c
+index 2e6729d55c..d35fc0bd0e 100644
+--- a/modules/calendar/e-task-shell-content.c
++++ b/modules/calendar/e-task-shell-content.c
+@@ -494,7 +494,7 @@ task_shell_content_constructed (GObject *object)
+ 	task_shell_content->priv->paned = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "orientation",
+ 		widget, "orientation",
+ 		G_BINDING_SYNC_CREATE);
+@@ -532,7 +532,7 @@ task_shell_content_constructed (GObject *object)
+ 	task_shell_content->priv->preview_pane = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		object, "preview-visible",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/modules/calendar/e-task-shell-view-actions.c b/modules/calendar/e-task-shell-view-actions.c
+index bc6df8a3a9..9e58b75b78 100644
+--- a/modules/calendar/e-task-shell-view-actions.c
++++ b/modules/calendar/e-task-shell-view-actions.c
+@@ -1083,12 +1083,12 @@ e_task_shell_view_actions_init (ETaskShellView *task_shell_view)
+ 
+ 	/* Fine tuning. */
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (TASK_PREVIEW), "active",
+ 		ACTION (TASK_VIEW_CLASSIC), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (TASK_PREVIEW), "active",
+ 		ACTION (TASK_VIEW_VERTICAL), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/modules/mail-config/e-mail-config-google-summary.c b/modules/mail-config/e-mail-config-google-summary.c
+index 190408f93c..c5ac1baf7f 100644
+--- a/modules/mail-config/e-mail-config-google-summary.c
++++ b/modules/mail-config/e-mail-config-google-summary.c
+@@ -240,7 +240,7 @@ mail_config_google_summary_constructed (GObject *object)
+ 	gtk_grid_set_column_spacing (GTK_GRID (widget), 6);
+ 	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "applicable",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -286,12 +286,12 @@ mail_config_google_summary_constructed (GObject *object)
+ 	 * the Summary Page has no sources yet.  Set the display
+ 	 * name while committing instead. */
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension->priv->calendar_toggle, "active",
+ 		collection_extension, "calendar-enabled",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension->priv->contacts_toggle, "active",
+ 		collection_extension, "contacts-enabled",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/modules/mail-config/e-mail-config-remote-accounts.c b/modules/mail-config/e-mail-config-remote-accounts.c
+index 15a3d3b0fe..45fdd60ba8 100644
+--- a/modules/mail-config/e-mail-config-remote-accounts.c
++++ b/modules/mail-config/e-mail-config-remote-accounts.c
+@@ -264,7 +264,7 @@ mail_config_remote_backend_insert_widgets (EMailConfigServiceBackend *backend,
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		settings, "security-method",
+ 		remote_backend->security_combo_box, "active-id",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -273,13 +273,13 @@ mail_config_remote_backend_insert_widgets (EMailConfigServiceBackend *backend,
+ 		e_binding_transform_enum_nick_to_value,
+ 		NULL, (GDestroyNotify) NULL);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		settings, "port",
+ 		remote_backend->port_entry, "port",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		settings, "security-method",
+ 		remote_backend->port_entry, "security-method",
+ 		G_BINDING_SYNC_CREATE);
+@@ -293,7 +293,7 @@ mail_config_remote_backend_insert_widgets (EMailConfigServiceBackend *backend,
+ 	/* Don't use G_BINDING_SYNC_CREATE here since the widget
+ 	 * chooses its initial mechanism more intelligently than
+ 	 * a simple property binding would. */
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		settings, "auth-mechanism",
+ 		remote_backend->auth_check, "active-mechanism",
+ 		G_BINDING_BIDIRECTIONAL);
+diff --git a/modules/mail-config/e-mail-config-sendmail-backend.c b/modules/mail-config/e-mail-config-sendmail-backend.c
+index 365c20f2da..dbba920867 100644
+--- a/modules/mail-config/e-mail-config-sendmail-backend.c
++++ b/modules/mail-config/e-mail-config-sendmail-backend.c
+@@ -83,7 +83,7 @@ mail_config_sendmail_backend_insert_widgets (EMailConfigServiceBackend *backend,
+ 	gtk_grid_attach (GTK_GRID (container), widget, 1, 1, 1, 1);
+ 	custom_binary_entry = widget;
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		use_custom_binary_check, "active",
+ 		label, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+@@ -104,7 +104,7 @@ mail_config_sendmail_backend_insert_widgets (EMailConfigServiceBackend *backend,
+ 	gtk_grid_attach (GTK_GRID (container), widget, 1, 3, 1, 1);
+ 	custom_args_entry = widget;
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		use_custom_args_check, "active",
+ 		label, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+@@ -129,12 +129,12 @@ mail_config_sendmail_backend_insert_widgets (EMailConfigServiceBackend *backend,
+ 	gtk_grid_attach (GTK_GRID (container), widget, 0, 5, 2, 1);
+ 	send_in_offline = widget;
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		use_custom_binary_check, "active",
+ 		custom_binary_entry, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		settings, "use-custom-binary",
+ 		use_custom_binary_check, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -146,12 +146,12 @@ mail_config_sendmail_backend_insert_widgets (EMailConfigServiceBackend *backend,
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		use_custom_args_check, "active",
+ 		custom_args_entry, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		settings, "use-custom-args",
+ 		use_custom_args_check, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -163,7 +163,7 @@ mail_config_sendmail_backend_insert_widgets (EMailConfigServiceBackend *backend,
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		settings, "send-in-offline",
+ 		send_in_offline, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/modules/mail-config/e-mail-config-smtp-backend.c b/modules/mail-config/e-mail-config-smtp-backend.c
+index 8c1d8dc621..1f1d0cdcd8 100644
+--- a/modules/mail-config/e-mail-config-smtp-backend.c
++++ b/modules/mail-config/e-mail-config-smtp-backend.c
+@@ -202,7 +202,7 @@ mail_config_smtp_backend_insert_widgets (EMailConfigServiceBackend *backend,
+ 	gtk_widget_show (widget);
+ 	g_free (markup);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		priv->auth_required_toggle, "active",
+ 		widget, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+@@ -214,7 +214,7 @@ mail_config_smtp_backend_insert_widgets (EMailConfigServiceBackend *backend,
+ 	gtk_box_pack_start (GTK_BOX (parent), widget, FALSE, FALSE, 0);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		priv->auth_required_toggle, "active",
+ 		widget, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+@@ -262,7 +262,7 @@ mail_config_smtp_backend_insert_widgets (EMailConfigServiceBackend *backend,
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		settings, "security-method",
+ 		priv->security_combo_box, "active-id",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -271,13 +271,13 @@ mail_config_smtp_backend_insert_widgets (EMailConfigServiceBackend *backend,
+ 		e_binding_transform_enum_nick_to_value,
+ 		NULL, (GDestroyNotify) NULL);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		settings, "port",
+ 		priv->port_entry, "port",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		settings, "security-method",
+ 		priv->port_entry, "security-method",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/modules/mail-config/e-mail-config-yahoo-summary.c b/modules/mail-config/e-mail-config-yahoo-summary.c
+index 70b119b4b7..9d97604146 100644
+--- a/modules/mail-config/e-mail-config-yahoo-summary.c
++++ b/modules/mail-config/e-mail-config-yahoo-summary.c
+@@ -235,7 +235,7 @@ mail_config_yahoo_summary_constructed (GObject *object)
+ 	gtk_grid_set_column_spacing (GTK_GRID (widget), 6);
+ 	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension, "applicable",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -267,7 +267,7 @@ mail_config_yahoo_summary_constructed (GObject *object)
+ 	 * the Summary Page has no sources yet.  Set the display
+ 	 * name while committing instead. */
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		extension->priv->calendar_toggle, "active",
+ 		collection_extension, "calendar-enabled",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/modules/mail/e-mail-shell-sidebar.c b/modules/mail/e-mail-shell-sidebar.c
+index 0ae59950d8..c5f7677a17 100644
+--- a/modules/mail/e-mail-shell-sidebar.c
++++ b/modules/mail/e-mail-shell-sidebar.c
+@@ -167,7 +167,7 @@ mail_shell_sidebar_constructed (GObject *object)
+ 	mail_shell_sidebar->priv->folder_tree = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell_view, "state-key-file",
+ 		widget, "key-file",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/modules/mail/e-mail-shell-view-actions.c b/modules/mail/e-mail-shell-view-actions.c
+index 84bd30dac5..f4829f2048 100644
+--- a/modules/mail/e-mail-shell-view-actions.c
++++ b/modules/mail/e-mail-shell-view-actions.c
+@@ -2204,55 +2204,55 @@ e_mail_shell_view_actions_init (EMailShellView *mail_shell_view)
+ 
+ 	/* Fine tuning. */
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (MAIL_THREADS_GROUP_BY), "active",
+ 		ACTION (MAIL_FOLDER_SELECT_THREAD), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (MAIL_THREADS_GROUP_BY), "active",
+ 		ACTION (MAIL_FOLDER_SELECT_SUBTHREAD), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (MAIL_THREADS_GROUP_BY), "active",
+ 		ACTION (MAIL_THREADS_COLLAPSE_ALL), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (MAIL_THREADS_GROUP_BY), "active",
+ 		ACTION (MAIL_THREADS_EXPAND_ALL), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (MAIL_PREVIEW), "active",
+ 		mail_view, "preview-visible",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (MAIL_THREADS_GROUP_BY), "active",
+ 		mail_shell_content, "group-by-threads",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (MAIL_PREVIEW), "active",
+ 		ACTION (MAIL_VIEW_CLASSIC), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (MAIL_PREVIEW), "active",
+ 		ACTION (MAIL_VIEW_VERTICAL), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (MAIL_SHOW_DELETED), "active",
+ 		mail_view, "show-deleted",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell_backend, "busy",
+ 		ACTION (MAIL_STOP), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+@@ -2260,12 +2260,12 @@ e_mail_shell_view_actions_init (EMailShellView *mail_shell_view)
+ 	/* Keep the sensitivity of "Create Search Folder from Search"
+ 	 * in sync with "Save Search" so that its only selectable when
+ 	 * showing search results. */
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (SEARCH_SAVE), "sensitive",
+ 		ACTION (MAIL_CREATE_SEARCH_FOLDER), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell, "online",
+ 		ACTION (MAIL_DOWNLOAD), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/modules/mail/e-mail-shell-view-private.c b/modules/mail/e-mail-shell-view-private.c
+index ccd8204467..743bf4e9a2 100644
+--- a/modules/mail/e-mail-shell-view-private.c
++++ b/modules/mail/e-mail-shell-view-private.c
+@@ -680,7 +680,7 @@ e_mail_shell_view_private_constructed (EMailShellView *mail_shell_view)
+ 
+ 	/* The folder tree and scope combo box are both insensitive
+ 	 * when searching beyond the currently selected folder. */
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		folder_tree, "sensitive",
+ 		combo_box, "sensitive",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -787,7 +787,7 @@ e_mail_shell_view_private_constructed (EMailShellView *mail_shell_view)
+ 	e_mail_shell_view_update_search_filter (mail_shell_view);
+ 
+ 	/* This binding must come after e_mail_reader_init(). */
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell_content, "group-by-threads",
+ 		mail_view, "group-by-threads",
+ 		G_BINDING_BIDIRECTIONAL |
+@@ -1292,7 +1292,7 @@ send_receive_add_to_menu (SendReceiveData *data,
+ 	menu_item = gtk_menu_item_new ();
+ 	gtk_widget_show (menu_item);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		service, "display-name",
+ 		menu_item, "label",
+ 		G_BINDING_SYNC_CREATE);
+@@ -1609,7 +1609,7 @@ e_mail_shell_view_update_send_receive_menus (EMailShellView *mail_shell_view)
+ 		gtk_widget_show (GTK_WIDGET (tool_item));
+ 		priv->send_receive_tool_item = tool_item;
+ 
+-		g_object_bind_property (
++		e_binding_bind_property (
+ 			ACTION (MAIL_SEND_RECEIVE), "sensitive",
+ 			tool_item, "sensitive",
+ 			G_BINDING_SYNC_CREATE);
+diff --git a/modules/mail/em-composer-prefs.c b/modules/mail/em-composer-prefs.c
+index d0f390db81..3a9d29275d 100644
+--- a/modules/mail/em-composer-prefs.c
++++ b/modules/mail/em-composer-prefs.c
+@@ -1173,7 +1173,7 @@ em_composer_prefs_construct (EMComposerPrefs *prefs,
+ 		em_composer_prefs_outbox_delay_id_to_setting,
+ 		NULL, NULL);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		e_builder_get_widget (prefs->builder, "chkUseOutbox"), "active",
+ 		widget, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+@@ -1295,7 +1295,7 @@ em_composer_prefs_construct (EMComposerPrefs *prefs,
+ 	send_account_override_setup (prefs->builder, mail_backend, registry);
+ 
+ 	widget = e_builder_get_widget (prefs->builder, "sao-prefer-folder-check");
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		send_override, "prefer-folder",
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL | G_BINDING_SYNC_CREATE);
+diff --git a/modules/mail/em-mailer-prefs.c b/modules/mail/em-mailer-prefs.c
+index 1fa963121e..81284c1f8e 100644
+--- a/modules/mail/em-mailer-prefs.c
++++ b/modules/mail/em-mailer-prefs.c
+@@ -1051,7 +1051,7 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 	gtk_container_add (GTK_CONTAINER (container), widget);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		session, "label-store",
+ 		widget, "list-store",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/modules/settings/e-settings-mail-reader.c b/modules/settings/e-settings-mail-reader.c
+index c323ec8bef..bb31347bc2 100644
+--- a/modules/settings/e-settings-mail-reader.c
++++ b/modules/settings/e-settings-mail-reader.c
+@@ -72,7 +72,7 @@ settings_mail_reader_idle_cb (EExtension *extension)
+ 
+ 	source = e_source_registry_ref_source (registry, "vfolder");
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		source, "enabled",
+ 		action_group, "visible",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/modules/spamassassin/evolution-spamassassin.c b/modules/spamassassin/evolution-spamassassin.c
+index 934b090f6d..c48d109eef 100644
+--- a/modules/spamassassin/evolution-spamassassin.c
++++ b/modules/spamassassin/evolution-spamassassin.c
+@@ -552,7 +552,7 @@ spam_assassin_new_config_widget (EMailJunkFilter *junk_filter)
+ 	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		junk_filter, "local-only",
+ 		widget, "active",
+ 		G_BINDING_BIDIRECTIONAL |
+diff --git a/modules/startup-wizard/e-mail-config-import-progress-page.c b/modules/startup-wizard/e-mail-config-import-progress-page.c
+index 7acdeb8d1d..c742bdbd11 100644
+--- a/modules/startup-wizard/e-mail-config-import-progress-page.c
++++ b/modules/startup-wizard/e-mail-config-import-progress-page.c
+@@ -203,7 +203,7 @@ mail_config_import_progress_page_constructed (GObject *object)
+ 		widget, "text",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		activity, "percent",
+ 		widget, "fraction",
+ 		G_BINDING_SYNC_CREATE,
+@@ -222,7 +222,7 @@ mail_config_import_progress_page_constructed (GObject *object)
+ 	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+ 	page->priv->cancelled_msg = widget;  /* not referenced */
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		activity, "state",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE,
+@@ -235,7 +235,7 @@ mail_config_import_progress_page_constructed (GObject *object)
+ 	page->priv->completed_msg = widget;  /* not referenced */
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		activity, "state",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE,
+diff --git a/plugins/mail-notification/mail-notification.c b/plugins/mail-notification/mail-notification.c
+index e5f9feb9f3..1e624fdc08 100644
+--- a/plugins/mail-notification/mail-notification.c
++++ b/plugins/mail-notification/mail-notification.c
+@@ -677,7 +677,7 @@ get_config_widget_sound (void)
+ 	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		master, "active",
+ 		widget, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/shell/e-shell-searchbar.c b/shell/e-shell-searchbar.c
+index 3339a63091..9fc1f98d99 100644
+--- a/shell/e-shell-searchbar.c
++++ b/shell/e-shell-searchbar.c
+@@ -716,30 +716,30 @@ shell_searchbar_constructed (GObject *object)
+ 
+ 	action = E_SHELL_WINDOW_ACTION_SEARCH_CLEAR (shell_window);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		action, "sensitive",
+ 		widget, "secondary-icon-sensitive",
+ 		G_BINDING_SYNC_CREATE);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		action, "icon-name",
+ 		widget, "secondary-icon-name",
+ 		G_BINDING_SYNC_CREATE);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		action, "tooltip",
+ 		widget, "secondary-icon-tooltip-text",
+ 		G_BINDING_SYNC_CREATE);
+ 
+ 	action = E_SHELL_WINDOW_ACTION_SEARCH_OPTIONS (shell_window);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		action, "sensitive",
+ 		widget, "primary-icon-sensitive",
+ 		G_BINDING_SYNC_CREATE);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		action, "icon-name",
+ 		widget, "primary-icon-name",
+ 		G_BINDING_SYNC_CREATE);
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		action, "tooltip",
+ 		widget, "primary-icon-tooltip-text",
+ 		G_BINDING_SYNC_CREATE);
+@@ -916,7 +916,7 @@ e_shell_searchbar_init (EShellSearchbar *searchbar)
+ 	widget = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 3);
+ 	gtk_box_pack_start (box, widget, FALSE, FALSE, 0);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		searchbar, "filter-visible",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -1011,7 +1011,7 @@ e_shell_searchbar_init (EShellSearchbar *searchbar)
+ 	widget = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 3);
+ 	gtk_box_pack_start (box, widget, FALSE, FALSE, 0);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		searchbar, "scope-visible",
+ 		widget, "visible",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/shell/e-shell-sidebar.c b/shell/e-shell-sidebar.c
+index 3a4d791203..315efc699d 100644
+--- a/shell/e-shell-sidebar.c
++++ b/shell/e-shell-sidebar.c
+@@ -481,7 +481,7 @@ e_shell_sidebar_init (EShellSidebar *shell_sidebar)
+ 	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+ 	gtk_widget_show (widget);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell_sidebar, "icon-name",
+ 		widget, "icon-name",
+ 		G_BINDING_SYNC_CREATE);
+@@ -498,7 +498,7 @@ e_shell_sidebar_init (EShellSidebar *shell_sidebar)
+ 	gtk_label_set_attributes (GTK_LABEL (widget), attribute_list);
+ 	pango_attr_list_unref (attribute_list);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell_sidebar, "primary-text",
+ 		widget, "label",
+ 		G_BINDING_SYNC_CREATE);
+@@ -514,7 +514,7 @@ e_shell_sidebar_init (EShellSidebar *shell_sidebar)
+ 	gtk_label_set_attributes (GTK_LABEL (widget), attribute_list);
+ 	pango_attr_list_unref (attribute_list);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell_sidebar, "secondary-text",
+ 		widget, "label",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/shell/e-shell-window-actions.c b/shell/e-shell-window-actions.c
+index 278a32f566..60afaa0b43 100644
+--- a/shell/e-shell-window-actions.c
++++ b/shell/e-shell-window-actions.c
+@@ -1399,56 +1399,56 @@ e_shell_window_actions_init (EShellWindow *shell_window)
+ 
+ 	gtk_action_set_sensitive (ACTION (SEARCH_QUICK), FALSE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell_window, "sidebar-visible",
+ 		ACTION (SHOW_SIDEBAR), "active",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell_window, "switcher-visible",
+ 		ACTION (SHOW_SWITCHER), "active",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell_window, "taskbar-visible",
+ 		ACTION (SHOW_TASKBAR), "active",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell_window, "toolbar-visible",
+ 		ACTION (SHOW_TOOLBAR), "active",
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (SHOW_SIDEBAR), "active",
+ 		ACTION (SHOW_SWITCHER), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (SHOW_SIDEBAR), "active",
+ 		ACTION (SWITCHER_STYLE_BOTH), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (SHOW_SIDEBAR), "active",
+ 		ACTION (SWITCHER_STYLE_ICONS), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (SHOW_SIDEBAR), "active",
+ 		ACTION (SWITCHER_STYLE_TEXT), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (SHOW_SIDEBAR), "active",
+ 		ACTION (SWITCHER_STYLE_USER), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		ACTION (SHOW_SIDEBAR), "active",
+ 		ACTION (SWITCHER_MENU), "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/shell/e-shell-window-private.c b/shell/e-shell-window-private.c
+index 77749fbbeb..76e1799168 100644
+--- a/shell/e-shell-window-private.c
++++ b/shell/e-shell-window-private.c
+@@ -379,25 +379,25 @@ e_shell_window_private_constructed (EShellWindow *shell_window)
+ 
+ 	action = ACTION (WORK_OFFLINE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell, "online",
+ 		action, "visible",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell, "network-available",
+ 		action, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+ 	action = ACTION (WORK_ONLINE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell, "online",
+ 		action, "visible",
+ 		G_BINDING_SYNC_CREATE |
+ 		G_BINDING_INVERT_BOOLEAN);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell, "network-available",
+ 		action, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/shell/e-shell-window.c b/shell/e-shell-window.c
+index e4536b8a15..19f7bc66ae 100644
+--- a/shell/e-shell-window.c
++++ b/shell/e-shell-window.c
+@@ -474,7 +474,7 @@ shell_window_construct_toolbar (EShellWindow *shell_window)
+ 	box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+ 	gtk_widget_show (box);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell_window, "toolbar-visible",
+ 		box, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -522,7 +522,7 @@ shell_window_construct_toolbar (EShellWindow *shell_window)
+ 	 *     It's a bit of a Rube Goldberg machine and should be
+ 	 *     reworked, but it's just serving one (now documented)
+ 	 *     corner case and works for now. */
+-	g_object_bind_property_full (
++	e_binding_bind_property_full (
+ 		shell_window, "active-view",
+ 		item, "prefer-item",
+ 		G_BINDING_SYNC_CREATE,
+@@ -557,12 +557,12 @@ shell_window_construct_sidebar (EShellWindow *shell_window)
+ 	switcher = e_shell_switcher_new ();
+ 	shell_window->priv->switcher = g_object_ref_sink (switcher);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell_window, "sidebar-visible",
+ 		switcher, "visible",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell_window, "switcher-visible",
+ 		switcher, "toolbar-visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -624,7 +624,7 @@ shell_window_construct_taskbar (EShellWindow *shell_window)
+ 	status_area = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 3);
+ 	gtk_container_set_border_width (GTK_CONTAINER (status_area), 3);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell_window, "taskbar-visible",
+ 		status_area, "visible",
+ 		G_BINDING_SYNC_CREATE);
+@@ -638,12 +638,12 @@ shell_window_construct_taskbar (EShellWindow *shell_window)
+ 		GTK_BOX (status_area), online_button, FALSE, TRUE, 0);
+ 	gtk_widget_show (online_button);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell, "online",
+ 		online_button, "online",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		shell, "network-available",
+ 		online_button, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+diff --git a/shell/e-shell.c b/shell/e-shell.c
+index 2c8a834167..6a2f9d2bf1 100644
+--- a/shell/e-shell.c
++++ b/shell/e-shell.c
+@@ -1263,7 +1263,7 @@ shell_constructed (GObject *object)
+ 
+ 	monitor = g_network_monitor_get_default ();
+ 
+-	g_object_bind_property (
++	e_binding_bind_property (
+ 		monitor, "network-available",
+ 		object, "network-available",
+ 		G_BINDING_SYNC_CREATE);
+-- 
+2.15.0
+

@@ -1,0 +1,47 @@
+From 57b3d0a50a65d6ad5e722896240a2d38359c1b46 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 26 Mar 2015 10:13:57 +0100
+Subject: [PATCH 0361/1800] Bug 745013 - handle_http_request: GBinding not
+ thread safe
+
+---
+ mail/e-mail-display.c | 16 ++++++++++------
+ 1 file changed, 10 insertions(+), 6 deletions(-)
+
+diff --git a/mail/e-mail-display.c b/mail/e-mail-display.c
+index 8fcc313b79..2f2e3136d8 100644
+--- a/mail/e-mail-display.c
++++ b/mail/e-mail-display.c
+@@ -1792,6 +1792,7 @@ web_view_process_http_uri_scheme_request (GTask *task,
+ 		GIOStream *cache_stream;
+ 		GError *error;
+ 		GMainContext *context;
++		GProxyResolver *proxy_resolver = NULL;
+ 
+ 		message = soup_message_new (SOUP_METHOD_GET, uri);
+ 		if (!message) {
+@@ -1804,12 +1805,15 @@ web_view_process_http_uri_scheme_request (GTask *task,
+ 
+ 		temp_session = soup_session_new_with_options (
+ 			SOUP_SESSION_TIMEOUT, 90, NULL);
+-/* FIXME WK2
+-		g_object_bind_property (
+-			soup_session, "proxy-resolver",
+-			temp_session, "proxy-resolver",
+-			G_BINDING_SYNC_CREATE);
+-*/
++#if 0
++/* FIXME WK2 */
++		/* Do not use g_object_bind_property() here, because it's not thread safe and
++		 + this one-time setting may be sufficient too. */
++		g_object_get (soup_session, "proxy-resolver", &proxy_resolver, NULL);
++		g_object_set (temp_session, "proxy-resolver", proxy_resolver, NULL);
++		g_clear_object (&proxy_resolver);
++
++#endif
+ 		soup_message_headers_append (
+ 			message->request_headers, "User-Agent", "Evolution/" VERSION);
+ /* FIXME WK2
+-- 
+2.15.0
+

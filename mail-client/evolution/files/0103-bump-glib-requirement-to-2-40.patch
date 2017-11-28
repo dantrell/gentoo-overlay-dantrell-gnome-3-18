@@ -1,0 +1,29 @@
+From 81ea04461360c2ab6218eccf4599cee9f86546b3 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 25 Nov 2014 13:48:31 +0100
+Subject: [PATCH 0103/1800] Bump GLib requirement to 2.40
+
+The evolution-data-server already requires GLib 2.40, thus this is more
+like a sync of the requirements, than a real dependency change.
+---
+ configure.ac | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index e3915e52f7..5e5d32c569 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -33,8 +33,8 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+ dnl Required Packages
+ 
+ dnl Keep these two definitions in agreement.
+-m4_define([glib_minimum_version], [2.36.0])
+-m4_define([glib_encoded_version], [GLIB_VERSION_2_36])
++m4_define([glib_minimum_version], [2.40.0])
++m4_define([glib_encoded_version], [GLIB_VERSION_2_40])
+ 
+ dnl Keep these two definitions in agreement.
+ m4_define([gdk_minimum_version], [3.10.0])
+-- 
+2.15.0
+

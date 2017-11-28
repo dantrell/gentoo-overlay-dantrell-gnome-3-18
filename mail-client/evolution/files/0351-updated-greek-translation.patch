@@ -1,0 +1,837 @@
+From 4fba130cfd2bc0e0e5f2f15ff34361f1928cb12a Mon Sep 17 00:00:00 2001
+From: Efstathios Iosifidis <iefstathios@gmail.com>
+Date: Sat, 21 Feb 2015 20:52:44 +0000
+Subject: [PATCH 0351/1800] Updated Greek translation
+
+---
+ po/el.po | 211 +++++++++++++++++++++++++--------------------------------------
+ 1 file changed, 83 insertions(+), 128 deletions(-)
+
+diff --git a/po/el.po b/po/el.po
+index 4c762618c8..69a4bfee6d 100644
+--- a/po/el.po
++++ b/po/el.po
+@@ -45,9 +45,9 @@
+ msgid ""
+ msgstr ""
+ "Project-Id-Version: evolution.HEAD\n"
+-"Report-Msgid-Bugs-To: http://bugzilla.gnome.org/enter_bug.cgi?product=evolut"
+-"ion&keywords=I18N+L10N&component=Miscellaneous\n"
+-"POT-Creation-Date: 2015-02-20 17:19+0000\n"
++"Report-Msgid-Bugs-To: http://bugzilla.gnome.org/enter_bug.cgi?"
++"product=evolution&keywords=I18N+L10N&component=Miscellaneous\n"
++"POT-Creation-Date: 2015-02-21 19:45+0000\n"
+ "PO-Revision-Date: 2015-02-20 22:04+0300\n"
+ "Last-Translator: Dimitris Spingos (Δημήτρης Σπίγγος) <dmtrs32@gmail.com>\n"
+ "Language-Team: team@gnome.gr\n"
+@@ -2517,7 +2517,7 @@ msgstr "Το ημερολόγιο δεν έχει σημειωθεί για ερ
+ 
+ #: ../calendar/calendar.error.xml.h:74
+ msgid "Cannot save event"
+-msgstr "Αδυναμία αποθήκευσης γεγονότος"
++msgstr "Αδυναμία αποθήκευσης συμβάντος"
+ 
+ #. Translators: {0} is the name of the calendar source
+ #: ../calendar/calendar.error.xml.h:76
+@@ -2576,109 +2576,91 @@ msgstr "Αποτυχία ανοίγματος καταλόγου εργασιώ
+ 
+ #. Translators: {0} is the name of the calendar.
+ #: ../calendar/calendar.error.xml.h:93
+-#| msgid "Failed to create an event in a calendar '{0}'"
+ msgid "Failed to create an event in the calendar '{0}'"
+ msgstr "Αποτυχία δημιουργίας συμβάντος στο ημερολόγιο '{0}'"
+ 
+ #. Translators: {0} is the name of the memo list.
+ #: ../calendar/calendar.error.xml.h:95
+-#| msgid "Failed to create a memo in a memo list '{0}'"
+ msgid "Failed to create a memo in the memo list '{0}'"
+ msgstr "Αποτυχία δημιουργίας υπενθύμισης στον κατάλογο υπενθυμίσεων '{0}'"
+ 
+ #. Translators: {0} is the name of the task list.
+ #: ../calendar/calendar.error.xml.h:97
+-#| msgid "Failed to create a task in a task list '{0}'"
+ msgid "Failed to create a task in the task list '{0}'"
+ msgstr "Αποτυχία δημιουργίας εργασίας στον κατάλογο εργασιών '{0}'"
+ 
+ #. Translators: {0} is the name of the calendar.
+ #: ../calendar/calendar.error.xml.h:99
+-#| msgid "Failed to modify an event in a calendar '{0}'"
+ msgid "Failed to modify an event in the calendar '{0}'"
+ msgstr "Αποτυχία τροποποίησης συμβάντος στο ημερολόγιο '{0}'"
+ 
+ #. Translators: {0} is the name of the memo list.
+ #: ../calendar/calendar.error.xml.h:101
+-#| msgid "Failed to modify a memo in a memo list '{0}'"
+ msgid "Failed to modify a memo in the memo list '{0}'"
+ msgstr "Αποτυχία τροποποίησης υπενθύμισης στον κατάλογο υπενθυμίσεων '{0}'"
+ 
+ #. Translators: {0} is the name of the task list.
+ #: ../calendar/calendar.error.xml.h:103
+-#| msgid "Failed to modify a task in a task list '{0}'"
+ msgid "Failed to modify a task in the task list '{0}'"
+ msgstr "Αποτυχία τροποποίησης εργασίας στον κατάλογο εργασιών '{0}'"
+ 
+ #. Translators: {0} is the name of the calendar.
+ #: ../calendar/calendar.error.xml.h:105
+-#| msgid "Failed to delete an event in a calendar '{0}'"
+ msgid "Failed to delete an event in the calendar '{0}'"
+ msgstr "Αποτυχία διαγραφής συμβάντος στο ημερολόγιο '{0}'"
+ 
+ #. Translators: {0} is the name of the memo list.
+ #: ../calendar/calendar.error.xml.h:107
+-#| msgid "Failed to delete a memo in a memo list '{0}'"
+ msgid "Failed to delete a memo in the memo list '{0}'"
+ msgstr "Αποτυχία διαγραφής υπενθύμισης στον κατάλογο υπενθυμίσεων '{0}'"
+ 
+ #. Translators: {0} is the name of the task list.
+ #: ../calendar/calendar.error.xml.h:109
+-#| msgid "Failed to delete a task in a task list '{0}'"
+ msgid "Failed to delete a task in the task list '{0}'"
+ msgstr "Αποτυχία διαγραφής εργασίας στον κατάλογο εργασιών '{0}'"
+ 
+ #. Translators: {0} is the name of the calendar.
+ #: ../calendar/calendar.error.xml.h:111
+-#| msgid "Failed to update an event in a calendar '{0}'"
+ msgid "Failed to update an event in the calendar '{0}'"
+ msgstr "Αποτυχία ενημέρωσης συμβάντος στο ημερολόγιο '{0}'"
+ 
+ #. Translators: {0} is the name of the memo list.
+ #: ../calendar/calendar.error.xml.h:113
+-#| msgid "Failed to update a memo in a memo list '{0}'"
+ msgid "Failed to update a memo in the memo list '{0}'"
+ msgstr "Αποτυχία ενημέρωσης υπενθύμισης στον κατάλογο υπενθυμίσεων '{0}'"
+ 
+ #. Translators: {0} is the name of the task list.
+ #: ../calendar/calendar.error.xml.h:115
+-#| msgid "Failed to update a task in a task list '{0}'"
+ msgid "Failed to update a task in the task list '{0}'"
+ msgstr "Αποτυχία ενημέρωσης εργασίας στον κατάλογο εργασιών '{0}'"
+ 
+ #. Translators: {0} is the name of the calendar.
+ #: ../calendar/calendar.error.xml.h:117
+-#| msgid "Failed to send an event to a calendar '{0}'"
+ msgid "Failed to send an event to the calendar '{0}'"
+ msgstr "Αποτυχία αποστολής συμβάντος στο ημερολόγιο '{0}'"
+ 
+ #. Translators: {0} is the name of the memo list.
+ #: ../calendar/calendar.error.xml.h:119
+-#| msgid "Failed to send a memo to a memo list '{0}'"
+ msgid "Failed to send a memo to the memo list '{0}'"
+ msgstr "Αποτυχία αποστολής υπενθύμισης στον κατάλογο υπενθυμίσεων '{0}'"
+ 
+ #. Translators: {0} is the name of the task list.
+ #: ../calendar/calendar.error.xml.h:121
+-#| msgid "Failed to send a task to a task list '{0}'"
+ msgid "Failed to send a task to the task list '{0}'"
+ msgstr "Αποτυχία αποστολής εργασίας στον κατάλογο εργασιών '{0}'"
+ 
+ #. Translators: {0} is the name of the calendar.
+ #: ../calendar/calendar.error.xml.h:123
+-#| msgid "Error creating view for a calendar '{0}'"
+ msgid "Error creating view for the calendar '{0}'"
+ msgstr "Σφάλμα κατά τη δημιουργία προβολής για το ημερολόγιο '{0}'"
+ 
+ #. Translators: {0} is the name of the task list.
+ #: ../calendar/calendar.error.xml.h:125
+-#| msgid "Error creating view for a task list '{0}'"
+ msgid "Error creating view for the task list '{0}'"
+ msgstr "Σφάλμα κατά τη δημιουργία προβολής για τον κατάλογο εργασιών '{0}'"
+ 
+ #. Translators: {0} is the name of the memo list.
+ #: ../calendar/calendar.error.xml.h:127
+-#| msgid "Error creating view for a memo list '{0}'"
+ msgid "Error creating view for the memo list '{0}'"
+ msgstr "Σφάλμα κατά τη δημιουργία προβολής για τον κατάλογο υπενθυμίσεων '{0}'"
+ 
+@@ -3438,7 +3420,7 @@ msgstr "Επανεμ_φάνιση"
+ 
+ #: ../calendar/gui/dialogs/event-editor.c:227
+ msgid "Make this a recurring event"
+-msgstr "Να γίνει το γεγονός επαναλαμβανόμενο"
++msgstr "Να γίνει το συμβάν επαναλαμβανόμενο"
+ 
+ #: ../calendar/gui/dialogs/event-editor.c:232 ../e-util/e-send-options.ui.h:14
+ msgid "Send Options"
+@@ -3451,11 +3433,11 @@ msgstr "Εισαγωγή προχωρημένων επιλογών αποστο
+ 
+ #: ../calendar/gui/dialogs/event-editor.c:242
+ msgid "All _Day Event"
+-msgstr "Ολοή_μερο γεγονός"
++msgstr "Ολοή_μερο συμβάν"
+ 
+ #: ../calendar/gui/dialogs/event-editor.c:244
+ msgid "Toggles whether to have All Day Event"
+-msgstr "Εναλλαγή της προβολής του ολοήμερου γεγονότος"
++msgstr "Εναλλαγή της προβολής του ολοήμερου συμβάντος"
+ 
+ #: ../calendar/gui/dialogs/event-editor.c:253
+ msgid "_Free/Busy"
+@@ -3477,28 +3459,28 @@ msgstr "Παρευρισκόμενοι"
+ 
+ #: ../calendar/gui/dialogs/event-editor.c:573
+ msgid "Print this event"
+-msgstr "Εκτύπωση αυτού του γεγονότος"
++msgstr "Εκτύπωση αυτού του συμβάντος"
+ 
+ #: ../calendar/gui/dialogs/event-page.c:557
+ msgid "Event's start time is in the past"
+-msgstr "Ο χρόνο έναρξης του γεγονότος είναι στο παρελθόν"
++msgstr "Ο χρόνο έναρξης του συμβάντος είναι στο παρελθόν"
+ 
+ #: ../calendar/gui/dialogs/event-page.c:634
+ msgid "Event cannot be edited, because the selected calendar is read only"
+ msgstr ""
+-"Δεν είναι δυνατή η επεξεργασία του γεγονότος επειδή το επιλεγμένο ημερολόγιο "
++"Δεν είναι δυνατή η επεξεργασία του συμβάντος επειδή το επιλεγμένο ημερολόγιο "
+ "είναι μόνο για ανάγνωση"
+ 
+ #: ../calendar/gui/dialogs/event-page.c:638
+ msgid "Event cannot be fully edited, because you are not the organizer"
+ msgstr ""
+-"Δεν είναι δυνατή η πλήρης επεξεργασία του γεγονότος επειδή δεν είστε ο "
++"Δεν είναι δυνατή η πλήρης επεξεργασία του συμβάντος επειδή δεν είστε ο "
+ "οργανωτής"
+ 
+ #: ../calendar/gui/dialogs/event-page.c:650
+ #: ../calendar/gui/dialogs/event-page.c:3178
+ msgid "This event has reminders"
+-msgstr "Αυτό το γεγονός έχει υπομνήσεις"
++msgstr "Αυτό το συμβάν έχει υπενθυμήσεις"
+ 
+ #: ../calendar/gui/dialogs/event-page.c:717
+ #: ../calendar/gui/dialogs/event-page.ui.h:13
+@@ -3507,7 +3489,7 @@ msgstr "_Διοργανωτής:"
+ 
+ #: ../calendar/gui/dialogs/event-page.c:1309
+ msgid "Event with no start date"
+-msgstr "Γεγονός χωρίς ημερομηνία έναρξης"
++msgstr "Συμβάν χωρίς ημερομηνία έναρξης"
+ 
+ #: ../calendar/gui/dialogs/event-page.c:1312
+ msgid "Event with no end date"
+@@ -3639,7 +3621,7 @@ msgstr "_Περίληψη:"
+ 
+ #: ../calendar/gui/dialogs/event-page.ui.h:21
+ msgid "Event Description"
+-msgstr "Περιγραφή Γεγονότος"
++msgstr "Περιγραφή Συμβάντος"
+ 
+ #: ../calendar/gui/dialogs/event-page.ui.h:26
+ #: ../calendar/gui/dialogs/task-page.ui.h:33
+@@ -3771,12 +3753,12 @@ msgstr "_Περίληψη:"
+ #, c-format
+ msgid "You are modifying a recurring event. What would you like to modify?"
+ msgstr ""
+-"Τροποποιείτε ένα επαναλαμβανόμενο γεγονός. Τι θα θέλατε να τροποποιήσετε;"
++"Τροποποιείτε ένα επαναλαμβανόμενο συμβάν. Τι θα θέλατε να τροποποιήσετε;"
+ 
+ #: ../calendar/gui/dialogs/recur-comp.c:54
+ #, c-format
+ msgid "You are delegating a recurring event. What would you like to delegate?"
+-msgstr "Αναθέτετε ένα επαναλαμβανόμενο γεγονός. Τι θα θέλατε να αναθέσετε;"
++msgstr "Αναθέτετε ένα επαναλαμβανόμενο συμβάν. Τι θα θέλατε να αναθέσετε;"
+ 
+ #: ../calendar/gui/dialogs/recur-comp.c:58
+ #, c-format
+@@ -3819,7 +3801,7 @@ msgstr "Η ημερομηνία επανεμφάνισης δεν είναι έ
+ #: ../calendar/gui/dialogs/recurrence-page.c:1045
+ msgid "End time of the recurrence was before event's start"
+ msgstr ""
+-"Η ώρα λήξης της επανεμφάνισης προηγείται της ώρας έναρξης του γεγονότος"
++"Η ώρα λήξης της επανεμφάνισης προηγείται της ώρας έναρξης του συμβάντος"
+ 
+ #. TRANSLATORS: Entire string is for example: This appointment recurs/Every [x] week(s) on [Wednesday] [forever]'
+ #. * (dropdown menu options are in [square brackets]). This means that after the 'on', name of a week day always follows.
+@@ -4033,7 +4015,7 @@ msgstr "Προεπισκόπηση"
+ #: ../calendar/gui/dialogs/send-comp.c:172
+ #: ../calendar/gui/dialogs/send-comp.c:254
+ msgid "Send my reminders with this event"
+-msgstr "Αποστολή των υπομνήσεων με αυτό το γεγονός"
++msgstr "Αποστολή των υπενθυμήσεών μου με αυτό το συμβάν"
+ 
+ #: ../calendar/gui/dialogs/send-comp.c:174
+ #: ../calendar/gui/dialogs/send-comp.c:256
+@@ -4204,7 +4186,7 @@ msgstr "Νέα συνάντηση"
+ 
+ #: ../calendar/gui/ea-cal-view.c:285
+ msgid "New All Day Event"
+-msgstr "Νέο ολοήμερο γεγονός"
++msgstr "Νέο ολοήμερο συμβάν"
+ 
+ #: ../calendar/gui/ea-cal-view.c:286
+ msgid "New Meeting"
+@@ -4233,15 +4215,15 @@ msgstr "Είναι μια συγκέντρωση."
+ #: ../calendar/gui/ea-cal-view-event.c:247
+ #, c-format
+ msgid "Calendar Event: Summary is %s."
+-msgstr "Γεγονός ημερολογίου: Η περίληψη είναι %s."
++msgstr "Συμβάν ημερολογίου: Η περίληψη είναι %s."
+ 
+ #: ../calendar/gui/ea-cal-view-event.c:250
+ msgid "Calendar Event: It has no summary."
+-msgstr "Γεγονός ημερολογίου: Δεν έχει περίληψη."
++msgstr "Συμβάν ημερολογίου: Δεν έχει περίληψη."
+ 
+ #: ../calendar/gui/ea-cal-view-event.c:273
+ msgid "calendar view event"
+-msgstr "προβολή γεγονότος ημερολογίου"
++msgstr "προβολή συμβάντος ημερολογίου"
+ 
+ #: ../calendar/gui/ea-cal-view-event.c:505
+ msgid "Grab Focus"
+@@ -4251,14 +4233,14 @@ msgstr "Λήψη εστίασης"
+ #, c-format
+ msgid "It has %d event."
+ msgid_plural "It has %d events."
+-msgstr[0] "Έχει %d γεγονός."
+-msgstr[1] "Έχει %d γεγονότα."
++msgstr[0] "Έχει %d συμβάν."
++msgstr[1] "Έχει %d συμβάντα."
+ 
+ #. To translators: Here, "It" is either like "Work Week View: July
+ #. 10th - July 14th, 2006." or "Day View: Thursday July 13th, 2006."
+ #: ../calendar/gui/ea-day-view.c:114 ../calendar/gui/ea-week-view.c:110
+ msgid "It has no events."
+-msgstr "Δεν έχει γεγονότα."
++msgstr "Δεν έχει συμβάντα."
+ 
+ #: ../calendar/gui/ea-day-view.c:121
+ #, c-format
+@@ -4285,11 +4267,11 @@ msgstr "ένας πίνακας για την προβολή και επιλογ
+ 
+ #: ../calendar/gui/ea-jump-button.c:150
+ msgid "Jump button"
+-msgstr "Jump button"
++msgstr "Κουμπί Jump"
+ 
+ #: ../calendar/gui/ea-jump-button.c:159
+ msgid "Click here, you can find more events."
+-msgstr "Κάντε κλικ εδώ για να βρείτε περισσότερα γεγονότα."
++msgstr "Κάντε κλικ εδώ για να βρείτε περισσότερα συμβάντα."
+ 
+ #. Translator: Entire string is like "Pop up an alert %d days before start of appointment"
+ #: ../calendar/gui/e-alarm-list.c:370 ../calendar/gui/misc.c:97
+@@ -4503,19 +4485,19 @@ msgstr "Τροποποιήθηκε"
+ 
+ #: ../calendar/gui/e-calendar-view.c:411
+ msgid "Cut selected events to the clipboard"
+-msgstr "Αποκοπή επιλεγμένων γεγονότων στο πρόχειρο"
++msgstr "Αποκοπή επιλεγμένων συμβάντων στο πρόχειρο"
+ 
+ #: ../calendar/gui/e-calendar-view.c:417
+ msgid "Copy selected events to the clipboard"
+-msgstr "Αντιγραφή επιλεγμένων γεγονότων στο πρόχειρο"
++msgstr "Αντιγραφή επιλεγμένων συμβάντων στο πρόχειρο"
+ 
+ #: ../calendar/gui/e-calendar-view.c:423
+ msgid "Paste events from the clipboard"
+-msgstr "Επικόλληση γεγονότων από το πρόχειρο"
++msgstr "Επικόλληση συμβάντων από το πρόχειρο"
+ 
+ #: ../calendar/gui/e-calendar-view.c:429
+ msgid "Delete selected events"
+-msgstr "Διαγραφή επιλεγμένων γεγονότων"
++msgstr "Διαγραφή επιλεγμένων συμβάντων"
+ 
+ #: ../calendar/gui/e-calendar-view.c:810
+ msgid "Pasted text doesn't contain valid iCalendar data"
+@@ -5289,7 +5271,7 @@ msgstr "Απαιτείται τουλάχιστον ένας παρευρισκ
+ 
+ #: ../calendar/gui/itip-utils.c:929 ../calendar/gui/itip-utils.c:1090
+ msgid "Event information"
+-msgstr "Πληροφορίες γεγονότος"
++msgstr "Πληροφορίες συμβάντος"
+ 
+ #: ../calendar/gui/itip-utils.c:932 ../calendar/gui/itip-utils.c:1093
+ msgid "Task information"
+@@ -5391,7 +5373,7 @@ msgstr "Πληροφορίες iCalendar"
+ #, c-format
+ msgid "Unable to book a resource, the new event collides with some other."
+ msgstr ""
+-"Αδύνατη η κράτηση ενός πόρου, το νέο γεγονός συγκρούεται με κάποιο άλλο."
++"Αδύνατη η κράτηση ενός πόρου, το νέο συμβάν συγκρούεται με κάποιο άλλο."
+ 
+ #: ../calendar/gui/itip-utils.c:1153
+ msgid "Unable to book a resource, error: "
+@@ -5399,11 +5381,11 @@ msgstr "Αδύνατη η κράτηση ενός πόρου, σφάλμα: "
+ 
+ #: ../calendar/gui/itip-utils.c:1324
+ msgid "You must be an attendee of the event."
+-msgstr "Πρέπει να είστε παρευρισκόμενος για αυτό το γεγονός."
++msgstr "Πρέπει να είστε παρευρισκόμενος για αυτό το συμβάν."
+ 
+ #: ../calendar/gui/itip-utils.c:1917
+ msgid "Sending an event"
+-msgstr "Αποστολή μηνύματος"
++msgstr "Αποστολή συμβάντος"
+ 
+ #: ../calendar/gui/itip-utils.c:1921
+ msgid "Sending a memo"
+@@ -5690,7 +5672,7 @@ msgstr "Εισαγωγέας vCalendar Evolution"
+ 
+ #: ../calendar/importers/icalendar-importer.c:1065
+ msgid "Calendar Events"
+-msgstr "Γεγονότα Ημερολογίου"
++msgstr "Συμβάντα Ημερολογίου"
+ 
+ #: ../calendar/importers/icalendar-importer.c:1108
+ msgid "Gnome Calendar"
+@@ -5704,13 +5686,13 @@ msgstr "Έξυπνος εισαγωγέας Ημερολογίου Evolution"
+ #: ../calendar/importers/icalendar-importer.c:1494
+ msgctxt "iCalImp"
+ msgid "Meeting"
+-msgstr "Συγκέντρωση"
++msgstr "Συνάντηση"
+ 
+ #: ../calendar/importers/icalendar-importer.c:1180
+ #: ../calendar/importers/icalendar-importer.c:1494
+ msgctxt "iCalImp"
+ msgid "Event"
+-msgstr "Γεγονός"
++msgstr "Συμβάν"
+ 
+ #: ../calendar/importers/icalendar-importer.c:1183
+ #: ../calendar/importers/icalendar-importer.c:1495
+@@ -7512,7 +7494,6 @@ msgid "Sign this message with your S/MIME Signature Certificate"
+ msgstr "Υπογράψτε αυτό το μήνυμα με την πιστοποιημένη υπογραφή S/MIME"
+ 
+ #: ../composer/e-composer-actions.c:576
+-#| msgid "Unicode"
+ msgid "Unicode smilyes"
+ msgstr "Μειδιάματα Unicode"
+ 
+@@ -7820,7 +7801,7 @@ msgstr "Evolution Alarm Notify"
+ 
+ #: ../data/evolution-alarm-notify.desktop.in.in.h:2
+ msgid "Calendar event notifications"
+-msgstr "Ειδοποιήσεις γεγονότων ημερολογίου"
++msgstr "Ειδοποιήσεις συμβάντων ημερολογίου"
+ 
+ #: ../data/evolution.desktop.in.in.h:1 ../mail/e-mail-browser.c:1032
+ #: ../modules/mailto-handler/evolution-mailto-handler.c:210
+@@ -8025,9 +8006,8 @@ msgid ""
+ "arguments."
+ msgstr ""
+ "Πλήρης διαδρομή για μια εντολή του Bogofilter. Αν δεν οριστεί, τότε "
+-"χρησιμοποιείται η διαδρομή του χρόνου μεταγλώττισης, συνήθως "
+-"/usr/bin/bogofilter. Η εντολή δεν πρέπει να περιέχει οποιοδήποτε άλλο "
+-"όρισμα."
++"χρησιμοποιείται η διαδρομή του χρόνου μεταγλώττισης, συνήθως /usr/bin/"
++"bogofilter. Η εντολή δεν πρέπει να περιέχει οποιοδήποτε άλλο όρισμα."
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:1
+ msgid "Save directory for reminder audio"
+@@ -8053,7 +8033,8 @@ msgstr "Μονάδες υπόμνησης γενεθλίων και επετεί
+ msgid ""
+ "Units for a birthday or anniversary reminder, \"minutes\", \"hours\" or "
+ "\"days\""
+-msgstr "Μονάδες για υπόμνηση γενεθλίων ή επετείου, \"λεπτά\", \"ώρες\" ή \"ημέρες\""
++msgstr ""
++"Μονάδες για υπόμνηση γενεθλίων ή επετείου, \"λεπτά\", \"ώρες\" ή \"ημέρες\""
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:7
+ msgid "Compress weekends in month view"
+@@ -8172,76 +8153,74 @@ msgstr "Αριθμός μονάδων για το καθορισμό της πρ
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:31
+ msgid "Default reminder units"
+-msgstr "Προκαθορισμένο μονάδες υπόμνησης"
++msgstr "Προκαθορισμένες μονάδες υπενθύμισης"
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:32
+ msgid "Units for a default reminder, \"minutes\", \"hours\" or \"days\""
+-msgstr "Μονάδες για μια προεπιλεγμένη υπενθύμιση, \"λεπτά\", \"ώρες\" ή \"ημέρες\""
++msgstr ""
++"Μονάδες για μια προεπιλεγμένη υπενθύμιση, \"λεπτά\", \"ώρες\" ή \"ημέρες\""
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:33
+ msgid "Show categories field in the event/meeting/task editor"
+ msgstr ""
+-"Εμφάνιση πεδίου κατηγοριών στον επεξεργαστή γεγονότος/συγκέντρωσης/εργασίας"
++"Εμφάνιση πεδίου κατηγοριών στον επεξεργαστή συμβάντος/συνάντησης/εργασίας"
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:34
+ msgid "Whether to show categories field in the event/meeting editor"
+ msgstr ""
+-"Αν θα εμφανίζεται το πεδίο κατηγοριών στον επεξεργαστή γεγονότων/"
+-"συγκεντρώσεων"
++"Αν θα εμφανίζεται το πεδίο κατηγοριών στον επεξεργαστή συμβάντος/συναντήσης"
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:35
+ msgid "Show Role field in the event/task/meeting editor"
+-msgstr ""
+-"Εμφάνιση πεδίου ρόλου στον επεξεργαστή γεγονότος/εργασίας/συνάντησης/"
+-"συγκέντρωσης"
++msgstr "Εμφάνιση πεδίου ρόλου στον επεξεργαστή συμβάντος/εργασίας/συνάντησης"
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:36
+ msgid "Whether to show role field in the event/task/meeting editor"
+ msgstr ""
+-"Αν θα εμφανίζεται το πεδίο ρόλων στον επεξεργαστή γεγονότων/εργασιών/"
+-"συγκεντρώσεων"
++"Αν θα εμφανίζεται το πεδίο ρόλων στον επεξεργαστή συμβάντος/εργασίας/"
++"συνάντησης"
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:37
+ msgid "Show RSVP field in the event/task/meeting editor"
+-msgstr "Εμφάνιση πεδίου RSVP στον επεξεργαστή γεγονότος/εργασίας/συγκέντρωσης"
++msgstr "Εμφάνιση πεδίου RSVP στον επεξεργαστή συμβάντος/εργασίας/συνάντησης"
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:38
+ msgid "Whether to show RSVP field in the event/task/meeting editor"
+ msgstr ""
+-"Αν θα εμφανίζεται το πεδίο RSVP στον επεξεργαστή γεγονότων/εργασιών/"
+-"συγκεντρώσεων"
++"Αν θα εμφανίζεται το πεδίο RSVP στον επεξεργαστή συμβάντος/εργασίας/"
++"συνάντησης"
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:39
+ msgid "Show status field in the event/task/meeting editor"
+ msgstr ""
+-"Εμφάνιση πεδίου κατάστασης στον επεξεργαστή γεγονότος/εργασίας/συγκέντρωσης"
++"Εμφάνιση πεδίου κατάστασης στον επεξεργαστή συμβάντος/εργασίας/συνάντησης"
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:40
+ msgid "Whether to show status field in the event/task/meeting editor"
+ msgstr ""
+-"Αν θα εμφανίζεται το πεδίο κατάστασης στον επεξεργαστή γεγονότων/εργασιών/"
+-"συγκεντρώσεων"
++"Αν θα εμφανίζεται το πεδίο κατάστασης στον επεξεργαστή συμβάντος/εργασίας/"
++"συνάντησης"
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:41
+ msgid "Show timezone field in the event/meeting editor"
+ msgstr ""
+-"Εμφάνιση πεδίου ζώνης ώρας στον επεξεργαστή γεγονότος/εργασίας/συγκέντρωσης"
++"Εμφάνιση πεδίου ζώνης ώρας στον επεξεργαστή συμβάντος/εργασίας/συνάντησης"
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:42
+ msgid "Whether to show timezone field in the event/meeting editor"
+ msgstr ""
+-"Αν θα εμφανίζεται το πεδίο ζώνης ώρας στον επεξεργαστή γεγονότων/εργασιών/"
+-"συγκεντρώσεων"
++"Αν θα εμφανίζεται το πεδίο ζώνης ώρας στον επεξεργαστή συμβάντος/εργασίας/"
++"συνάντησης"
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:43
+ msgid "Show type field in the event/task/meeting editor"
+-msgstr "Εμφάνιση πεδίου τύπου στον επεξεργαστή γεγονότος/εργασίας/συγκέντρωσης"
++msgstr "Εμφάνιση πεδίου τύπου στον επεξεργαστή συμβάντος/εργασίας/συνάντησης"
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:44
+ msgid "Whether to show type field in the event/task/meeting editor"
+ msgstr ""
+-"Αν θα εμφανίζεται το πεδίο τύπου στον επεξεργαστή γεγονότων/εργασιών/"
+-"συγκεντρώσεων"
++"Αν θα εμφανίζεται το πεδίο τύπου στον επεξεργαστή συμβάντος/εργασίας/"
++"συνάντησης"
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:45
+ msgid "Hide completed tasks"
+@@ -8259,7 +8238,8 @@ msgstr "Απόκρυψη μονάδων εργασίας"
+ msgid ""
+ "Units for determining when to hide tasks, \"minutes\", \"hours\" or \"days\""
+ msgstr ""
+-"Μονάδες για τον καθορισμό της απόκρυψης εργασιών, \"λεπτά\", \"ώρες\" ή \"ημέρες\""
++"Μονάδες για τον καθορισμό της απόκρυψης εργασιών, \"λεπτά\", \"ώρες\" ή "
++"\"ημέρες\""
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:49
+ msgid "Hide task value"
+@@ -8409,8 +8389,8 @@ msgid ""
+ "The UID of the selected (or \"primary\") calendar in the sidebar of the "
+ "\"Calendar\" view"
+ msgstr ""
+-"Το UID του επιλεγμένου (ή \"πρωτεύοντος\") ημερολογίου στην πλευρική στήλη της "
+-"προβολής \"Ημερολόγιο\""
++"Το UID του επιλεγμένου (ή \"πρωτεύοντος\") ημερολογίου στην πλευρική στήλη "
++"της προβολής \"Ημερολόγιο\""
+ 
+ #: ../data/org.gnome.evolution.calendar.gschema.xml.in.h:79
+ msgid "Primary memo list"
+@@ -8822,7 +8802,6 @@ msgid "Automatic emoticon recognition"
+ msgstr "Αυτόματη αναγνώριση emoticons"
+ 
+ #: ../data/org.gnome.evolution.mail.gschema.xml.in.h:12
+-#| msgid "Recognize emoticons in text and replace them with images."
+ msgid ""
+ "Recognize emoticons in text and replace them with images or Unicode "
+ "characters."
+@@ -8831,7 +8810,6 @@ msgstr ""
+ "ή χαρακτήρες Unicode."
+ 
+ #: ../data/org.gnome.evolution.mail.gschema.xml.in.h:13
+-#| msgid "Unicode"
+ msgid "Unicode smileys"
+ msgstr "Μειδιάματα Unicode"
+ 
+@@ -9423,7 +9401,8 @@ msgstr ""
+ 
+ #: ../data/org.gnome.evolution.mail.gschema.xml.in.h:117
+ msgid "Number of addresses to display in TO/CC/BCC"
+-msgstr "Αριθμός διευθύνσεων που θα εμφανίζεται στα πεδία Προς/ Κοιν/ Κρυφ.Κοιν."
++msgstr ""
++"Αριθμός διευθύνσεων που θα εμφανίζεται στα πεδία Προς/ Κοιν/ Κρυφ.Κοιν."
+ 
+ #: ../data/org.gnome.evolution.mail.gschema.xml.in.h:118
+ msgid ""
+@@ -10426,9 +10405,9 @@ msgid ""
+ "by the GNOME toolbar setting."
+ msgstr ""
+ "Η τεχνοτροπία των κουμπιών παραθύρου. Μπορεί να είναι \"κείμενο\", "
+-"\"εικονίδια\", \"και τα δύο\", \"εργαλειοθήκη\". Εάν οριστεί \"εργαλειοθήκη\", η "
+-"τεχνοτροπία των κουμπιών καθορίζεται από τη ρύθμιση της εργαλειοθήκης του "
+-"GNOME."
++"\"εικονίδια\", \"και τα δύο\", \"εργαλειοθήκη\". Εάν οριστεί \"εργαλειοθήκη"
++"\", η τεχνοτροπία των κουμπιών καθορίζεται από τη ρύθμιση της εργαλειοθήκης "
++"του GNOME."
+ 
+ #: ../data/org.gnome.evolution.shell.gschema.xml.in.h:17
+ msgid "Toolbar is visible"
+@@ -10486,9 +10465,8 @@ msgid ""
+ "other arguments."
+ msgstr ""
+ "Πλήρης διαδρομή για μια εντολή του spamassassin. Αν δεν οριστεί, τότε "
+-"χρησιμοποιείται η διαδρομή του χρόνου μεταγλώττισης, συνήθως "
+-"/usr/bin/spamassassin. Η εντολή δεν πρέπει να περιέχει οποιοδήποτε άλλο "
+-"όρισμα."
++"χρησιμοποιείται η διαδρομή του χρόνου μεταγλώττισης, συνήθως /usr/bin/"
++"spamassassin. Η εντολή δεν πρέπει να περιέχει οποιοδήποτε άλλο όρισμα."
+ 
+ #: ../data/org.gnome.evolution.spamassassin.gschema.xml.in.h:5
+ msgid "Full path command to run sa-learn"
+@@ -10763,7 +10741,6 @@ msgid "GPG signed"
+ msgstr "Υπογεγραμμένο GPG"
+ 
+ #: ../em-format/e-mail-formatter-utils.c:570
+-#| msgid "GPG encrpyted"
+ msgid "GPG encrypted"
+ msgstr "Κρυπτογραγημένο GPG"
+ 
+@@ -10772,7 +10749,6 @@ msgid "S/MIME signed"
+ msgstr "Υπογεγραμμένο S/MIME"
+ 
+ #: ../em-format/e-mail-formatter-utils.c:582
+-#| msgid "S/MIME encrpyted"
+ msgid "S/MIME encrypted"
+ msgstr "Κρυπτογραγημένο S/MIME"
+ 
+@@ -11231,19 +11207,16 @@ msgid "_Available Categories:"
+ msgstr "Διαθέσιμες κατη_γορίες:"
+ 
+ #: ../e-util/e-categories-editor.c:274
+-#| msgid "_New"
+ msgctxt "category"
+ msgid "_New"
+ msgstr "_Νέα"
+ 
+ #: ../e-util/e-categories-editor.c:278
+-#| msgid "_Edit"
+ msgctxt "category"
+ msgid "_Edit"
+ msgstr "_Επεξεργασία"
+ 
+ #: ../e-util/e-categories-editor.c:282
+-#| msgid "_Delete"
+ msgctxt "category"
+ msgid "_Delete"
+ msgstr "_Διαγραφή"
+@@ -12042,7 +12015,6 @@ msgid "HTML file"
+ msgstr "Αρχείο HTML"
+ 
+ #: ../e-util/e-html-editor-actions.c:511
+-#| msgid "Insert Image"
+ msgctxt "dialog-title"
+ msgid "Insert Image"
+ msgstr "Εισαγωγή εικόνας"
+@@ -12871,7 +12843,6 @@ msgstr "Ιδιότητες παραγράφου"
+ 
+ #: ../e-util/e-html-editor-replace-dialog.c:148
+ #, c-format
+-#| msgid "%d occurences replaced"
+ msgid "%d occurence replaced"
+ msgid_plural "%d occurences replaced"
+ msgstr[0] "αντικαταστάθηκε %d εμφάνιση"
+@@ -16730,19 +16701,16 @@ msgstr "Εφαρμογή εισαγωγής φακέλων τύπου Berkeley M
+ 
+ #: ../mail/importers/kmail-importer.c:263
+ #, c-format
+-#| msgid "Address"
+ msgid "%d Address"
+ msgid_plural "%d Addresses"
+ msgstr[0] "%d Διεύθυνση"
+ msgstr[1] "%d Διευθύνσεις"
+ 
+ #: ../mail/importers/kmail-importer.c:354
+-#| msgid "Evolution Elm importer"
+ msgid "Evolution KMail importer"
+ msgstr "Εισαγωγή KMail του Evolution"
+ 
+ #: ../mail/importers/kmail-importer.c:355
+-#| msgid "Import mail from Elm."
+ msgid "Import mail and contacts from KMail."
+ msgstr "Εισαγωγή αλληλογραφίας και επαφών από το KMail."
+ 
+@@ -16756,7 +16724,6 @@ msgid "Importing mailbox"
+ msgstr "Γίνεται εισαγωγή mailbox"
+ 
+ #: ../mail/importers/mail-importer.c:61
+-#| msgid "Import mail from Elm."
+ msgid "Importing mail and contacts from KMail"
+ msgstr "Εισαγωγή αλληλογραφίας και επαφών από το KMail"
+ 
+@@ -16861,7 +16828,6 @@ msgid "For_mat messages in HTML"
+ msgstr "Μορφοποί_ηση μηνυμάτων σε HTML"
+ 
+ #: ../mail/mail-config.ui.h:9
+-#| msgid "Automatically insert _emoticon images"
+ msgid "Automatically insert _emoticons"
+ msgstr "Αυτόματη εισαγωγή εικονιδίων _διάθεσης"
+ 
+@@ -17239,7 +17205,6 @@ msgid "_Delete junk messages"
+ msgstr "_Διαγραφή ανεπιθύμητων μηνυμάτων"
+ 
+ #: ../mail/mail-config.ui.h:117
+-#| msgid "Just Test Options"
+ msgid "Junk Test Options"
+ msgstr "Επιλογές ελέγχου ανεπιθύμητων"
+ 
+@@ -19513,7 +19478,7 @@ msgstr "Εμφάνιση _αριθμών εβδομάδων"
+ #: ../modules/calendar/e-calendar-preferences.ui.h:52
+ msgid "Show r_ecurring events in italic in bottom left calendar"
+ msgstr ""
+-"Εμφάνιση επαναλαμβανόμενων _γεγονότων σε italic στο κάτω αριστερά ημερολόγιο"
++"Εμφάνιση επαναλαμβανόμενων _συμβάντων σε italic στο κάτω αριστερά ημερολόγιο"
+ 
+ #: ../modules/calendar/e-calendar-preferences.ui.h:53
+ msgid "Sc_roll Month View by a week"
+@@ -19649,7 +19614,7 @@ msgid ""
+ "amount of time. If you continue, you will not be able to recover these "
+ "events."
+ msgstr ""
+-"Με αυτή τη λειτουργία θα διαγράψετε μόνιμα όλες τα γεγονότα που είναι "
++"Με αυτή τη λειτουργία θα διαγράψετε μόνιμα όλες τα συμβάντα που είναι "
+ "παλαιότερα από την επιλεγμένη ημερομηνία. Αν συνεχίσετε, δε θα μπορέσετε να "
+ "τα ανακτήσετε."
+ 
+@@ -19657,7 +19622,7 @@ msgstr ""
+ #. * "Purge events older than <<spin-button>> days"
+ #: ../modules/calendar/e-cal-shell-view-actions.c:313
+ msgid "Purge events older than"
+-msgstr "Εκκαθάριση γεγονότων παλαιότερων από"
++msgstr "Εκκαθάριση συμβάντων παλαιότερων από"
+ 
+ #: ../modules/calendar/e-cal-shell-view-actions.c:895
+ msgid "Making an occurrence movable"
+@@ -19667,7 +19632,7 @@ msgstr "Να μετακινείται αυτή η εμφάνιση"
+ #. * no summary is filed, the '.ics' extension is concatenated to it.
+ #: ../modules/calendar/e-cal-shell-view-actions.c:1055
+ msgid "event"
+-msgstr "γεγονός"
++msgstr "συμβάν"
+ 
+ #: ../modules/calendar/e-cal-shell-view-actions.c:1057
+ #: ../modules/calendar/e-cal-shell-view-memopad.c:208
+@@ -19795,11 +19760,11 @@ msgstr "Διαγραφή όλων των εμφανίσεων"
+ 
+ #: ../modules/calendar/e-cal-shell-view-actions.c:1331
+ msgid "New All Day _Event..."
+-msgstr "Νέο ολοήμερο _γεγονός..."
++msgstr "Νέο ολοήμερο _συμβάν..."
+ 
+ #: ../modules/calendar/e-cal-shell-view-actions.c:1333
+ msgid "Create a new all day event"
+-msgstr "Δημιουργία νέου ολοήμερου γεγονότος"
++msgstr "Δημιουργία νέου ολοήμερου συμβάντος"
+ 
+ #: ../modules/calendar/e-cal-shell-view-actions.c:1338
+ #: ../modules/calendar/e-cal-shell-view-memopad.c:242
+@@ -19994,11 +19959,11 @@ msgstr "Εκτύπωση της επιλεγμένης υπενθύμισης"
+ 
+ #: ../modules/calendar/e-cal-shell-view-private.c:810
+ msgid "Searching next matching event"
+-msgstr "Αναζήτηση στην επόμενη αντίστοιχη εκδήλωση"
++msgstr "Αναζήτηση στο επόμενο αντίστοιχο συμβάν"
+ 
+ #: ../modules/calendar/e-cal-shell-view-private.c:811
+ msgid "Searching previous matching event"
+-msgstr "Αναζήτηση στη προηγούμενη αντίστοιχη εκδήλωση"
++msgstr "Αναζήτηση στο προηγούμενο αντίστοιχο συμβάν"
+ 
+ #: ../modules/calendar/e-cal-shell-view-private.c:832
+ #, c-format
+@@ -20080,7 +20045,7 @@ msgstr "Εκτύπωση της επιλεγμένης εργασίας"
+ #: ../modules/calendar/e-memo-shell-backend.c:63
+ msgctxt "New"
+ msgid "Mem_o"
+-msgstr "Mem_o"
++msgstr "_Υπενθύμιση"
+ 
+ #: ../modules/calendar/e-memo-shell-backend.c:70
+ msgctxt "New"
+@@ -22746,21 +22711,18 @@ msgstr "Δημιουργήθηκε από ένα μήνυμα από %s"
+ 
+ #. Translators: Dialog button to Cancel edit of an existing event/memo/task
+ #: ../plugins/mail-to-task/mail-to-task.c:594
+-#| msgid "_Cancel"
+ msgctxt "mail-to-task"
+ msgid "_Cancel"
+ msgstr "Άκ_υρο"
+ 
+ #. Translators: Dialog button to Edit an existing event/memo/task
+ #: ../plugins/mail-to-task/mail-to-task.c:596
+-#| msgid "_Edit"
+ msgctxt "mail-to-task"
+ msgid "_Edit"
+ msgstr "_Επεξεργασία"
+ 
+ #. Translators: Dialog button to create a New event/memo/task
+ #: ../plugins/mail-to-task/mail-to-task.c:598
+-#| msgid "_New"
+ msgctxt "mail-to-task"
+ msgid "_New"
+ msgstr "_Νέο"
+@@ -23627,7 +23589,6 @@ msgstr "Εκτέλεση αυτών των παραμέτρων αναζήτησ
+ #. Translators: a 'New' toolbar button caption which is context sensitive and
+ #. runs one of the actions under File->New menu
+ #: ../shell/e-shell-window.c:505
+-#| msgid "New"
+ msgctxt "toolbar-button"
+ msgid "New"
+ msgstr "Νέα"
+@@ -23823,32 +23784,26 @@ msgid "Keep _Waiting"
+ msgstr "Αναμο_νή"
+ 
+ #: ../shell/shell.error.xml.h:15
+-#| msgid "Failed to open calendar '{0}'"
+ msgid "Failed to get values from '{0}'"
+ msgstr "Αποτυχία λήψης τιμών από το '{0}'"
+ 
+ #: ../shell/shell.error.xml.h:16
+-#| msgid "Failed to open calendar '{0}'"
+ msgid "Failed to invoke authenticate for '{0}'"
+ msgstr "Αποτυχία κλήσης πιστοποίησης για το '{0}'"
+ 
+ #: ../shell/shell.error.xml.h:17
+-#| msgid "Failed to open memo list '{0}'"
+ msgid "Failed to connect to '{0}'"
+ msgstr "Αποτυχία σύνδεσης με το '{0}'"
+ 
+ #: ../shell/shell.error.xml.h:18
+-#| msgid "_Recover"
+ msgid "_Reconnect"
+ msgstr "Ε_πανασύνδεση"
+ 
+ #: ../shell/shell.error.xml.h:19
+-#| msgid "Failed to open calendar '{0}'"
+ msgid "Failed to prompt for credentials for '{0}'"
+ msgstr "Αποτυχία προτροπής για διαπιστευτήρια για το '{0}'"
+ 
+ #: ../shell/shell.error.xml.h:20
+-#| msgid "Failed to refresh task list '{0}'"
+ msgid "Failed to finish trust prompt for '{0}'"
+ msgstr "Αποτυχία ολοκλήρωσης προτροπής εμπιστοσύνης για το '{0}'"
+ 
+-- 
+2.15.0
+

@@ -1,0 +1,26 @@
+From 4e3bdce0eaac6e51c8600e0cf00783e31bb265af Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 27 Apr 2015 14:09:44 +0200
+Subject: [PATCH 0708/1800] Bug 748359 - To header collapsed in printed version
+ when many addressees
+
+---
+ em-format/e-mail-formatter-print-headers.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/em-format/e-mail-formatter-print-headers.c b/em-format/e-mail-formatter-print-headers.c
+index 8d6ee849a5..ae2e5c17a4 100644
+--- a/em-format/e-mail-formatter-print-headers.c
++++ b/em-format/e-mail-formatter-print-headers.c
+@@ -107,7 +107,7 @@ emfpe_headers_format (EMailFormatterExtension *extension,
+ 			e_mail_formatter_format_header (
+ 				formatter, str,
+ 				header_name, header_value,
+-				E_MAIL_FORMATTER_HEADER_FLAG_NOLINKS,
++				E_MAIL_FORMATTER_HEADER_FLAG_NOLINKS | E_MAIL_FORMATTER_HEADER_FLAG_NOELIPSIZE,
+ 				"UTF-8");
+ 
+ 		g_free (header_name);
+-- 
+2.15.0
+

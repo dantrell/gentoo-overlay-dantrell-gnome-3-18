@@ -1,0 +1,27 @@
+From c1194fe180fe21d0d4169e161bc2f2010236e791 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 24 Feb 2016 18:06:04 +0100
+Subject: [PATCH 0679/1800] EHTMLEditorView - Free an unused history event
+ object when inserting the tabulator fails
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index e6e548a8af..d667878f53 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -7554,7 +7554,8 @@ insert_tabulator (WebKitDOMDocument *document,
+ 
+ 		manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
+ 		e_html_editor_undo_redo_manager_insert_history_event (manager, ev);
+-	}
++	} else
++		g_free (ev);
+ 
+ 	return success;
+ }
+-- 
+2.15.0
+

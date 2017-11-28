@@ -1,0 +1,25 @@
+From ad3f668f567e90cc7239e07d611c8c1bbb7c5c3a Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 26 Mar 2015 09:52:08 +0100
+Subject: [PATCH 0342/1800] WebKit2 - Build fix
+
+---
+ web-extensions/e-dom-utils.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/web-extensions/e-dom-utils.c b/web-extensions/e-dom-utils.c
+index d5d3d4638c..030e229fd2 100644
+--- a/web-extensions/e-dom-utils.c
++++ b/web-extensions/e-dom-utils.c
+@@ -373,7 +373,7 @@ add_css_rule_into_style_sheet (WebKitDOMDocument *document,
+ 	gint length, ii, selector_length;
+ 	gboolean removed = FALSE;
+ 
+-	g_return_if_fail (selection != NULL);
++	g_return_if_fail (selector != NULL);
+ 
+ 	selector_length = strlen (selector);
+ 	style_element = webkit_dom_document_get_element_by_id (document, style_sheet_id);
+-- 
+2.15.0
+

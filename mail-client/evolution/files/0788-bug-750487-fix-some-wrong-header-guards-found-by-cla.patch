@@ -1,0 +1,54 @@
+From 680fa6df42f1313e4c27cfb70cf364d9f93b3bab Mon Sep 17 00:00:00 2001
+From: Ting-Wei Lan <lantw@src.gnome.org>
+Date: Mon, 8 Jun 2015 14:44:21 +0200
+Subject: [PATCH 0788/1800] Bug 750487 - Fix some wrong header guards found by
+ clang
+
+---
+ addressbook/tools/evolution-addressbook-export.h | 2 +-
+ smime/gui/cert-trust-dialog.h                    | 2 +-
+ smime/gui/certificate-manager.h                  | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/addressbook/tools/evolution-addressbook-export.h b/addressbook/tools/evolution-addressbook-export.h
+index 710086ee1d..a0240515c0 100644
+--- a/addressbook/tools/evolution-addressbook-export.h
++++ b/addressbook/tools/evolution-addressbook-export.h
+@@ -21,7 +21,7 @@
+  */
+ 
+ #ifndef _EVOLUTION_ADDRESSBOOK_EXPORT_H_
+-#define _EVOLUTION_ADDRESSBOOK_EXPORT_H__
++#define _EVOLUTION_ADDRESSBOOK_EXPORT_H_
+ 
+ #include <libedataserver/libedataserver.h>
+ 
+diff --git a/smime/gui/cert-trust-dialog.h b/smime/gui/cert-trust-dialog.h
+index 843bf6366c..0f798ab5df 100644
+--- a/smime/gui/cert-trust-dialog.h
++++ b/smime/gui/cert-trust-dialog.h
+@@ -21,7 +21,7 @@
+  */
+ 
+ #ifndef _CERT_TRUST_DIALOG_H_
+-#define _CERT_TRUST_DIALOG_H
++#define _CERT_TRUST_DIALOG_H_
+ 
+ #include <gtk/gtk.h>
+ 
+diff --git a/smime/gui/certificate-manager.h b/smime/gui/certificate-manager.h
+index 0f68d975e1..e19ddc877f 100644
+--- a/smime/gui/certificate-manager.h
++++ b/smime/gui/certificate-manager.h
+@@ -20,7 +20,7 @@
+  */
+ 
+ #ifndef _CERTIFICATE_MANAGER_H_
+-#define _CERTIFICATE_MANAGER_H
++#define _CERTIFICATE_MANAGER_H_
+ 
+ #include <gtk/gtk.h>
+ #include <shell/e-shell.h>
+-- 
+2.15.0
+

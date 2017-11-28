@@ -1,0 +1,28 @@
+From cb119a3b79074dea6cca592dae5ccc0c48f98166 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 1 Dec 2014 11:43:17 +0100
+Subject: [PATCH 0122/1800] Bug 734530 - Use-after-free in Automatic Contacts
+ on error
+
+---
+ plugins/bbdb/bbdb.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/plugins/bbdb/bbdb.c b/plugins/bbdb/bbdb.c
+index 201c77d290..6987f3978f 100644
+--- a/plugins/bbdb/bbdb.c
++++ b/plugins/bbdb/bbdb.c
+@@ -354,8 +354,8 @@ bbdb_do_it (EBookClient *client,
+ 				NULL, &error);
+ 
+ 		if (error != NULL) {
+-			g_warning ("bbdb: Failed to get addressbook client : %s\n", error->message);
+-			g_error_free (error);
++			g_warning ("bbdb: Failed to get addressbook client: %s\n", error->message);
++			g_clear_error (&error);
+ 			aux_addressbooks = aux_addressbooks->next;
+ 			continue;
+ 		}
+-- 
+2.15.0
+

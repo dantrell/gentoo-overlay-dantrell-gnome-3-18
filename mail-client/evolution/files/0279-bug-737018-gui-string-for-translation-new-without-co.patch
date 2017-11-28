@@ -1,0 +1,99 @@
+From dad70c214e3a7b3f4e8b3832d9dc4e239c91623e Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 11 Feb 2015 13:34:49 +0100
+Subject: [PATCH 0279/1800] Bug 737018 - GUI string for translation "New"
+ without context
+
+---
+ e-util/e-categories-editor.c             | 6 +++---
+ modules/mail/e-mail-shell-view-actions.c | 1 +
+ plugins/mail-to-task/mail-to-task.c      | 9 ++++++---
+ shell/e-shell-window-actions.c           | 1 +
+ shell/e-shell-window.c                   | 4 +++-
+ 5 files changed, 14 insertions(+), 7 deletions(-)
+
+diff --git a/e-util/e-categories-editor.c b/e-util/e-categories-editor.c
+index f53c1f1a66..eed1043b8b 100644
+--- a/e-util/e-categories-editor.c
++++ b/e-util/e-categories-editor.c
+@@ -271,15 +271,15 @@ e_categories_editor_init (ECategoriesEditor *editor)
+ 	gtk_grid_attach (grid, hbuttonbox1, 0, 4, 1, 1);
+ 	gtk_box_set_spacing (GTK_BOX (hbuttonbox1), 6);
+ 
+-	button_new = e_dialog_button_new_with_icon ("document-new", _("_New"));
++	button_new = e_dialog_button_new_with_icon ("document-new", C_("category", "_New"));
+ 	gtk_container_add (GTK_CONTAINER (hbuttonbox1), button_new);
+ 	gtk_widget_set_can_default (button_new, TRUE);
+ 
+-	button_edit = gtk_button_new_with_mnemonic (_("_Edit"));
++	button_edit = gtk_button_new_with_mnemonic (C_("category", "_Edit"));
+ 	gtk_container_add (GTK_CONTAINER (hbuttonbox1), button_edit);
+ 	gtk_widget_set_can_default (button_edit, TRUE);
+ 
+-	button_delete = e_dialog_button_new_with_icon ("edit-delete", _("_Delete"));
++	button_delete = e_dialog_button_new_with_icon ("edit-delete", C_("category", "_Delete"));
+ 	gtk_container_add (GTK_CONTAINER (hbuttonbox1), button_delete);
+ 	gtk_widget_set_can_default (button_delete, TRUE);
+ 
+diff --git a/modules/mail/e-mail-shell-view-actions.c b/modules/mail/e-mail-shell-view-actions.c
+index 40c3664642..84bd30dac5 100644
+--- a/modules/mail/e-mail-shell-view-actions.c
++++ b/modules/mail/e-mail-shell-view-actions.c
+@@ -1640,6 +1640,7 @@ static GtkActionEntry mail_entries[] = {
+ 
+ 	{ "mail-folder-new",
+ 	  "folder-new",
++	  /* Translators: An action caption to create a new mail folder */
+ 	  N_("_New..."),
+ 	  NULL,
+ 	  N_("Create a new folder for storing mail"),
+diff --git a/plugins/mail-to-task/mail-to-task.c b/plugins/mail-to-task/mail-to-task.c
+index a8c9f623a7..a20a1f5428 100644
+--- a/plugins/mail-to-task/mail-to-task.c
++++ b/plugins/mail-to-task/mail-to-task.c
+@@ -590,9 +590,12 @@ do_ask (const gchar *text,
+ 	if (is_create_edit_add) {
+ 		gtk_dialog_add_buttons (
+ 			GTK_DIALOG (dialog),
+-			_("_Cancel"), GTK_RESPONSE_CANCEL,
+-			_("_Edit"), GTK_RESPONSE_YES,
+-			_("_New"), GTK_RESPONSE_NO,
++			/* Translators: Dialog button to Cancel edit of an existing event/memo/task */
++			C_("mail-to-task", "_Cancel"), GTK_RESPONSE_CANCEL,
++			/* Translators: Dialog button to Edit an existing event/memo/task */
++			C_("mail-to-task", "_Edit"), GTK_RESPONSE_YES,
++			/* Translators: Dialog button to create a New event/memo/task */
++			C_("mail-to-task", "_New"), GTK_RESPONSE_NO,
+ 			NULL);
+ 	}
+ 
+diff --git a/shell/e-shell-window-actions.c b/shell/e-shell-window-actions.c
+index 0aec08c1c5..278a32f566 100644
+--- a/shell/e-shell-window-actions.c
++++ b/shell/e-shell-window-actions.c
+@@ -1096,6 +1096,7 @@ static GtkActionEntry shell_entries[] = {
+ 
+ 	{ "new-menu",
+ 	  "document-new",
++	  /* Translators: This is a New menu item caption, under File->New */
+ 	  N_("_New"),
+ 	  NULL,
+ 	  NULL,
+diff --git a/shell/e-shell-window.c b/shell/e-shell-window.c
+index 4b6b6af341..e4536b8a15 100644
+--- a/shell/e-shell-window.c
++++ b/shell/e-shell-window.c
+@@ -500,7 +500,9 @@ shell_window_construct_toolbar (EShellWindow *shell_window)
+ 	gtk_toolbar_insert (GTK_TOOLBAR (toolbar), item, 0);
+ 	gtk_widget_show (GTK_WIDGET (item));
+ 
+-	item = e_menu_tool_button_new (_("New"));
++	/* Translators: a 'New' toolbar button caption which is context sensitive and
++	   runs one of the actions under File->New menu */
++	item = e_menu_tool_button_new (C_("toolbar-button", "New"));
+ 	gtk_tool_item_set_is_important (GTK_TOOL_ITEM (item), TRUE);
+ 	gtk_widget_add_accelerator (
+ 		GTK_WIDGET (item), "clicked",
+-- 
+2.15.0
+

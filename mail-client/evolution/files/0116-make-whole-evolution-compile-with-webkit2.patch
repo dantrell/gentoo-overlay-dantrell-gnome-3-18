@@ -1,0 +1,4770 @@
+From 0350e386386dd360acf097208b48b8d964b5b2e7 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Sun, 7 Dec 2014 10:34:33 +0100
+Subject: [PATCH 0116/1800] Make whole Evolution compile with WebKit2.
+
+Dragons ahead - crashing a lot..
+---
+ Makefile.am                                        |   2 +-
+ calendar/gui/dialogs/event-page.c                  |   3 +-
+ calendar/gui/dialogs/memo-page.c                   |   3 +-
+ calendar/gui/dialogs/task-page.c                   |   3 +-
+ composer/e-composer-private.c                      | 354 +++--------------
+ composer/e-composer-spell-header.c                 |   3 +-
+ composer/e-msg-composer.c                          | 241 ++++++------
+ e-util/Makefile.am                                 |  38 --
+ e-util/e-html-editor-actions.c                     |   4 +-
+ e-util/e-html-editor-cell-dialog.c                 |   5 +-
+ e-util/e-html-editor-image-dialog.c                |   5 +-
+ e-util/e-html-editor-page-dialog.c                 |   3 +-
+ e-util/e-html-editor-selection.c                   | 409 -------------------
+ e-util/e-html-editor-selection.h                   |   7 -
+ e-util/e-html-editor-table-dialog.c                |   5 +-
+ e-util/e-html-editor-view.c                        | 434 ++++++++++++++++++++-
+ e-util/e-html-editor-view.h                        |  41 +-
+ e-util/e-search-bar.c                              |   2 +-
+ e-util/e-util.h                                    |   1 -
+ e-util/e-web-view.c                                |  20 +-
+ mail/e-mail-display.c                              | 292 ++++++--------
+ mail/e-mail-reader.c                               |  12 +-
+ modules/itip-formatter/itip-view.c                 |  56 +--
+ modules/itip-formatter/itip-view.h                 |   2 +-
+ modules/itip-formatter/web-extension/Makefile.am   |   5 +-
+ .../module-itip-formatter-dom-utils.c              |   4 +-
+ .../module-itip-formatter-dom-utils.h              |   0
+ .../module-itip-formatter-web-extension.c          |   4 +-
+ modules/mail/em-composer-prefs.c                   |  11 +-
+ modules/mail/web-extension/Makefile.am             |   1 +
+ .../mail/web-extension/module-mail-web-extension.c |   2 +-
+ modules/prefer-plain/web-extension/Makefile.am     |   1 +
+ .../module-prefer-plain-web-extension.c            |   2 +-
+ modules/settings/e-settings-spell-checker.c        |  15 +-
+ modules/settings/e-settings-spell-entry.c          |   3 +-
+ .../e-mail-display-popup-text-highlight.c          |  10 +
+ modules/text-highlight/web-extension/Makefile.am   |   1 +
+ .../module-text-highlight-web-extension.c          |   2 +-
+ modules/web-inspector/evolution-web-inspector.c    |   2 +-
+ plugins/external-editor/external-editor.c          |  58 ++-
+ shell/e-shell.c                                    |   4 +-
+ shell/main.c                                       |   3 +-
+ web-extensions/Makefile.am                         |  76 +++-
+ web-extensions/e-composer-private-dom-functions.c  | 296 ++++++++++++++
+ web-extensions/e-composer-private-dom-functions.h  |  40 ++
+ {e-util => web-extensions}/e-dom-utils.c           |   3 +-
+ {e-util => web-extensions}/e-dom-utils.h           |   0
+ .../e-html-editor-actions-dom-functions.c          |   0
+ .../e-html-editor-actions-dom-functions.h          |   0
+ .../e-html-editor-cell-dialog-dom-functions.c      |   0
+ .../e-html-editor-cell-dialog-dom-functions.h      |   0
+ .../e-html-editor-dom-functions.c                  |   0
+ .../e-html-editor-dom-functions.h                  |   2 +-
+ .../e-html-editor-hrule-dialog-dom-functions.c     |   0
+ .../e-html-editor-hrule-dialog-dom-functions.h     |   0
+ .../e-html-editor-image-dialog-dom-functions.c     |   0
+ .../e-html-editor-image-dialog-dom-functions.h     |   0
+ .../e-html-editor-link-dialog-dom-functions.c      |   2 +-
+ .../e-html-editor-link-dialog-dom-functions.h      |   0
+ .../e-html-editor-selection-dom-functions.c        |  22 +-
+ .../e-html-editor-selection-dom-functions.h        |   7 +-
+ ...-html-editor-spell-check-dialog-dom-functions.c |   0
+ ...-html-editor-spell-check-dialog-dom-functions.h |   0
+ .../e-html-editor-table-dialog-dom-functions.c     |   0
+ .../e-html-editor-table-dialog-dom-functions.h     |   0
+ .../e-html-editor-view-dom-functions.c             |  81 ++--
+ .../e-html-editor-view-dom-functions.h             |   8 +-
+ .../e-html-editor-web-extension-main.c             |   0
+ .../e-html-editor-web-extension-names.h            |   0
+ .../e-html-editor-web-extension.c                  |  46 ++-
+ .../e-html-editor-web-extension.h                  |   8 +-
+ web-extensions/e-msg-composer-dom-functions.c      |  86 ++++
+ web-extensions/e-msg-composer-dom-functions.h      |  35 ++
+ web-extensions/e-web-extension.c                   |  29 +-
+ 74 files changed, 1557 insertions(+), 1257 deletions(-)
+ rename modules/itip-formatter/{ => web-extension}/module-itip-formatter-dom-utils.c (99%)
+ rename modules/itip-formatter/{ => web-extension}/module-itip-formatter-dom-utils.h (100%)
+ create mode 100644 web-extensions/e-composer-private-dom-functions.c
+ create mode 100644 web-extensions/e-composer-private-dom-functions.h
+ rename {e-util => web-extensions}/e-dom-utils.c (99%)
+ rename {e-util => web-extensions}/e-dom-utils.h (100%)
+ rename {e-util => web-extensions}/e-html-editor-actions-dom-functions.c (100%)
+ rename {e-util => web-extensions}/e-html-editor-actions-dom-functions.h (100%)
+ rename {e-util => web-extensions}/e-html-editor-cell-dialog-dom-functions.c (100%)
+ rename {e-util => web-extensions}/e-html-editor-cell-dialog-dom-functions.h (100%)
+ rename {e-util => web-extensions}/e-html-editor-dom-functions.c (100%)
+ rename {e-util => web-extensions}/e-html-editor-dom-functions.h (95%)
+ rename {e-util => web-extensions}/e-html-editor-hrule-dialog-dom-functions.c (100%)
+ rename {e-util => web-extensions}/e-html-editor-hrule-dialog-dom-functions.h (100%)
+ rename {e-util => web-extensions}/e-html-editor-image-dialog-dom-functions.c (100%)
+ rename {e-util => web-extensions}/e-html-editor-image-dialog-dom-functions.h (100%)
+ rename {e-util => web-extensions}/e-html-editor-link-dialog-dom-functions.c (99%)
+ rename {e-util => web-extensions}/e-html-editor-link-dialog-dom-functions.h (100%)
+ rename {e-util => web-extensions}/e-html-editor-selection-dom-functions.c (99%)
+ rename {e-util => web-extensions}/e-html-editor-selection-dom-functions.h (97%)
+ rename {e-util => web-extensions}/e-html-editor-spell-check-dialog-dom-functions.c (100%)
+ rename {e-util => web-extensions}/e-html-editor-spell-check-dialog-dom-functions.h (100%)
+ rename {e-util => web-extensions}/e-html-editor-table-dialog-dom-functions.c (100%)
+ rename {e-util => web-extensions}/e-html-editor-table-dialog-dom-functions.h (100%)
+ rename {e-util => web-extensions}/e-html-editor-view-dom-functions.c (99%)
+ rename {e-util => web-extensions}/e-html-editor-view-dom-functions.h (91%)
+ rename {e-util => web-extensions}/e-html-editor-web-extension-main.c (100%)
+ rename {e-util => web-extensions}/e-html-editor-web-extension-names.h (100%)
+ rename {e-util => web-extensions}/e-html-editor-web-extension.c (97%)
+ rename {e-util => web-extensions}/e-html-editor-web-extension.h (95%)
+ create mode 100644 web-extensions/e-msg-composer-dom-functions.c
+ create mode 100644 web-extensions/e-msg-composer-dom-functions.h
+
+diff --git a/Makefile.am b/Makefile.am
+index 82c2ae8026..38e9f3d81d 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -69,9 +69,9 @@ SUBDIRS = 			\
+ 	mail			\
+ 	calendar		\
+ 	art			\
++	web-extensions		\
+ 	plugins			\
+ 	modules			\
+-	web-extensions		\
+ 	$(MAINT_SUBDIR)		\
+ 	doc			\
+ 	ui			\
+diff --git a/calendar/gui/dialogs/event-page.c b/calendar/gui/dialogs/event-page.c
+index 56d90a3b31..47d7c9da3e 100644
+--- a/calendar/gui/dialogs/event-page.c
++++ b/calendar/gui/dialogs/event-page.c
+@@ -3614,7 +3614,8 @@ event_page_construct (EventPage *epage,
+ 	g_type_ensure (E_TYPE_CLIENT_COMBO_BOX);
+ 	g_type_ensure (E_TYPE_DATE_EDIT);
+ 	g_type_ensure (E_TYPE_TIMEZONE_ENTRY);
+-	g_type_ensure (E_TYPE_SPELL_ENTRY);
++/* FIXME WK2
++	g_type_ensure (E_TYPE_SPELL_ENTRY);*/
+ 
+ 	priv->builder = gtk_builder_new ();
+ 	e_load_ui_builder_definition (priv->builder, "event-page.ui");
+diff --git a/calendar/gui/dialogs/memo-page.c b/calendar/gui/dialogs/memo-page.c
+index b49836d963..ce0c31ff8e 100644
+--- a/calendar/gui/dialogs/memo-page.c
++++ b/calendar/gui/dialogs/memo-page.c
+@@ -1240,7 +1240,8 @@ memo_page_construct (MemoPage *mpage)
+ 	 * GType before we load the GtkBuilder definition file. */
+ 	g_type_ensure (E_TYPE_CLIENT_COMBO_BOX);
+ 	g_type_ensure (E_TYPE_DATE_EDIT);
+-	g_type_ensure (E_TYPE_SPELL_ENTRY);
++/* FIXME WK2
++	g_type_ensure (E_TYPE_SPELL_ENTRY);*/
+ 
+ 	priv->builder = gtk_builder_new ();
+ 	e_load_ui_builder_definition (priv->builder, "memo-page.ui");
+diff --git a/calendar/gui/dialogs/task-page.c b/calendar/gui/dialogs/task-page.c
+index ba8411c831..ae1924b422 100644
+--- a/calendar/gui/dialogs/task-page.c
++++ b/calendar/gui/dialogs/task-page.c
+@@ -2679,7 +2679,8 @@ task_page_construct (TaskPage *tpage,
+ 	g_type_ensure (E_TYPE_DATE_EDIT);
+ 	g_type_ensure (E_TYPE_TIMEZONE_ENTRY);
+ 	g_type_ensure (E_TYPE_SOURCE_COMBO_BOX);
+-	g_type_ensure (E_TYPE_SPELL_ENTRY);
++/* FIXME WK2
++	g_type_ensure (E_TYPE_SPELL_ENTRY);*/
+ 	g_type_ensure (E_TYPE_URL_ENTRY);
+ 
+ 	priv->builder = gtk_builder_new ();
+diff --git a/composer/e-composer-private.c b/composer/e-composer-private.c
+index 8ba1311aeb..735cf5a2f9 100644
+--- a/composer/e-composer-private.c
++++ b/composer/e-composer-private.c
+@@ -227,11 +227,11 @@ e_composer_private_constructed (EMsgComposer *composer)
+ 	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+ 	priv->attachment_paned = g_object_ref_sink (widget);
+ 	gtk_widget_show (widget);
+-
++/* FIXME WK2
+ 	g_object_bind_property (
+ 		view, "editable",
+ 		widget, "sensitive",
+-		G_BINDING_SYNC_CREATE);
++		G_BINDING_SYNC_CREATE);*/
+ 
+ 	container = e_attachment_paned_get_content_area (
+ 		E_ATTACHMENT_PANED (priv->attachment_paned));
+@@ -493,7 +493,6 @@ e_composer_paste_html (EMsgComposer *composer,
+ {
+ 	EHTMLEditor *editor;
+ 	EHTMLEditorView *view;
+-	EHTMLEditorSelection *editor_selection;
+ 	gchar *html;
+ 
+ 	g_return_val_if_fail (E_IS_MSG_COMPOSER (composer), FALSE);
+@@ -504,11 +503,10 @@ e_composer_paste_html (EMsgComposer *composer,
+ 
+ 	editor = e_msg_composer_get_editor (composer);
+ 	view = e_html_editor_get_view (editor);
+-	editor_selection = e_html_editor_view_get_selection (view);
+ 	/* If Web View doesn't have focus, focus it */
+ 	if (!gtk_widget_has_focus (GTK_WIDGET (view)))
+ 		gtk_widget_grab_focus (GTK_WIDGET (view));
+-	e_html_editor_selection_insert_html (editor_selection, html);
++	e_html_editor_view_insert_html (view, html);
+ 
+ 	g_free (html);
+ 
+@@ -520,9 +518,7 @@ e_composer_paste_image (EMsgComposer *composer,
+                         GtkClipboard *clipboard)
+ {
+ 	EHTMLEditor *editor;
+-	EHTMLEditorView *html_editor_view;
+-	EAttachmentStore *store;
+-	EAttachmentView *view;
++	EHTMLEditorView *view;
+ 	GdkPixbuf *pixbuf = NULL;
+ 	gchar *filename = NULL;
+ 	gchar *uri = NULL;
+@@ -532,9 +528,6 @@ e_composer_paste_image (EMsgComposer *composer,
+ 	g_return_val_if_fail (E_IS_MSG_COMPOSER (composer), FALSE);
+ 	g_return_val_if_fail (GTK_IS_CLIPBOARD (clipboard), FALSE);
+ 
+-	view = e_msg_composer_get_attachment_view (composer);
+-	store = e_attachment_view_get_store (view);
+-
+ 	/* Extract the image data from the clipboard. */
+ 	pixbuf = gtk_clipboard_wait_for_image (clipboard);
+ 	g_return_val_if_fail (pixbuf != NULL, FALSE);
+@@ -562,15 +555,17 @@ e_composer_paste_image (EMsgComposer *composer,
+ 	/* In HTML mode, paste the image into the message body.
+ 	 * In text mode, add the image to the attachment store. */
+ 	editor = e_msg_composer_get_editor (composer);
+-	html_editor_view = e_html_editor_get_view (editor);
+-	if (e_html_editor_view_get_html_mode (html_editor_view)) {
+-		EHTMLEditorSelection *selection;
+-
+-		selection = e_html_editor_view_get_selection (html_editor_view);
+-		e_html_editor_selection_insert_image (selection, uri);
+-		e_html_editor_selection_scroll_to_caret (selection);
++	view = e_html_editor_get_view (editor);
++	if (e_html_editor_view_get_html_mode (view)) {
++		e_html_editor_view_insert_image (view, uri);
++		e_html_editor_view_scroll_to_caret (view);
+ 	} else {
+ 		EAttachment *attachment;
++		EAttachmentStore *store;
++		EAttachmentView *attachment_view;
++
++		attachment_view = e_msg_composer_get_attachment_view (composer);
++		store = e_attachment_view_get_store (attachment_view);
+ 
+ 		attachment = e_attachment_new_for_uri (uri);
+ 		e_attachment_store_add_attachment (store, attachment);
+@@ -601,7 +596,6 @@ e_composer_paste_text (EMsgComposer *composer,
+ {
+ 	EHTMLEditor *editor;
+ 	EHTMLEditorView *view;
+-	EHTMLEditorSelection *editor_selection;
+ 	gchar *text;
+ 
+ 	g_return_val_if_fail (E_IS_MSG_COMPOSER (composer), FALSE);
+@@ -612,12 +606,11 @@ e_composer_paste_text (EMsgComposer *composer,
+ 
+ 	editor = e_msg_composer_get_editor (composer);
+ 	view = e_html_editor_get_view (editor);
+-	editor_selection = e_html_editor_view_get_selection (view);
+ 	/* If WebView doesn't have focus, focus it */
+ 	if (!gtk_widget_has_focus (GTK_WIDGET (view)))
+ 		gtk_widget_grab_focus (GTK_WIDGET (view));
+ 
+-	e_html_editor_selection_insert_text (editor_selection, text);
++	e_html_editor_view_insert_text (view, text);
+ 
+ 	g_free (text);
+ 
+@@ -796,6 +789,7 @@ composer_size_allocate_cb (GtkWidget *widget,
+ 	GtkWidget *scrolled_window;
+ 	GtkAdjustment *adj;
+ 
++	/* FIXME WK2 this has to be arranged as in WK2 the webview is not in scrolled window */
+ 	scrolled_window = gtk_widget_get_parent (GTK_WIDGET (widget));
+ 	adj = gtk_scrolled_window_get_vadjustment (GTK_SCROLLED_WINDOW (scrolled_window));
+ 
+@@ -810,199 +804,6 @@ composer_size_allocate_cb (GtkWidget *widget,
+ 	}
+ }
+ 
+-static WebKitDOMElement *
+-prepare_paragraph (EHTMLEditorSelection *selection,
+-                   WebKitDOMDocument *document)
+-{
+-	WebKitDOMElement *br, *paragraph;
+-
+-	paragraph = e_html_editor_selection_get_paragraph_element (
+-		selection, document, -1, 0);
+-	br = webkit_dom_document_create_element (document, "BR", NULL);
+-	webkit_dom_node_append_child (
+-		WEBKIT_DOM_NODE (paragraph), WEBKIT_DOM_NODE (br), NULL);
+-
+-	return paragraph;
+-}
+-
+-static void
+-composer_move_caret (EMsgComposer *composer)
+-{
+-	EHTMLEditor *editor;
+-	EHTMLEditorView *view;
+-	EHTMLEditorSelection *editor_selection;
+-	GSettings *settings;
+-	gboolean start_bottom, top_signature;
+-	gboolean is_message_from_draft;
+-	gboolean is_message_from_edit_as_new;
+-	gboolean has_paragraphs_in_body = TRUE;
+-	WebKitDOMDocument *document;
+-	WebKitDOMDOMWindow *window;
+-	WebKitDOMDOMSelection *dom_selection;
+-	WebKitDOMElement *element, *signature;
+-	WebKitDOMHTMLElement *body;
+-	WebKitDOMNodeList *list;
+-	WebKitDOMRange *new_range;
+-
+-	/* When there is an option composer-reply-start-bottom set we have
+-	 * to move the caret between reply and signature. */
+-	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+-	start_bottom = g_settings_get_boolean (settings, "composer-reply-start-bottom");
+-	g_object_unref (settings);
+-
+-	editor = e_msg_composer_get_editor (composer);
+-	view = e_html_editor_get_view (editor);
+-	editor_selection = e_html_editor_view_get_selection (view);
+-	is_message_from_draft = e_html_editor_view_is_message_from_draft (view);
+-	is_message_from_edit_as_new =
+-		e_html_editor_view_is_message_from_edit_as_new (view);
+-
+-	top_signature =
+-		use_top_signature (composer) &&
+-		!is_message_from_edit_as_new &&
+-		!composer->priv->is_from_new_message;
+-
+-	document = webkit_web_view_get_dom_document (WEBKIT_WEB_VIEW (view));
+-	window = webkit_dom_document_get_default_view (document);
+-	dom_selection = webkit_dom_dom_window_get_selection (window);
+-
+-	body = webkit_dom_document_get_body (document);
+-	webkit_dom_element_set_attribute (
+-		WEBKIT_DOM_ELEMENT (body), "data-message", "", NULL);
+-	new_range = webkit_dom_document_create_range (document);
+-
+-	/* If editing message as new don't handle with caret */
+-	if (is_message_from_edit_as_new || is_message_from_draft) {
+-		if (is_message_from_edit_as_new)
+-			webkit_dom_element_set_attribute (
+-				WEBKIT_DOM_ELEMENT (body),
+-				"data-edit-as-new",
+-				"",
+-				NULL);
+-
+-		if (e_html_editor_view_get_html_mode (view) &&
+-		    is_message_from_edit_as_new) {
+-
+-			webkit_dom_range_select_node_contents (
+-				new_range, WEBKIT_DOM_NODE (body), NULL);
+-			webkit_dom_range_collapse (new_range, TRUE, NULL);
+-
+-			webkit_dom_dom_selection_remove_all_ranges (dom_selection);
+-			webkit_dom_dom_selection_add_range (dom_selection, new_range);
+-		} else
+-			e_html_editor_selection_scroll_to_caret (editor_selection);
+-
+-		return;
+-	}
+-
+-	e_html_editor_selection_block_selection_changed (editor_selection);
+-
+-	/* When the new message is written from the beginning - note it into body */
+-	if (composer->priv->is_from_new_message)
+-		webkit_dom_element_set_attribute (
+-			WEBKIT_DOM_ELEMENT (body), "data-new-message", "", NULL);
+-
+-	list = webkit_dom_document_get_elements_by_class_name (document, "-x-evo-paragraph");
+-	signature = webkit_dom_document_query_selector (document, ".-x-evo-signature-wrapper", NULL);
+-	/* Situation when wrapped paragraph is just in signature and not in message body */
+-	if (webkit_dom_node_list_get_length (list) == 1)
+-		if (signature && webkit_dom_element_query_selector (signature, ".-x-evo-paragraph", NULL))
+-			has_paragraphs_in_body = FALSE;
+-
+-	/*
+-	 *
+-	 * Keeping Signatures in the beginning of composer
+-	 * ------------------------------------------------
+-	 *
+-	 * Purists are gonna blast me for this.
+-	 * But there are so many people (read Outlook users) who want this.
+-	 * And Evo is an exchange-client, Outlook-replacement etc.
+-	 * So Here it goes :(
+-	 *
+-	 * -- Sankar
+-	 *
+-	 */
+-	if (signature && top_signature) {
+-		element_add_class (signature, "-x-evo-top-signature");
+-		element = prepare_paragraph (editor_selection, document);
+-		webkit_dom_node_insert_before (
+-			WEBKIT_DOM_NODE (body),
+-			WEBKIT_DOM_NODE (element),
+-			webkit_dom_node_get_next_sibling (WEBKIT_DOM_NODE (signature)),
+-			NULL);
+-	}
+-
+-	if (webkit_dom_node_list_get_length (list) == 0)
+-		has_paragraphs_in_body = FALSE;
+-
+-	if (!has_paragraphs_in_body) {
+-		element = prepare_paragraph (editor_selection, document);
+-		if (top_signature) {
+-			if (start_bottom) {
+-				webkit_dom_node_append_child (
+-					WEBKIT_DOM_NODE (body),
+-					WEBKIT_DOM_NODE (element),
+-					NULL);
+-			} else {
+-				webkit_dom_node_insert_before (
+-					WEBKIT_DOM_NODE (body),
+-					WEBKIT_DOM_NODE (element),
+-					webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (body)),
+-					NULL);
+-			}
+-		} else {
+-			if (start_bottom) {
+-				webkit_dom_node_insert_before (
+-					WEBKIT_DOM_NODE (body),
+-					WEBKIT_DOM_NODE (element),
+-					WEBKIT_DOM_NODE (signature),
+-					NULL);
+-			} else {
+-				webkit_dom_node_insert_before (
+-					WEBKIT_DOM_NODE (body),
+-					WEBKIT_DOM_NODE (element),
+-					webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (body)),
+-					NULL);
+-			}
+-		}
+-	} else {
+-		element = webkit_dom_document_get_element_by_id (document, "-x-evo-input-start");
+-		if (!element && top_signature) {
+-			element = prepare_paragraph (editor_selection, document);
+-			if (start_bottom) {
+-					webkit_dom_node_append_child (
+-					WEBKIT_DOM_NODE (body),
+-					WEBKIT_DOM_NODE (element),
+-					NULL);
+-			} else {
+-				webkit_dom_node_insert_before (
+-					WEBKIT_DOM_NODE (body),
+-					WEBKIT_DOM_NODE (element),
+-					WEBKIT_DOM_NODE (signature),
+-					NULL);
+-			}
+-		}
+-	}
+-
+-	webkit_dom_range_select_node_contents (
+-		new_range, WEBKIT_DOM_NODE (element), NULL);
+-	webkit_dom_range_collapse (new_range, TRUE, NULL);
+-
+-	if (start_bottom)
+-		g_signal_connect (
+-			view, "size-allocate",
+-			G_CALLBACK (composer_size_allocate_cb), NULL);
+-
+-	webkit_dom_dom_selection_remove_all_ranges (dom_selection);
+-	webkit_dom_dom_selection_add_range (dom_selection, new_range);
+-
+-	g_object_unref (list);
+-
+-	e_html_editor_view_force_spell_check (view);
+-
+-	e_html_editor_selection_unblock_selection_changed (editor_selection);
+-}
+-
+ static void
+ composer_load_signature_cb (EMailSignatureComboBox *combo_box,
+                             GAsyncResult *result,
+@@ -1017,12 +818,11 @@ composer_load_signature_cb (EMailSignatureComboBox *combo_box,
+ 	GError *error = NULL;
+ 	EHTMLEditor *editor;
+ 	EHTMLEditorView *view;
+-	WebKitDOMDocument *document;
+-	WebKitDOMNodeList *signatures;
+-	gulong list_length, ii;
+ 	GSettings *settings;
+ 	gboolean start_bottom;
+ 	gboolean is_message_from_edit_as_new;
++	GDBusProxy *web_extension;
++	GVariant *extension_result;
+ 
+ 	e_mail_signature_combo_box_load_selected_finish (
+ 		combo_box, result, &contents, &length, &is_html, &error);
+@@ -1115,96 +915,57 @@ composer_load_signature_cb (EMailSignatureComboBox *combo_box,
+ 
+ insert:
+ 	/* Remove the old signature and insert the new one. */
++	web_extension = e_html_editor_view_get_web_extension_proxy (view);
++	if (!web_extension)
++		return;
+ 
+-	document = webkit_web_view_get_dom_document (WEBKIT_WEB_VIEW (view));
++	extension_result = g_dbus_proxy_call_sync (
++		web_extension,
++		"DOMRemoveSignatures",
++		g_variant_new (
++			"(tb)",
++			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view)),
++			top_signature),
++		G_DBUS_CALL_FLAGS_NONE,
++		-1,
++		NULL,
++		NULL);
+ 
+-	signatures = webkit_dom_document_get_elements_by_class_name (
+-		document, "-x-evo-signature-wrapper");
+-	list_length = webkit_dom_node_list_get_length (signatures);
+-	for (ii = 0; ii < list_length; ii++) {
+-		WebKitDOMNode *wrapper, *signature;
+-		gchar *id;
++	if (is_message_from_edit_as_new && composer->priv->set_signature_from_message && result) {
++		const gchar *id;
++		gsize length = 0;
+ 
+-		wrapper = webkit_dom_node_list_item (signatures, ii);
+-		signature = webkit_dom_node_get_first_child (wrapper);
+-		id = webkit_dom_element_get_id (WEBKIT_DOM_ELEMENT (signature));
+-
+-		/* When we are editing a message with signature we need to set active
+-		 * signature id in signature combo box otherwise no signature will be
+-		 * added but we have to do it just once when the composer opens */
+-		if (is_message_from_edit_as_new && composer->priv->set_signature_from_message) {
+-			gchar *name = webkit_dom_element_get_attribute (WEBKIT_DOM_ELEMENT (signature), "name");
+-			gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo_box), name);
+-			g_free (name);
++		id = g_variant_get_string (extension_result, &length);
++		if (length > 0 && id && *id) {
++			gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo_box), id);
+ 			composer->priv->set_signature_from_message = FALSE;
+ 		}
+-
+-		if (id && (strlen (id) == 1) && (*id == '1')) {
+-			/* If the top signature was set we have to remove the NL
+-			 * that was inserted after it */
+-			if (top_signature)
+-				remove_node (webkit_dom_node_get_next_sibling (wrapper));
+-			/* We have to remove the div containing the span with signature */
+-			remove_node (wrapper);
+-
+-			g_free (id);
+-			break;
+-		}
+-
+-		g_free (id);
++		g_object_unref (extension_result);
+ 	}
+-	g_object_unref (signatures);
+ 
+-	if (html_buffer != NULL) {
+-		if (*html_buffer->str) {
+-			WebKitDOMElement *element;
+-			WebKitDOMHTMLElement *body;
+-
+-			body = webkit_dom_document_get_body (document);
+-			element = webkit_dom_document_create_element (document, "DIV", NULL);
+-			webkit_dom_element_set_class_name (element, "-x-evo-signature-wrapper");
+-
+-			webkit_dom_html_element_set_inner_html (
+-				WEBKIT_DOM_HTML_ELEMENT (element), html_buffer->str, NULL);
+-
+-			if (top_signature) {
+-				WebKitDOMNode *child =
+-					webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (body));
+-
+-				if (start_bottom) {
+-					webkit_dom_node_insert_before (
+-						WEBKIT_DOM_NODE (body),
+-						WEBKIT_DOM_NODE (element),
+-						child,
+-						NULL);
+-				} else {
+-					WebKitDOMElement *input_start =
+-						webkit_dom_document_get_element_by_id (
+-							document, "-x-evo-input-start");
+-					/* When we are using signature on top the caret
+-					 * should be before the signature */
+-					webkit_dom_node_insert_before (
+-						WEBKIT_DOM_NODE (body),
+-						WEBKIT_DOM_NODE (element),
+-						input_start ?
+-							webkit_dom_node_get_next_sibling (
+-								WEBKIT_DOM_NODE (input_start)) :
+-							child,
+-						NULL);
+-				}
+-			} else {
+-				webkit_dom_node_append_child (
+-					WEBKIT_DOM_NODE (body),
+-					WEBKIT_DOM_NODE (element),
+-					NULL);
+-			}
+-		}
++	if (html_buffer && html_buffer->str && *html_buffer->str) {
++		g_dbus_proxy_call (
++			web_extension,
++			"DOMInsertSignature",
++			g_variant_new (
++				"(tsb)",
++				webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view)),
++				html_buffer->str,
++				top_signature,
++				start_bottom),
++			G_DBUS_CALL_FLAGS_NONE,
++			-1,
++			NULL,
++			NULL,
++			NULL);
+ 
+ 		g_string_free (html_buffer, TRUE);
+ 	}
+ 
+-	composer_move_caret (composer);
+-
++	if (start_bottom)
++		g_signal_connect (
++			view, "size-allocate",
++			G_CALLBACK (composer_size_allocate_cb), NULL);
+ exit:
+ 	g_object_unref (composer);
+ }
+@@ -1234,7 +995,6 @@ e_composer_update_signature (EMsgComposer *composer)
+ 	EMailSignatureComboBox *combo_box;
+ 	EHTMLEditor *editor;
+ 	EHTMLEditorView *view;
+-	WebKitLoadStatus status;
+ 
+ 	g_return_if_fail (E_IS_MSG_COMPOSER (composer));
+ 
+diff --git a/composer/e-composer-spell-header.c b/composer/e-composer-spell-header.c
+index b2d2dfa2a4..c02cfd1686 100644
+--- a/composer/e-composer-spell-header.c
++++ b/composer/e-composer-spell-header.c
+@@ -31,7 +31,8 @@ e_composer_spell_header_class_init (EComposerSpellHeaderClass *class)
+ 	EComposerTextHeaderClass *composer_text_header_class;
+ 
+ 	composer_text_header_class = E_COMPOSER_TEXT_HEADER_CLASS (class);
+-	composer_text_header_class->entry_type = E_TYPE_SPELL_ENTRY;
++/* FIXME WK2
++	composer_text_header_class->entry_type = E_TYPE_SPELL_ENTRY;*/
+ }
+ 
+ static void
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 1c66275dd1..80b01de024 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -1239,12 +1239,12 @@ composer_build_message (EMsgComposer *composer,
+ 		data = g_byte_array_new ();
+ 
+ 		e_html_editor_view_embed_styles (view);
+-		e_html_editor_selection_save (selection);
++		e_html_editor_view_save_selection (view);
+ 
+ 		text = e_html_editor_view_get_text_html_for_drafts (view);
+ 
+ 		e_html_editor_view_remove_embed_styles (view);
+-		e_html_editor_selection_restore (selection);
++		e_html_editor_view_restore_selection (view);
+ 
+ 		g_byte_array_append (data, (guint8 *) text, strlen (text));
+ 
+@@ -1787,14 +1787,11 @@ msg_composer_drag_data_received_cb (GtkWidget *widget,
+ {
+ 	GdkAtom atom;
+ 	gchar *name;
+-	EAttachmentView *view;
+ 	EHTMLEditor *editor;
+-	EHTMLEditorView *html_editor_view;
+-	EHTMLEditorSelection *editor_selection;
++	EHTMLEditorView *view;
+ 
+ 	editor = e_msg_composer_get_editor (composer);
+-	html_editor_view = e_html_editor_get_view (editor);
+-	editor_selection = e_html_editor_view_get_selection (html_editor_view);
++	view = e_html_editor_get_view (editor);
+ 
+ 	atom = gtk_selection_data_get_target (selection);
+ 	name = gdk_atom_name (atom);
+@@ -1820,15 +1817,15 @@ msg_composer_drag_data_received_cb (GtkWidget *widget,
+ 		do {
+ 			text = next_uri ((guchar **) &data, &len, &list_len);
+ 			if (is_text)
+-				e_html_editor_selection_insert_text (editor_selection, text);
++				e_html_editor_view_insert_text (view, text);
+ 			else
+-				e_html_editor_selection_insert_html (editor_selection, text);
++				e_html_editor_view_insert_html (view, text);
+ 		} while (list_len);
+ 
+-		e_html_editor_view_check_magic_links (html_editor_view, FALSE);
+-		e_html_editor_view_force_spell_check (html_editor_view);
++		e_html_editor_view_check_magic_links (view);
++		e_html_editor_view_force_spell_check (view);
+ 
+-		e_html_editor_selection_scroll_to_caret (editor_selection);
++		e_html_editor_view_scroll_to_caret (view);
+ 
+ 		/* Stop the signal from propagating */
+ 		g_signal_stop_emission_by_name (widget, "drag-data-received");
+@@ -1839,7 +1836,7 @@ msg_composer_drag_data_received_cb (GtkWidget *widget,
+ 	g_free (name);
+ 
+ 	/* HTML mode has a few special cases for drops... */
+-	if (e_html_editor_view_get_html_mode (html_editor_view)) {
++	if (e_html_editor_view_get_html_mode (view)) {
+ 		/* If we're receiving an image, we want the image to be
+ 		 * inserted in the message body.  Let GtkHtml handle it. */
+ 		/* FIXME WebKit - how to reproduce this?
+@@ -1864,7 +1861,7 @@ msg_composer_drag_data_received_cb (GtkWidget *widget,
+ 			list_len = length;
+ 			do {
+ 				uri = next_uri ((guchar **) &data, &len, &list_len);
+-				e_html_editor_selection_insert_image (editor_selection, uri);
++				e_html_editor_view_insert_image (view, uri);
+ 			} while (list_len);
+ 		}
+ 
+@@ -1884,18 +1881,20 @@ msg_composer_drag_data_received_cb (GtkWidget *widget,
+ 			do {
+ 				uri = next_uri ((guchar **) &data, &len, &list_len);
+ 
+-				e_html_editor_selection_insert_image (editor_selection, uri);
++				e_html_editor_view_insert_image (view, uri);
+ 			} while (list_len);
+ 		}
+ 	} else {
+-		view = e_msg_composer_get_attachment_view (composer);
++		EAttachmentView *attachment_view;
++
++		attachment_view = e_msg_composer_get_attachment_view (composer);
+ 
+ 		/* Forward the data to the attachment view.  Note that calling
+ 		 * e_attachment_view_drag_data_received() will not work because
+ 		 * that function only handles the case where all the other drag
+ 		 * handlers have failed. */
+ 		e_attachment_paned_drag_data_received (
+-			E_ATTACHMENT_PANED (view),
++			E_ATTACHMENT_PANED (attachment_view),
+ 			context, x, y, selection, info, time);
+ 	}
+ 	/* Stop the signal from propagating */
+@@ -2083,7 +2082,7 @@ composer_notify_activity_cb (EActivityBar *activity_bar,
+ 	EHTMLEditor *editor;
+ 	EHTMLEditorView *view;
+ 	WebKitWebView *web_view;
+-	gboolean editable;
++	gboolean editable = TRUE;;
+ 	gboolean busy;
+ 
+ 	busy = (e_activity_bar_get_activity (activity_bar) != NULL);
+@@ -2101,12 +2100,14 @@ composer_notify_activity_cb (EActivityBar *activity_bar,
+ 	web_view = WEBKIT_WEB_VIEW (view);
+ 
+ 	if (busy) {
++		/* FIXME WK2
+ 		editable = webkit_web_view_get_editable (web_view);
+-		webkit_web_view_set_editable (web_view, FALSE);
++		webkit_web_view_set_editable (web_view, FALSE);*/
+ 		composer->priv->saved_editable = editable;
+ 	} else {
+ 		editable = composer->priv->saved_editable;
+-		webkit_web_view_set_editable (web_view, editable);
++		/* FIXME WK2
++		webkit_web_view_set_editable (web_view, editable);*/
+ 	}
+ 
+ 	g_object_notify (G_OBJECT (composer), "busy");
+@@ -2121,11 +2122,11 @@ msg_composer_constructed (GObject *object)
+ 	EShell *shell;
+ 	EMsgComposer *composer;
+ 	EActivityBar *activity_bar;
+-	EAttachmentView *view;
++	EAttachmentView *attachment_view;
+ 	EAttachmentStore *store;
+ 	EComposerHeaderTable *table;
+ 	EHTMLEditor *editor;
+-	EHTMLEditorView *html_editor_view;
++	EHTMLEditorView *view;
+ 	GtkUIManager *ui_manager;
+ 	GtkToggleAction *action;
+ 	GSettings *settings;
+@@ -2139,9 +2140,9 @@ msg_composer_constructed (GObject *object)
+ 	e_composer_private_constructed (composer);
+ 
+ 	editor = e_msg_composer_get_editor (composer);
+-	html_editor_view = e_html_editor_get_view (editor);
++	view = e_html_editor_get_view (editor);
+ 	ui_manager = e_html_editor_get_ui_manager (editor);
+-	view = e_msg_composer_get_attachment_view (composer);
++	attachment_view = e_msg_composer_get_attachment_view (composer);
+ 	table = E_COMPOSER_HEADER_TABLE (composer->priv->header_table);
+ 
+ 	gtk_window_set_title (GTK_WINDOW (composer), _("Compose Message"));
+@@ -2188,21 +2189,21 @@ msg_composer_constructed (GObject *object)
+ 	/* Clipboard Support */
+ 
+ 	g_signal_connect (
+-		html_editor_view, "paste-clipboard",
++		view, "paste-clipboard",
+ 		G_CALLBACK (msg_composer_paste_clipboard_cb), composer);
+ 
+ 	g_signal_connect (
+-		html_editor_view, "paste-primary-clipboard",
++		view, "paste-primary-clipboard",
+ 		G_CALLBACK (msg_composer_paste_primary_clipboard_cb), composer);
+ 
+ 	/* Drag-and-Drop Support */
+ 
+ 	g_signal_connect (
+-		html_editor_view, "drag-motion",
++		view, "drag-motion",
+ 		G_CALLBACK (msg_composer_drag_motion_cb), composer);
+ 
+ 	g_signal_connect (
+-		html_editor_view, "drag-data-received",
++		view, "drag-data-received",
+ 		G_CALLBACK (msg_composer_drag_data_received_cb), composer);
+ 
+ 	g_signal_connect (
+@@ -2240,7 +2241,7 @@ msg_composer_constructed (GObject *object)
+ 
+ 	/* Attachments */
+ 
+-	store = e_attachment_view_get_store (view);
++	store = e_attachment_view_get_store (attachment_view);
+ 
+ 	g_signal_connect_swapped (
+ 		store, "row-deleted",
+@@ -2251,10 +2252,10 @@ msg_composer_constructed (GObject *object)
+ 		G_CALLBACK (attachment_store_changed_cb), composer);
+ 
+ 	/* Initialization may have tripped the "changed" state. */
+-	e_html_editor_view_set_changed (html_editor_view, FALSE);
++	e_html_editor_view_set_changed (view, FALSE);
+ 
+ 	gtk_drag_dest_set (
+-		GTK_WIDGET (html_editor_view),
++		GTK_WIDGET (view),
+ 		GTK_DEST_DEFAULT_HIGHLIGHT | GTK_DEST_DEFAULT_DROP,
+ 		drag_dest_targets, G_N_ELEMENTS (drag_dest_targets),
+ 		GDK_ACTION_COPY | GDK_ACTION_MOVE | GDK_ACTION_LINK);
+@@ -3130,45 +3131,43 @@ set_signature_gui (EMsgComposer *composer)
+ {
+ 	EHTMLEditor *editor;
+ 	EHTMLEditorView *view;
+-	WebKitDOMDocument *document;
+-	WebKitDOMNodeList *nodes;
+ 	EComposerHeaderTable *table;
+ 	EMailSignatureComboBox *combo_box;
+-	gchar *uid;
+-	gulong ii, length;
++	GDBusProxy *web_extension;
++	GVariant *result;
+ 
+ 	table = e_msg_composer_get_header_table (composer);
+ 	combo_box = e_composer_header_table_get_signature_combo_box (table);
+ 
+ 	editor = e_msg_composer_get_editor (composer);
+ 	view = e_html_editor_get_view (editor);
+-	document = webkit_web_view_get_dom_document (WEBKIT_WEB_VIEW (view));
++	web_extension = e_html_editor_view_get_web_extension_proxy (view);
++	if (!web_extension)
++		return;
+ 
+-	uid = NULL;
+-	nodes = webkit_dom_document_get_elements_by_class_name (
+-		document, "-x-evo-signature");
+-	length = webkit_dom_node_list_get_length (nodes);
+-	for (ii = 0; ii < length; ii++) {
+-		WebKitDOMNode *node;
+-		gchar *id;
++	result = g_dbus_proxy_call_sync (
++		web_extension,
++		"DOMGetActiveSignatureUid",
++		g_variant_new (
++			"(t)",
++			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view))),
++		G_DBUS_CALL_FLAGS_NONE,
++		-1,
++		NULL,
++		NULL);
+ 
+-		node = webkit_dom_node_list_item (nodes, ii);
+-		id = webkit_dom_element_get_id (WEBKIT_DOM_ELEMENT (node));
+-		if (id && (strlen (id) == 1) && (*id == '1')) {
+-			uid = webkit_dom_element_get_attribute (
+-				WEBKIT_DOM_ELEMENT (node), "name");
+-			g_free (id);
+-			break;
++	if (result) {
++		const gchar *uid;
++		gsize length = 0;
++
++		uid = g_variant_get_string (result, &length);
++
++		if (uid && *uid && length > 0) {
++			/* The combo box active ID is the signature's ESource UID. */
++			gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo_box), uid);
+ 		}
+-		g_free (id);
+-	}
+ 
+-	g_object_unref (nodes);
+-
+-	/* The combo box active ID is the signature's ESource UID. */
+-	if (uid != NULL) {
+-		gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo_box), uid);
+-		g_free (uid);
++		g_object_unref (result);
+ 	}
+ }
+ 
+@@ -3611,7 +3610,8 @@ e_msg_composer_new_redirect (EShell *shell,
+ 
+ 	editor = e_msg_composer_get_editor (composer);
+ 	view = e_html_editor_get_view (editor);
+-	webkit_web_view_set_editable (WEBKIT_WEB_VIEW (view), FALSE);
++	/* FIXME WK2
++	webkit_web_view_set_editable (WEBKIT_WEB_VIEW (view), FALSE);*/
+ 
+ 	return composer;
+ }
+@@ -4392,7 +4392,8 @@ e_msg_composer_set_body (EMsgComposer *composer,
+ 
+ 	e_html_editor_view_set_html_mode (view, FALSE);
+ 	e_html_editor_view_set_remove_initial_input_line (view, TRUE);
+-	webkit_web_view_set_editable (WEBKIT_WEB_VIEW (view), FALSE);
++	/* FIXME WK2
++	webkit_web_view_set_editable (WEBKIT_WEB_VIEW (view), FALSE);*/
+ 
+ 	g_free (priv->mime_body);
+ 	priv->mime_body = g_strdup (body);
+@@ -4923,6 +4924,52 @@ e_msg_composer_get_reply_to (EMsgComposer *composer)
+ 	return address;
+ }
+ 
++static GByteArray *
++msg_composer_get_content (EMsgComposer *composer,
++                          const gchar *dom_function)
++{
++	EHTMLEditor *editor;
++	EHTMLEditorView *view;
++	GByteArray *array;
++	GDBusProxy *web_extension;
++	GVariant *result;
++
++	g_return_val_if_fail (E_IS_MSG_COMPOSER (composer), NULL);
++
++	editor = e_msg_composer_get_editor (composer);
++	view = e_html_editor_get_view (editor);
++	array = g_byte_array_new ();
++
++	web_extension = e_html_editor_view_get_web_extension_proxy (view);
++	if (!web_extension)
++		return array;
++
++	result = g_dbus_proxy_call_sync (
++		web_extension,
++		dom_function,
++		g_variant_new (
++			"(t)",
++			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view))),
++		G_DBUS_CALL_FLAGS_NONE,
++		-1,
++		NULL,
++		NULL);
++
++	if (result) {
++		const gchar *content;
++		gsize length = 0;
++
++		/* FIXME WK2 do it better */
++		content = g_variant_get_string (result, &length);
++		if (content && *content && length > 0)
++			g_byte_array_append (array, (guint8 *) content, length);
++
++		g_object_unref (result);
++	}
++
++	return array;
++}
++
+ /**
+  * e_msg_composer_get_raw_message_text_without_signature:
+  *
+@@ -4931,36 +4978,8 @@ e_msg_composer_get_reply_to (EMsgComposer *composer)
+ GByteArray *
+ e_msg_composer_get_raw_message_text_without_signature (EMsgComposer *composer)
+ {
+-	EHTMLEditor *editor;
+-	EHTMLEditorView *view;
+-	GByteArray *array;
+-	gint ii, length;
+-	WebKitDOMDocument *document;
+-	WebKitDOMNodeList *list;
++	return msg_composer_get_content (composer, "DOMGetRawBodyContentWithoutSignature");
+ 
+-	g_return_val_if_fail (E_IS_MSG_COMPOSER (composer), NULL);
+-
+-	editor = e_msg_composer_get_editor (composer);
+-	view = e_html_editor_get_view (editor);
+-	document = webkit_web_view_get_dom_document (WEBKIT_WEB_VIEW (view));
+-	array = g_byte_array_new ();
+-
+-	list = webkit_dom_document_query_selector_all (
+-		document, "body > *:not(.-x-evo-signature-wrapper)", NULL);
+-	length = webkit_dom_node_list_get_length (list);
+-	for (ii = 0; ii < length; ii++) {
+-		gchar *text;
+-		WebKitDOMNode *node = webkit_dom_node_list_item (list, ii);
+-
+-		text = webkit_dom_html_element_get_inner_text (
+-			WEBKIT_DOM_HTML_ELEMENT (node));
+-		g_byte_array_append (array, (guint8 *) text, strlen (text));
+-		g_free (text);
+-	}
+-
+-	g_object_unref (list);
+-
+-	return array;
+ }
+ 
+ /**
+@@ -4971,26 +4990,7 @@ e_msg_composer_get_raw_message_text_without_signature (EMsgComposer *composer)
+ GByteArray *
+ e_msg_composer_get_raw_message_text (EMsgComposer *composer)
+ {
+-	EHTMLEditor *editor;
+-	EHTMLEditorView *view;
+-	GByteArray *array;
+-	gchar *text;
+-	WebKitDOMDocument *document;
+-	WebKitDOMHTMLElement *body;
+-
+-	g_return_val_if_fail (E_IS_MSG_COMPOSER (composer), NULL);
+-
+-	editor = e_msg_composer_get_editor (composer);
+-	view = e_html_editor_get_view (editor);
+-	document = webkit_web_view_get_dom_document (WEBKIT_WEB_VIEW (view));
+-	body = webkit_dom_document_get_body (document);
+-
+-	array = g_byte_array_new ();
+-	text = webkit_dom_html_element_get_inner_text (body);
+-	g_byte_array_append (array, (guint8 *) text, strlen (text));
+-	g_free (text);
+-
+-	return array;
++	return msg_composer_get_content (composer, "DOMGetRawBodyContent");
+ }
+ 
+ gboolean
+@@ -5099,6 +5099,7 @@ e_save_spell_languages (const GList *spell_dicts)
+ 
+ 	/* Build a list of spell check language codes. */
+ 	lang_array = g_ptr_array_new ();
++/* FIXME WK2
+ 	while (spell_dicts != NULL) {
+ 		ESpellDictionary *dict = spell_dicts->data;
+ 		const gchar *language_code;
+@@ -5107,7 +5108,7 @@ e_save_spell_languages (const GList *spell_dicts)
+ 		g_ptr_array_add (lang_array, (gpointer) language_code);
+ 
+ 		spell_dicts = g_list_next (spell_dicts);
+-	}
++	}*/
+ 
+ 	g_ptr_array_add (lang_array, NULL);
+ 
+@@ -5140,14 +5141,8 @@ e_msg_composer_save_focused_widget (EMsgComposer *composer)
+ 	widget = gtk_window_get_focus (GTK_WINDOW (composer));
+ 	composer->priv->focused_entry = widget;
+ 
+-	if (E_IS_HTML_EDITOR_VIEW (widget)) {
+-		EHTMLEditorSelection *selection;
+-
+-		selection = e_html_editor_view_get_selection (
+-			E_HTML_EDITOR_VIEW (widget));
+-
+-		e_html_editor_selection_save (selection);
+-	}
++	if (E_IS_HTML_EDITOR_VIEW (widget))
++		e_html_editor_view_save_selection (E_HTML_EDITOR_VIEW (widget));
+ 
+ 	if (GTK_IS_EDITABLE (widget)) {
+ 		gtk_editable_get_selection_bounds (
+@@ -5177,14 +5172,10 @@ e_msg_composer_restore_focus_on_composer (EMsgComposer *composer)
+ 	}
+ 
+ 	if (E_IS_HTML_EDITOR_VIEW (widget)) {
+-		EHTMLEditorSelection *selection;
++		EHTMLEditorView *view = E_HTML_EDITOR_VIEW (widget);
+ 
+-		e_html_editor_view_force_spell_check (E_HTML_EDITOR_VIEW (widget));
+-
+-		selection = e_html_editor_view_get_selection (
+-			E_HTML_EDITOR_VIEW (widget));
+-
+-		e_html_editor_selection_restore (selection);
++		e_html_editor_view_force_spell_check (view);
++		e_html_editor_view_restore_selection (view);
+ 	}
+ 
+ 	composer->priv->focused_entry = NULL;
+diff --git a/e-util/Makefile.am b/e-util/Makefile.am
+index 04319491d3..6810ea095c 100644
+--- a/e-util/Makefile.am
++++ b/e-util/Makefile.am
+@@ -1,7 +1,5 @@
+ NULL =
+ 
+-webextensions_LTLIBRARIES = libehtmleditorwebextension.la
+-
+ privsolib_LTLIBRARIES = libevolution-util.la
+ 
+ evolution_util_includedir = $(privincludedir)/e-util
+@@ -180,7 +178,6 @@ evolution_util_include_HEADERS =  \
+ 	e-destination-store.h \
+ 	e-dialog-utils.h \
+ 	e-dialog-widgets.h \
+-	e-dom-utils.h \
+ 	e-emoticon-action.h \
+ 	e-emoticon-chooser-menu.h \
+ 	e-emoticon-chooser.h \
+@@ -449,7 +446,6 @@ libevolution_util_la_SOURCES = \
+ 	e-destination-store.c \
+ 	e-dialog-utils.c \
+ 	e-dialog-widgets.c \
+-	e-dom-utils.c \
+ 	e-emoticon-action.c \
+ 	e-emoticon-chooser-menu.c \
+ 	e-emoticon-chooser.c \
+@@ -716,40 +712,6 @@ test_tree_view_frame_CPPFLAGS = $(TEST_CPPFLAGS)
+ test_tree_view_frame_SOURCES = test-tree-view-frame.c
+ test_tree_view_frame_LDADD = $(TEST_LDADD)
+ 
+-libehtmleditorwebextension_la_SOURCES =			\
+-	e-html-editor-actions-dom-functions.h \
+-	e-html-editor-cell-dialog-dom-functions.h \
+-	e-html-editor-hrule-dialog-dom-functions.h \
+-	e-html-editor-image-dialog-dom-functions.h \
+-	e-html-editor-link-dialog-dom-functions.h \
+-	e-html-editor-selection-dom-functions.h \
+-	e-html-editor-spell-check-dialog-dom-functions.h \
+-	e-html-editor-view-dom-functions.h \
+-	e-html-editor-actions-dom-functions.c \
+-	e-html-editor-cell-dialog-dom-functions.c \
+-	e-html-editor-hrule-dialog-dom-functions.c \
+-	e-html-editor-image-dialog-dom-functions.c \
+-	e-html-editor-link-dialog-dom-functions.c \
+-	e-html-editor-selection-dom-functions.c \
+-	e-html-editor-spell-check-dialog-dom-functions.c \
+-	e-html-editor-table-dialog-dom-functions.h \
+-	e-html-editor-table-dialog-dom-functions.c \
+-	e-html-editor-view-dom-functions.c \
+-	e-html-editor-web-extension.c			\
+-	e-html-editor-web-extension.h			\
+-	e-html-editor-web-extension-names.h		\
+-	e-html-editor-web-extension-main.c
+-
+-libehtmleditorwebextension_la_CPPFLAGS =		\
+-	$(libevolution_util_la_CPPFLAGS) 		\
+-	$(WEB_EXTENSIONS_CFLAGS)
+-
+-libehtmleditorwebextension_la_LIBADD =			\
+-	libevolution-util.la \
+-	$(WEB_EXTENSIONS_LIBS)
+-
+-libehtmleditorwebextension_la_LDFLAGS =			\
+-	-module -avoid-version -no-undefined
+ EXTRA_DIST = \
+ 	e-system.error.xml \
+ 	filter.error.xml \
+diff --git a/e-util/e-html-editor-actions.c b/e-util/e-html-editor-actions.c
+index 452f3d06b9..e1effb4c8a 100644
+--- a/e-util/e-html-editor-actions.c
++++ b/e-util/e-html-editor-actions.c
+@@ -340,14 +340,12 @@ action_insert_image_cb (GtkAction *action,
+ 
+ 	if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT) {
+ 		EHTMLEditorView *view;
+-		EHTMLEditorSelection *selection;
+ 		gchar *uri;
+ 
+ 		uri = gtk_file_chooser_get_uri (GTK_FILE_CHOOSER (dialog));
+ 
+ 		view = e_html_editor_get_view (editor);
+-		selection = e_html_editor_view_get_selection (view);
+-		e_html_editor_selection_insert_image (selection, uri);
++		e_html_editor_view_insert_image (view, uri);
+ 
+ 		g_free (uri);
+ 	}
+diff --git a/e-util/e-html-editor-cell-dialog.c b/e-util/e-html-editor-cell-dialog.c
+index d63ee0ec78..740723e580 100644
+--- a/e-util/e-html-editor-cell-dialog.c
++++ b/e-util/e-html-editor-cell-dialog.c
+@@ -394,10 +394,7 @@ html_editor_cell_dialog_set_background_image (EHTMLEditorCellDialog *dialog)
+ 			NULL,
+ 			NULL);
+ 	else
+-		e_html_editor_selection_replace_image_src (
+-			e_html_editor_view_get_selection (view),
+-			"#-x-evo-current-cell",
+-			uri);
++		e_html_editor_view_replace_image_src (view, "#-x-evo-current-cell", uri);
+ 
+ 	gtk_widget_set_sensitive (dialog->priv->remove_image_button, uri && *uri);
+ 
+diff --git a/e-util/e-html-editor-image-dialog.c b/e-util/e-html-editor-image-dialog.c
+index ad7dd20248..0d10bc6a2b 100644
+--- a/e-util/e-html-editor-image-dialog.c
++++ b/e-util/e-html-editor-image-dialog.c
+@@ -60,19 +60,16 @@ static void
+ html_editor_image_dialog_set_src (EHTMLEditorImageDialog *dialog)
+ {
+ 	EHTMLEditor *editor;
+-	EHTMLEditorSelection *editor_selection;
+ 	EHTMLEditorView *view;
+ 	gchar *uri;
+ 
+ 	editor = e_html_editor_dialog_get_editor (E_HTML_EDITOR_DIALOG (dialog));
+ 	view = e_html_editor_get_view (editor);
+-	editor_selection = e_html_editor_view_get_selection (view);
+ 
+ 	uri = gtk_file_chooser_get_uri (
+ 		GTK_FILE_CHOOSER (dialog->priv->file_chooser));
+ 
+-	e_html_editor_selection_replace_image_src (
+-		editor_selection, "img#-x-evo-current-img", uri);
++	e_html_editor_view_replace_image_src (view, "img#-x-evo-current-img", uri);
+ 
+ 	g_free (uri);
+ }
+diff --git a/e-util/e-html-editor-page-dialog.c b/e-util/e-html-editor-page-dialog.c
+index bf6fccbf8b..6aff2e56e0 100644
+--- a/e-util/e-html-editor-page-dialog.c
++++ b/e-util/e-html-editor-page-dialog.c
+@@ -273,8 +273,7 @@ html_editor_page_dialog_set_background_image (EHTMLEditorPageDialog *dialog)
+ 		GTK_FILE_CHOOSER (dialog->priv->background_image_filechooser));
+ 
+ 	if (uri && *uri)
+-		e_html_editor_selection_replace_image_src (
+-			e_html_editor_view_get_selection (view), "body", uri);
++		e_html_editor_view_replace_image_src (view, "body", uri);
+ 	else
+ 		g_dbus_proxy_call (
+ 			web_extension,
+diff --git a/e-util/e-html-editor-selection.c b/e-util/e-html-editor-selection.c
+index 4c081f08ab..b8eccb8292 100644
+--- a/e-util/e-html-editor-selection.c
++++ b/e-util/e-html-editor-selection.c
+@@ -1772,414 +1772,6 @@ e_html_editor_selection_set_underline (EHTMLEditorSelection *selection,
+ 		&selection->priv->is_underline);
+ }
+ 
+-/************************* image_load_and_insert_async() *************************/
+-
+-typedef struct _LoadContext LoadContext;
+-
+-struct _LoadContext {
+-	EHTMLEditorSelection *selection;
+-	GInputStream *input_stream;
+-	GOutputStream *output_stream;
+-	GFile *file;
+-	GFileInfo *file_info;
+-	goffset total_num_bytes;
+-	gssize bytes_read;
+-	const gchar *content_type;
+-	const gchar *filename;
+-	const gchar *selector;
+-	gchar buffer[4096];
+-};
+-
+-/* Forward Declaration */
+-static void
+-image_load_stream_read_cb (GInputStream *input_stream,
+-                           GAsyncResult *result,
+-                           LoadContext *load_context);
+-
+-static LoadContext *
+-image_load_context_new (EHTMLEditorSelection *selection)
+-{
+-	LoadContext *load_context;
+-
+-	load_context = g_slice_new0 (LoadContext);
+-	load_context->selection = selection;
+-
+-	return load_context;
+-}
+-
+-static void
+-image_load_context_free (LoadContext *load_context)
+-{
+-	if (load_context->input_stream != NULL)
+-		g_object_unref (load_context->input_stream);
+-
+-	if (load_context->output_stream != NULL)
+-		g_object_unref (load_context->output_stream);
+-
+-	if (load_context->file_info != NULL)
+-		g_object_unref (load_context->file_info);
+-
+-	if (load_context->file != NULL)
+-		g_object_unref (load_context->file);
+-
+-	g_slice_free (LoadContext, load_context);
+-}
+-
+-static void
+-replace_base64_image_src (EHTMLEditorSelection *selection,
+-                          const gchar *selector,
+-                          const gchar *base64_content,
+-                          const gchar *filename,
+-                          const gchar *uri)
+-{
+-	EHTMLEditorView *view;
+-	GDBusProxy *web_extension;
+-
+-	view = e_html_editor_selection_ref_html_editor_view (selection);
+-	g_return_if_fail (view != NULL);
+-
+-	e_html_editor_view_set_changed (view, TRUE);
+-	web_extension = e_html_editor_view_get_web_extension_proxy (view);
+-	if (!web_extension)
+-		goto out;
+-
+-	g_dbus_proxy_call (
+-		web_extension,
+-		"EHTMLEditorSelectionReplaceBase64ImageSrc",
+-		g_variant_new (
+-			"(tssss)",
+-			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view)),
+-			selector,
+-			base64_content,
+-			filename,
+-			uri),
+-		G_DBUS_CALL_FLAGS_NONE,
+-		-1,
+-		NULL,
+-		NULL,
+-		NULL);
+-
+- out:
+-	g_object_unref (view);
+-}
+-
+-static void
+-insert_base64_image (EHTMLEditorSelection *selection,
+-                     const gchar *base64_content,
+-                     const gchar *filename,
+-                     const gchar *uri)
+-{
+-	EHTMLEditorView *view;
+-	GDBusProxy *web_extension;
+-
+-	view = e_html_editor_selection_ref_html_editor_view (selection);
+-	g_return_if_fail (view != NULL);
+-
+-	e_html_editor_view_set_changed (view, TRUE);
+-	web_extension = e_html_editor_view_get_web_extension_proxy (view);
+-	if (!web_extension)
+-		goto out;
+-
+-	g_dbus_proxy_call (
+-		web_extension,
+-		"EHTMLEditorSelectionInsertBase64Image",
+-		g_variant_new (
+-			"(tssss)",
+-			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view)),
+-			base64_content,
+-			filename,
+-			uri),
+-		G_DBUS_CALL_FLAGS_NONE,
+-		-1,
+-		NULL,
+-		NULL,
+-		NULL);
+-
+- out:
+-	g_object_unref (view);
+-}
+-
+-static void
+-image_load_finish (LoadContext *load_context)
+-{
+-	EHTMLEditorSelection *selection;
+-	GMemoryOutputStream *output_stream;
+-	const gchar *selector;
+-	gchar *base64_encoded, *mime_type, *output, *uri;
+-	gsize size;
+-	gpointer data;
+-
+-	output_stream = G_MEMORY_OUTPUT_STREAM (load_context->output_stream);
+-
+-	selection = load_context->selection;
+-
+-	mime_type = g_content_type_get_mime_type (load_context->content_type);
+-
+-	data = g_memory_output_stream_get_data (output_stream);
+-	size = g_memory_output_stream_get_data_size (output_stream);
+-	uri = g_file_get_uri (load_context->file);
+-
+-	base64_encoded = g_base64_encode ((const guchar *) data, size);
+-	output = g_strconcat ("data:", mime_type, ";base64,", base64_encoded, NULL);
+-	selector = load_context->selector;
+-	if (selector && *selector)
+-		replace_base64_image_src (
+-			selection, selector, output, load_context->filename, uri);
+-	else
+-		insert_base64_image (selection, output, load_context->filename, uri);
+-
+-	g_free (base64_encoded);
+-	g_free (output);
+-	g_free (mime_type);
+-	g_free (uri);
+-
+-	image_load_context_free (load_context);
+-}
+-
+-static void
+-image_load_write_cb (GOutputStream *output_stream,
+-                     GAsyncResult *result,
+-                     LoadContext *load_context)
+-{
+-	GInputStream *input_stream;
+-	gssize bytes_written;
+-	GError *error = NULL;
+-
+-	bytes_written = g_output_stream_write_finish (
+-		output_stream, result, &error);
+-
+-	if (error) {
+-		image_load_context_free (load_context);
+-		return;
+-	}
+-
+-	input_stream = load_context->input_stream;
+-
+-	if (bytes_written < load_context->bytes_read) {
+-		g_memmove (
+-			load_context->buffer,
+-			load_context->buffer + bytes_written,
+-			load_context->bytes_read - bytes_written);
+-		load_context->bytes_read -= bytes_written;
+-
+-		g_output_stream_write_async (
+-			output_stream,
+-			load_context->buffer,
+-			load_context->bytes_read,
+-			G_PRIORITY_DEFAULT, NULL,
+-			(GAsyncReadyCallback) image_load_write_cb,
+-			load_context);
+-	} else
+-		g_input_stream_read_async (
+-			input_stream,
+-			load_context->buffer,
+-			sizeof (load_context->buffer),
+-			G_PRIORITY_DEFAULT, NULL,
+-			(GAsyncReadyCallback) image_load_stream_read_cb,
+-			load_context);
+-}
+-
+-static void
+-image_load_stream_read_cb (GInputStream *input_stream,
+-                           GAsyncResult *result,
+-                           LoadContext *load_context)
+-{
+-	GOutputStream *output_stream;
+-	gssize bytes_read;
+-	GError *error = NULL;
+-
+-	bytes_read = g_input_stream_read_finish (
+-		input_stream, result, &error);
+-
+-	if (error) {
+-		image_load_context_free (load_context);
+-		return;
+-	}
+-
+-	if (bytes_read == 0) {
+-		image_load_finish (load_context);
+-		return;
+-	}
+-
+-	output_stream = load_context->output_stream;
+-	load_context->bytes_read = bytes_read;
+-
+-	g_output_stream_write_async (
+-		output_stream,
+-		load_context->buffer,
+-		load_context->bytes_read,
+-		G_PRIORITY_DEFAULT, NULL,
+-		(GAsyncReadyCallback) image_load_write_cb,
+-		load_context);
+-}
+-
+-static void
+-image_load_file_read_cb (GFile *file,
+-                         GAsyncResult *result,
+-                         LoadContext *load_context)
+-{
+-	GFileInputStream *input_stream;
+-	GOutputStream *output_stream;
+-	GError *error = NULL;
+-
+-	/* Input stream might be NULL, so don't use cast macro. */
+-	input_stream = g_file_read_finish (file, result, &error);
+-	load_context->input_stream = (GInputStream *) input_stream;
+-
+-	if (error) {
+-		image_load_context_free (load_context);
+-		return;
+-	}
+-
+-	/* Load the contents into a GMemoryOutputStream. */
+-	output_stream = g_memory_output_stream_new (
+-		NULL, 0, g_realloc, g_free);
+-
+-	load_context->output_stream = output_stream;
+-
+-	g_input_stream_read_async (
+-		load_context->input_stream,
+-		load_context->buffer,
+-		sizeof (load_context->buffer),
+-		G_PRIORITY_DEFAULT, NULL,
+-		(GAsyncReadyCallback) image_load_stream_read_cb,
+-		load_context);
+-}
+-
+-static void
+-image_load_query_info_cb (GFile *file,
+-                          GAsyncResult *result,
+-                          LoadContext *load_context)
+-{
+-	GFileInfo *file_info;
+-	GError *error = NULL;
+-
+-	file_info = g_file_query_info_finish (file, result, &error);
+-	if (error) {
+-		image_load_context_free (load_context);
+-		return;
+-	}
+-
+-	load_context->content_type = g_file_info_get_content_type (file_info);
+-	load_context->total_num_bytes = g_file_info_get_size (file_info);
+-	load_context->filename = g_file_info_get_name (file_info);
+-
+-	g_file_read_async (
+-		file, G_PRIORITY_DEFAULT,
+-		NULL, (GAsyncReadyCallback)
+-		image_load_file_read_cb, load_context);
+-}
+-
+-static void
+-image_load_and_insert_async (EHTMLEditorSelection *selection,
+-                             const gchar *selector,
+-                             const gchar *uri)
+-{
+-	LoadContext *load_context;
+-	GFile *file;
+-
+-	g_return_if_fail (uri && *uri);
+-
+-	file = g_file_new_for_uri (uri);
+-	g_return_if_fail (file != NULL);
+-
+-	load_context = image_load_context_new (selection);
+-	load_context->file = file;
+-	if (selector && *selector)
+-		load_context->selector = g_strdup (selector);
+-
+-	g_file_query_info_async (
+-		file, "standard::*",
+-		G_FILE_QUERY_INFO_NONE,G_PRIORITY_DEFAULT,
+-		NULL, (GAsyncReadyCallback)
+-		image_load_query_info_cb, load_context);
+-}
+-
+-/**
+- * e_html_editor_selection_insert_image:
+- * @selection: an #EHTMLEditorSelection
+- * @image_uri: an URI of the source image
+- *
+- * Inserts image at current cursor position using @image_uri as source. When a
+- * text range is selected, it will be replaced by the image.
+- */
+-void
+-e_html_editor_selection_insert_image (EHTMLEditorSelection *selection,
+-                                      const gchar *image_uri)
+-{
+-	EHTMLEditorView *view;
+-
+-	g_return_if_fail (E_IS_HTML_EDITOR_SELECTION (selection));
+-	g_return_if_fail (image_uri != NULL);
+-
+-	view = e_html_editor_selection_ref_html_editor_view (selection);
+-	g_return_if_fail (view != NULL);
+-
+-	if (e_html_editor_view_get_html_mode (view)) {
+-		if (strstr (image_uri, ";base64,")) {
+-			if (g_str_has_prefix (image_uri, "data:"))
+-				insert_base64_image (selection, image_uri, "", "");
+-			if (strstr (image_uri, ";data")) {
+-				const gchar *base64_data = strstr (image_uri, ";") + 1;
+-				gchar *filename;
+-				glong filename_length;
+-
+-				filename_length =
+-					g_utf8_strlen (image_uri, -1) -
+-					g_utf8_strlen (base64_data, -1) - 1;
+-				filename = g_strndup (image_uri, filename_length);
+-
+-				insert_base64_image (selection, base64_data, filename, "");
+-				g_free (filename);
+-			}
+-		} else
+-			image_load_and_insert_async (selection, NULL, image_uri);
+-	}
+-
+-	g_object_unref (view);
+-}
+-
+-/**
+- * e_html_editor_selection_replace_image_src:
+- * @selection: an #EHTMLEditorSelection
+- * @selector: CSS selector that describes the element that we want to change
+- * @image_uri: an URI of the source image
+- *
+- * If element described by given selector is image, we will replace the src
+- * attribute of it with base64 data from given @image_uri. Otherwise we will
+- * set the base64 data to the background attribute of given element.
+- */
+-void
+-e_html_editor_selection_replace_image_src (EHTMLEditorSelection *selection,
+-                                           const gchar *selector,
+-                                           const gchar *image_uri)
+-{
+-	g_return_if_fail (E_IS_HTML_EDITOR_SELECTION (selection));
+-	g_return_if_fail (image_uri != NULL);
+-	g_return_if_fail (selector && *selector);
+-
+-	if (strstr (image_uri, ";base64,")) {
+-		if (g_str_has_prefix (image_uri, "data:"))
+-			replace_base64_image_src (
+-				selection, selector, image_uri, "", "");
+-		if (strstr (image_uri, ";data")) {
+-			const gchar *base64_data = strstr (image_uri, ";") + 1;
+-			gchar *filename;
+-			glong filename_length;
+-
+-			filename_length =
+-				g_utf8_strlen (image_uri, -1) -
+-				g_utf8_strlen (base64_data, -1) - 1;
+-			filename = g_strndup (image_uri, filename_length);
+-
+-			replace_base64_image_src (
+-				selection, selector, base64_data, filename, "");
+-			g_free (filename);
+-		}
+-	} else
+-		image_load_and_insert_async (selection, selector, image_uri);
+-}
+-
+ static void
+ html_editor_selection_modify (EHTMLEditorSelection *selection,
+                               const gchar *alter,
+@@ -2247,4 +1839,3 @@ e_html_editor_selection_move (EHTMLEditorSelection *selection,
+ {
+ 	html_editor_selection_modify (selection, "move", forward, granularity);
+ }
+-
+diff --git a/e-util/e-html-editor-selection.h b/e-util/e-html-editor-selection.h
+index 8251cbedf2..c204ae850a 100644
+--- a/e-util/e-html-editor-selection.h
++++ b/e-util/e-html-editor-selection.h
+@@ -170,13 +170,6 @@ void		e_html_editor_selection_replace	(EHTMLEditorSelection *selection,
+ void		e_html_editor_selection_insert_as_text
+ 						(EHTMLEditorSelection *selection,
+ 						 const gchar *html_text);
+-void		e_html_editor_selection_replace_image_src
+-						(EHTMLEditorSelection *selection,
+-						 const gchar *selector,
+-						 const gchar *image_uri);
+-void		e_html_editor_selection_insert_image
+-						(EHTMLEditorSelection *selection,
+-						 const gchar *image_uri);
+ void		e_html_editor_selection_save	(EHTMLEditorSelection *selection);
+ void		e_html_editor_selection_restore	(EHTMLEditorSelection *selection);
+ void		e_html_editor_selection_move	(EHTMLEditorSelection *selection,
+diff --git a/e-util/e-html-editor-table-dialog.c b/e-util/e-html-editor-table-dialog.c
+index 782d89dd37..3cc3bdf30a 100644
+--- a/e-util/e-html-editor-table-dialog.c
++++ b/e-util/e-html-editor-table-dialog.c
+@@ -536,10 +536,7 @@ html_editor_table_dialog_set_background_image (EHTMLEditorTableDialog *dialog)
+ 		GTK_FILE_CHOOSER (dialog->priv->background_image_button));
+ 
+ 	if (uri && *uri)
+-		e_html_editor_selection_replace_image_src (
+-			e_html_editor_view_get_selection (view),
+-			"#-x-evo-current-table",
+-			uri);
++		e_html_editor_view_replace_image_src (view, "#-x-evo-current-table", uri);
+ 	else
+ 		g_dbus_proxy_call (
+ 			web_extension,
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 9bc2b506fd..b9cef78fdc 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -27,7 +27,7 @@
+ #include "e-emoticon-chooser.h"
+ #include "e-misc-utils.h"
+ 
+-#include "e-html-editor-web-extension-names.h"
++#include <web-extensions/e-html-editor-web-extension-names.h>
+ 
+ #include <e-util/e-util.h>
+ #include <e-util/e-marshal.h>
+@@ -1346,8 +1346,8 @@ show_lose_formatting_dialog (EHTMLEditorView *view)
+ }
+ 
+ static void
+-html_editor_view_load_changed (EHTMLEditorView *view,
+-                               WebKitLoadEvent load_event)
++html_editor_view_load_changed_cb (EHTMLEditorView *view,
++                                  WebKitLoadEvent load_event)
+ {
+ 	if (load_event != WEBKIT_LOAD_FINISHED)
+ 		return;
+@@ -1536,7 +1536,7 @@ e_html_editor_view_init (EHTMLEditorView *view)
+ 		G_CALLBACK (html_editor_view_should_show_delete_interface_for_element), NULL);*/
+ 	g_signal_connect (
+ 		view, "load-changed",
+-		G_CALLBACK (html_editor_view_load_changed), NULL);
++		G_CALLBACK (html_editor_view_load_changed_cb), NULL);
+ 	g_signal_connect (
+ 		view, "mouse-target-changed",
+ 		G_CALLBACK (editor_view_mouse_target_changed_cb), NULL);
+@@ -1603,6 +1603,18 @@ e_html_editor_view_init (EHTMLEditorView *view)
+ 	webkit_web_view_load_html (WEBKIT_WEB_VIEW (view), "", "file://");
+ }
+ 
++void
++e_html_editor_view_force_spell_check (EHTMLEditorView *view)
++{
++	e_html_editor_view_call_simple_extension_function (view, "DOMForceSpellCheck");
++}
++
++void
++e_html_editor_view_turn_spell_check_off (EHTMLEditorView *view)
++{
++	e_html_editor_view_call_simple_extension_function (view, "DOMTurnSpellCheckOff");
++}
++
+ /**
+  * e_html_editor_view_get_inline_spelling:
+  * @view: an #EHTMLEditorView
+@@ -2093,8 +2105,7 @@ e_html_editor_view_embed_styles (EHTMLEditorView *view)
+ void
+ e_html_editor_view_remove_embed_styles (EHTMLEditorView *view)
+ {
+-	e_html_editor_view_call_simple_extension_function (
+-		view, "DOMRemoveEmbedStyleSheet");
++	e_html_editor_view_call_simple_extension_function (view, "DOMRemoveEmbedStyleSheet");
+ }
+ 
+ static const gchar *
+@@ -2758,3 +2769,414 @@ e_html_editor_view_set_remove_initial_input_line (EHTMLEditorView *view,
+ 
+ 	view->priv->remove_initial_input_line = value;
+ }
++
++void
++e_html_editor_view_scroll_to_caret (EHTMLEditorView *view)
++{
++	e_html_editor_view_call_simple_extension_function (view, "DOMScrollToCaret");
++}
++
++/************************* image_load_and_insert_async() *************************/
++
++typedef struct _LoadContext LoadContext;
++
++struct _LoadContext {
++	EHTMLEditorView *view;
++	GInputStream *input_stream;
++	GOutputStream *output_stream;
++	GFile *file;
++	GFileInfo *file_info;
++	goffset total_num_bytes;
++	gssize bytes_read;
++	const gchar *content_type;
++	const gchar *filename;
++	const gchar *selector;
++	gchar buffer[4096];
++};
++
++/* Forward Declaration */
++static void
++image_load_stream_read_cb (GInputStream *input_stream,
++                           GAsyncResult *result,
++                           LoadContext *load_context);
++
++static LoadContext *
++image_load_context_new (EHTMLEditorView *view)
++{
++	LoadContext *load_context;
++
++	load_context = g_slice_new0 (LoadContext);
++	load_context->view = view;
++
++	return load_context;
++}
++
++static void
++image_load_context_free (LoadContext *load_context)
++{
++	if (load_context->input_stream != NULL)
++		g_object_unref (load_context->input_stream);
++
++	if (load_context->output_stream != NULL)
++		g_object_unref (load_context->output_stream);
++
++	if (load_context->file_info != NULL)
++		g_object_unref (load_context->file_info);
++
++	if (load_context->file != NULL)
++		g_object_unref (load_context->file);
++
++	g_slice_free (LoadContext, load_context);
++}
++
++static void
++replace_base64_image_src (EHTMLEditorView *view,
++                          const gchar *selector,
++                          const gchar *base64_content,
++                          const gchar *filename,
++                          const gchar *uri)
++{
++	GDBusProxy *web_extension;
++
++	e_html_editor_view_set_changed (view, TRUE);
++	web_extension = e_html_editor_view_get_web_extension_proxy (view);
++	if (!web_extension)
++		return;
++
++	g_dbus_proxy_call (
++		web_extension,
++		"EHTMLEditorSelectionReplaceBase64ImageSrc",
++		g_variant_new (
++			"(tssss)",
++			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view)),
++			selector,
++			base64_content,
++			filename,
++			uri),
++		G_DBUS_CALL_FLAGS_NONE,
++		-1,
++		NULL,
++		NULL,
++		NULL);
++}
++
++static void
++insert_base64_image (EHTMLEditorView *view,
++                     const gchar *base64_content,
++                     const gchar *filename,
++                     const gchar *uri)
++{
++	GDBusProxy *web_extension;
++
++	e_html_editor_view_set_changed (view, TRUE);
++	web_extension = e_html_editor_view_get_web_extension_proxy (view);
++	if (!web_extension)
++		return;
++
++	g_dbus_proxy_call (
++		web_extension,
++		"EHTMLEditorSelectionInsertBase64Image",
++		g_variant_new (
++			"(tssss)",
++			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view)),
++			base64_content,
++			filename,
++			uri),
++		G_DBUS_CALL_FLAGS_NONE,
++		-1,
++		NULL,
++		NULL,
++		NULL);
++}
++
++static void
++image_load_finish (LoadContext *load_context)
++{
++	EHTMLEditorView *view;
++	GMemoryOutputStream *output_stream;
++	const gchar *selector;
++	gchar *base64_encoded, *mime_type, *output, *uri;
++	gsize size;
++	gpointer data;
++
++	output_stream = G_MEMORY_OUTPUT_STREAM (load_context->output_stream);
++
++	view = load_context->view;
++
++	mime_type = g_content_type_get_mime_type (load_context->content_type);
++
++	data = g_memory_output_stream_get_data (output_stream);
++	size = g_memory_output_stream_get_data_size (output_stream);
++	uri = g_file_get_uri (load_context->file);
++
++	base64_encoded = g_base64_encode ((const guchar *) data, size);
++	output = g_strconcat ("data:", mime_type, ";base64,", base64_encoded, NULL);
++	selector = load_context->selector;
++	if (selector && *selector)
++		replace_base64_image_src (
++			view, selector, output, load_context->filename, uri);
++	else
++		insert_base64_image (view, output, load_context->filename, uri);
++
++	g_free (base64_encoded);
++	g_free (output);
++	g_free (mime_type);
++	g_free (uri);
++
++	image_load_context_free (load_context);
++}
++
++static void
++image_load_write_cb (GOutputStream *output_stream,
++                     GAsyncResult *result,
++                     LoadContext *load_context)
++{
++	GInputStream *input_stream;
++	gssize bytes_written;
++	GError *error = NULL;
++
++	bytes_written = g_output_stream_write_finish (
++		output_stream, result, &error);
++
++	if (error) {
++		image_load_context_free (load_context);
++		return;
++	}
++
++	input_stream = load_context->input_stream;
++
++	if (bytes_written < load_context->bytes_read) {
++		g_memmove (
++			load_context->buffer,
++			load_context->buffer + bytes_written,
++			load_context->bytes_read - bytes_written);
++		load_context->bytes_read -= bytes_written;
++
++		g_output_stream_write_async (
++			output_stream,
++			load_context->buffer,
++			load_context->bytes_read,
++			G_PRIORITY_DEFAULT, NULL,
++			(GAsyncReadyCallback) image_load_write_cb,
++			load_context);
++	} else
++		g_input_stream_read_async (
++			input_stream,
++			load_context->buffer,
++			sizeof (load_context->buffer),
++			G_PRIORITY_DEFAULT, NULL,
++			(GAsyncReadyCallback) image_load_stream_read_cb,
++			load_context);
++}
++
++static void
++image_load_stream_read_cb (GInputStream *input_stream,
++                           GAsyncResult *result,
++                           LoadContext *load_context)
++{
++	GOutputStream *output_stream;
++	gssize bytes_read;
++	GError *error = NULL;
++
++	bytes_read = g_input_stream_read_finish (
++		input_stream, result, &error);
++
++	if (error) {
++		image_load_context_free (load_context);
++		return;
++	}
++
++	if (bytes_read == 0) {
++		image_load_finish (load_context);
++		return;
++	}
++
++	output_stream = load_context->output_stream;
++	load_context->bytes_read = bytes_read;
++
++	g_output_stream_write_async (
++		output_stream,
++		load_context->buffer,
++		load_context->bytes_read,
++		G_PRIORITY_DEFAULT, NULL,
++		(GAsyncReadyCallback) image_load_write_cb,
++		load_context);
++}
++
++static void
++image_load_file_read_cb (GFile *file,
++                         GAsyncResult *result,
++                         LoadContext *load_context)
++{
++	GFileInputStream *input_stream;
++	GOutputStream *output_stream;
++	GError *error = NULL;
++
++	/* Input stream might be NULL, so don't use cast macro. */
++	input_stream = g_file_read_finish (file, result, &error);
++	load_context->input_stream = (GInputStream *) input_stream;
++
++	if (error) {
++		image_load_context_free (load_context);
++		return;
++	}
++
++	/* Load the contents into a GMemoryOutputStream. */
++	output_stream = g_memory_output_stream_new (
++		NULL, 0, g_realloc, g_free);
++
++	load_context->output_stream = output_stream;
++
++	g_input_stream_read_async (
++		load_context->input_stream,
++		load_context->buffer,
++		sizeof (load_context->buffer),
++		G_PRIORITY_DEFAULT, NULL,
++		(GAsyncReadyCallback) image_load_stream_read_cb,
++		load_context);
++}
++
++static void
++image_load_query_info_cb (GFile *file,
++                          GAsyncResult *result,
++                          LoadContext *load_context)
++{
++	GFileInfo *file_info;
++	GError *error = NULL;
++
++	file_info = g_file_query_info_finish (file, result, &error);
++	if (error) {
++		image_load_context_free (load_context);
++		return;
++	}
++
++	load_context->content_type = g_file_info_get_content_type (file_info);
++	load_context->total_num_bytes = g_file_info_get_size (file_info);
++	load_context->filename = g_file_info_get_name (file_info);
++
++	g_file_read_async (
++		file, G_PRIORITY_DEFAULT,
++		NULL, (GAsyncReadyCallback)
++		image_load_file_read_cb, load_context);
++}
++
++static void
++image_load_and_insert_async (EHTMLEditorView *view,
++                             const gchar *selector,
++                             const gchar *uri)
++{
++	LoadContext *load_context;
++	GFile *file;
++
++	g_return_if_fail (uri && *uri);
++
++	file = g_file_new_for_uri (uri);
++	g_return_if_fail (file != NULL);
++
++	load_context = image_load_context_new (view);
++	load_context->file = file;
++	if (selector && *selector)
++		load_context->selector = g_strdup (selector);
++
++	g_file_query_info_async (
++		file, "standard::*",
++		G_FILE_QUERY_INFO_NONE,G_PRIORITY_DEFAULT,
++		NULL, (GAsyncReadyCallback)
++		image_load_query_info_cb, load_context);
++}
++
++/**
++ * e_html_editor_selection_insert_image:
++ * @selection: an #EHTMLEditorSelection
++ * @image_uri: an URI of the source image
++ *
++ * Inserts image at current cursor position using @image_uri as source. When a
++ * text range is selected, it will be replaced by the image.
++ */
++void
++e_html_editor_view_insert_image (EHTMLEditorView *view,
++                                 const gchar *image_uri)
++{
++	g_return_if_fail (E_IS_HTML_EDITOR_VIEW (view));
++	g_return_if_fail (image_uri != NULL);
++
++	if (e_html_editor_view_get_html_mode (view)) {
++		if (strstr (image_uri, ";base64,")) {
++			if (g_str_has_prefix (image_uri, "data:"))
++				insert_base64_image (view, image_uri, "", "");
++			if (strstr (image_uri, ";data")) {
++				const gchar *base64_data = strstr (image_uri, ";") + 1;
++				gchar *filename;
++				glong filename_length;
++
++				filename_length =
++					g_utf8_strlen (image_uri, -1) -
++					g_utf8_strlen (base64_data, -1) - 1;
++				filename = g_strndup (image_uri, filename_length);
++
++				insert_base64_image (view, base64_data, filename, "");
++				g_free (filename);
++			}
++		} else
++			image_load_and_insert_async (view, NULL, image_uri);
++	}
++}
++
++/**
++ * e_html_editor_selection_replace_image_src:
++ * @selection: an #EHTMLEditorSelection
++ * @selector: CSS selector that describes the element that we want to change
++ * @image_uri: an URI of the source image
++ *
++ * If element described by given selector is image, we will replace the src
++ * attribute of it with base64 data from given @image_uri. Otherwise we will
++ * set the base64 data to the background attribute of given element.
++ */
++void
++e_html_editor_view_replace_image_src (EHTMLEditorView *view,
++                                      const gchar *selector,
++                                      const gchar *image_uri)
++{
++	g_return_if_fail (E_IS_HTML_EDITOR_VIEW (view));
++	g_return_if_fail (image_uri != NULL);
++	g_return_if_fail (selector && *selector);
++
++	if (strstr (image_uri, ";base64,")) {
++		if (g_str_has_prefix (image_uri, "data:"))
++			replace_base64_image_src (
++				view, selector, image_uri, "", "");
++		if (strstr (image_uri, ";data")) {
++			const gchar *base64_data = strstr (image_uri, ";") + 1;
++			gchar *filename;
++			glong filename_length;
++
++			filename_length =
++				g_utf8_strlen (image_uri, -1) -
++				g_utf8_strlen (base64_data, -1) - 1;
++			filename = g_strndup (image_uri, filename_length);
++
++			replace_base64_image_src (
++				view, selector, base64_data, filename, "");
++			g_free (filename);
++		}
++	} else
++		image_load_and_insert_async (view, selector, image_uri);
++}
++
++void
++e_html_editor_view_check_magic_links (EHTMLEditorView *view)
++{
++	e_html_editor_view_call_simple_extension_function (view, "DOMCheckMagicLinks");
++}
++
++void
++e_html_editor_view_restore_selection (EHTMLEditorView *view)
++{
++	e_html_editor_view_call_simple_extension_function (view, "DOMRestoreSelection");
++}
++
++void
++e_html_editor_view_save_selection (EHTMLEditorView *view)
++{
++	e_html_editor_view_call_simple_extension_function (view, "DOMSaveSelection");
++}
+diff --git a/e-util/e-html-editor-view.h b/e-util/e-html-editor-view.h
+index d8dc40859a..22891f393e 100644
+--- a/e-util/e-html-editor-view.h
++++ b/e-util/e-html-editor-view.h
+@@ -108,6 +108,10 @@ gboolean	e_html_editor_view_get_html_mode
+ void		e_html_editor_view_set_html_mode
+ 						(EHTMLEditorView *view,
+ 						 gboolean html_mode);
++void		e_html_editor_view_force_spell_check
++						(EHTMLEditorView *view);
++void		e_html_editor_view_turn_spell_check_off
++						(EHTMLEditorView *view);
+ gboolean	e_html_editor_view_get_inline_spelling
+ 						(EHTMLEditorView *view);
+ void		e_html_editor_view_set_inline_spelling
+@@ -158,31 +162,8 @@ void		e_html_editor_view_embed_styles	(EHTMLEditorView *view);
+ void		e_html_editor_view_remove_embed_styles
+ 						(EHTMLEditorView *view);
+ void		e_html_editor_view_update_fonts	(EHTMLEditorView *view);
+-/*
+-WebKitDOMElement *
+-		e_html_editor_view_get_element_under_mouse_click
+-						(EHTMLEditorView *view);
+-
+-void		e_html_editor_view_check_magic_links
+-						(EHTMLEditorView *view,
+-						 gboolean while_typing);
+-
+-WebKitDOMElement *
+-		e_html_editor_view_quote_plain_text_element
+-						(EHTMLEditorView *view,
+-                                                 WebKitDOMElement *element);
+-WebKitDOMElement *
+-		e_html_editor_view_quote_plain_text
+-						(EHTMLEditorView *view);
+-*/
+ void		e_html_editor_view_dequote_plain_text
+ 						(EHTMLEditorView *view);
+-void		e_html_editor_view_turn_spell_check_off
+-						(EHTMLEditorView *view);
+-void		e_html_editor_view_force_spell_check_for_current_paragraph
+-						(EHTMLEditorView *view);
+-void		e_html_editor_view_force_spell_check
+-						(EHTMLEditorView *view);
+ void		e_html_editor_view_add_inline_image_from_mime_part
+ 						(EHTMLEditorView *view,
+                                                  CamelMimePart *part);
+@@ -205,6 +186,20 @@ void		e_html_editor_view_set_is_message_from_edit_as_new
+ void		e_html_editor_view_set_remove_initial_input_line
+ 						(EHTMLEditorView *view,
+ 						 gboolean value);
++void		e_html_editor_view_scroll_to_caret
++						(EHTMLEditorView *view);
++void		e_html_editor_view_replace_image_src
++						(EHTMLEditorView *view,
++						 const gchar *selector,
++						 const gchar *image_uri);
++void		e_html_editor_view_insert_image (EHTMLEditorView *view,
++						 const gchar *image_uri);
++void		e_html_editor_view_check_magic_links
++						(EHTMLEditorView *view);
++void		e_html_editor_view_restore_selection
++						(EHTMLEditorView *view);
++void		e_html_editor_view_save_selection
++						(EHTMLEditorView *view);
+ G_END_DECLS
+ 
+ #endif /* E_HTML_EDITOR_VIEW_H */
+diff --git a/e-util/e-search-bar.c b/e-util/e-search-bar.c
+index f3026e2ef8..fae4560e51 100644
+--- a/e-util/e-search-bar.c
++++ b/e-util/e-search-bar.c
+@@ -274,7 +274,7 @@ search_bar_set_web_view (ESearchBar *search_bar,
+ 
+ 	search_bar->priv->find_controller = find_controller;
+ 
+-	e_signal_connect_notify (
++	g_signal_connect (
+ 		web_view, "load-changed",
+ 		G_CALLBACK (web_view_load_changed_cb), search_bar);
+ 
+diff --git a/e-util/e-util.h b/e-util/e-util.h
+index 0bf3301d13..be949b5ad2 100644
+--- a/e-util/e-util.h
++++ b/e-util/e-util.h
+@@ -91,7 +91,6 @@
+ #include <e-util/e-destination-store.h>
+ #include <e-util/e-dialog-utils.h>
+ #include <e-util/e-dialog-widgets.h>
+-#include <e-util/e-dom-utils.h>
+ #include <e-util/e-emoticon-action.h>
+ #include <e-util/e-emoticon-chooser-menu.h>
+ #include <e-util/e-emoticon-chooser.h>
+diff --git a/e-util/e-web-view.c b/e-util/e-web-view.c
+index 81616d9375..2f76b5a716 100644
+--- a/e-util/e-web-view.c
++++ b/e-util/e-web-view.c
+@@ -40,7 +40,7 @@
+ #include "e-selectable.h"
+ #include "e-stock-request.h"
+ 
+-#include "../web-extensions/e-web-extension-names.h"
++#include <web-extensions/e-web-extension-names.h>
+ 
+ #define E_WEB_VIEW_GET_PRIVATE(obj) \
+ 	(G_TYPE_INSTANCE_GET_PRIVATE \
+@@ -999,6 +999,9 @@ web_view_constructed (GObject *object)
+ 		G_BINDING_SYNC_CREATE);
+ 
+ 	web_view_initialize (WEBKIT_WEB_VIEW (object));
++
++	web_view_set_find_controller (E_WEB_VIEW (object));
++
+ }
+ 
+ static gboolean
+@@ -1678,6 +1681,7 @@ web_view_file_uri_scheme_appeared_cb (WebKitURISchemeRequest *request)
+ 	EWebView *web_view;
+ 	GTask *task;
+ 
++	printf ("%s\n", __FUNCTION__);
+ 	web_view = E_WEB_VIEW (webkit_uri_scheme_request_get_web_view (request));
+ 
+ 	task = g_task_new (
+@@ -1706,6 +1710,7 @@ web_view_gtk_stock_uri_scheme_appeared_cb (WebKitURISchemeRequest *request)
+ 	gsize buff_len = 0;
+ 	GError *local_error = NULL;
+ 
++	printf ("%s\n", __FUNCTION__);
+ 	uri = soup_uri_new (webkit_uri_scheme_request_get_uri (request));
+ 
+ 	if (uri && uri->query)
+@@ -2058,11 +2063,11 @@ e_web_view_init (EWebView *web_view)
+ 	g_signal_connect (
+ 		web_view, "load-changed",
+ 		G_CALLBACK (web_view_load_changed_cb), NULL);
+-
++/* FIXME WK2
+ 	g_signal_connect (
+ 		web_view, "document-load-finished",
+ 		G_CALLBACK (style_updated_cb), NULL);
+-
++*/
+ 	g_signal_connect (
+ 		web_view, "style-updated",
+ 		G_CALLBACK (style_updated_cb), NULL);
+@@ -2071,8 +2076,6 @@ e_web_view_init (EWebView *web_view)
+ 		web_view, "state-flags-changed",
+ 		G_CALLBACK (style_updated_cb), NULL);
+ 
+-	web_view_set_find_controller (web_view);
+-
+ 	ui_manager = gtk_ui_manager_new ();
+ 	web_view->priv->ui_manager = ui_manager;
+ 
+@@ -2250,6 +2253,8 @@ e_web_view_load_string (EWebView *web_view,
+ 	class = E_WEB_VIEW_GET_CLASS (web_view);
+ 	g_return_if_fail (class->load_string != NULL);
+ 
++	printf ("%s\n", __FUNCTION__);
++	printf ("%s\n", string);
+ 	class->load_string (web_view, string);
+ }
+ 
+@@ -2264,6 +2269,8 @@ e_web_view_load_uri (EWebView *web_view,
+ 	class = E_WEB_VIEW_GET_CLASS (web_view);
+ 	g_return_if_fail (class->load_uri != NULL);
+ 
++	printf ("%s\n", __FUNCTION__);
++	printf ("%s\n", uri);
+ 	class->load_uri (web_view, uri);
+ }
+ 
+@@ -3257,8 +3264,9 @@ e_web_view_get_default_webkit_settings (void)
+ 		"enable-plugins", FALSE,
+ 		"enable-smooth-scrolling", TRUE,
+ 		"media-playback-allows-inline", FALSE,
+-		"respect-image-orientation", TRUE,
+ 		NULL);
++/* FIXME WK2
++	"respect-image-orientation", TRUE,*/
+ }
+ 
+ void
+diff --git a/mail/e-mail-display.c b/mail/e-mail-display.c
+index d257ac9476..0fcce9f49f 100644
+--- a/mail/e-mail-display.c
++++ b/mail/e-mail-display.c
+@@ -40,7 +40,7 @@
+ #include "em-composer-utils.h"
+ #include "em-utils.h"
+ 
+-#include <web-extensions/evolution-web-extension.h>
++#include <web-extensions/e-web-extension-names.h>
+ 
+ #define d(x)
+ 
+@@ -829,9 +829,9 @@ setup_dom_bindings (WebKitWebView *web_view,
+ 				g_dbus_connection_signal_subscribe (
+ 					g_dbus_proxy_get_connection (web_extension),
+ 					g_dbus_proxy_get_name (web_extension),
+-					EVOLUTION_WEB_EXTENSION_INTERFACE,
++					E_WEB_EXTENSION_INTERFACE,
+ 					"RecurToggled",
+-					EVOLUTION_WEB_EXTENSION_OBJECT_PATH,
++					E_WEB_EXTENSION_OBJECT_PATH,
+ 					NULL,
+ 					G_DBUS_SIGNAL_FLAGS_NONE,
+ 					(GDBusSignalCallback) headers_collapsed_signal_cb,
+@@ -1131,39 +1131,13 @@ mail_display_set_fonts (EWebView *web_view,
+ static void
+ mail_display_web_view_initialize (WebKitWebView *web_view)
+ {
+-	const gchar *id = "org.gnome.settings-daemon.plugins.xsettings";
+-	GSettings *settings = NULL, *font_settings;
+-	GSettingsSchema *settings_schema;
+ 	WebKitSettings *webkit_settings;
+-	PangoFontDescription *ms = NULL, *vw = NULL;
+ 
+ 	webkit_settings = webkit_web_view_get_settings (web_view);
+ 
+ 	g_object_set (webkit_settings,
+ 		"enable-frame-flattening", TRUE,
+ 		NULL);
+-
+-	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+-	mail_display_get_font_settings (settings, &ms, &vw);
+-
+-	/* Optional schema */
+-	settings_schema = g_settings_schema_source_lookup (
+-		g_settings_schema_source_get_default (), id, FALSE);
+-
+-	if (settings_schema)
+-		settings = e_util_ref_settings (id);
+-
+-	font_settings = e_util_ref_settings ("org.gnome.desktop.interface");
+-
+-	e_web_view_update_fonts_settings (
+-		font_settings, settings, ms, vw, GTK_WIDGET (web_view));
+-
+-	pango_font_description_free (ms);
+-	pango_font_description_free (vw);
+-
+-	g_object_unref (font_settings);
+-	if (settings)
+-		g_object_unref (settings);
+ }
+ 
+ static void
+@@ -1175,6 +1149,8 @@ mail_display_constructed (GObject *object)
+ 	G_OBJECT_CLASS (e_mail_display_parent_class)->constructed (object);
+ 
+ 	mail_display_web_view_initialize (WEBKIT_WEB_VIEW (object));
++
++	e_web_view_update_fonts (E_WEB_VIEW (object));
+ }
+ 
+ static void
+@@ -1359,67 +1335,6 @@ mail_display_suggest_filename (EWebView *web_view,
+ 	return E_WEB_VIEW_CLASS (e_mail_display_parent_class)->
+ 		suggest_filename (web_view, uri);
+ }
+-#endif
+-static void
+-mail_display_get_font_settings (GSettings *settings,
+-                                PangoFontDescription **monospace,
+-                                PangoFontDescription **variable)
+-{
+-	EMailDisplay *display = E_MAIL_DISPLAY (web_view);
+-	gboolean use_custom_font;
+-	gchar *monospace_font;
+-	gchar *variable_font;
+-
+-	use_custom_font = g_settings_get_boolean (settings, "use-custom-font");
+-	if (!use_custom_font) {
+-		*monospace = NULL;
+-		*variable = NULL;
+-		return;
+-	}
+-
+-	monospace_font = g_settings_get_string (settings, "monospace-font");
+-	variable_font = g_settings_get_string (settings, "variable-width-font");
+-
+-	*monospace = (monospace_font != NULL) ?
+-		pango_font_description_from_string (monospace_font) : NULL;
+-	*variable = (variable_font != NULL) ?
+-		pango_font_description_from_string (variable_font) : NULL;
+-
+-	g_free (monospace_font);
+-	g_free (variable_font);
+-}
+-
+-static void
+-mail_display_set_fonts (EWebView *web_view,
+-                        PangoFontDescription **monospace,
+-                        PangoFontDescription **variable)
+-{
+-	EMailDisplay *display = E_MAIL_DISPLAY (web_view);
+-
+-	mail_display_get_font_settings (display->priv->settings, monospace, variable);
+-}
+-
+-static void
+-e_mail_display_test_change_and_update_fonts_cb (EMailDisplay *mail_display,
+-						const gchar *key,
+-						GSettings *settings)
+-{
+-	GVariant *new_value, *old_value;
+-
+-	new_value = g_settings_get_value (settings, key);
+-	old_value = g_hash_table_lookup (mail_display->priv->old_settings, key);
+-
+-	if (!new_value || !old_value || !g_variant_equal (new_value, old_value)) {
+-		if (new_value)
+-			g_hash_table_insert (mail_display->priv->old_settings, g_strdup (key), new_value);
+-		else
+-			g_hash_table_remove (mail_display->priv->old_settings, key);
+-
+-		e_web_view_update_fonts (E_WEB_VIEW (mail_display));
+-	} else if (new_value) {
+-		g_variant_unref (new_value);
+-	}
+-}
+ 
+ static void
+ mail_display_drag_data_get (GtkWidget *widget,
+@@ -1482,6 +1397,29 @@ mail_display_drag_data_get (GtkWidget *widget,
+  out:
+ 	g_free (uri);
+ }
++#endif
++
++static void
++e_mail_display_test_change_and_update_fonts_cb (EMailDisplay *mail_display,
++						const gchar *key,
++						GSettings *settings)
++{
++	GVariant *new_value, *old_value;
++
++	new_value = g_settings_get_value (settings, key);
++	old_value = g_hash_table_lookup (mail_display->priv->old_settings, key);
++
++	if (!new_value || !old_value || !g_variant_equal (new_value, old_value)) {
++		if (new_value)
++			g_hash_table_insert (mail_display->priv->old_settings, g_strdup (key), new_value);
++		else
++			g_hash_table_remove (mail_display->priv->old_settings, key);
++
++		e_web_view_update_fonts (E_WEB_VIEW (mail_display));
++	} else if (new_value) {
++		g_variant_unref (new_value);
++	}
++}
+ 
+ static void
+ mail_display_process_uri_scheme_finished_cb (EMailDisplay *display,
+@@ -1517,6 +1455,7 @@ mail_display_cid_uri_scheme_appeared_cb (WebKitURISchemeRequest *request)
+ 	CamelDataWrapper *dw;
+ 	CamelMimePart *mime_part;
+ 
++	printf ("%s\n", __FUNCTION__);
+ 	display = E_MAIL_DISPLAY (webkit_uri_scheme_request_get_web_view (request));
+ 
+ 	g_return_if_fail (E_IS_MAIL_DISPLAY (display));
+@@ -1551,24 +1490,34 @@ mail_display_cid_uri_scheme_appeared_cb (WebKitURISchemeRequest *request)
+ }
+ 
+ static gssize
+-copy_stream_to_stream (CamelStream *input,
++copy_stream_to_stream (GIOStream *file_io_stream,
+                        GMemoryInputStream *output,
+                        GCancellable *cancellable)
+ {
++	GInputStream *input_stream;
+ 	gchar *buff;
+ 	gssize read_len = 0;
+ 	gssize total_len = 0;
++	const gsize buff_size = 4096;
+ 
+-	g_seekable_seek (G_SEEKABLE (input), 0, G_SEEK_SET, cancellable, NULL);
++	g_seekable_seek (
++		G_SEEKABLE (file_io_stream), 0,
++		G_SEEK_SET, cancellable, NULL);
+ 
+-	buff = g_malloc (4096);
+-	while ((read_len = camel_stream_read (input, buff, 4096, cancellable, NULL)) > 0) {
++	input_stream = g_io_stream_get_input_stream (file_io_stream);
+ 
+-		g_memory_input_stream_add_data (output, buff, read_len, g_free);
++	buff = g_malloc (buff_size);
++	read_len = g_input_stream_read (
++		input_stream, buff, buff_size, cancellable, NULL);
++	while (read_len > 0) {
++		g_memory_input_stream_add_data (
++			output, buff, read_len, g_free);
+ 
+ 		total_len += read_len;
+ 
+-		buff = g_malloc (4096);
++		buff = g_malloc (buff_size);
++		read_len = g_input_stream_read (
++			input_stream, buff, buff_size, cancellable, NULL);
+ 	}
+ 
+ 	/* Free the last unused buffer */
+@@ -1653,12 +1602,12 @@ web_view_process_http_uri_scheme_request (GTask *task,
+ 	GInputStream *stream = NULL;
+ 	gboolean force_load_images = FALSE;
+ 	gboolean ret_val = FALSE;
+-	EMailImageLoadingPolicy image_policy;
++	EImageLoadingPolicy image_policy;
+ 	gchar *uri_md5;
+ 	EShell *shell;
+ 	GSettings *settings;
+ 	CamelDataCache *cache;
+-	CamelStream *cache_stream;
++	GIOStream *cache_stream;
+ 	GHashTable *query;
+ 	gint uri_len;
+ 	WebKitURISchemeRequest *request = WEBKIT_URI_SCHEME_REQUEST (task_data);
+@@ -1717,10 +1666,8 @@ web_view_process_http_uri_scheme_request (GTask *task,
+ 	/* Open Evolution's cache */
+ 	user_cache_dir = e_get_user_cache_dir ();
+ 	cache = camel_data_cache_new (user_cache_dir, NULL);
+-	if (cache) {
+-		camel_data_cache_set_expire_age (cache, 24 * 60 * 60);
+-		camel_data_cache_set_expire_access (cache, 2 * 60 * 60);
+-	}
++	camel_data_cache_set_expire_age (cache, 24 * 60 * 60);
++	camel_data_cache_set_expire_access (cache, 2 * 60 * 60);
+ 
+ 	/* Found item in cache! */
+ 	cache_stream = camel_data_cache_get (cache, "http", uri_md5, NULL);
+@@ -1741,7 +1688,7 @@ web_view_process_http_uri_scheme_request (GTask *task,
+ 	/* Item not found in cache, but image loading policy allows us to fetch
+ 	 * it from the interwebs */
+ 	if (!force_load_images && mail_uri &&
+-	    (image_policy == E_MAIL_IMAGE_LOADING_POLICY_SOMETIMES)) {
++	    (image_policy == E_IMAGE_LOADING_POLICY_SOMETIMES)) {
+ 		CamelObjectBag *registry;
+ 		gchar *decoded_uri;
+ 		EMailPartList *part_list;
+@@ -1786,36 +1733,32 @@ web_view_process_http_uri_scheme_request (GTask *task,
+ 		g_free (decoded_uri);
+ 	}
+ 
+-	if ((image_policy == E_MAIL_IMAGE_LOADING_POLICY_ALWAYS) ||
++	if ((image_policy == E_IMAGE_LOADING_POLICY_ALWAYS) ||
+ 	    force_load_images) {
+ 
+-		SoupSession *session;
++		SoupSession *temp_session;
+ 		SoupMessage *message;
++		GIOStream *cache_stream;
+ 		GError *error;
+-		EProxy *proxy;
+-
+-		session = soup_session_sync_new_with_options (
+-				SOUP_SESSION_TIMEOUT, 90,
+-				NULL);
+-
+-		proxy = e_proxy_new ();
+-		e_proxy_setup_proxy (proxy);
+-
+-		if (e_proxy_require_proxy_for_uri (proxy, uri)) {
+-			SoupURI *proxy_uri;
+-
+-			proxy_uri = e_proxy_peek_uri_for (proxy, uri);
+-
+-			g_object_set (session, SOUP_SESSION_PROXY_URI, proxy_uri, NULL);
+-		}
+-
+-		g_clear_object (&proxy);
+-
++		GMainContext *context;
++
++		context = g_main_context_new ();
++		g_main_context_push_thread_default (context);
++
++		temp_session = soup_session_new_with_options (
++			SOUP_SESSION_TIMEOUT, 90, NULL);
++/* FIXME WK2
++		g_object_bind_property (
++			soup_session, "proxy-resolver",
++			temp_session, "proxy-resolver",
++			G_BINDING_SYNC_CREATE);
++*/
+ 		message = soup_message_new (SOUP_METHOD_GET, uri);
+ 		soup_message_headers_append (
+ 			message->request_headers, "User-Agent", "Evolution/" VERSION);
+-
+-		send_and_handle_redirection (session, message, NULL);
++/* FIXME WK2
++		send_and_handle_redirection (session, message, NULL);*/
++		send_and_handle_redirection (temp_session, message, NULL);
+ 
+ 		if (!SOUP_STATUS_IS_SUCCESSFUL (message->status_code)) {
+ 			g_warning ("Failed to request %s (code %d)", uri, message->status_code);
+@@ -1831,9 +1774,19 @@ web_view_process_http_uri_scheme_request (GTask *task,
+ 				uri, error->message);
+ 			g_clear_error (&error);
+ 		} else {
+-			camel_stream_write (
+-				cache_stream, message->response_body->data,
+-				message->response_body->length, cancellable, &error);
++			GOutputStream *output_stream;
++
++			output_stream =
++				g_io_stream_get_output_stream (cache_stream);
++
++			g_output_stream_write_all (
++				output_stream,
++				message->response_body->data,
++				message->response_body->length,
++				NULL, cancellable, &error);
++
++			g_io_stream_close (cache_stream, NULL, NULL);
++			g_object_unref (cache_stream);
+ 
+ 			if (error != NULL) {
+ 				if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+@@ -1841,16 +1794,17 @@ web_view_process_http_uri_scheme_request (GTask *task,
+ 						"Failed to write data to cache stream: %s",
+ 						error->message);
+ 				g_clear_error (&error);
+-				g_object_unref (cache_stream);
++				g_object_unref (message);
++				g_object_unref (temp_session);
++				g_main_context_unref (context);
+ 				goto cleanup;
+ 			}
+-
+-			g_seekable_seek (G_SEEKABLE (cache_stream), 0, G_SEEK_SET, cancellable, NULL);
+-
+ 		}
+ 
+ 		g_object_unref (message);
+-		g_object_unref (session);
++/* FIXME WK2
++		g_object_unref (session);*/
++		g_object_unref (temp_session);
+ 	}
+ 
+  process:
+@@ -1863,8 +1817,7 @@ web_view_process_http_uri_scheme_request (GTask *task,
+ 			cache_stream,
+ 			G_MEMORY_INPUT_STREAM (stream), cancellable);
+ 
+-		camel_stream_close (cache_stream, cancellable, NULL);
+-
++		g_io_stream_close (cache_stream, NULL, NULL);
+ 		g_object_unref (cache_stream);
+ 
+ 		/* When succesfully read some data from cache then
+@@ -1884,6 +1837,7 @@ web_view_process_http_uri_scheme_request (GTask *task,
+ 
+ 			content_type = g_file_info_get_content_type (info);
+ 
++			/* FIXME WK2 */
+ 			webkit_uri_scheme_request_finish (
+ 				request, stream, len, content_type);
+ 
+@@ -1905,7 +1859,7 @@ web_view_process_http_uri_scheme_request (GTask *task,
+ 	}
+  cleanup:
+ 	if (cache)
+-		g_object_unref (cache);
++		g_clear_object (&cache);
+ 
+ 	if (soup_uri)
+ 		soup_uri_free (soup_uri);
+@@ -1924,6 +1878,7 @@ mail_display_http_uri_scheme_appeared_cb (WebKitURISchemeRequest *request)
+ 	GTask *task;
+ 	GCancellable *cancellable;
+ 
++	printf ("%s\n", __FUNCTION__);
+ 	display = E_MAIL_DISPLAY (webkit_uri_scheme_request_get_web_view (request));
+ 
+ 	g_return_if_fail (E_IS_MAIL_DISPLAY (display));
+@@ -1948,11 +1903,10 @@ mail_display_process_mail_uri_scheme_request (GTask *task,
+                                               gpointer task_data,
+                                               GCancellable *cancellable)
+ {
+-	GInputStream *stream = NULL;
++	GInputStream *input_stream = NULL;
+ 	EMailFormatter *formatter;
+ 	EMailPartList *part_list;
+-	CamelStream *output_stream;
+-	GByteArray *byte_array;
++	GOutputStream *output_stream;
+ 	GHashTable *query;
+ 	const gchar *val, *uri;
+ 	const gchar *default_charset, *charset;
+@@ -1960,6 +1914,7 @@ mail_display_process_mail_uri_scheme_request (GTask *task,
+ 	EMailFormatterContext context = { 0 };
+ 	EMailDisplay *display = E_MAIL_DISPLAY (source_object);
+ 	WebKitURISchemeRequest *request = WEBKIT_URI_SCHEME_REQUEST (task_data);
++	GBytes *bytes;
+ 
+ 	uri = webkit_uri_scheme_request_get_uri (request);
+ 
+@@ -2009,12 +1964,7 @@ mail_display_process_mail_uri_scheme_request (GTask *task,
+ 	if (charset && *charset != '\0')
+ 		e_mail_formatter_set_charset (formatter, charset);
+ 
+-	byte_array = g_byte_array_new ();
+-	output_stream = camel_stream_mem_new ();
+-
+-	/* We retain ownership of the byte array. */
+-	camel_stream_mem_set_byte_array (
+-		CAMEL_STREAM_MEM (output_stream), byte_array);
++	output_stream = g_memory_output_stream_new_resizable ();
+ 
+ 	val = g_hash_table_lookup (query, "part_id");
+ 	if (val) {
+@@ -2049,7 +1999,7 @@ mail_display_process_mail_uri_scheme_request (GTask *task,
+ 			if (!dw)
+ 				goto no_part;
+ 
+-			camel_data_wrapper_decode_to_stream_sync (
++			camel_data_wrapper_decode_to_output_stream_sync (
+ 				dw, output_stream, cancellable, NULL);
+ 
+ 			g_object_unref (mime_part);
+@@ -2071,26 +2021,34 @@ mail_display_process_mail_uri_scheme_request (GTask *task,
+ 	}
+ 
+  no_part:
+-	g_clear_object (&output_stream);
+ 	g_clear_object (&context.part_list);
+ 
+-	if (byte_array->data == NULL) {
++	g_output_stream_close (output_stream, NULL, NULL);
++
++	bytes = g_memory_output_stream_steal_as_bytes (
++		G_MEMORY_OUTPUT_STREAM (output_stream));
++
++	if (g_bytes_get_size (bytes) == 0) {
+ 		gchar *data;
+ 
++		g_bytes_unref (bytes);
++
+ 		data = g_strdup_printf (
+ 			"<p align='center'>%s</p>",
+ 			_("The message has no text content."));
+-		g_byte_array_append (
+-			byte_array, (guint8 *) data, strlen (data));
+-		g_free (data);
++
++		/* Takes ownership of the string. */
++		bytes = g_bytes_new_take (
++			data, strlen (data) + 1);
+ 	}
+ 
+-	stream = g_memory_input_stream_new_from_bytes (
+-		g_byte_array_free_to_bytes (byte_array));
++	input_stream =
++		g_memory_input_stream_new_from_bytes (bytes);
+ 
+-	webkit_uri_scheme_request_finish (request, stream, -1, "text/html");
++	webkit_uri_scheme_request_finish (request, input_stream, -1, "text/html");
+ 
+-	g_object_unref (stream);
++	g_object_unref (input_stream);
++	g_object_unref (output_stream);
+ 
+ 	if (query)
+ 		g_hash_table_destroy (query);
+@@ -2206,6 +2164,7 @@ mail_display_mail_uri_scheme_appeared_cb (WebKitURISchemeRequest *request)
+ 	GCancellable *cancellable;
+ 	const gchar *uri;
+ 
++	printf ("%s\n", __FUNCTION__);
+ 	display = E_MAIL_DISPLAY (webkit_uri_scheme_request_get_web_view (request));
+ 
+ 	g_return_if_fail (E_IS_MAIL_DISPLAY (display));
+@@ -2349,12 +2308,6 @@ e_mail_display_class_init (EMailDisplayClass *class)
+ 			G_PARAM_STATIC_STRINGS));
+ }
+ 
+-static void
+-mail_display_update_fonts (EMailDisplay *display)
+-{
+-	e_web_view_update_fonts (E_WEB_VIEW (display));
+-}
+-
+ static void
+ e_mail_display_init (EMailDisplay *display)
+ {
+@@ -2411,14 +2364,11 @@ e_mail_display_init (EMailDisplay *display)
+ 		display->priv->settings , "changed::use-custom-font",
+ 		G_CALLBACK (e_mail_display_test_change_and_update_fonts_cb), display);
+ 
+-	e_web_view_update_fonts (E_WEB_VIEW (display));
+-
+-	main_frame = webkit_web_view_get_main_frame (WEBKIT_WEB_VIEW (display));
+-	e_signal_connect_notify (
+-		main_frame, "load-changed",
++	g_signal_connect (
++		display, "load-changed",
+ 		G_CALLBACK (setup_dom_bindings), NULL);
+-	e_signal_connect_notify (
+-		main_frame, "load-changed",
++	g_signal_connect (
++		display, "load-changed",
+ 		G_CALLBACK (mail_parts_bind_dom), NULL);
+ 
+ 	actions = e_web_view_get_action_group (E_WEB_VIEW (display), "mailto");
+@@ -2866,12 +2816,12 @@ e_mail_display_set_force_load_images (EMailDisplay *display,
+ 		g_dbus_connection_call (
+ 			g_dbus_proxy_get_connection (web_extension),
+ 			g_dbus_proxy_get_name (web_extension),
+-			EVOLUTION_WEB_EXTENSION_OBJECT_PATH,
++			E_WEB_EXTENSION_OBJECT_PATH,
+ 			"org.freedesktop.DBus.Properties",
+ 			"Set",
+ 			g_variant_new (
+ 				"(ssv)",
+-				EVOLUTION_WEB_EXTENSION_INTERFACE,
++				E_WEB_EXTENSION_INTERFACE,
+ 				"ForceImageLoad",
+ 				g_variant_new_boolean (force_load_images)),
+ 			NULL,
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index cc68eead01..b80a7eb384 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -1890,7 +1890,6 @@ action_mail_zoom_in_cb (GtkAction *action,
+                         EMailReader *reader)
+ {
+ 	EMailDisplay *display;
+-	gdouble zoom_level;
+ 
+ 	display = e_mail_reader_get_mail_display (reader);
+ 
+@@ -1902,7 +1901,6 @@ action_mail_zoom_out_cb (GtkAction *action,
+                          EMailReader *reader)
+ {
+ 	EMailDisplay *display;
+-	gdouble zoom_level;
+ 
+ 	display = e_mail_reader_get_mail_display (reader);
+ 
+@@ -2655,6 +2653,8 @@ mail_reader_key_press_event_cb (EMailReader *reader,
+ 
+ 				if (need_input)
+ 					return FALSE;
++			}
++		}
+ 	}
+ 
+ 	if ((event->state & GDK_CONTROL_MASK) != 0)
+@@ -2833,9 +2833,9 @@ schedule_timeout_mark_seen (EMailReader *reader)
+ }
+ 
+ static void
+-mail_reader_load_status_changed_cb (EMailReader *reader,
+-                                    WebKitLoadEvent event,
+-                                    EMailDisplay *display)
++mail_reader_load_changed_cb (EMailReader *reader,
++                             WebKitLoadEvent event,
++                             EMailDisplay *display)
+ {
+ 	EMailReaderPrivate *priv;
+ 
+@@ -4235,7 +4235,7 @@ connect_signals:
+ 		display, "key-press-event",
+ 		G_CALLBACK (mail_reader_key_press_event_cb), reader);
+ 
+-	e_signal_connect_swapped (
++	g_signal_connect_swapped (
+ 		display, "load-changed",
+ 		G_CALLBACK (mail_reader_load_changed_cb), reader);
+ 
+diff --git a/modules/itip-formatter/itip-view.c b/modules/itip-formatter/itip-view.c
+index 35549c1a24..8d96a4cd13 100644
+--- a/modules/itip-formatter/itip-view.c
++++ b/modules/itip-formatter/itip-view.c
+@@ -114,7 +114,7 @@ struct _ItipViewPrivate {
+ 
+ 	GDBusProxy *web_extension;
+ 	guint web_extension_watch_name_id;
+-	guint web_extension_source_changed_signal_id;
++	guint web_extension_source_changed_cb_signal_id;
+ 	guint web_extension_button_clicked_signal_id;
+ 	guint web_extension_recur_toggled_signal_id;
+ 
+@@ -935,7 +935,7 @@ recur_toggled_signal_cb (GDBusConnection *connection,
+ }
+ 
+ static void
+-source_changed (ItipView *view)
++source_changed_cb (ItipView *view)
+ {
+ 	ESource *source;
+ 
+@@ -948,7 +948,7 @@ source_changed (ItipView *view)
+ }
+ 
+ static void
+-source_changed_signal_cb (GDBusConnection *connection,
++source_changed_cb_signal_cb (GDBusConnection *connection,
+                           const gchar *sender_name,
+                           const gchar *object_path,
+                           const gchar *interface_name,
+@@ -959,7 +959,7 @@ source_changed_signal_cb (GDBusConnection *connection,
+ 	if (g_strcmp0 (signal_name, "SourceChanged") != 0)
+ 		return;
+ 
+-	source_changed (view);
++	source_changed_cb (view);
+ }
+ 
+ static void
+@@ -1092,6 +1092,7 @@ remove_info_item_row (ItipView *view,
+ 		-1,
+ 		NULL,
+ 		NULL,
++		NULL);
+ 
+ 	g_free (row_id);
+ 
+@@ -1228,6 +1229,7 @@ itip_view_rebuild_source_list (ItipView *view)
+ 			-1,
+ 			NULL,
+ 			NULL,
++			NULL);
+ 
+ 		g_object_unref (parent);
+ 	}
+@@ -1364,11 +1366,11 @@ itip_view_dispose (GObject *object)
+ 		priv->web_extension_recur_toggled_signal_id = 0;
+ 	}
+ 
+-	if (priv->web_extension_source_changed_signal_id > 0) {
++	if (priv->web_extension_source_changed_cb_signal_id > 0) {
+ 		g_dbus_connection_signal_unsubscribe (
+ 			g_dbus_proxy_get_connection (priv->web_extension),
+-			priv->web_extension_source_changed_signal_id);
+-		priv->web_extension_source_changed_signal_id = 0;
++			priv->web_extension_source_changed_cb_signal_id);
++		priv->web_extension_source_changed_cb_signal_id = 0;
+ 	}
+ 
+ 	if (priv->web_extension_button_clicked_signal_id > 0) {
+@@ -1777,7 +1779,7 @@ web_extension_proxy_created_cb (GDBusProxy *proxy,
+ 		g_error_free (error);
+  	}
+ 
+-	view->priv->web_extension_source_changed_signal_id =
++	view->priv->web_extension_source_changed_cb_signal_id =
+ 		g_dbus_connection_signal_subscribe (
+ 			g_dbus_proxy_get_connection (view->priv->web_extension),
+ 			g_dbus_proxy_get_name (view->priv->web_extension),
+@@ -1786,7 +1788,7 @@ web_extension_proxy_created_cb (GDBusProxy *proxy,
+ 			MODULE_ITIP_FORMATTER_WEB_EXTENSION_OBJECT_PATH,
+ 			NULL,
+ 			G_DBUS_SIGNAL_FLAGS_NONE,
+-			(GDBusSignalCallback) source_changed_signal_cb,
++			(GDBusSignalCallback) source_changed_cb_signal_cb,
+ 			view,
+ 			NULL);
+ 
+@@ -1977,7 +1979,6 @@ void
+ itip_view_set_item_type (ItipView *view,
+                          ECalClientSourceType type)
+ {
+-	WebKitDOMElement *label;
+ 	const gchar *header;
+ 	gchar *access_key, *html_label;
+ 
+@@ -2530,8 +2531,7 @@ itip_view_remove_lower_info_item (ItipView *view,
+ 			g_free (item->message);
+ 			g_free (item);
+ 
+-			if (view->priv->dom_document)
+-				remove_info_item_row (view, TABLE_LOWER_ITIP_INFO, id);
++			remove_info_item_row (view, TABLE_LOWER_ITIP_INFO, id);
+ 
+ 			return;
+ 		}
+@@ -2551,8 +2551,7 @@ itip_view_clear_lower_info_items (ItipView *view)
+ 	for (l = priv->lower_info_items; l; l = l->next) {
+ 		ItipViewInfoItem *item = l->data;
+ 
+-		if (view->priv->dom_document)
+-			remove_info_item_row (view, TABLE_LOWER_ITIP_INFO, item->id);
++		remove_info_item_row (view, TABLE_LOWER_ITIP_INFO, item->id);
+ 
+ 		g_free (item->message);
+ 		g_free (item);
+@@ -2582,7 +2581,7 @@ itip_view_set_source (ItipView *view,
+ 	 * so that it would make all the buttons sensitive */
+ 	selected_source = itip_view_ref_source (view);
+ 	if (source == selected_source) {
+-		source_changed (view);
++		source_changed_cb (view);
+ 		return;
+ 	}
+ 
+@@ -2614,7 +2613,7 @@ itip_view_set_source (ItipView *view,
+ 		NULL,
+ 		NULL);
+ 
+-	source_changed (view);
++	source_changed_cb (view);
+ }
+ 
+ ESource *
+@@ -2622,6 +2621,7 @@ itip_view_ref_source (ItipView *view)
+ {
+ 	ESource *source;
+ 	gboolean disable = FALSE, enabled = FALSE;
++	GVariant *result;
+ 
+ 	g_return_val_if_fail (ITIP_IS_VIEW (view), NULL);
+ 
+@@ -2807,19 +2807,19 @@ itip_view_get_rsvp_comment (ItipView *view)
+  		return NULL;
+ 
+ 	result = g_dbus_proxy_call_sync (
+-			view->priv->web_extension,
+-			"TextAreaGetValue",
+-			g_variant_new (
+-				"(s)", TEXTAREA_RSVP_COMMENT),
+-			G_DBUS_CALL_FLAGS_NONE,
+-			-1,
+-			NULL,
+-			NULL);
++		view->priv->web_extension,
++		"TextAreaGetValue",
++		g_variant_new (
++			"(s)", TEXTAREA_RSVP_COMMENT),
++		G_DBUS_CALL_FLAGS_NONE,
++		-1,
++		NULL,
++		NULL);
+ 
+ 	if (result) {
+-		const gchar *value;
++		gchar *value;
+ 
+-		g_variant_get (result, "(&s)", &value);
++		g_variant_get (result, "(s)", &value);
+ 		g_variant_unref (result);
+ 		return value;
+  	}
+@@ -4378,7 +4378,7 @@ finish_message_delete_with_rsvp (EMailPartItip *pitip,
+ 		icalproperty *prop;
+ 		icalvalue *value;
+ 		const gchar *attendee;
+-		const gchar *comment;
++		gchar *comment;
+ 		GSList *l, *list = NULL;
+ 		gboolean found;
+ 
+@@ -4437,6 +4437,8 @@ finish_message_delete_with_rsvp (EMailPartItip *pitip,
+ 			comments.next = NULL;
+ 
+ 			e_cal_component_set_comment_list (comp, &comments);
++
++			g_free (comment);
+ 		}
+ 
+ 		e_cal_component_rescan (comp);
+diff --git a/modules/itip-formatter/itip-view.h b/modules/itip-formatter/itip-view.h
+index 97ecdfd123..ae2abeb60c 100644
+--- a/modules/itip-formatter/itip-view.h
++++ b/modules/itip-formatter/itip-view.h
+@@ -218,7 +218,7 @@ void		itip_view_set_update		(ItipView *view,
+ gboolean	itip_view_get_show_update_check (ItipView *view);
+ void		itip_view_set_show_update_check (ItipView *view,
+ 						 gboolean show);
+-const gchar *	itip_view_get_rsvp_comment	(ItipView *view);
++gchar *		itip_view_get_rsvp_comment	(ItipView *view);
+ void		itip_view_set_rsvp_comment	(ItipView *view,
+ 						 const gchar *comment);
+ gboolean	itip_view_get_buttons_sensitive	(ItipView *view);
+diff --git a/modules/itip-formatter/web-extension/Makefile.am b/modules/itip-formatter/web-extension/Makefile.am
+index 4e044bb449..b956aefaa8 100644
+--- a/modules/itip-formatter/web-extension/Makefile.am
++++ b/modules/itip-formatter/web-extension/Makefile.am
+@@ -3,8 +3,8 @@ webextensions_LTLIBRARIES = libmoduleitipformatterwebextension.la
+ libmoduleitipformatterwebextension_la_SOURCES =		\
+ 	module-itip-formatter-web-extension.c		\
+ 	module-itip-formatter-web-extension.h		\
+-	../module-itip-formatter-dom-utils.c		\
+-	../module-itip-formatter-dom-utils.h
++	module-itip-formatter-dom-utils.c		\
++	module-itip-formatter-dom-utils.h
+ 
+ libmoduleitipformatterwebextension_la_CPPFLAGS =	\
+ 	$(AM_CPPFLAGS)					\
+@@ -15,6 +15,7 @@ libmoduleitipformatterwebextension_la_CPPFLAGS =	\
+ 
+ libmoduleitipformatterwebextension_la_LIBADD =		\
+ 	$(top_builddir)/e-util/libevolution-util.la	\
++	$(top_builddir)/web-extensions/libedomutils.la	\
+ 	$(EVOLUTION_DATA_SERVER_LIBS)			\
+ 	$(GNOME_PLATFORM_LIBS)				\
+ 	$(WEB_EXTENSIONS_LIBS)
+diff --git a/modules/itip-formatter/module-itip-formatter-dom-utils.c b/modules/itip-formatter/web-extension/module-itip-formatter-dom-utils.c
+similarity index 99%
+rename from modules/itip-formatter/module-itip-formatter-dom-utils.c
+rename to modules/itip-formatter/web-extension/module-itip-formatter-dom-utils.c
+index 0f71a7a1ae..ff48352052 100644
+--- a/modules/itip-formatter/module-itip-formatter-dom-utils.c
++++ b/modules/itip-formatter/web-extension/module-itip-formatter-dom-utils.c
+@@ -21,8 +21,8 @@
+ #define WEBKIT_DOM_USE_UNSTABLE_API
+ #include <webkitdom/WebKitDOMHTMLElementUnstable.h>
+ 
+-#include "web-extension/module-itip-formatter-web-extension.h"
+-#include "itip-view-elements-defines.h"
++#include "module-itip-formatter-web-extension.h"
++#include "../itip-view-elements-defines.h"
+ 
+ #include <e-util/e-util.h>
+ 
+diff --git a/modules/itip-formatter/module-itip-formatter-dom-utils.h b/modules/itip-formatter/web-extension/module-itip-formatter-dom-utils.h
+similarity index 100%
+rename from modules/itip-formatter/module-itip-formatter-dom-utils.h
+rename to modules/itip-formatter/web-extension/module-itip-formatter-dom-utils.h
+diff --git a/modules/itip-formatter/web-extension/module-itip-formatter-web-extension.c b/modules/itip-formatter/web-extension/module-itip-formatter-web-extension.c
+index 99fee715a4..c246f438c3 100644
+--- a/modules/itip-formatter/web-extension/module-itip-formatter-web-extension.c
++++ b/modules/itip-formatter/web-extension/module-itip-formatter-web-extension.c
+@@ -22,9 +22,9 @@
+ #include <gtk/gtk.h>
+ #include <webkit2/webkit-web-extension.h>
+ 
+-#include <e-util/e-dom-utils.h>
++#include <web-extensions/e-dom-utils.h>
+ 
+-#include "../module-itip-formatter-dom-utils.h"
++#include "module-itip-formatter-dom-utils.h"
+ 
+ /* FIXME Clean it */
+ static GDBusConnection *dbus_connection;
+diff --git a/modules/mail/em-composer-prefs.c b/modules/mail/em-composer-prefs.c
+index 474382248e..a11e0c2661 100644
+--- a/modules/mail/em-composer-prefs.c
++++ b/modules/mail/em-composer-prefs.c
+@@ -140,11 +140,11 @@ spell_language_save (EMComposerPrefs *prefs)
+ static void
+ spell_setup (EMComposerPrefs *prefs)
+ {
+-	GList *list, *link;
++	GList *list = NULL, *link;
+ 	GtkListStore *store;
+ 
+ 	store = GTK_LIST_STORE (prefs->language_model);
+-
++#if 0 /* FIXME WK2 */
+ 	list = e_spell_checker_list_available_dicts (prefs->spell_checker);
+ 
+ 	/* Populate the GtkListStore. */
+@@ -168,7 +168,7 @@ spell_setup (EMComposerPrefs *prefs)
+ 			store, &tree_iter,
+ 			0, active, 1, name, 2, dictionary, -1);
+ 	}
+-
++#endif
+ 	g_list_free (list);
+ }
+ 
+@@ -1047,8 +1047,9 @@ em_composer_prefs_construct (EMComposerPrefs *prefs,
+ 
+ 	prefs->builder = gtk_builder_new ();
+ 	e_load_ui_builder_definition (prefs->builder, "mail-config.ui");
+-
+-	prefs->spell_checker = e_spell_checker_new ();
++/* FIXME WK2
++	prefs->spell_checker = e_spell_checker_new ();*/
++	prefs->spell_checker = NULL;
+ 
+ 	/** @HookPoint-EMConfig: Mail Composer Preferences
+ 	 * @Id: org.gnome.evolution.mail.composerPrefs
+diff --git a/modules/mail/web-extension/Makefile.am b/modules/mail/web-extension/Makefile.am
+index b585110e9c..342cd2d169 100644
+--- a/modules/mail/web-extension/Makefile.am
++++ b/modules/mail/web-extension/Makefile.am
+@@ -13,6 +13,7 @@ libmodulemailwebextension_la_CPPFLAGS =			\
+ 
+ libmodulemailwebextension_la_LIBADD =			\
+ 	$(top_builddir)/e-util/libevolution-util.la	\
++	$(top_builddir)/web-extensions/libedomutils.la	\
+ 	$(EVOLUTION_DATA_SERVER_LIBS)			\
+ 	$(GNOME_PLATFORM_LIBS)				\
+ 	$(WEB_EXTENSIONS_LIBS)
+diff --git a/modules/mail/web-extension/module-mail-web-extension.c b/modules/mail/web-extension/module-mail-web-extension.c
+index 146831979c..a3d04e36cd 100644
+--- a/modules/mail/web-extension/module-mail-web-extension.c
++++ b/modules/mail/web-extension/module-mail-web-extension.c
+@@ -22,7 +22,7 @@
+ #include <gtk/gtk.h>
+ #include <webkit2/webkit-web-extension.h>
+ 
+-#include <e-util/e-dom-utils.h>
++#include <web-extensions/e-dom-utils.h>
+ 
+ /* FIXME Clean it */
+ static GDBusConnection *dbus_connection;
+diff --git a/modules/prefer-plain/web-extension/Makefile.am b/modules/prefer-plain/web-extension/Makefile.am
+index 24936e9566..4f26c477c2 100644
+--- a/modules/prefer-plain/web-extension/Makefile.am
++++ b/modules/prefer-plain/web-extension/Makefile.am
+@@ -13,6 +13,7 @@ libmodulepreferplainwebextension_la_CPPFLAGS =		\
+ 
+ libmodulepreferplainwebextension_la_LIBADD =		\
+ 	$(top_builddir)/e-util/libevolution-util.la	\
++	$(top_builddir)/web-extensions/libedomutils.la	\
+ 	$(EVOLUTION_DATA_SERVER_LIBS)			\
+ 	$(GNOME_PLATFORM_LIBS)				\
+ 	$(WEB_EXTENSIONS_LIBS)
+diff --git a/modules/prefer-plain/web-extension/module-prefer-plain-web-extension.c b/modules/prefer-plain/web-extension/module-prefer-plain-web-extension.c
+index 9f3b4cac23..a6e5b7d66d 100644
+--- a/modules/prefer-plain/web-extension/module-prefer-plain-web-extension.c
++++ b/modules/prefer-plain/web-extension/module-prefer-plain-web-extension.c
+@@ -25,7 +25,7 @@
+ #define WEBKIT_DOM_USE_UNSTABLE_API
+ #include <webkitdom/WebKitDOMDOMWindowUnstable.h>
+ 
+-#include <e-util/e-dom-utils.h>
++#include <web-extensions/e-dom-utils.h>
+ 
+ /* FIXME Clean it */
+ static GDBusConnection *dbus_connection;
+diff --git a/modules/settings/e-settings-spell-checker.c b/modules/settings/e-settings-spell-checker.c
+index 8192766d80..4e8160929a 100644
+--- a/modules/settings/e-settings-spell-checker.c
++++ b/modules/settings/e-settings-spell-checker.c
+@@ -39,8 +39,9 @@ settings_spell_checker_get_extensible (ESettingsSpellChecker *extension)
+ 	EExtensible *extensible;
+ 
+ 	extensible = e_extension_get_extensible (E_EXTENSION (extension));
+-
+-	return E_SPELL_CHECKER (extensible);
++/* FIXME WK2
++	return E_SPELL_CHECKER (extensible);*/
++	return NULL;
+ }
+ 
+ static void
+@@ -62,19 +63,20 @@ settings_spell_checker_constructed (GObject *object)
+ 		E_SETTINGS_SPELL_CHECKER (object));
+ 
+ 	/* Make sure there are no active languages at this point. */
++/* FIXME WK2
+ 	g_warn_if_fail (
+-		e_spell_checker_count_active_languages (spell_checker) == 0);
++		e_spell_checker_count_active_languages (spell_checker) == 0);*/
+ 
+ 	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	strv = g_settings_get_strv (settings, "composer-spell-languages");
+ 	g_object_unref (settings);
+ 
+ 	g_return_if_fail (strv != NULL);
+-
++/* FIXME WK2
+ 	for (ii = 0; strv[ii] != NULL; ii++)
+ 		e_spell_checker_set_language_active (
+ 			spell_checker, strv[ii], TRUE);
+-
++*/
+ 	g_strfreev (strv);
+ }
+ 
+@@ -91,7 +93,8 @@ e_settings_spell_checker_class_init (ESettingsSpellCheckerClass *class)
+ 	object_class->constructed = settings_spell_checker_constructed;
+ 
+ 	extension_class = E_EXTENSION_CLASS (class);
+-	extension_class->extensible_type = E_TYPE_SPELL_CHECKER;
++/* FIXME WK2
++	extension_class->extensible_type = E_TYPE_SPELL_CHECKER; */
+ }
+ 
+ static void
+diff --git a/modules/settings/e-settings-spell-entry.c b/modules/settings/e-settings-spell-entry.c
+index 8fd3a63287..b84348fd2b 100644
+--- a/modules/settings/e-settings-spell-entry.c
++++ b/modules/settings/e-settings-spell-entry.c
+@@ -67,7 +67,8 @@ e_settings_spell_entry_class_init (ESettingsSpellEntryClass *class)
+ 	object_class->constructed = settings_spell_entry_constructed;
+ 
+ 	extension_class = E_EXTENSION_CLASS (class);
+-	extension_class->extensible_type = E_TYPE_SPELL_ENTRY;
++/* FIXME WK2
++	extension_class->extensible_type = E_TYPE_SPELL_ENTRY;*/
+ }
+ 
+ static void
+diff --git a/modules/text-highlight/e-mail-display-popup-text-highlight.c b/modules/text-highlight/e-mail-display-popup-text-highlight.c
+index d90ab277b7..e7904120d2 100644
+--- a/modules/text-highlight/e-mail-display-popup-text-highlight.c
++++ b/modules/text-highlight/e-mail-display-popup-text-highlight.c
+@@ -215,6 +215,16 @@ reformat_get_document_uri_cb (GDBusProxy *web_extension,
+ 		NULL);
+ 
+ 	g_free (uri);
++}
++
++static void
++reformat (GtkAction *old,
++          GtkAction *action,
++          gpointer user_data)
++{
++	EMailDisplayPopupTextHighlight *th_extension;
++
++	th_extension = E_MAIL_DISPLAY_POPUP_TEXT_HIGHLIGHT (user_data);
+ 
+ 	if (!th_extension->web_extension)
+ 		return;
+diff --git a/modules/text-highlight/web-extension/Makefile.am b/modules/text-highlight/web-extension/Makefile.am
+index 9aa0f2b8aa..dc521f9e63 100644
+--- a/modules/text-highlight/web-extension/Makefile.am
++++ b/modules/text-highlight/web-extension/Makefile.am
+@@ -13,6 +13,7 @@ libmoduletexthighlightwebextension_la_CPPFLAGS =	\
+ 
+ libmoduletexthighlightwebextension_la_LIBADD =		\
+ 	$(top_builddir)/e-util/libevolution-util.la	\
++	$(top_builddir)/web-extensions/libedomutils.la	\
+ 	$(EVOLUTION_DATA_SERVER_LIBS)			\
+ 	$(GNOME_PLATFORM_LIBS)				\
+ 	$(WEB_EXTENSIONS_LIBS)
+diff --git a/modules/text-highlight/web-extension/module-text-highlight-web-extension.c b/modules/text-highlight/web-extension/module-text-highlight-web-extension.c
+index 84f4a72aa5..901119c9ed 100644
+--- a/modules/text-highlight/web-extension/module-text-highlight-web-extension.c
++++ b/modules/text-highlight/web-extension/module-text-highlight-web-extension.c
+@@ -25,7 +25,7 @@
+ #define WEBKIT_DOM_USE_UNSTABLE_API
+ #include <webkitdom/WebKitDOMDOMWindowUnstable.h>
+ 
+-#include <e-util/e-dom-utils.h>
++#include <web-extensions/e-dom-utils.h>
+ 
+ /* FIXME Clean it */
+ static GDBusConnection *dbus_connection;
+diff --git a/modules/web-inspector/evolution-web-inspector.c b/modules/web-inspector/evolution-web-inspector.c
+index fd8606aa52..ef4b08203d 100644
+--- a/modules/web-inspector/evolution-web-inspector.c
++++ b/modules/web-inspector/evolution-web-inspector.c
+@@ -97,7 +97,7 @@ web_inspector_constructed (GObject *object)
+ 
+ 	extension = E_WEB_INSPECTOR (object);
+ 	web_view = web_inspector_get_web_view (extension);
+-+	settings = webkit_web_view_get_settings (web_view);
++	settings = webkit_web_view_get_settings (web_view);
+ 	webkit_settings_set_enable_developer_extras (settings, TRUE);
+ 
+ 	g_signal_connect (
+diff --git a/plugins/external-editor/external-editor.c b/plugins/external-editor/external-editor.c
+index 924ae23af2..b09a746a88 100644
+--- a/plugins/external-editor/external-editor.c
++++ b/plugins/external-editor/external-editor.c
+@@ -158,8 +158,8 @@ enable_disable_composer (EMsgComposer *composer,
+ 
+ 	editor = e_msg_composer_get_editor (composer);
+ 	view = e_html_editor_get_view (editor);
+-
+-	webkit_web_view_set_editable (WEBKIT_WEB_VIEW (view), enable);
++/* FIXME WK2
++	webkit_web_view_set_editable (WEBKIT_WEB_VIEW (view), enable);*/
+ 
+ 	action = E_HTML_EDITOR_ACTION_EDIT_MENU (editor);
+ 	gtk_action_set_sensitive (action, enable);
+@@ -254,48 +254,34 @@ numlines (const gchar *text,
+ 	return lineno;
+ }
+ 
+-static gint
++static gint32
+ get_caret_position (EHTMLEditorView *view)
+ {
+-	WebKitDOMDocument *document;
+-	WebKitDOMDOMWindow *window;
+-	WebKitDOMDOMSelection *selection;
+-	WebKitDOMRange *range;
+-	gint range_count;
+-	WebKitDOMNodeList *nodes;
+-	gulong ii, length;
++	GDBusProxy *web_extension;
++	gint position = 0;
++	GVariant *result;
+ 
+-	document = webkit_web_view_get_dom_document (WEBKIT_WEB_VIEW (view));
+-	window = webkit_dom_document_get_default_view (document);
+-	selection = webkit_dom_dom_window_get_selection (window);
+-
+-	if (webkit_dom_dom_selection_get_range_count (selection) < 1)
++	web_extension = e_html_editor_view_get_web_extension_proxy (view);
++	if (!web_extension)
+ 		return 0;
+ 
+-	range = webkit_dom_dom_selection_get_range_at (selection, 0, NULL);
+-	range_count = 0;
+-	nodes = webkit_dom_node_get_child_nodes (
+-		webkit_dom_node_get_parent_node (
+-			webkit_dom_dom_selection_get_anchor_node (
+-				selection)));
+-	length = webkit_dom_node_list_get_length (nodes);
+-	for (ii = 0; ii < length; ii++) {
+-		WebKitDOMNode *node;
++	result = g_dbus_proxy_call_sync (
++		web_extension,
++		"DOMGetCaretPosition",
++		g_variant_new (
++			"(t)",
++			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view))),
++		G_DBUS_CALL_FLAGS_NONE,
++		-1,
++		NULL,
++		NULL);
+ 
+-		node = webkit_dom_node_list_item (nodes, ii);
+-		if (webkit_dom_node_is_same_node (
+-			node, webkit_dom_dom_selection_get_anchor_node (selection))) {
+-
+-			break;
+-		} else if (WEBKIT_DOM_IS_TEXT (node)) {
+-			gchar *text = webkit_dom_node_get_text_content (node);
+-			range_count += strlen (text);
+-			g_free (text);
+-		}
++	if (result) {
++		position = g_variant_get_int32 (result);
++		g_variant_unref (result);
+ 	}
+ 
+-	g_object_unref (nodes);
+-	return webkit_dom_range_get_start_offset (range, NULL) + range_count;
++	return position;
+ }
+ 
+ static gboolean external_editor_running = FALSE;
+diff --git a/shell/e-shell.c b/shell/e-shell.c
+index c1f85210b8..ee9947473b 100644
+--- a/shell/e-shell.c
++++ b/shell/e-shell.c
+@@ -915,13 +915,13 @@ shell_initable_init (GInitable *initable,
+ 	/* Configure WebKit's default SoupSession. */
+ 
+ 	proxy_source = e_source_registry_ref_builtin_proxy (registry);
+-
++/* FIXME WK2
+ 	g_object_set (
+ 		webkit_get_default_session (),
+ 		SOUP_SESSION_PROXY_RESOLVER,
+ 		G_PROXY_RESOLVER (proxy_source),
+ 		NULL);
+-
++*/
+ 	g_object_unref (proxy_source);
+ 	g_object_unref (registry);
+ 
+diff --git a/shell/main.c b/shell/main.c
+index 67e4cc60da..c392c3bd60 100644
+--- a/shell/main.c
++++ b/shell/main.c
+@@ -641,7 +641,8 @@ exit:
+ 	gtk_accel_map_save (e_get_accels_filename ());
+ 
+ 	e_util_cleanup_settings ();
+-	e_spell_checker_free_global_memory ();
++/* FIXME WK2
++	e_spell_checker_free_global_memory ();*/
+ 
+ 	return 0;
+ }
+diff --git a/web-extensions/Makefile.am b/web-extensions/Makefile.am
+index adfa012bdd..ab28caecef 100644
+--- a/web-extensions/Makefile.am
++++ b/web-extensions/Makefile.am
+@@ -1,19 +1,41 @@
+-webextensions_LTLIBRARIES = libewebextension.la
++webextensions_LTLIBRARIES = libewebextension.la libehtmleditorwebextension.la libedomutils.la
++
++libedomutils_la_SOURCES =				\
++	e-dom-utils.h					\
++	e-dom-utils.c
++
++libedomutils_la_CPPFLAGS =				\
++	$(AM_CPPFLAGS)					\
++	-I$(top_srcdir)					\
++	-DLIBEUTIL_COMPILATION				\
++	-DEVOLUTION_IMAGESDIR=\""$(imagesdir)"\"	\
++	$(EVOLUTION_DATA_SERVER_CFLAGS)			\
++	$(GNOME_PLATFORM_CFLAGS)
++
++libedomutils_la_LIBADD =				\
++	$(top_builddir)/e-util/libevolution-util.la	\
++	$(EVOLUTION_DATA_SERVER_LIBS)			\
++	$(GNOME_PLATFORM_LIBS)
+ 
+ libewebextension_la_SOURCES =				\
+-	e-web-extension.c				\
+ 	e-web-extension.h				\
+ 	e-web-extension-names.h				\
+-	e-web-extension-main.c
++	e-dom-utils.h					\
++	e-web-extension.c				\
++	e-web-extension-main.c				\
++	e-dom-utils.c
+ 
+ libewebextension_la_CPPFLAGS =				\
+ 	$(AM_CPPFLAGS)					\
+ 	-I$(top_srcdir)					\
++	-DLIBEUTIL_COMPILATION				\
++	-DEVOLUTION_IMAGESDIR=\""$(imagesdir)"\"	\
+ 	$(EVOLUTION_DATA_SERVER_CFLAGS)			\
+ 	$(GNOME_PLATFORM_CFLAGS)			\
+ 	$(WEB_EXTENSIONS_CFLAGS)
+ 
+ libewebextension_la_LIBADD =				\
++	$(top_builddir)/e-util/libevolution-util.la	\
+ 	$(top_builddir)/e-util/libevolution-util.la	\
+ 	$(EVOLUTION_DATA_SERVER_LIBS)			\
+ 	$(GNOME_PLATFORM_LIBS)				\
+@@ -21,3 +43,51 @@ libewebextension_la_LIBADD =				\
+ 
+ libewebextension_la_LDFLAGS =				\
+ 	-module -avoid-version -no-undefined
++
++libehtmleditorwebextension_la_SOURCES =			\
++	e-composer-private-dom-functions.h		\
++	e-dom-utils.h					\
++	e-html-editor-actions-dom-functions.h		\
++	e-html-editor-cell-dialog-dom-functions.h	\
++	e-html-editor-hrule-dialog-dom-functions.h	\
++	e-html-editor-image-dialog-dom-functions.h	\
++	e-html-editor-link-dialog-dom-functions.h	\
++	e-html-editor-selection-dom-functions.h		\
++	e-html-editor-spell-check-dialog-dom-functions.h\
++	e-html-editor-table-dialog-dom-functions.h	\
++	e-html-editor-view-dom-functions.h		\
++	e-msg-composer-dom-functions.h			\
++	e-composer-private-dom-functions.c		\
++	e-dom-utils.c					\
++	e-html-editor-actions-dom-functions.c		\
++	e-html-editor-cell-dialog-dom-functions.c	\
++	e-html-editor-hrule-dialog-dom-functions.c	\
++	e-html-editor-image-dialog-dom-functions.c	\
++	e-html-editor-link-dialog-dom-functions.c	\
++	e-html-editor-selection-dom-functions.c		\
++	e-html-editor-spell-check-dialog-dom-functions.c\
++	e-html-editor-table-dialog-dom-functions.c	\
++	e-html-editor-view-dom-functions.c		\
++	e-msg-composer-dom-functions.c			\
++	e-html-editor-web-extension.c			\
++	e-html-editor-web-extension.h			\
++	e-html-editor-web-extension-names.h		\
++	e-html-editor-web-extension-main.c
++
++libehtmleditorwebextension_la_CPPFLAGS =		\
++	$(AM_CPPFLAGS)					\
++	-I$(top_srcdir)					\
++	-DLIBEUTIL_COMPILATION				\
++	-DEVOLUTION_IMAGESDIR=\""$(imagesdir)"\"	\
++	$(EVOLUTION_DATA_SERVER_CFLAGS)			\
++	$(GNOME_PLATFORM_CFLAGS)			\
++	$(WEB_EXTENSIONS_CFLAGS)
++
++libehtmleditorwebextension_la_LIBADD =			\
++	$(top_builddir)/e-util/libevolution-util.la	\
++	$(EVOLUTION_DATA_SERVER_LIBS)			\
++	$(GNOME_PLATFORM_LIBS)				\
++	$(WEB_EXTENSIONS_LIBS)
++
++libehtmleditorwebextension_la_LDFLAGS =			\
++	-module -avoid-version -no-undefined
+diff --git a/web-extensions/e-composer-private-dom-functions.c b/web-extensions/e-composer-private-dom-functions.c
+new file mode 100644
+index 0000000000..0851ff1ddf
+--- /dev/null
++++ b/web-extensions/e-composer-private-dom-functions.c
+@@ -0,0 +1,296 @@
++/*
++ * e-composer-private-dom-functions.c
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) version 3.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with the program; if not, see <http://www.gnu.org/licenses/>
++ *
++ */
++
++#include "e-composer-private-dom-functions.h"
++
++#include "e-html-editor-web-extension.h"
++#include "e-html-editor-selection-dom-functions.h"
++#include "e-html-editor-view-dom-functions.h"
++
++#include <string.h>
++
++#include <e-util/e-misc-utils.h>
++
++#define WEBKIT_DOM_USE_UNSTABLE_API
++#include <webkitdom/WebKitDOMDOMSelection.h>
++#include <webkitdom/WebKitDOMDOMWindowUnstable.h>
++
++gchar *
++dom_remove_signatures (WebKitDOMDocument *document,
++                       EHTMLEditorWebExtension *extension,
++                       gboolean top_signature)
++{
++	gchar *ret_val = NULL;
++	gulong list_length, ii;
++	WebKitDOMNodeList *signatures;
++
++	g_return_val_if_fail (WEBKIT_DOM_IS_HTML_DOCUMENT (document), NULL);
++	g_return_val_if_fail (E_IS_HTML_EDITOR_WEB_EXTENSION (extension), NULL);
++
++	signatures = webkit_dom_document_get_elements_by_class_name (
++		document, "-x-evo-signature-wrapper");
++	list_length = webkit_dom_node_list_get_length (signatures);
++	for (ii = 0; ii < list_length; ii++) {
++		WebKitDOMNode *wrapper, *signature;
++		gchar *id;
++
++		wrapper = webkit_dom_node_list_item (signatures, ii);
++		signature = webkit_dom_node_get_first_child (wrapper);
++		id = webkit_dom_element_get_id (WEBKIT_DOM_ELEMENT (signature));
++
++		/* When we are editing a message with signature we need to set active
++		 * signature id in signature combo box otherwise no signature will be
++		 * added but we have to do it just once when the composer opens */
++		if (ret_val)
++			g_free (ret_val);
++		ret_val = webkit_dom_element_get_attribute (WEBKIT_DOM_ELEMENT (signature), "name");
++
++		if (id && (strlen (id) == 1) && (*id == '1')) {
++			/* If the top signature was set we have to remove the NL
++			 * that was inserted after it */
++			if (top_signature)
++				remove_node (webkit_dom_node_get_next_sibling (wrapper));
++			/* We have to remove the div containing the span with signature */
++			remove_node (wrapper);
++
++			g_free (id);
++			break;
++		}
++
++		g_free (id);
++	}
++	g_object_unref (signatures);
++
++	return ret_val;
++}
++
++static void
++composer_move_caret (WebKitDOMDocument *document,
++                     EHTMLEditorWebExtension *extension,
++                     gboolean top_signature,
++		     gboolean start_bottom)
++{
++	gboolean is_message_from_draft;
++	gboolean is_message_from_edit_as_new;
++	gboolean is_from_new_message;
++	gboolean has_paragraphs_in_body = TRUE;
++	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMSelection *dom_selection;
++	WebKitDOMElement *element, *signature;
++	WebKitDOMHTMLElement *body;
++	WebKitDOMNodeList *list;
++	WebKitDOMRange *new_range;
++
++	is_message_from_draft = e_html_editor_web_extension_is_message_from_draft (extension);
++	is_message_from_edit_as_new =
++		e_html_editor_web_extension_is_message_from_edit_as_new (extension);
++	is_from_new_message = e_html_editor_web_extension_is_from_new_message (extension);
++
++	window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (window);
++
++	body = webkit_dom_document_get_body (document);
++	webkit_dom_element_set_attribute (
++		WEBKIT_DOM_ELEMENT (body), "data-message", "", NULL);
++	new_range = webkit_dom_document_create_range (document);
++
++	/* If editing message as new don't handle with caret */
++	if (is_message_from_edit_as_new || is_message_from_draft) {
++		if (is_message_from_edit_as_new)
++			webkit_dom_element_set_attribute (
++				WEBKIT_DOM_ELEMENT (body),
++				"data-edit-as-new",
++				"",
++				NULL);
++
++		if (e_html_editor_web_extension_get_html_mode (extension) &&
++		    is_message_from_edit_as_new) {
++
++			webkit_dom_range_select_node_contents (
++				new_range, WEBKIT_DOM_NODE (body), NULL);
++			webkit_dom_range_collapse (new_range, TRUE, NULL);
++
++			webkit_dom_dom_selection_remove_all_ranges (dom_selection);
++			webkit_dom_dom_selection_add_range (dom_selection, new_range);
++		} else
++			dom_scroll_to_caret (document);
++
++		return;
++	}
++/* FIXME WK2
++	e_html_editor_selection_block_selection_changed (editor_selection);*/
++
++	/* When the new message is written from the beginning - note it into body */
++	if (is_from_new_message)
++		webkit_dom_element_set_attribute (
++			WEBKIT_DOM_ELEMENT (body), "data-new-message", "", NULL);
++
++	list = webkit_dom_document_get_elements_by_class_name (document, "-x-evo-paragraph");
++	signature = webkit_dom_document_query_selector (document, ".-x-evo-signature-wrapper", NULL);
++	/* Situation when wrapped paragraph is just in signature and not in message body */
++	if (webkit_dom_node_list_get_length (list) == 1)
++		if (signature && webkit_dom_element_query_selector (signature, ".-x-evo-paragraph", NULL))
++			has_paragraphs_in_body = FALSE;
++
++	/*
++	 *
++	 * Keeping Signatures in the beginning of composer
++	 * ------------------------------------------------
++	 *
++	 * Purists are gonna blast me for this.
++	 * But there are so many people (read Outlook users) who want this.
++	 * And Evo is an exchange-client, Outlook-replacement etc.
++	 * So Here it goes :(
++	 *
++	 * -- Sankar
++	 *
++	 */
++	if (signature && top_signature) {
++		element_add_class (signature, "-x-evo-top-signature");
++		element = dom_prepare_paragraph (document, extension, FALSE);
++		webkit_dom_node_insert_before (
++			WEBKIT_DOM_NODE (body),
++			WEBKIT_DOM_NODE (element),
++			webkit_dom_node_get_next_sibling (WEBKIT_DOM_NODE (signature)),
++			NULL);
++	}
++
++	if (webkit_dom_node_list_get_length (list) == 0)
++		has_paragraphs_in_body = FALSE;
++
++	/* When there is an option composer-reply-start-bottom set we have
++	 * to move the caret between reply and signature. */
++	if (!has_paragraphs_in_body) {
++		element = dom_prepare_paragraph (document, extension, FALSE);
++		if (top_signature) {
++			if (start_bottom) {
++				webkit_dom_node_append_child (
++					WEBKIT_DOM_NODE (body),
++					WEBKIT_DOM_NODE (element),
++					NULL);
++			} else {
++				webkit_dom_node_insert_before (
++					WEBKIT_DOM_NODE (body),
++					WEBKIT_DOM_NODE (element),
++					webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (body)),
++					NULL);
++			}
++		} else {
++			if (start_bottom) {
++				webkit_dom_node_insert_before (
++					WEBKIT_DOM_NODE (body),
++					WEBKIT_DOM_NODE (element),
++					WEBKIT_DOM_NODE (signature),
++					NULL);
++			} else {
++				webkit_dom_node_insert_before (
++					WEBKIT_DOM_NODE (body),
++					WEBKIT_DOM_NODE (element),
++					webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (body)),
++					NULL);
++			}
++		}
++	} else {
++		element = webkit_dom_document_get_element_by_id (document, "-x-evo-input-start");
++		if (!element && top_signature) {
++			element = dom_prepare_paragraph (document, extension, FALSE);
++			if (start_bottom) {
++					webkit_dom_node_append_child (
++					WEBKIT_DOM_NODE (body),
++					WEBKIT_DOM_NODE (element),
++					NULL);
++			} else {
++				webkit_dom_node_insert_before (
++					WEBKIT_DOM_NODE (body),
++					WEBKIT_DOM_NODE (element),
++					WEBKIT_DOM_NODE (signature),
++					NULL);
++			}
++		}
++	}
++
++	webkit_dom_range_select_node_contents (
++		new_range, WEBKIT_DOM_NODE (element), NULL);
++	webkit_dom_range_collapse (new_range, TRUE, NULL);
++
++	webkit_dom_dom_selection_remove_all_ranges (dom_selection);
++	webkit_dom_dom_selection_add_range (dom_selection, new_range);
++
++	g_object_unref (list);
++
++	dom_force_spell_check (document, extension);
++/* FIXME WK2
++	e_html_editor_selection_unblock_selection_changed (editor_selection);*/
++}
++
++void
++dom_insert_signature (WebKitDOMDocument *document,
++                      EHTMLEditorWebExtension *extension,
++                      const gchar *signature_html,
++                      gboolean top_signature,
++		      gboolean start_bottom)
++{
++	WebKitDOMElement *element;
++	WebKitDOMHTMLElement *body;
++
++	g_return_if_fail (WEBKIT_DOM_IS_HTML_DOCUMENT (document));
++	g_return_if_fail (E_IS_HTML_EDITOR_WEB_EXTENSION (extension));
++	g_return_if_fail (signature_html && *signature_html);
++
++	body = webkit_dom_document_get_body (document);
++	element = webkit_dom_document_create_element (document, "DIV", NULL);
++	webkit_dom_element_set_class_name (element, "-x-evo-signature-wrapper");
++
++	webkit_dom_html_element_set_inner_html (
++		WEBKIT_DOM_HTML_ELEMENT (element), signature_html, NULL);
++
++	if (top_signature) {
++		WebKitDOMNode *child =
++			webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (body));
++
++		if (start_bottom) {
++			webkit_dom_node_insert_before (
++				WEBKIT_DOM_NODE (body),
++				WEBKIT_DOM_NODE (element),
++				child,
++				NULL);
++		} else {
++			WebKitDOMElement *input_start =
++				webkit_dom_document_get_element_by_id (
++					document, "-x-evo-input-start");
++			/* When we are using signature on top the caret
++			 * should be before the signature */
++			webkit_dom_node_insert_before (
++				WEBKIT_DOM_NODE (body),
++				WEBKIT_DOM_NODE (element),
++				input_start ?
++					webkit_dom_node_get_next_sibling (
++						WEBKIT_DOM_NODE (input_start)) :
++					child,
++				NULL);
++		}
++	} else {
++		webkit_dom_node_append_child (
++			WEBKIT_DOM_NODE (body),
++			WEBKIT_DOM_NODE (element),
++			NULL);
++	}
++
++	composer_move_caret (document, extension, top_signature, start_bottom);
++}
++
+diff --git a/web-extensions/e-composer-private-dom-functions.h b/web-extensions/e-composer-private-dom-functions.h
+new file mode 100644
+index 0000000000..c54829cbfe
+--- /dev/null
++++ b/web-extensions/e-composer-private-dom-functions.h
+@@ -0,0 +1,40 @@
++/*
++ * e-composer-private-dom-functions.h
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) version 3.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with the program; if not, see <http://www.gnu.org/licenses/>
++ *
++ */
++
++#ifndef E_COMPOSER_PRIVATE_DOM_FUNCTIONS_H
++#define E_COMPOSER_PRIVATE_DOM_FUNCTIONS_H
++
++#include <webkitdom/webkitdom.h>
++
++#include "e-html-editor-web-extension.h"
++
++G_BEGIN_DECLS
++
++gchar *		dom_remove_signatures		(WebKitDOMDocument *document,
++						 EHTMLEditorWebExtension *extension,
++						 gboolean top_signature);
++
++void		dom_insert_signature		(WebKitDOMDocument *document,
++						 EHTMLEditorWebExtension *extension,
++						 const gchar *signature_html,
++						 gboolean top_signature,
++						 gboolean start_bottom);
++
++G_END_DECLS
++
++#endif /* E_COMPOSER_PRIVATE_DOM_FUNCTIONS_H */
+diff --git a/e-util/e-dom-utils.c b/web-extensions/e-dom-utils.c
+similarity index 99%
+rename from e-util/e-dom-utils.c
+rename to web-extensions/e-dom-utils.c
+index cc2d165243..d4a2d5d37b 100644
+--- a/e-util/e-dom-utils.c
++++ b/web-extensions/e-dom-utils.c
+@@ -23,8 +23,9 @@
+ #include <webkitdom/WebKitDOMDOMWindowUnstable.h>
+ #include <webkitdom/WebKitDOMHTMLElementUnstable.h>
+ 
+-#include "../web-extensions/e-web-extension.h"
++#include "e-web-extension.h"
+ 
++#include <e-util/e-util-enums.h>
+ #include <e-util/e-misc-utils.h>
+ 
+ #include <config.h>
+diff --git a/e-util/e-dom-utils.h b/web-extensions/e-dom-utils.h
+similarity index 100%
+rename from e-util/e-dom-utils.h
+rename to web-extensions/e-dom-utils.h
+diff --git a/e-util/e-html-editor-actions-dom-functions.c b/web-extensions/e-html-editor-actions-dom-functions.c
+similarity index 100%
+rename from e-util/e-html-editor-actions-dom-functions.c
+rename to web-extensions/e-html-editor-actions-dom-functions.c
+diff --git a/e-util/e-html-editor-actions-dom-functions.h b/web-extensions/e-html-editor-actions-dom-functions.h
+similarity index 100%
+rename from e-util/e-html-editor-actions-dom-functions.h
+rename to web-extensions/e-html-editor-actions-dom-functions.h
+diff --git a/e-util/e-html-editor-cell-dialog-dom-functions.c b/web-extensions/e-html-editor-cell-dialog-dom-functions.c
+similarity index 100%
+rename from e-util/e-html-editor-cell-dialog-dom-functions.c
+rename to web-extensions/e-html-editor-cell-dialog-dom-functions.c
+diff --git a/e-util/e-html-editor-cell-dialog-dom-functions.h b/web-extensions/e-html-editor-cell-dialog-dom-functions.h
+similarity index 100%
+rename from e-util/e-html-editor-cell-dialog-dom-functions.h
+rename to web-extensions/e-html-editor-cell-dialog-dom-functions.h
+diff --git a/e-util/e-html-editor-dom-functions.c b/web-extensions/e-html-editor-dom-functions.c
+similarity index 100%
+rename from e-util/e-html-editor-dom-functions.c
+rename to web-extensions/e-html-editor-dom-functions.c
+diff --git a/e-util/e-html-editor-dom-functions.h b/web-extensions/e-html-editor-dom-functions.h
+similarity index 95%
+rename from e-util/e-html-editor-dom-functions.h
+rename to web-extensions/e-html-editor-dom-functions.h
+index d4fdf49cc5..1c00e3737f 100644
+--- a/e-util/e-html-editor-dom-functions.h
++++ b/web-extensions/e-html-editor-dom-functions.h
+@@ -30,4 +30,4 @@ guint		e_html_editor_get_flags_for_element_on_coordinates
+ 
+ G_END_DECLS
+ 
+-#endif /* E_HTML_EDITOR__DOM_FUNCTIONS_H */
++#endif /* E_HTML_EDITOR_DOM_FUNCTIONS_H */
+diff --git a/e-util/e-html-editor-hrule-dialog-dom-functions.c b/web-extensions/e-html-editor-hrule-dialog-dom-functions.c
+similarity index 100%
+rename from e-util/e-html-editor-hrule-dialog-dom-functions.c
+rename to web-extensions/e-html-editor-hrule-dialog-dom-functions.c
+diff --git a/e-util/e-html-editor-hrule-dialog-dom-functions.h b/web-extensions/e-html-editor-hrule-dialog-dom-functions.h
+similarity index 100%
+rename from e-util/e-html-editor-hrule-dialog-dom-functions.h
+rename to web-extensions/e-html-editor-hrule-dialog-dom-functions.h
+diff --git a/e-util/e-html-editor-image-dialog-dom-functions.c b/web-extensions/e-html-editor-image-dialog-dom-functions.c
+similarity index 100%
+rename from e-util/e-html-editor-image-dialog-dom-functions.c
+rename to web-extensions/e-html-editor-image-dialog-dom-functions.c
+diff --git a/e-util/e-html-editor-image-dialog-dom-functions.h b/web-extensions/e-html-editor-image-dialog-dom-functions.h
+similarity index 100%
+rename from e-util/e-html-editor-image-dialog-dom-functions.h
+rename to web-extensions/e-html-editor-image-dialog-dom-functions.h
+diff --git a/e-util/e-html-editor-link-dialog-dom-functions.c b/web-extensions/e-html-editor-link-dialog-dom-functions.c
+similarity index 99%
+rename from e-util/e-html-editor-link-dialog-dom-functions.c
+rename to web-extensions/e-html-editor-link-dialog-dom-functions.c
+index cf16c6f390..11899e0254 100644
+--- a/e-util/e-html-editor-link-dialog-dom-functions.c
++++ b/web-extensions/e-html-editor-link-dialog-dom-functions.c
+@@ -18,7 +18,7 @@
+ 
+ #include "e-html-editor-link-dialog-dom-functions.h"
+ 
+-#include "e-util-enums.h"
++#include <e-util/e-util-enums.h>
+ 
+ #include "e-dom-utils.h"
+ #include "e-html-editor-view-dom-functions.h"
+diff --git a/e-util/e-html-editor-link-dialog-dom-functions.h b/web-extensions/e-html-editor-link-dialog-dom-functions.h
+similarity index 100%
+rename from e-util/e-html-editor-link-dialog-dom-functions.h
+rename to web-extensions/e-html-editor-link-dialog-dom-functions.h
+diff --git a/e-util/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+similarity index 99%
+rename from e-util/e-html-editor-selection-dom-functions.c
+rename to web-extensions/e-html-editor-selection-dom-functions.c
+index d273852993..d51a50c159 100644
+--- a/e-util/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -18,7 +18,6 @@
+ 
+ #include "e-html-editor-selection-dom-functions.h"
+ 
+-#include "e-util-enums.h"
+ #include "e-dom-utils.h"
+ #include "e-html-editor-view-dom-functions.h"
+ #include "e-html-editor-web-extension.h"
+@@ -4818,3 +4817,24 @@ dom_get_list_alignment_from_node (WebKitDOMNode *node)
+ 	return E_HTML_EDITOR_SELECTION_ALIGNMENT_LEFT;
+ }
+ 
++WebKitDOMElement *
++dom_prepare_paragraph (WebKitDOMDocument *document,
++                       EHTMLEditorWebExtension *extension,
++                       gboolean with_selection)
++{
++	WebKitDOMElement *element, *paragraph;
++
++	paragraph = dom_get_paragraph_element (document, extension, -1, 0);
++
++	if (with_selection)
++		add_selection_markers_into_element_start (
++			document, paragraph, NULL, NULL);
++
++	element = webkit_dom_document_create_element (document, "BR", NULL);
++
++	webkit_dom_node_append_child (
++		WEBKIT_DOM_NODE (paragraph), WEBKIT_DOM_NODE (element), NULL);
++
++	return paragraph;
++}
++
+diff --git a/e-util/e-html-editor-selection-dom-functions.h b/web-extensions/e-html-editor-selection-dom-functions.h
+similarity index 97%
+rename from e-util/e-html-editor-selection-dom-functions.h
+rename to web-extensions/e-html-editor-selection-dom-functions.h
+index ddd23f0703..a852cebb5b 100644
+--- a/e-util/e-html-editor-selection-dom-functions.h
++++ b/web-extensions/e-html-editor-selection-dom-functions.h
+@@ -23,7 +23,7 @@
+ 
+ #include "e-html-editor-web-extension.h"
+ 
+-#include "e-util-enums.h"
++#include "e-dom-utils.h"
+ 
+ #define UNICODE_ZERO_WIDTH_SPACE "\xe2\x80\x8b"
+ #define UNICODE_NBSP "\xc2\xa0"
+@@ -252,6 +252,11 @@ EHTMLEditorSelectionAlignment
+ 		dom_get_list_alignment_from_node
+ 						(WebKitDOMNode *node);
+ 
++WebKitDOMElement *
++		dom_prepare_paragraph		(WebKitDOMDocument *document,
++						 EHTMLEditorWebExtension *extension,
++						 gboolean with_selection);
++
+ G_END_DECLS
+ 
+ #endif /* E_HTML_EDITOR_SELECTION_DOM_FUNCTIONS_H */
+diff --git a/e-util/e-html-editor-spell-check-dialog-dom-functions.c b/web-extensions/e-html-editor-spell-check-dialog-dom-functions.c
+similarity index 100%
+rename from e-util/e-html-editor-spell-check-dialog-dom-functions.c
+rename to web-extensions/e-html-editor-spell-check-dialog-dom-functions.c
+diff --git a/e-util/e-html-editor-spell-check-dialog-dom-functions.h b/web-extensions/e-html-editor-spell-check-dialog-dom-functions.h
+similarity index 100%
+rename from e-util/e-html-editor-spell-check-dialog-dom-functions.h
+rename to web-extensions/e-html-editor-spell-check-dialog-dom-functions.h
+diff --git a/e-util/e-html-editor-table-dialog-dom-functions.c b/web-extensions/e-html-editor-table-dialog-dom-functions.c
+similarity index 100%
+rename from e-util/e-html-editor-table-dialog-dom-functions.c
+rename to web-extensions/e-html-editor-table-dialog-dom-functions.c
+diff --git a/e-util/e-html-editor-table-dialog-dom-functions.h b/web-extensions/e-html-editor-table-dialog-dom-functions.h
+similarity index 100%
+rename from e-util/e-html-editor-table-dialog-dom-functions.h
+rename to web-extensions/e-html-editor-table-dialog-dom-functions.h
+diff --git a/e-util/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+similarity index 99%
+rename from e-util/e-html-editor-view-dom-functions.c
+rename to web-extensions/e-html-editor-view-dom-functions.c
+index beede09f81..59be69ba8e 100644
+--- a/e-util/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -20,8 +20,8 @@
+ 
+ #include "e-html-editor-selection-dom-functions.h"
+ #include "e-dom-utils.h"
+-#include "e-misc-utils.h"
+-#include "e-emoticon-chooser.h"
++#include <e-util/e-misc-utils.h>
++#include <e-util/e-emoticon-chooser.h>
+ 
+ #include <string.h>
+ 
+@@ -546,27 +546,6 @@ get_parent_block_node_from_child (WebKitDOMNode *node)
+ 	return parent;
+ }
+ 
+-static WebKitDOMElement *
+-prepare_paragraph (WebKitDOMDocument *document,
+-                   EHTMLEditorWebExtension *extension,
+-                   gboolean with_selection)
+-{
+-	WebKitDOMElement *element, *paragraph;
+-
+-	paragraph = dom_get_paragraph_element (document, extension, -1, 0);
+-
+-	if (with_selection)
+-		add_selection_markers_into_element_start (
+-			document, paragraph, NULL, NULL);
+-
+-	element = webkit_dom_document_create_element (document, "BR", NULL);
+-
+-	webkit_dom_node_append_child (
+-		WEBKIT_DOM_NODE (paragraph), WEBKIT_DOM_NODE (element), NULL);
+-
+-	return paragraph;
+-}
+-
+ static WebKitDOMElement *
+ insert_new_line_into_citation (WebKitDOMDocument *document,
+                                EHTMLEditorWebExtension *extension,
+@@ -700,7 +679,7 @@ insert_new_line_into_citation (WebKitDOMDocument *document,
+ 	}
+ 
+ 	if (html_to_insert && *html_to_insert) {
+-		paragraph = prepare_paragraph (document, extension, FALSE);
++		paragraph = dom_prepare_paragraph (document, extension, FALSE);
+ 		webkit_dom_html_element_set_inner_html (
+ 			WEBKIT_DOM_HTML_ELEMENT (paragraph),
+ 			html_to_insert,
+@@ -708,7 +687,7 @@ insert_new_line_into_citation (WebKitDOMDocument *document,
+ 		add_selection_markers_into_element_end (
+ 			document, paragraph, NULL, NULL);
+ 	} else
+-		paragraph = prepare_paragraph (document, extension, TRUE);
++		paragraph = dom_prepare_paragraph (document, extension, TRUE);
+ 
+ 	webkit_dom_node_insert_before (
+ 		webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (element)),
+@@ -817,7 +796,7 @@ repair_gmail_blockquotes (WebKitDOMDocument *document)
+ 	g_object_unref (list);
+ }
+ 
+-static void
++void
+ dom_check_magic_links (WebKitDOMDocument *document,
+                        EHTMLEditorWebExtension *extension,
+                        gboolean include_space_by_user)
+@@ -1402,7 +1381,7 @@ dom_insert_smiley (WebKitDOMDocument *document,
+ 	g_object_unref (file);
+ }
+ 
+-static void
++void
+ dom_check_magic_smileys (WebKitDOMDocument *document,
+                          EHTMLEditorWebExtension *extension)
+ {
+@@ -1470,7 +1449,7 @@ dom_check_magic_smileys (WebKitDOMDocument *document,
+ 	g_free (node_text);
+ }
+ 
+-void
++static void
+ dom_set_links_active (WebKitDOMDocument *document,
+                       gboolean active)
+ {
+@@ -3618,7 +3597,7 @@ dom_convert_document (WebKitDOMDocument *document,
+ 	g_object_unref (list);
+ 
+ 	/* Insert the paragraph where the caret will be. */
+-	paragraph = prepare_paragraph (document, extension, TRUE);
++	paragraph = dom_prepare_paragraph (document, extension, TRUE);
+ 	webkit_dom_element_set_id (paragraph, "-x-evo-input-start");
+ 	webkit_dom_node_insert_before (
+ 		WEBKIT_DOM_NODE (wrapper),
+@@ -3646,7 +3625,7 @@ dom_convert_document (WebKitDOMDocument *document,
+ 			/* Insert NL after the signature */
+ 			webkit_dom_node_insert_before (
+ 				WEBKIT_DOM_NODE (wrapper),
+-				WEBKIT_DOM_NODE (prepare_paragraph (
++				WEBKIT_DOM_NODE (dom_prepare_paragraph (
+ 					document, extension, FALSE)),
+ 				webkit_dom_node_get_next_sibling (
+ 					WEBKIT_DOM_NODE (signature)),
+@@ -6085,6 +6064,46 @@ dom_process_content_after_mode_change (WebKitDOMDocument *document,
+ 
+ 		g_free (plain);
+ 	}
+-
+ }
+ 
++gint
++dom_get_caret_position (WebKitDOMDocument *document)
++{
++	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMSelection *selection;
++	WebKitDOMRange *range;
++	gint range_count;
++	WebKitDOMNodeList *nodes;
++	gulong ii, length;
++
++	window = webkit_dom_document_get_default_view (document);
++	selection = webkit_dom_dom_window_get_selection (window);
++
++	if (webkit_dom_dom_selection_get_range_count (selection) < 1)
++		return 0;
++
++	range = webkit_dom_dom_selection_get_range_at (selection, 0, NULL);
++	range_count = 0;
++	nodes = webkit_dom_node_get_child_nodes (
++		webkit_dom_node_get_parent_node (
++			webkit_dom_dom_selection_get_anchor_node (
++				selection)));
++	length = webkit_dom_node_list_get_length (nodes);
++	for (ii = 0; ii < length; ii++) {
++		WebKitDOMNode *node;
++
++		node = webkit_dom_node_list_item (nodes, ii);
++		if (webkit_dom_node_is_same_node (
++			node, webkit_dom_dom_selection_get_anchor_node (selection))) {
++
++			break;
++		} else if (WEBKIT_DOM_IS_TEXT (node)) {
++			gchar *text = webkit_dom_node_get_text_content (node);
++			range_count += strlen (text);
++			g_free (text);
++		}
++	}
++
++	g_object_unref (nodes);
++	return webkit_dom_range_get_start_offset (range, NULL) + range_count;
++}
+diff --git a/e-util/e-html-editor-view-dom-functions.h b/web-extensions/e-html-editor-view-dom-functions.h
+similarity index 91%
+rename from e-util/e-html-editor-view-dom-functions.h
+rename to web-extensions/e-html-editor-view-dom-functions.h
+index 49a7c23b69..b0d0ed1138 100644
+--- a/e-util/e-html-editor-view-dom-functions.h
++++ b/web-extensions/e-html-editor-view-dom-functions.h
+@@ -23,7 +23,7 @@
+ 
+ #include "e-html-editor-web-extension.h"
+ 
+-#include "e-util-enums.h"
++#include <e-util/e-util-enums.h>
+ 
+ G_BEGIN_DECLS
+ 
+@@ -45,6 +45,10 @@ void		dom_embed_style_sheet		(WebKitDOMDocument *document,
+ 
+ void		dom_remove_embed_style_sheet	(WebKitDOMDocument *document);
+ 
++void		dom_check_magic_links		(WebKitDOMDocument *document,
++						 EHTMLEditorWebExtension *extension,
++						 gboolean include_space_by_user);
++
+ void		dom_convert_document		(WebKitDOMDocument *document,
+ 						 EHTMLEditorWebExtension *extension,
+ 						 const gchar *preferred_text);
+@@ -80,6 +84,8 @@ void		dom_process_content_after_mode_change
+ 						(WebKitDOMDocument *document,
+ 						 EHTMLEditorWebExtension *extension);
+ 
++gint		dom_get_caret_position		(WebKitDOMDocument *document);
++
+ G_END_DECLS
+ 
+ #endif /* E_HTML_EDITOR_VIEW_DOM_FUNCTIONS_H */
+diff --git a/e-util/e-html-editor-web-extension-main.c b/web-extensions/e-html-editor-web-extension-main.c
+similarity index 100%
+rename from e-util/e-html-editor-web-extension-main.c
+rename to web-extensions/e-html-editor-web-extension-main.c
+diff --git a/e-util/e-html-editor-web-extension-names.h b/web-extensions/e-html-editor-web-extension-names.h
+similarity index 100%
+rename from e-util/e-html-editor-web-extension-names.h
+rename to web-extensions/e-html-editor-web-extension-names.h
+diff --git a/e-util/e-html-editor-web-extension.c b/web-extensions/e-html-editor-web-extension.c
+similarity index 97%
+rename from e-util/e-html-editor-web-extension.c
+rename to web-extensions/e-html-editor-web-extension.c
+index 8ad9e5fec6..6237a94433 100644
+--- a/e-util/e-html-editor-web-extension.c
++++ b/web-extensions/e-html-editor-web-extension.c
+@@ -28,7 +28,7 @@
+ 
+ #include <camel/camel.h>
+ 
+-#include "e-misc-utils.h"
++#include <e-util/e-misc-utils.h>
+ 
+ #include "e-dom-utils.h"
+ #include "e-html-editor-actions-dom-functions.h"
+@@ -82,6 +82,7 @@ struct _EHTMLEditorWebExtensionPrivate {
+ 	gboolean convert_in_situ;
+ 	gboolean body_input_event_removed;
+ 	gboolean is_message_from_draft;
++	gboolean is_from_new_message;
+ 	gboolean is_message_from_edit_as_new;
+ 	gboolean is_message_from_selection;
+ 	gboolean remove_initial_input_line;
+@@ -104,6 +105,7 @@ static const char introspection_xml[] =
+ "    <property type='b' name='IsMessageFromEditAsNew' access='readwrite'/>"
+ "    <property type='b' name='IsMessageFromDraft' access='readwrite'/>"
+ "    <property type='b' name='IsMessageFromSelection' access='readwrite'/>"
++"    <property type='b' name='IsFromNewMessage' access='readwrite'/>"
+ "    <property type='b' name='RemoveInitialInputLine' access='readwrite'/>"
+ "<!-- ********************************************************* -->"
+ "<!-- These properties show the actual state of EHTMLEditorView -->"
+@@ -363,6 +365,21 @@ static const char introspection_xml[] =
+ "      <arg type='s' name='element_id' direction='in'/>"
+ "      <arg type='i' name='col_span' direction='out'/>"
+ "    </method>"
++"<!-- ********************************************************* -->"
++"<!--     Functions that are used in EHTMLEditorView            -->"
++"<!-- ********************************************************* -->"
++"    <method name='DOMForceSpellCheck'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"    </method>"
++"    <method name='DOMTurnSpellCheckOff'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"    </method>"
++"    <method name='DOMCheckMagicLinks'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"    </method>"
++"    <method name='DOMScrollToCaret'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"    </method>"
+ "  </interface>"
+ "</node>";
+ 
+@@ -1209,6 +1226,8 @@ handle_get_property (GDBusConnection *connection,
+ 		variant = g_variant_new_boolean (extension->priv->magic_links);
+ 	else if (g_strcmp0 (property_name, "HTMLMode") == 0)
+ 		variant = g_variant_new_boolean (extension->priv->html_mode);
++	else if (g_strcmp0 (property_name, "IsFromNewMessage") == 0)
++		variant = g_variant_new_boolean (extension->priv->is_from_new_message);
+ 	else if (g_strcmp0 (property_name, "IsMessageFromEditAsNew") == 0)
+ 		variant = g_variant_new_boolean (extension->priv->is_message_from_edit_as_new);
+ 	else if (g_strcmp0 (property_name, "IsMessageFromDraft") == 0)
+@@ -1317,6 +1336,18 @@ handle_set_property (GDBusConnection *connection,
+ 			"{sv}",
+ 			"IsMessageFromSelection",
+ 			g_variant_new_boolean (extension->priv->is_message_from_selection));
++	} else if (g_strcmp0 (property_name, "IsFromNewMessage") == 0) {
++		gboolean value = g_variant_get_boolean (variant);
++
++		if (value == extension->priv->is_from_new_message)
++			goto exit;
++
++		extension->priv->is_from_new_message = value;
++
++		g_variant_builder_add (builder,
++			"{sv}",
++			"IsFromNewMessage",
++			g_variant_new_boolean (extension->priv->is_from_new_message));
+ 	} else if (g_strcmp0 (property_name, "IsMessageFromEditAsNew") == 0) {
+ 		gboolean value = g_variant_get_boolean (variant);
+ 
+@@ -1674,6 +1705,7 @@ e_html_editor_web_extension_init (EHTMLEditorWebExtension *extension)
+ 	extension->priv->body_input_event_removed = FALSE;
+ 	extension->priv->is_message_from_draft = FALSE;
+ 	extension->priv->is_message_from_edit_as_new = FALSE;
++	extension->priv->is_from_new_message = FALSE;
+ 	extension->priv->is_message_from_selection = FALSE;
+ 	extension->priv->remove_initial_input_line = FALSE;
+ 
+@@ -2082,3 +2114,15 @@ add_new_inline_image_into_list (EHTMLEditorWebExtension *extension,
+ 	g_hash_table_insert (extension->priv->inline_images, g_strdup(cid_src), g_strdup(src));
+ }
+ 
++gboolean
++e_html_editor_web_extension_is_message_from_draft (EHTMLEditorWebExtension *extension)
++{
++	return extension->priv->is_message_from_draft;
++}
++
++gboolean
++e_html_editor_web_extension_is_from_new_message (EHTMLEditorWebExtension *extension)
++{
++	return extension->priv->is_from_new_message;
++}
++
+diff --git a/e-util/e-html-editor-web-extension.h b/web-extensions/e-html-editor-web-extension.h
+similarity index 95%
+rename from e-util/e-html-editor-web-extension.h
+rename to web-extensions/e-html-editor-web-extension.h
+index c30ba39d0c..39a00de40a 100644
+--- a/e-util/e-html-editor-web-extension.h
++++ b/web-extensions/e-html-editor-web-extension.h
+@@ -20,10 +20,10 @@
+ #define E_HTML_EDITOR_WEB_EXTENSION_H
+ 
+ #include "config.h"
+-#include "e-util-enums.h"
+ 
+ #include "e-html-editor-web-extension-names.h"
+ 
++#include <e-util/e-util-enums.h>
+ #include <webkit2/webkit-web-extension.h>
+ #include <glib-object.h>
+ 
+@@ -162,4 +162,10 @@ void		e_html_editor_web_extension_set_convert_in_situ
+ GHashTable *	e_html_editor_web_extension_get_inline_images
+ 						(EHTMLEditorWebExtension *extension);
+ 
++gboolean	e_html_editor_web_extension_is_message_from_draft
++						(EHTMLEditorWebExtension *extension);
++
++gboolean	e_html_editor_web_extension_is_from_new_message
++						(EHTMLEditorWebExtension *extension);
++
+ #endif /* E_HTML_EDITOR_WEB_EXTENSION_H */
+diff --git a/web-extensions/e-msg-composer-dom-functions.c b/web-extensions/e-msg-composer-dom-functions.c
+new file mode 100644
+index 0000000000..14807ff19a
+--- /dev/null
++++ b/web-extensions/e-msg-composer-dom-functions.c
+@@ -0,0 +1,86 @@
++/*
++ * e-msg-composer-dom-functions.c
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) version 3.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with the program; if not, see <http://www.gnu.org/licenses/>
++ *
++ */
++
++#include "e-msg-composer-dom-functions.h"
++
++#include <string.h>
++
++gchar *
++dom_get_active_signature_uid (WebKitDOMDocument *document)
++{
++	gchar *uid = NULL;
++	gulong ii, length;
++	WebKitDOMNodeList *nodes;
++
++	nodes = webkit_dom_document_get_elements_by_class_name (
++		document, "-x-evo-signature");
++	length = webkit_dom_node_list_get_length (nodes);
++	for (ii = 0; ii < length; ii++) {
++		WebKitDOMNode *node;
++		gchar *id;
++
++		node = webkit_dom_node_list_item (nodes, ii);
++		id = webkit_dom_element_get_id (WEBKIT_DOM_ELEMENT (node));
++		if (id && (strlen (id) == 1) && (*id == '1')) {
++			uid = webkit_dom_element_get_attribute (
++				WEBKIT_DOM_ELEMENT (node), "name");
++			g_free (id);
++			break;
++		}
++		g_free (id);
++	}
++
++	g_object_unref (nodes);
++
++	return uid;
++}
++
++gchar *
++dom_get_raw_body_content_without_signature (WebKitDOMDocument *document)
++{
++	gulong ii, length;
++	WebKitDOMNodeList *list;
++	GString* content;
++
++	content = g_string_new (NULL);
++
++	list = webkit_dom_document_query_selector_all (
++		document, "body > *:not(.-x-evo-signature-wrapper)", NULL);
++	length = webkit_dom_node_list_get_length (list);
++	for (ii = 0; ii < length; ii++) {
++		gchar *text;
++		WebKitDOMNode *node = webkit_dom_node_list_item (list, ii);
++
++		text = webkit_dom_html_element_get_inner_text (
++			WEBKIT_DOM_HTML_ELEMENT (node));
++		g_string_append (content, text);
++		g_free (text);
++	}
++
++	return g_string_free (content, FALSE);
++}
++
++gchar *
++dom_get_raw_body_content (WebKitDOMDocument *document)
++{
++	WebKitDOMHTMLElement *body;
++
++	body = webkit_dom_document_get_body (document);
++
++	return  webkit_dom_html_element_get_inner_text (body);
++}
+diff --git a/web-extensions/e-msg-composer-dom-functions.h b/web-extensions/e-msg-composer-dom-functions.h
+new file mode 100644
+index 0000000000..03453cfddf
+--- /dev/null
++++ b/web-extensions/e-msg-composer-dom-functions.h
+@@ -0,0 +1,35 @@
++/*
++ * e-msg-composer-dom-functions.h
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) version 3.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with the program; if not, see <http://www.gnu.org/licenses/>
++ *
++ */
++
++#ifndef E_MSG_COMPOSER_DOM_FUNCTIONS_H
++#define E_MSG_COMPOSER_DOM_FUNCTIONS_H
++
++#include <webkitdom/webkitdom.h>
++
++G_BEGIN_DECLS
++
++gchar *		dom_get_active_signature_uid 	(WebKitDOMDocument *document);
++
++gchar *		dom_get_raw_body_content_without_signature
++						(WebKitDOMDocument *document);
++
++gchar *		dom_get_raw_body_content	(WebKitDOMDocument *document);
++
++G_END_DECLS
++
++#endif /* E_MSG_COMPOSER_DOM_FUNCTIONS_H */
+diff --git a/web-extensions/e-web-extension.c b/web-extensions/e-web-extension.c
+index c9fe009e18..2b52abde3f 100644
+--- a/web-extensions/e-web-extension.c
++++ b/web-extensions/e-web-extension.c
+@@ -19,16 +19,17 @@
+ #include "config.h"
+ 
+ #include "e-web-extension.h"
++#include "e-dom-utils.h"
+ #include "e-web-extension-names.h"
+ 
+ #include <gio/gio.h>
+ #include <gtk/gtk.h>
+ 
+-#include <libemail-engine/e-mail-enums.h>
+-
+ #include <string.h>
+ 
+-#include <e-util/e-dom-utils.h>
++#include <e-util/e-util-enums.h>
++#include <e-util/e-misc-utils.h>
++
+ #include <libedataserver/libedataserver.h>
+ 
+ #define E_WEB_EXTENSION_GET_PRIVATE(obj) \
+@@ -183,7 +184,7 @@ handle_method_call (GDBusConnection *connection,
+ 		html_content = e_dom_utils_get_document_content_html (document);
+ 
+ 		g_dbus_method_invocation_return_value (
+-			invocation, g_variant_new_take_string (html_content);
++			invocation, g_variant_new_take_string (html_content));
+ 	} else if (g_strcmp0 (method_name, "GetSelectionContentHTML") == 0) {
+ 		gchar *html_content;
+ 
+@@ -196,8 +197,8 @@ handle_method_call (GDBusConnection *connection,
+ 		document = webkit_web_page_get_dom_document (web_page);
+ 		html_content = e_dom_utils_get_selection_content_html (document);
+ 
+-		g_dbus_method_invocation_return_value (invocation,
+-			invocation, g_variant_new_take_string (html_content);
++		g_dbus_method_invocation_return_value (
++			invocation, g_variant_new_take_string (html_content));
+ 	} else if (g_strcmp0 (method_name, "GetSelectionContentText") == 0) {
+ 		gchar *text_content;
+ 
+@@ -210,8 +211,8 @@ handle_method_call (GDBusConnection *connection,
+ 		document = webkit_web_page_get_dom_document (web_page);
+ 		text_content = e_dom_utils_get_selection_content_html (document);
+ 
+-		g_dbus_method_invocation_return_value (invocation,
+-			invocation, g_variant_new_take_string (text_content);
++		g_dbus_method_invocation_return_value (
++			invocation, g_variant_new_take_string (text_content));
+ 	} else if (g_strcmp0 (method_name, "AddCSSRuleIntoStyleSheet") == 0) {
+ 		const gchar *style_sheet_id, *selector, *style;
+ 
+@@ -517,11 +518,11 @@ image_exists_in_cache (const gchar *image_uri)
+ 	return exists;
+ }
+ 
+-static EMailImageLoadingPolicy
++static EImageLoadingPolicy
+ get_image_loading_policy (void)
+ {
+ 	GSettings *settings;
+-	EMailImageLoadingPolicy image_policy;
++	EImageLoadingPolicy image_policy;
+ 
+ 	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	image_policy = g_settings_get_enum (settings, "image-loading-policy");
+@@ -540,7 +541,7 @@ redirect_http_uri (EWebExtension *extension,
+ 	SoupURI *soup_uri;
+ 	GHashTable *query;
+ 	gboolean image_exists;
+-	EMailImageLoadingPolicy image_policy;
++	EImageLoadingPolicy image_policy;
+ 
+ 	uri = webkit_uri_request_get_uri (request);
+ 	page_uri = webkit_web_page_get_uri (web_page);
+@@ -553,7 +554,7 @@ redirect_http_uri (EWebExtension *extension,
+ 	 * a native placeholder for it. */
+ 	image_policy = get_image_loading_policy ();
+ 	if (!image_exists && !extension->priv->force_image_load &&
+-	    (image_policy == E_MAIL_IMAGE_LOADING_POLICY_NEVER)) {
++	    (image_policy == E_IMAGE_LOADING_POLICY_NEVER)) {
+ 		webkit_uri_request_set_uri (request, "about:blank");
+ 		return;
+ 	}
+@@ -636,12 +637,12 @@ web_page_created_cb (WebKitWebExtension *wk_extension,
+ {
+ 	g_signal_connect_object (
+ 		web_page, "send-request",
+-		G_CALLBACK (web_page_send_request),
++		G_CALLBACK (web_page_send_request_cb),
+ 		extension, 0);
+ 
+ 	g_signal_connect_object (
+ 		web_page, "document-loaded",
+-		G_CALLBACK (web_page_document_loaded),
++		G_CALLBACK (web_page_document_loaded_cb),
+ 		extension, 0);
+ 
+ }
+-- 
+2.15.0
+

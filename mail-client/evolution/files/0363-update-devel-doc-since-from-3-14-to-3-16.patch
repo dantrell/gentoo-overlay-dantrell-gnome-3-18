@@ -1,0 +1,658 @@
+From 331ef309883ea94078ffd9604d1a1697901d7de4 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 24 Feb 2015 10:16:02 +0100
+Subject: [PATCH 0363/1800] Update devel-doc Since from 3.14 to 3.16
+
+As the 3.14 version will be skipped, to get back to sync with
+the version of GNOME, then the right Since version is 3.16.
+---
+ calendar/gui/e-cal-data-model.c  | 46 ++++++++++++++++++++--------------------
+ calendar/gui/e-cal-ops.c         | 28 ++++++++++++------------
+ e-util/e-alert-sink.c            |  6 +++---
+ e-util/e-client-cache.c          |  8 +++----
+ e-util/e-client-selector.c       |  4 ++--
+ e-util/e-html-editor-view.c      |  4 ++--
+ e-util/e-misc-utils.c            |  8 +++----
+ e-util/e-source-selector.c       |  8 +++----
+ e-util/e-spell-checker.c         |  2 +-
+ libemail-engine/e-mail-session.c |  8 +++----
+ shell/e-shell-window.c           |  2 +-
+ shell/e-shell.c                  |  6 +++---
+ 12 files changed, 65 insertions(+), 65 deletions(-)
+
+diff --git a/calendar/gui/e-cal-data-model.c b/calendar/gui/e-cal-data-model.c
+index fdb6097b13..5b2599b407 100644
+--- a/calendar/gui/e-cal-data-model.c
++++ b/calendar/gui/e-cal-data-model.c
+@@ -477,7 +477,7 @@ cal_data_model_call_submit_thread_job (gpointer user_data)
+  *
+  * Note: This is a blocking call, it waits until the thread job is submitted.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ GCancellable *
+ e_cal_data_model_submit_thread_job (ECalDataModel *data_model,
+@@ -1973,7 +1973,7 @@ e_cal_data_model_init (ECalDataModel *data_model)
+  *
+  * Returns: (transfer full): A new #ECalDataModel instance
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ ECalDataModel *
+ e_cal_data_model_new (ECalDataModelSubmitThreadJobFunc func,
+@@ -1999,7 +1999,7 @@ e_cal_data_model_new (ECalDataModelSubmitThreadJobFunc func,
+  *
+  * Returns: (transfer full): A new #ECalDataModel instance deriving settings from @src_data_model
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ ECalDataModel *
+ e_cal_data_model_new_clone (ECalDataModel *src_data_model)
+@@ -2041,7 +2041,7 @@ e_cal_data_model_new_clone (ECalDataModel *src_data_model)
+  *
+  * Returns: Whether the @data_model is disposing.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ gboolean
+ e_cal_data_model_get_disposing (ECalDataModel *data_model)
+@@ -2068,7 +2068,7 @@ e_cal_data_model_get_disposing (ECalDataModel *data_model)
+  * If set to %TRUE, then no updates are done on changes
+  * which would otherwise trigger view and subscriber updates.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_data_model_set_disposing (ECalDataModel *data_model,
+@@ -2099,7 +2099,7 @@ e_cal_data_model_set_disposing (ECalDataModel *data_model,
+  * Returns: Whether the @data_model expands recurrences of recurring
+  *    components.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ gboolean
+ e_cal_data_model_get_expand_recurrences (ECalDataModel *data_model)
+@@ -2125,7 +2125,7 @@ e_cal_data_model_get_expand_recurrences (ECalDataModel *data_model)
+  * Sets whether the @data_model should expand recurrences of recurring
+  * components by default.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_data_model_set_expand_recurrences (ECalDataModel *data_model,
+@@ -2156,7 +2156,7 @@ e_cal_data_model_set_expand_recurrences (ECalDataModel *data_model,
+  *
+  * Returns: (transfer none): An #icaltimezone being used for calendar views.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ icaltimezone *
+ e_cal_data_model_get_timezone (ECalDataModel *data_model)
+@@ -2181,7 +2181,7 @@ e_cal_data_model_get_timezone (ECalDataModel *data_model)
+  * Sets a trimezone to be used for calendar views. This change
+  * regenerates all views.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_data_model_set_timezone (ECalDataModel *data_model,
+@@ -2213,7 +2213,7 @@ e_cal_data_model_set_timezone (ECalDataModel *data_model,
+  * contain time constraints, these are meant to be defined by
+  * subscribers.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_data_model_set_filter (ECalDataModel *data_model,
+@@ -2248,7 +2248,7 @@ e_cal_data_model_set_filter (ECalDataModel *data_model,
+  *   filter for views. Free it with g_free() when done with it.
+  *   Returns #NULL when there is no extra filter set.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ gchar *
+ e_cal_data_model_dup_filter (ECalDataModel *data_model)
+@@ -2275,7 +2275,7 @@ e_cal_data_model_dup_filter (ECalDataModel *data_model)
+  * to populate data for subscribers. Adding the same client multiple
+  * times does nothing.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_data_model_add_client (ECalDataModel *data_model,
+@@ -2314,7 +2314,7 @@ e_cal_data_model_add_client (ECalDataModel *data_model,
+  * which populate the data for subscribers. Removing the client
+  * which is not used in the @data_model does nothing.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_data_model_remove_client (ECalDataModel *data_model,
+@@ -2353,7 +2353,7 @@ e_cal_data_model_remove_client (ECalDataModel *data_model,
+  *    the @data_model. Unref returned (non-NULL) client with
+  *    g_object_unref() when done with it.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ ECalClient *
+ e_cal_data_model_ref_client (ECalDataModel *data_model,
+@@ -2385,7 +2385,7 @@ e_cal_data_model_ref_client (ECalDataModel *data_model,
+  *
+  * Returns: (transfer full): A list of currently used #ECalClient-s.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ GList *
+ e_cal_data_model_get_clients (ECalDataModel *data_model)
+@@ -2442,7 +2442,7 @@ cal_data_model_prepend_component (ECalDataModel *data_model,
+  * Note: A special case when both @in_range_start and @in_range_end are zero
+  *    is treated as a request for all known components.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ GSList *
+ e_cal_data_model_get_components (ECalDataModel *data_model,
+@@ -2560,7 +2560,7 @@ cal_data_model_foreach_component (ECalDataModel *data_model,
+  * Note: A special case when both @in_range_start and @in_range_end are zero
+  *    is treated as a request for all known components.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ gboolean
+ e_cal_data_model_foreach_component (ECalDataModel *data_model,
+@@ -2594,7 +2594,7 @@ e_cal_data_model_foreach_component (ECalDataModel *data_model,
+  *    is treated as a request with no time constraint. This limits
+  *    the result only to those components which satisfy given filter.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_data_model_subscribe (ECalDataModel *data_model,
+@@ -2742,7 +2742,7 @@ e_cal_data_model_subscribe (ECalDataModel *data_model,
+  *   which could be added previously, while it was subscribed for the change
+  *   notifications.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_data_model_unsubscribe (ECalDataModel *data_model,
+@@ -2787,7 +2787,7 @@ e_cal_data_model_unsubscribe (ECalDataModel *data_model,
+  * Returns: Whether the @subscriber was found and the @range_start with
+  *    the @range_end were set to its current time range it uses.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ gboolean
+ e_cal_data_model_get_subscriber_range (ECalDataModel *data_model,
+@@ -2830,7 +2830,7 @@ e_cal_data_model_get_subscriber_range (ECalDataModel *data_model,
+  * called. This can be called nested, then the same count of the calls of
+  * e_cal_data_model_thaw_views_update() is expected to unlock the views update.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_data_model_freeze_views_update (ECalDataModel *data_model)
+@@ -2851,7 +2851,7 @@ e_cal_data_model_freeze_views_update (ECalDataModel *data_model)
+  * A pair function for e_cal_data_model_freeze_views_update(), to unlock
+  * views update.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_data_model_thaw_views_update (ECalDataModel *data_model)
+@@ -2883,7 +2883,7 @@ e_cal_data_model_thaw_views_update (ECalDataModel *data_model)
+  *
+  * Returns: Whether any views updates are currently frozen.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ gboolean
+ e_cal_data_model_is_views_update_frozen (ECalDataModel *data_model)
+diff --git a/calendar/gui/e-cal-ops.c b/calendar/gui/e-cal-ops.c
+index 3d5fc1ad9c..cbbea11df3 100644
+--- a/calendar/gui/e-cal-ops.c
++++ b/calendar/gui/e-cal-ops.c
+@@ -158,7 +158,7 @@ cal_ops_create_component_thread (EAlertSinkThreadJobData *job_data,
+  * is called with a new uid of the @icalcomp on sucessful component save.
+  * The @callback is called in the main thread.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_ops_create_component (ECalModel *model,
+@@ -258,7 +258,7 @@ cal_ops_modify_component_thread (EAlertSinkThreadJobData *job_data,
+  * #E_CAL_OPS_SEND_FLAG_ASK, #E_CAL_OPS_SEND_FLAG_SEND, #E_CAL_OPS_SEND_FLAG_DONT_SEND
+  * can be used, while the ASK flag is the default.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_ops_modify_component (ECalModel *model,
+@@ -361,7 +361,7 @@ cal_ops_remove_component_thread (EAlertSinkThreadJobData *job_data,
+  * the master objects is removed. If the @check_detached_instance is set to #FALSE, then
+  * the removal is done exactly with the given values.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_ops_remove_component (ECalModel *model,
+@@ -457,7 +457,7 @@ cal_ops_delete_components_thread (EAlertSinkThreadJobData *job_data,
+  * Deletes all components from their sources. The @objects should
+  * be part of @model.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_ops_delete_ecalmodel_components (ECalModel *model,
+@@ -647,7 +647,7 @@ cal_ops_update_components_thread (EAlertSinkThreadJobData *job_data,
+  *
+  * Pastes components into the default source of the @model.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_ops_paste_components (ECalModel *model,
+@@ -797,7 +797,7 @@ cal_ops_send_component_thread (EAlertSinkThreadJobData *job_data,
+  * Sends (calls e_cal_client_send_objects_sync()) on the given @client
+  * with the given @icalcomp in a dedicated thread.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_ops_send_component (ECalModel *model,
+@@ -1049,7 +1049,7 @@ cal_ops_purge_components_thread (EAlertSinkThreadJobData *job_data,
+  * Purges (removed) all components older than @older_than from all
+  * currently active clients in @model.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_ops_purge_components (ECalModel *model,
+@@ -1152,7 +1152,7 @@ cal_ops_delete_completed_thread (EAlertSinkThreadJobData *job_data,
+  * Deletes all completed tasks from all currently opened
+  * clients in @model.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_ops_delete_completed_tasks (ECalModel *model)
+@@ -1300,7 +1300,7 @@ cal_ops_get_default_component_thread (EAlertSinkThreadJobData *job_data,
+  * or by the @model, if @client is #NULL. The @callback is called on success.
+  * The @callback is called in the main thread.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_ops_get_default_component (ECalModel *model,
+@@ -1710,7 +1710,7 @@ e_cal_ops_new_component_ex (EShellWindow *shell_window,
+  * by the #ECalClient. Use e_cal_ops_new_event_editor() for events with
+  * predefined alarms.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_ops_new_component_editor (EShellWindow *shell_window,
+@@ -1737,7 +1737,7 @@ e_cal_ops_new_component_editor (EShellWindow *shell_window,
+  * for events with predefined alarms. The e_cal_ops_new_component_editor()
+  * accepts events as well.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_ops_new_event_editor (EShellWindow *shell_window,
+@@ -1766,7 +1766,7 @@ e_cal_ops_new_event_editor (EShellWindow *shell_window,
+  * values as provided by the #ECalClient. The @all_day is used only for events
+  * source type.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_ops_new_component_editor_from_model (ECalModel *model,
+@@ -1816,7 +1816,7 @@ e_cal_ops_new_component_editor_from_model (ECalModel *model,
+  * Opens a component @icalcomp, which belongs to a @client, in
+  * a component editor. This is done synchronously.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_ops_open_component_in_editor_sync (ECalModel *model,
+@@ -1995,7 +1995,7 @@ transfer_components_thread (EAlertSinkThreadJobData *job_data,
+  * Transfers (copies or moves, as set by @is_move) all @icalcomps from the @source
+  * to the @destination of type @source type (calendar/memo list/task list).
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_cal_ops_transfer_components (EShellView *shell_view,
+diff --git a/e-util/e-alert-sink.c b/e-util/e-alert-sink.c
+index 708984b1bc..e70f57d6ec 100644
+--- a/e-util/e-alert-sink.c
++++ b/e-util/e-alert-sink.c
+@@ -198,7 +198,7 @@ e_alert_sink_thread_job (gpointer user_data)
+  *
+  * Note: This function should be called only from the main thread.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ EActivity *
+ e_alert_sink_submit_thread_job (EAlertSink *alert_sink,
+@@ -263,7 +263,7 @@ e_alert_sink_submit_thread_job (EAlertSink *alert_sink,
+  *
+  * See: e_alert_sink_thread_job_set_alert_arg_0
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_alert_sink_thread_job_set_alert_ident (EAlertSinkThreadJobData *job_data,
+@@ -290,7 +290,7 @@ e_alert_sink_thread_job_set_alert_ident (EAlertSinkThreadJobData *job_data,
+  * to overwrite the default argument 0 of the erorr message. It might be
+  * usually used with combination of e_alert_sink_thread_job_set_alert_ident().
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_alert_sink_thread_job_set_alert_arg_0 (EAlertSinkThreadJobData *job_data,
+diff --git a/e-util/e-client-cache.c b/e-util/e-client-cache.c
+index 8a962adaac..7e9671522b 100644
+--- a/e-util/e-client-cache.c
++++ b/e-util/e-client-cache.c
+@@ -972,7 +972,7 @@ e_client_cache_class_init (EClientCacheClass *class)
+ 	 * This signal is emitted with e_client_cache_emit_allow_auth_prompt() to let
+ 	 * any listeners know to enable credentials prompt for the given @source.
+ 	 *
+-	 * Since: 3.14
++	 * Since: 3.16
+ 	 **/
+ 	signals[ALLOW_AUTH_PROMPT] = g_signal_new (
+ 		"allow-auth-prompt",
+@@ -1121,7 +1121,7 @@ client_cache_get_client_sync_cb (GObject *source_object,
+  * for this function to work.  All other @extension_name values will
+  * result in an error.
+  *
+- * The @wait_for_connected_seconds argument had been added since 3.14,
++ * The @wait_for_connected_seconds argument had been added since 3.16,
+  * to let the caller decide how long to wait for the backend to fully
+  * connect to its (possibly remote) data store. This is required due
+  * to a change in the authentication process, which is fully asynchronous
+@@ -1215,7 +1215,7 @@ e_client_cache_get_client_sync (EClientCache *client_cache,
+  * for this function to work.  All other @extension_name values will
+  * result in an error.
+  *
+- * The @wait_for_connected_seconds argument had been added since 3.14,
++ * The @wait_for_connected_seconds argument had been added since 3.16,
+  * to let the caller decide how long to wait for the backend to fully
+  * connect to its (possibly remote) data store. This is required due
+  * to a change in the authentication process, which is fully asynchronous
+@@ -1461,7 +1461,7 @@ e_client_cache_is_backend_dead (EClientCache *client_cache,
+  * Emits 'allow-auth-prompt' on @client_cache for @source. This lets
+  * any listeners know to enable credentials prompt for this @source.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_client_cache_emit_allow_auth_prompt (EClientCache *client_cache,
+diff --git a/e-util/e-client-selector.c b/e-util/e-client-selector.c
+index 6972b2f75e..c0294caabc 100644
+--- a/e-util/e-client-selector.c
++++ b/e-util/e-client-selector.c
+@@ -532,7 +532,7 @@ e_client_selector_ref_client_cache (EClientSelector *selector)
+  * "piggyback" on the in-progress request such that they will both succeed
+  * or fail simultaneously.
+  *
+- * The @wait_for_connected_seconds argument had been added since 3.14,
++ * The @wait_for_connected_seconds argument had been added since 3.16,
+  * to let the caller decide how long to wait for the backend to fully
+  * connect to its (possibly remote) data store. This is required due
+  * to a change in the authentication process, which is fully asynchronous
+@@ -635,7 +635,7 @@ client_selector_get_client_done_cb (GObject *source_object,
+  * "piggyback" on the in-progress request such that they will both succeed
+  * or fail simultaneously.
+  *
+- * The @wait_for_connected_seconds argument had been added since 3.14,
++ * The @wait_for_connected_seconds argument had been added since 3.16,
+  * to let the caller decide how long to wait for the backend to fully
+  * connect to its (possibly remote) data store. This is required due
+  * to a change in the authentication process, which is fully asynchronous
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index cc169d3202..e3f473c7f7 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -1804,7 +1804,7 @@ e_html_editor_view_set_magic_smileys (EHTMLEditorView *view,
+  *
+  * Returns: @TRUE when Unicode characters should be used, @FALSE otherwise.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  */
+ gboolean
+ e_html_editor_view_get_unicode_smileys (EHTMLEditorView *view)
+@@ -1821,7 +1821,7 @@ e_html_editor_view_get_unicode_smileys (EHTMLEditorView *view)
+  *
+  * Enables or disables the usage of Unicode characters for smileys.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  */
+ void
+ e_html_editor_view_set_unicode_smileys (EHTMLEditorView *view,
+diff --git a/e-util/e-misc-utils.c b/e-util/e-misc-utils.c
+index 95b7ce77a4..0f17af10e3 100644
+--- a/e-util/e-misc-utils.c
++++ b/e-util/e-misc-utils.c
+@@ -2328,7 +2328,7 @@ e_util_dup_searchable_categories (void)
+  *     were set for the given @extension_name; when #FALSE is returned, then
+  *     none of these out variables are changed.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ gboolean
+ e_util_get_open_source_job_info (const gchar *extension_name,
+@@ -2375,7 +2375,7 @@ e_util_get_open_source_job_info (const gchar *extension_name,
+  * changes alert_ident for the @job_data for well-known error codes,
+  * where is available better error description.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_util_propagate_open_source_job_error (EAlertSinkThreadJobData *job_data,
+@@ -2991,7 +2991,7 @@ static GHashTable *settings_hash = NULL;
+  * Returns: A #GSettings for the given @schema_id. The returned #GSettings object
+  *   is referenced, thus free it with g_object_unref() when done with it.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ GSettings *
+ e_util_ref_settings (const gchar *schema_id)
+@@ -3026,7 +3026,7 @@ e_util_ref_settings (const gchar *schema_id)
+  *
+  * Frees all the memory taken by e_util_ref_settings().
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_util_cleanup_settings (void)
+diff --git a/e-util/e-source-selector.c b/e-util/e-source-selector.c
+index 1c1f8fddb7..fe2c79d31b 100644
+--- a/e-util/e-source-selector.c
++++ b/e-util/e-source-selector.c
+@@ -2660,7 +2660,7 @@ e_source_selector_update_all_rows (ESourceSelector *selector)
+  *
+  * Updates tooltip for the given @source.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_source_selector_set_source_tooltip (ESourceSelector *selector,
+@@ -2703,7 +2703,7 @@ e_source_selector_set_source_tooltip (ESourceSelector *selector,
+  * Returns: Current tooltip for the given @source. Free the returned
+  *    string with g_free() when done with it.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ gchar *
+ e_source_selector_dup_source_tooltip (ESourceSelector *selector,
+@@ -2747,7 +2747,7 @@ e_source_selector_dup_source_tooltip (ESourceSelector *selector,
+  *
+  * Updates the is-busy flag status for the given @source.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_source_selector_set_source_is_busy (ESourceSelector *selector,
+@@ -2803,7 +2803,7 @@ e_source_selector_set_source_is_busy (ESourceSelector *selector,
+  *
+  * Returns: Current is-busy flag status for the given @source.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ gboolean
+ e_source_selector_get_source_is_busy (ESourceSelector *selector,
+diff --git a/e-util/e-spell-checker.c b/e-util/e-spell-checker.c
+index d1901d5d8f..e631d85076 100644
+--- a/e-util/e-spell-checker.c
++++ b/e-util/e-spell-checker.c
+@@ -518,7 +518,7 @@ e_spell_checker_init_global_memory (void)
+  * Frees global memory used by the ESpellChecker. This should be called at
+  * the end of main(), to avoid memory leaks.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_spell_checker_free_global_memory (void)
+diff --git a/libemail-engine/e-mail-session.c b/libemail-engine/e-mail-session.c
+index b381b36081..97d3e8176b 100644
+--- a/libemail-engine/e-mail-session.c
++++ b/libemail-engine/e-mail-session.c
+@@ -1599,7 +1599,7 @@ e_mail_session_class_init (EMailSessionClass *class)
+ 	 * This signal is emitted with e_mail_session_emit_allow_auth_prompt() to let
+ 	 * any listeners know to enable credentials prompt for the given @source.
+ 	 *
+-	 * Since: 3.14
++	 * Since: 3.16
+ 	 **/
+ 	signals[ALLOW_AUTH_PROMPT] = g_signal_new (
+ 		"allow-auth-prompt",
+@@ -2335,7 +2335,7 @@ mail_session_wakeup_used_services_cond (GCancellable *cancenllable,
+  *
+  * Returns: Whether successfully waited for the @service.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ gboolean
+ e_mail_session_mark_service_used_sync (EMailSession *session,
+@@ -2386,7 +2386,7 @@ e_mail_session_mark_service_used_sync (EMailSession *session,
+  * Frees a "use lock" on the @service, thus it can be used by others. If anything
+  * is waiting for it in e_mail_session_mark_service_used_sync(), then it is woken up.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_mail_session_unmark_service_used (EMailSession *session,
+@@ -2412,7 +2412,7 @@ e_mail_session_unmark_service_used (EMailSession *session,
+  * Emits 'allow-auth-prompt' on @session for @source. This lets
+  * any listeners know to enable credentials prompt for this @source.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_mail_session_emit_allow_auth_prompt (EMailSession *session,
+diff --git a/shell/e-shell-window.c b/shell/e-shell-window.c
+index 19f7bc66ae..7e4a925227 100644
+--- a/shell/e-shell-window.c
++++ b/shell/e-shell-window.c
+@@ -1679,7 +1679,7 @@ shell_window_connect_client_thread (EAlertSinkThreadJobData *job_data,
+  * the operation doesn't block UI. The @connected_cb is called in the main thread,
+  * but only when the operation succeeded. Any failure is propageted to UI.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_shell_window_connect_client (EShellWindow *shell_window,
+diff --git a/shell/e-shell.c b/shell/e-shell.c
+index 6a2f9d2bf1..6faaeeed00 100644
+--- a/shell/e-shell.c
++++ b/shell/e-shell.c
+@@ -1552,7 +1552,7 @@ e_shell_class_init (EShellClass *class)
+ 	 *
+ 	 * The #ECredentialsPrompter managing #ESource credential requests.
+ 	 *
+-	 * Since: 3.14
++	 * Since: 3.16
+ 	 **/
+ 	g_object_class_install_property (
+ 		object_class,
+@@ -1948,7 +1948,7 @@ e_shell_get_registry (EShell *shell)
+  *
+  * Returns: the #ECredentialsPrompter
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ ECredentialsPrompter *
+ e_shell_get_credentials_prompter (EShell *shell)
+@@ -1968,7 +1968,7 @@ e_shell_get_credentials_prompter (EShell *shell)
+  * then a user will be asked accordingly. When the auth prompt
+  * is disabled, aonly an #EAlert is shown.
+  *
+- * Since: 3.14
++ * Since: 3.16
+  **/
+ void
+ e_shell_allow_auth_prompt_for (EShell *shell,
+-- 
+2.15.0
+

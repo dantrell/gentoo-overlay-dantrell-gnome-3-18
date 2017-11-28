@@ -1,0 +1,362 @@
+From b6bf9a02ac49be18d44dceb825072cab13a1eeb5 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 22 Dec 2014 16:01:01 +0100
+Subject: [PATCH 0152/1800] Bug 740370 - Avoid Calendar view crash with certain
+ themes
+
+---
+ calendar/gui/e-day-view.c  | 160 +++++++++++++++++++++++----------------------
+ calendar/gui/e-week-view.c | 114 ++++++++++++++++----------------
+ 2 files changed, 140 insertions(+), 134 deletions(-)
+
+diff --git a/calendar/gui/e-day-view.c b/calendar/gui/e-day-view.c
+index b6d602d032..3bd684253d 100644
+--- a/calendar/gui/e-day-view.c
++++ b/calendar/gui/e-day-view.c
+@@ -1313,81 +1313,8 @@ day_view_constructed (GObject *object)
+ }
+ 
+ static void
+-day_view_realize (GtkWidget *widget)
++day_view_update_style_settings (EDayView *day_view)
+ {
+-	EDayView *day_view;
+-
+-	if (GTK_WIDGET_CLASS (e_day_view_parent_class)->realize)
+-		(*GTK_WIDGET_CLASS (e_day_view_parent_class)->realize)(widget);
+-
+-	day_view = E_DAY_VIEW (widget);
+-
+-	/* Allocate the colors. */
+-
+-	e_day_view_set_colors (day_view);
+-
+-	/* Create the pixmaps. */
+-	day_view->reminder_icon = e_icon_factory_get_icon ("stock_bell", GTK_ICON_SIZE_MENU);
+-	day_view->recurrence_icon = e_icon_factory_get_icon ("view-refresh", GTK_ICON_SIZE_MENU);
+-	day_view->timezone_icon = e_icon_factory_get_icon ("stock_timezone", GTK_ICON_SIZE_MENU);
+-	day_view->meeting_icon = e_icon_factory_get_icon ("stock_people", GTK_ICON_SIZE_MENU);
+-	day_view->attach_icon = e_icon_factory_get_icon ("mail-attachment", GTK_ICON_SIZE_MENU);
+-
+-	/* Set the canvas item colors. */
+-	gnome_canvas_item_set (
+-		day_view->drag_long_event_rect_item,
+-		"fill_color_gdk", &day_view->colors[E_DAY_VIEW_COLOR_EVENT_BACKGROUND],
+-		"outline_color_gdk", &day_view->colors[E_DAY_VIEW_COLOR_EVENT_BORDER],
+-		NULL);
+-
+-	gnome_canvas_item_set (
+-		day_view->drag_rect_item,
+-		"fill_color_gdk", &day_view->colors[E_DAY_VIEW_COLOR_EVENT_BACKGROUND],
+-		"outline_color_gdk", &day_view->colors[E_DAY_VIEW_COLOR_EVENT_BORDER],
+-		NULL);
+-
+-	gnome_canvas_item_set (
+-		day_view->drag_bar_item,
+-		"fill_color_gdk", &day_view->colors[E_DAY_VIEW_COLOR_EVENT_VBAR],
+-		"outline_color_gdk", &day_view->colors[E_DAY_VIEW_COLOR_EVENT_BORDER],
+-		NULL);
+-}
+-
+-static void
+-day_view_unrealize (GtkWidget *widget)
+-{
+-	EDayView *day_view;
+-
+-	day_view = E_DAY_VIEW (widget);
+-
+-	g_object_unref (day_view->reminder_icon);
+-	day_view->reminder_icon = NULL;
+-	g_object_unref (day_view->recurrence_icon);
+-	day_view->recurrence_icon = NULL;
+-	g_object_unref (day_view->timezone_icon);
+-	day_view->timezone_icon = NULL;
+-	g_object_unref (day_view->meeting_icon);
+-	day_view->meeting_icon = NULL;
+-	g_object_unref (day_view->attach_icon);
+-	day_view->attach_icon = NULL;
+-
+-	if (GTK_WIDGET_CLASS (e_day_view_parent_class)->unrealize)
+-		(*GTK_WIDGET_CLASS (e_day_view_parent_class)->unrealize)(widget);
+-}
+-
+-static void
+-day_view_size_allocate (GtkWidget *widget,
+-                        GtkAllocation *allocation)
+-{
+-	(*GTK_WIDGET_CLASS (e_day_view_parent_class)->size_allocate) (widget, allocation);
+-
+-	e_day_view_recalc_main_canvas_size (E_DAY_VIEW (widget));
+-}
+-
+-static void
+-day_view_style_updated (GtkWidget *widget)
+-{
+-	EDayView *day_view;
+ 	gint hour;
+ 	gint minute, max_minute_width, i;
+ 	gint month, day, width;
+@@ -1405,10 +1332,8 @@ day_view_style_updated (GtkWidget *widget)
+ 	EDayViewEvent *event;
+ 	GdkColor color;
+ 
+-	if (GTK_WIDGET_CLASS (e_day_view_parent_class)->style_updated)
+-		(*GTK_WIDGET_CLASS (e_day_view_parent_class)->style_updated) (widget);
++	g_return_if_fail (E_IS_DAY_VIEW (day_view));
+ 
+-	day_view = E_DAY_VIEW (widget);
+ 	e_day_view_set_colors (day_view);
+ 
+ 	for (week_day = 0; week_day < E_DAY_VIEW_MAX_DAYS; week_day++) {
+@@ -1435,7 +1360,7 @@ day_view_style_updated (GtkWidget *widget)
+ 	}
+ 
+ 	/* Set up Pango prerequisites */
+-	pango_context = gtk_widget_get_pango_context (widget);
++	pango_context = gtk_widget_get_pango_context (GTK_WIDGET (day_view));
+ 	font_desc = pango_context_get_font_description (pango_context);
+ 	font_metrics = pango_context_get_metrics (
+ 		pango_context, font_desc,
+@@ -1575,6 +1500,85 @@ day_view_style_updated (GtkWidget *widget)
+ 	pango_font_metrics_unref (font_metrics);
+ }
+ 
++static void
++day_view_realize (GtkWidget *widget)
++{
++	EDayView *day_view;
++
++	if (GTK_WIDGET_CLASS (e_day_view_parent_class)->realize)
++		(*GTK_WIDGET_CLASS (e_day_view_parent_class)->realize)(widget);
++
++	day_view = E_DAY_VIEW (widget);
++
++	day_view_update_style_settings (day_view);
++
++	/* Create the pixmaps. */
++	day_view->reminder_icon = e_icon_factory_get_icon ("stock_bell", GTK_ICON_SIZE_MENU);
++	day_view->recurrence_icon = e_icon_factory_get_icon ("view-refresh", GTK_ICON_SIZE_MENU);
++	day_view->timezone_icon = e_icon_factory_get_icon ("stock_timezone", GTK_ICON_SIZE_MENU);
++	day_view->meeting_icon = e_icon_factory_get_icon ("stock_people", GTK_ICON_SIZE_MENU);
++	day_view->attach_icon = e_icon_factory_get_icon ("mail-attachment", GTK_ICON_SIZE_MENU);
++
++	/* Set the canvas item colors. */
++	gnome_canvas_item_set (
++		day_view->drag_long_event_rect_item,
++		"fill_color_gdk", &day_view->colors[E_DAY_VIEW_COLOR_EVENT_BACKGROUND],
++		"outline_color_gdk", &day_view->colors[E_DAY_VIEW_COLOR_EVENT_BORDER],
++		NULL);
++
++	gnome_canvas_item_set (
++		day_view->drag_rect_item,
++		"fill_color_gdk", &day_view->colors[E_DAY_VIEW_COLOR_EVENT_BACKGROUND],
++		"outline_color_gdk", &day_view->colors[E_DAY_VIEW_COLOR_EVENT_BORDER],
++		NULL);
++
++	gnome_canvas_item_set (
++		day_view->drag_bar_item,
++		"fill_color_gdk", &day_view->colors[E_DAY_VIEW_COLOR_EVENT_VBAR],
++		"outline_color_gdk", &day_view->colors[E_DAY_VIEW_COLOR_EVENT_BORDER],
++		NULL);
++}
++
++static void
++day_view_unrealize (GtkWidget *widget)
++{
++	EDayView *day_view;
++
++	day_view = E_DAY_VIEW (widget);
++
++	g_object_unref (day_view->reminder_icon);
++	day_view->reminder_icon = NULL;
++	g_object_unref (day_view->recurrence_icon);
++	day_view->recurrence_icon = NULL;
++	g_object_unref (day_view->timezone_icon);
++	day_view->timezone_icon = NULL;
++	g_object_unref (day_view->meeting_icon);
++	day_view->meeting_icon = NULL;
++	g_object_unref (day_view->attach_icon);
++	day_view->attach_icon = NULL;
++
++	if (GTK_WIDGET_CLASS (e_day_view_parent_class)->unrealize)
++		(*GTK_WIDGET_CLASS (e_day_view_parent_class)->unrealize)(widget);
++}
++
++static void
++day_view_size_allocate (GtkWidget *widget,
++                        GtkAllocation *allocation)
++{
++	(*GTK_WIDGET_CLASS (e_day_view_parent_class)->size_allocate) (widget, allocation);
++
++	e_day_view_recalc_main_canvas_size (E_DAY_VIEW (widget));
++}
++
++static void
++day_view_style_updated (GtkWidget *widget)
++{
++	if (GTK_WIDGET_CLASS (e_day_view_parent_class)->style_updated)
++		(*GTK_WIDGET_CLASS (e_day_view_parent_class)->style_updated) (widget);
++
++	day_view_update_style_settings (E_DAY_VIEW (widget));
++}
++
+ static gboolean
+ day_view_focus (GtkWidget *widget,
+                 GtkDirectionType direction)
+diff --git a/calendar/gui/e-week-view.c b/calendar/gui/e-week-view.c
+index de3c7c7ee0..c0723b085a 100644
+--- a/calendar/gui/e-week-view.c
++++ b/calendar/gui/e-week-view.c
+@@ -908,54 +908,6 @@ week_view_constructed (GObject *object)
+ 		G_CALLBACK (week_view_time_range_changed_cb), object);
+ }
+ 
+-static void
+-week_view_realize (GtkWidget *widget)
+-{
+-	EWeekView *week_view;
+-
+-	if (GTK_WIDGET_CLASS (e_week_view_parent_class)->realize)
+-		(*GTK_WIDGET_CLASS (e_week_view_parent_class)->realize)(widget);
+-
+-	week_view = E_WEEK_VIEW (widget);
+-
+-	/* Allocate the colors. */
+-	e_week_view_set_colors (week_view);
+-
+-	/* Create the pixmaps. */
+-	week_view->reminder_icon =
+-		e_icon_factory_get_icon ("stock_bell", GTK_ICON_SIZE_MENU);
+-	week_view->recurrence_icon =
+-		e_icon_factory_get_icon ("view-refresh", GTK_ICON_SIZE_MENU);
+-	week_view->timezone_icon =
+-		e_icon_factory_get_icon ("stock_timezone", GTK_ICON_SIZE_MENU);
+-	week_view->attach_icon =
+-		e_icon_factory_get_icon ("mail-attachment", GTK_ICON_SIZE_MENU);
+-	week_view->meeting_icon =
+-		e_icon_factory_get_icon ("stock_people", GTK_ICON_SIZE_MENU);
+-}
+-
+-static void
+-week_view_unrealize (GtkWidget *widget)
+-{
+-	EWeekView *week_view;
+-
+-	week_view = E_WEEK_VIEW (widget);
+-
+-	g_object_unref (week_view->reminder_icon);
+-	week_view->reminder_icon = NULL;
+-	g_object_unref (week_view->recurrence_icon);
+-	week_view->recurrence_icon = NULL;
+-	g_object_unref (week_view->timezone_icon);
+-	week_view->timezone_icon = NULL;
+-	g_object_unref (week_view->attach_icon);
+-	week_view->attach_icon = NULL;
+-	g_object_unref (week_view->meeting_icon);
+-	week_view->meeting_icon = NULL;
+-
+-	if (GTK_WIDGET_CLASS (e_week_view_parent_class)->unrealize)
+-		(*GTK_WIDGET_CLASS (e_week_view_parent_class)->unrealize)(widget);
+-}
+-
+ static GdkColor
+ e_week_view_get_text_color (EWeekView *week_view,
+                             EWeekViewEvent *event)
+@@ -991,9 +943,8 @@ e_week_view_get_text_color (EWeekView *week_view,
+ }
+ 
+ static void
+-week_view_style_updated (GtkWidget *widget)
++week_view_update_style_settings (EWeekView *week_view)
+ {
+-	EWeekView *week_view;
+ 	gint day, day_width, max_day_width, max_abbr_day_width;
+ 	gint month, month_width, max_month_width, max_abbr_month_width;
+ 	gint span_num;
+@@ -1004,11 +955,6 @@ week_view_style_updated (GtkWidget *widget)
+ 	PangoLayout *layout;
+ 	EWeekViewEventSpan *span;
+ 
+-	if (GTK_WIDGET_CLASS (e_week_view_parent_class)->style_updated)
+-		(*GTK_WIDGET_CLASS (e_week_view_parent_class)->style_updated) (widget);
+-
+-	week_view = E_WEEK_VIEW (widget);
+-
+ 	e_week_view_set_colors (week_view);
+ 	if (week_view->spans) {
+ 		for (span_num = 0; span_num < week_view->spans->len; span_num++) {
+@@ -1035,7 +981,7 @@ week_view_style_updated (GtkWidget *widget)
+ 	}
+ 
+ 	/* Set up Pango prerequisites */
+-	pango_context = gtk_widget_get_pango_context (widget);
++	pango_context = gtk_widget_get_pango_context (GTK_WIDGET (week_view));
+ 	font_desc = pango_font_description_copy (pango_context_get_font_description (pango_context));
+ 	font_metrics = pango_context_get_metrics (
+ 		pango_context, font_desc,
+@@ -1120,6 +1066,62 @@ week_view_style_updated (GtkWidget *widget)
+ 	pango_font_description_free (font_desc);
+ }
+ 
++static void
++week_view_realize (GtkWidget *widget)
++{
++	EWeekView *week_view;
++
++	if (GTK_WIDGET_CLASS (e_week_view_parent_class)->realize)
++		(*GTK_WIDGET_CLASS (e_week_view_parent_class)->realize)(widget);
++
++	week_view = E_WEEK_VIEW (widget);
++
++	week_view_update_style_settings (week_view);
++
++	/* Create the pixmaps. */
++	week_view->reminder_icon =
++		e_icon_factory_get_icon ("stock_bell", GTK_ICON_SIZE_MENU);
++	week_view->recurrence_icon =
++		e_icon_factory_get_icon ("view-refresh", GTK_ICON_SIZE_MENU);
++	week_view->timezone_icon =
++		e_icon_factory_get_icon ("stock_timezone", GTK_ICON_SIZE_MENU);
++	week_view->attach_icon =
++		e_icon_factory_get_icon ("mail-attachment", GTK_ICON_SIZE_MENU);
++	week_view->meeting_icon =
++		e_icon_factory_get_icon ("stock_people", GTK_ICON_SIZE_MENU);
++}
++
++static void
++week_view_unrealize (GtkWidget *widget)
++{
++	EWeekView *week_view;
++
++	week_view = E_WEEK_VIEW (widget);
++
++	g_object_unref (week_view->reminder_icon);
++	week_view->reminder_icon = NULL;
++	g_object_unref (week_view->recurrence_icon);
++	week_view->recurrence_icon = NULL;
++	g_object_unref (week_view->timezone_icon);
++	week_view->timezone_icon = NULL;
++	g_object_unref (week_view->attach_icon);
++	week_view->attach_icon = NULL;
++	g_object_unref (week_view->meeting_icon);
++	week_view->meeting_icon = NULL;
++
++	if (GTK_WIDGET_CLASS (e_week_view_parent_class)->unrealize)
++		(*GTK_WIDGET_CLASS (e_week_view_parent_class)->unrealize)(widget);
++}
++
++static void
++week_view_style_updated (GtkWidget *widget)
++{
++	if (GTK_WIDGET_CLASS (e_week_view_parent_class)->style_updated)
++		(*GTK_WIDGET_CLASS (e_week_view_parent_class)->style_updated) (widget);
++
++	week_view_update_style_settings (E_WEEK_VIEW (widget));
++}
++
+ static void
+ week_view_size_allocate (GtkWidget *widget,
+                          GtkAllocation *allocation)
+-- 
+2.15.0
+

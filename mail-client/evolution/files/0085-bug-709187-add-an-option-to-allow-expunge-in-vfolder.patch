@@ -1,0 +1,187 @@
+From 5f503e4b1daabcc412e814f0d06ce9c1957b3229 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 18 Nov 2014 14:21:52 +0100
+Subject: [PATCH 0085/1800] Bug 709187 - Add an option to allow Expunge in
+ vFolders
+
+---
+ data/org.gnome.evolution.mail.gschema.xml.in |  5 ++
+ modules/mail/e-mail-shell-view-private.c     |  8 +++
+ modules/mail/e-mail-shell-view-private.h     |  2 +
+ modules/mail/e-mail-shell-view.c             | 77 +++++++++++++++++++++++++++-
+ 4 files changed, 91 insertions(+), 1 deletion(-)
+
+diff --git a/data/org.gnome.evolution.mail.gschema.xml.in b/data/org.gnome.evolution.mail.gschema.xml.in
+index 92df8e23e4..58e2fbb883 100644
+--- a/data/org.gnome.evolution.mail.gschema.xml.in
++++ b/data/org.gnome.evolution.mail.gschema.xml.in
+@@ -560,6 +560,11 @@
+       <_summary>Server synchronization interval</_summary>
+       <_description>Controls how frequently local changes are synchronized with the remote mail server. The interval must be at least 30 seconds.</_description>
+     </key>
++    <key name="vfolder-allow-expunge" type="b">
++      <default>false</default>
++      <_summary>Allow expunge in virtual folders</_summary>
++      <_description>Enables Expunge in virtual folders, which means that the Folder->Expunge will be callable in virtual folders, while the expunge itself will be done in all folders for all deleted messages within the virtual folder, not only for deleted messages belonging to the virtual folder.</_description>
++    </key>
+     <child name="browser-window" schema="org.gnome.evolution.window"/>
+     <child name="composer-window" schema="org.gnome.evolution.window"/>
+     <child name="filter-window" schema="org.gnome.evolution.window"/>
+diff --git a/modules/mail/e-mail-shell-view-private.c b/modules/mail/e-mail-shell-view-private.c
+index 0dd73b6f8d..ccd8204467 100644
+--- a/modules/mail/e-mail-shell-view-private.c
++++ b/modules/mail/e-mail-shell-view-private.c
+@@ -623,6 +623,7 @@ e_mail_shell_view_private_constructed (EMailShellView *mail_shell_view)
+ 	GtkTreeSelection *selection;
+ 	GtkUIManager *ui_manager;
+ 	GtkWidget *message_list;
++	GSettings *settings;
+ 	EMailLabelListStore *label_store;
+ 	EMailBackend *backend;
+ 	EMailSession *session;
+@@ -792,6 +793,13 @@ e_mail_shell_view_private_constructed (EMailShellView *mail_shell_view)
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
++	g_settings_bind (
++		settings, "vfolder-allow-expunge",
++		mail_shell_view, "vfolder-allow-expunge",
++		G_SETTINGS_BIND_GET);
++	g_clear_object (&settings);
++
+ 	/* Populate built-in rules for search entry popup menu.
+ 	 * Keep the assertions, please.  If the conditions aren't
+ 	 * met we're going to crash anyway, just more mysteriously. */
+diff --git a/modules/mail/e-mail-shell-view-private.h b/modules/mail/e-mail-shell-view-private.h
+index 29869f4a07..dc55d29160 100644
+--- a/modules/mail/e-mail-shell-view-private.h
++++ b/modules/mail/e-mail-shell-view-private.h
+@@ -140,6 +140,8 @@ struct _EMailShellViewPrivate {
+ 
+ 	GDBusProxy *web_extension;
+ 	guint web_extension_watch_name_id;
++
++	gboolean vfolder_allow_expunge;
+ };
+ 
+ void		e_mail_shell_view_private_init
+diff --git a/modules/mail/e-mail-shell-view.c b/modules/mail/e-mail-shell-view.c
+index 755ce8910e..7477e68a5b 100644
+--- a/modules/mail/e-mail-shell-view.c
++++ b/modules/mail/e-mail-shell-view.c
+@@ -24,6 +24,11 @@
+ 
+ #include "e-mail-shell-view-private.h"
+ 
++enum {
++	PROP_0,
++	PROP_VFOLDER_ALLOW_EXPUNGE
++};
++
+ G_DEFINE_DYNAMIC_TYPE (
+ 	EMailShellView,
+ 	e_mail_shell_view,
+@@ -220,6 +225,63 @@ mail_shell_view_show_search_results_folder (EMailShellView *mail_shell_view,
+ 	message_list_thaw (MESSAGE_LIST (message_list));
+ }
+ 
++static void
++mail_shell_view_set_vfolder_allow_expunge (EMailShellView *mail_shell_view,
++					   gboolean value)
++{
++	g_return_if_fail (E_IS_MAIL_SHELL_VIEW (mail_shell_view));
++
++	if ((mail_shell_view->priv->vfolder_allow_expunge ? 1 : 0) == (value ? 1 : 0))
++		return;
++
++	mail_shell_view->priv->vfolder_allow_expunge = value;
++
++	g_object_notify (G_OBJECT (mail_shell_view), "vfolder-allow-expunge");
++}
++
++static gboolean
++mail_shell_view_get_vfolder_allow_expunge (EMailShellView *mail_shell_view)
++{
++	g_return_val_if_fail (E_IS_MAIL_SHELL_VIEW (mail_shell_view), FALSE);
++
++	return mail_shell_view->priv->vfolder_allow_expunge;
++}
++
++static void
++mail_shell_view_set_property (GObject *object,
++			      guint property_id,
++			      const GValue *value,
++			      GParamSpec *pspec)
++{
++	switch (property_id) {
++		case PROP_VFOLDER_ALLOW_EXPUNGE:
++			mail_shell_view_set_vfolder_allow_expunge (
++				E_MAIL_SHELL_VIEW (object),
++				g_value_get_boolean (value));
++			return;
++	}
++
++	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
++}
++
++static void
++mail_shell_view_get_property (GObject *object,
++			      guint property_id,
++			      GValue *value,
++			      GParamSpec *pspec)
++{
++	switch (property_id) {
++		case PROP_VFOLDER_ALLOW_EXPUNGE:
++			g_value_set_boolean (
++				value,
++				mail_shell_view_get_vfolder_allow_expunge (
++				E_MAIL_SHELL_VIEW (object)));
++			return;
++	}
++
++	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
++}
++
+ static void
+ mail_shell_view_dispose (GObject *object)
+ {
+@@ -1016,7 +1078,7 @@ mail_shell_view_update_actions (EShellView *shell_view)
+ 	gtk_action_set_sensitive (action, sensitive);
+ 
+ 	action = ACTION (MAIL_FOLDER_EXPUNGE);
+-	sensitive = folder_is_selected && !folder_is_virtual;
++	sensitive = folder_is_selected && (!folder_is_virtual || mail_shell_view->priv->vfolder_allow_expunge);
+ 	gtk_action_set_sensitive (action, sensitive);
+ 
+ 	action = ACTION (MAIL_FOLDER_MOVE);
+@@ -1089,6 +1151,8 @@ e_mail_shell_view_class_init (EMailShellViewClass *class)
+ 	g_type_class_add_private (class, sizeof (EMailShellViewPrivate));
+ 
+ 	object_class = G_OBJECT_CLASS (class);
++	object_class->set_property = mail_shell_view_set_property;
++	object_class->get_property = mail_shell_view_get_property;
+ 	object_class->dispose = mail_shell_view_dispose;
+ 	object_class->finalize = mail_shell_view_finalize;
+ 	object_class->constructed = mail_shell_view_constructed;
+@@ -1109,6 +1173,17 @@ e_mail_shell_view_class_init (EMailShellViewClass *class)
+ 
+ 	/* Ensure the GalView types we need are registered. */
+ 	g_type_ensure (GAL_TYPE_VIEW_ETABLE);
++
++	g_object_class_install_property (
++		object_class,
++		PROP_VFOLDER_ALLOW_EXPUNGE,
++		g_param_spec_boolean (
++			"vfolder-allow-expunge",
++			"vFolder Allow Expunge",
++			"Allow expunge in virtual folders",
++			FALSE,
++			G_PARAM_READWRITE |
++			G_PARAM_STATIC_STRINGS));
+ }
+ 
+ static void
+-- 
+2.15.0
+

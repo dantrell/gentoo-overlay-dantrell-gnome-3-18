@@ -1,0 +1,47 @@
+From 62076ef3630556f41aa3cc274e8fffcff78c68e8 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 1 Apr 2015 09:18:50 +0200
+Subject: [PATCH 0612/1800] Bug 746686 - [mail-notification] Focus existing
+ 'mail' window, if exists
+
+---
+ plugins/mail-notification/mail-notification.c | 16 ++++++++++++++--
+ 1 file changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/plugins/mail-notification/mail-notification.c b/plugins/mail-notification/mail-notification.c
+index 1e624fdc08..e74c5a37e9 100644
+--- a/plugins/mail-notification/mail-notification.c
++++ b/plugins/mail-notification/mail-notification.c
+@@ -299,15 +299,27 @@ notify_default_action_cb (NotifyNotification *notification,
+ 	EMFolderTree *folder_tree;
+ 	GtkApplication *application;
+ 	GtkAction *action;
+-	GList *list;
++	GList *list, *fallback = NULL;
+ 
+ 	shell = e_shell_get_default ();
+ 	application = GTK_APPLICATION (shell);
+ 	list = gtk_application_get_windows (application);
+ 
+ 	/* Find the first EShellWindow in the list. */
+-	while (list != NULL && !E_IS_SHELL_WINDOW (list->data))
++	while (list != NULL) {
++		if (E_IS_SHELL_WINDOW (list->data)) {
++			if (!fallback)
++				fallback = list;
++
++			if (g_strcmp0 (e_shell_window_get_active_view (list->data), "mail") == 0)
++				break;
++		}
++
+ 		list = g_list_next (list);
++	}
++
++	if (!list)
++		list = fallback;
+ 
+ 	g_return_if_fail (list != NULL);
+ 
+-- 
+2.15.0
+

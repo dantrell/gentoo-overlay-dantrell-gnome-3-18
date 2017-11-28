@@ -1,0 +1,36 @@
+From 5dff65f353f4727831572ced6a125e556a90a301 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 11:40:36 +0100
+Subject: [PATCH 0243/1800] EHTMLEditorView - Insert new paragraph when we
+ loaded an empty string or HTML
+
+The composer functions expect the there is at least one block in the body.
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 1a5c4e9509..f7371e3554 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -5972,6 +5972,17 @@ dom_process_content_after_load (WebKitDOMDocument *document,
+ 
+ 	dom_set_links_active (document, FALSE);
+ 
++	/* The composer body could be empty in some case (loading an empty string
++	 * or empty HTML. In that case create the initial paragraph. */
++	if (!webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (body))) {
++		WebKitDOMElement *paragraph;
++
++		paragraph = dom_prepare_paragraph (document, extension, TRUE);
++		webkit_dom_node_append_child (
++			WEBKIT_DOM_NODE (body), WEBKIT_DOM_NODE (paragraph), NULL);
++		dom_selection_restore (document);
++	}
++
+ 	/* Register on input event that is called when the content (body) is modified */
+ 	register_input_event_listener_on_body (document, extension);
+ 	register_html_events_handlers (body, extension);
+-- 
+2.15.0
+

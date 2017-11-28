@@ -1,0 +1,82 @@
+From 1b6026d0d2c707381518f1b63873ae7e8332b692 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 19 Nov 2014 20:00:21 +0100
+Subject: [PATCH 0088/1800] Bug 736947 - Attachment icon not shown in Sent
+ folder
+
+---
+ libemail-engine/e-mail-session-utils.c |  3 ++-
+ libemail-engine/mail-ops.c             | 20 +++++++++++++++++++-
+ mail/em-composer-utils.c               |  4 ++--
+ 3 files changed, 23 insertions(+), 4 deletions(-)
+
+diff --git a/libemail-engine/e-mail-session-utils.c b/libemail-engine/e-mail-session-utils.c
+index 29781a77e7..19e62865c8 100644
+--- a/libemail-engine/e-mail-session-utils.c
++++ b/libemail-engine/e-mail-session-utils.c
+@@ -911,7 +911,8 @@ e_mail_session_send_to (EMailSession *session,
+ 		NULL, CAMEL_MIME_PART (message)->headers);
+ 	((CamelMessageInfoBase *) info)->size =
+ 		get_message_size (message, cancellable);
+-	camel_message_info_set_flags (info, CAMEL_MESSAGE_SEEN, ~0);
++	camel_message_info_set_flags (info, CAMEL_MESSAGE_SEEN |
++		(camel_mime_message_has_attachment (message) ? CAMEL_MESSAGE_ATTACHMENTS : 0), ~0);
+ 
+ 	/* expand, or remove empty, group addresses */
+ 	em_utils_expand_groups (CAMEL_INTERNET_ADDRESS (recipients));
+diff --git a/libemail-engine/mail-ops.c b/libemail-engine/mail-ops.c
+index cae580e728..a440890eb4 100644
+--- a/libemail-engine/mail-ops.c
++++ b/libemail-engine/mail-ops.c
+@@ -569,6 +569,22 @@ static void	report_status		(struct _send_queue_msg *m,
+ 					 const gchar *desc,
+ 					 ...);
+ 
++static guint32
++get_message_size (CamelMimeMessage *message,
++                  GCancellable *cancellable)
++{
++	CamelStream *null;
++	guint32 size;
++
++	null = camel_stream_null_new ();
++	camel_data_wrapper_write_to_stream_sync (
++		CAMEL_DATA_WRAPPER (message), null, cancellable, NULL);
++	size = CAMEL_STREAM_NULL (null)->written;
++	g_object_unref (null);
++
++	return size;
++}
++
+ /* send 1 message to a specific transport */
+ static void
+ mail_send_message (struct _send_queue_msg *m,
+@@ -684,7 +700,9 @@ mail_send_message (struct _send_queue_msg *m,
+ 
+ 	/* Now check for posting, failures are ignored */
+ 	info = camel_message_info_new (NULL);
+-	camel_message_info_set_flags (info, CAMEL_MESSAGE_SEEN, ~0);
++	((CamelMessageInfoBase *) info)->size = get_message_size (message, cancellable);
++	camel_message_info_set_flags (info, CAMEL_MESSAGE_SEEN |
++		(camel_mime_message_has_attachment (message) ? CAMEL_MESSAGE_ATTACHMENTS : 0), ~0);
+ 
+ 	for (header = xev; header && !local_error; header = header->next) {
+ 		gchar *uri;
+diff --git a/mail/em-composer-utils.c b/mail/em-composer-utils.c
+index df1cbf2b05..795ac9eb51 100644
+--- a/mail/em-composer-utils.c
++++ b/mail/em-composer-utils.c
+@@ -823,8 +823,8 @@ composer_save_to_drafts_append_mail (AsyncContext *async_context,
+ 
+ 	info = camel_message_info_new (NULL);
+ 
+-	camel_message_info_set_flags (
+-		info, CAMEL_MESSAGE_DRAFT | CAMEL_MESSAGE_SEEN, ~0);
++	camel_message_info_set_flags (info, CAMEL_MESSAGE_DRAFT | CAMEL_MESSAGE_SEEN |
++		(camel_mime_message_has_attachment (async_context->message) ? CAMEL_MESSAGE_ATTACHMENTS : 0), ~0);
+ 
+ 	camel_medium_remove_header (
+ 		CAMEL_MEDIUM (async_context->message),
+-- 
+2.15.0
+

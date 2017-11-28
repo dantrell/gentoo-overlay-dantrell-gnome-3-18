@@ -1,0 +1,35 @@
+From 2388ba2c409a494dfda29b620e0be830bc914fcf Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 9 Mar 2015 15:19:14 +0100
+Subject: [PATCH 0462/1800] Bug 728788 - Runtime warnings when opening Full
+ Name Editor
+
+---
+ addressbook/gui/contact-editor/fullname.ui | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/addressbook/gui/contact-editor/fullname.ui b/addressbook/gui/contact-editor/fullname.ui
+index 2c550cdd85..453d81e8a1 100644
+--- a/addressbook/gui/contact-editor/fullname.ui
++++ b/addressbook/gui/contact-editor/fullname.ui
+@@ -9,7 +9,7 @@
+     </columns>
+     <data>
+       <row>
+-        <col id="0" translatable="yes"/>
++        <col id="0" translatable="yes"></col>
+       </row>
+       <row>
+         <col id="0" translatable="yes">Mr.</col>
+@@ -35,7 +35,7 @@
+     </columns>
+     <data>
+       <row>
+-        <col id="0" translatable="yes"/>
++        <col id="0" translatable="yes"></col>
+       </row>
+       <row>
+         <col id="0" translatable="yes">Sr.</col>
+-- 
+2.15.0
+

@@ -1,0 +1,26 @@
+From be4e4ddcd419e733850e2a1d40e3f84f18e0cc80 Mon Sep 17 00:00:00 2001
+From: Timo Jyrinki <timo@debian.org>
+Date: Mon, 3 Nov 2014 18:53:09 +0200
+Subject: [PATCH 0028/1800] Change Finnish translation team web page to
+ l10n.gnome.org
+
+---
+ po/fi.po | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/po/fi.po b/po/fi.po
+index d9d7ddb0d1..81f7f819b6 100644
+--- a/po/fi.po
++++ b/po/fi.po
+@@ -20744,7 +20744,7 @@ msgstr ""
+ "Jarkko Ranta, 2000-2001\n"
+ "Ville-Pekka Vainio, 2010\n"
+ "\n"
+-"http://gnome.fi/\n"
++"https://l10n.gnome.org/teams/fi/\n"
+ "\n"
+ "Launchpad Contributions:\n"
+ "  Antti Kajander https://launchpad.net/~antti-kajander\n"
+-- 
+2.15.0
+

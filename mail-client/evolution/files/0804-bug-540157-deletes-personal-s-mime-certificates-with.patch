@@ -1,0 +1,64 @@
+From 3c9c0eb7cddfeac430a572052b55e03abcf1e1f1 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 11 Jun 2015 18:24:46 +0200
+Subject: [PATCH 0804/1800] Bug 540157 - Deletes personal S/MIME certificates
+ without proper password
+
+---
+ smime/lib/e-cert-db.c | 14 ++++++++++----
+ smime/lib/e-cert.c    | 10 +---------
+ 2 files changed, 11 insertions(+), 13 deletions(-)
+
+diff --git a/smime/lib/e-cert-db.c b/smime/lib/e-cert-db.c
+index 1c702ac1f8..237c91274c 100644
+--- a/smime/lib/e-cert-db.c
++++ b/smime/lib/e-cert-db.c
+@@ -915,11 +915,17 @@ e_cert_db_delete_cert (ECertDB *certdb,
+ 
+ 	CERTCertificate *cert;
+ 
+-	if (!e_cert_mark_for_deletion (ecert)) {
+-		return FALSE;
+-	}
+-
+ 	cert = e_cert_get_internal_cert (ecert);
++	if (!cert)
++		return FALSE;
++
++	if (cert->slot && !e_cert_db_login_to_slot (certdb, cert->slot))
++		return FALSE;
++
++	if (!e_cert_mark_for_deletion (ecert)) {
++		return FALSE;
++	}
++
+ 	if (cert->slot && e_cert_get_cert_type (ecert) != E_CERT_USER) {
+ 		/* To delete a cert of a slot (builtin, most likely), mark it as
+ 		 * completely untrusted.  This way we keep a copy cached in the
+diff --git a/smime/lib/e-cert.c b/smime/lib/e-cert.c
+index fc00b58057..3bc4a9be36 100644
+--- a/smime/lib/e-cert.c
++++ b/smime/lib/e-cert.c
+@@ -470,18 +470,10 @@ e_cert_get_ca_cert (ECert *ecert)
+ gboolean
+ e_cert_mark_for_deletion (ECert *cert)
+ {
+-	/* nsNSSShutDownPreventionLock locker; */
+-
+-#if 0
+-	/* make sure user is logged in to the token */
+-	nsCOMPtr < nsIInterfaceRequestor> ctx = new PipUIContext ();
+-#endif
+-
+ 	if (PK11_NeedLogin (cert->priv->cert->slot)
+ 	    && !PK11_NeedUserInit (cert->priv->cert->slot)
+ 	    && !PK11_IsInternal (cert->priv->cert->slot)) {
+-		if (PK11_Authenticate (
+-			cert->priv->cert->slot, PR_TRUE, NULL) != SECSuccess) {
++		if (PK11_Authenticate (cert->priv->cert->slot, PR_TRUE, NULL) != SECSuccess) {
+ 			return FALSE;
+ 		}
+ 	}
+-- 
+2.15.0
+

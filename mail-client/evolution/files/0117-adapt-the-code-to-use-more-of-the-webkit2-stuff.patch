@@ -1,0 +1,1344 @@
+From f44667f3a9df60ddb92fa1a89c0916e663f5c6d8 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 8 Dec 2014 11:18:39 +0100
+Subject: [PATCH 0117/1800] Adapt the code to use more of the WebKit2 stuff
+
+Add more methods definitions into EHTMLEditorWebExtension that are
+intended to stay in place. Also use the WebKitFindController in
+EHTMLEditorSpellCheckDialog and EHTMLEditorReplaceDialog. Also some
+minor changes.
+---
+ e-util/e-html-editor-replace-dialog.c              |  22 +-
+ e-util/e-html-editor-spell-check-dialog.c          |  94 +++-
+ e-util/e-html-editor-view.c                        |  97 ++--
+ e-util/e-html-editor-view.h                        |   3 +
+ e-util/e-spell-checker.c                           |   2 +-
+ e-util/e-web-view.c                                |   5 -
+ .../e-html-editor-selection-dom-functions.c        |  12 +-
+ .../e-html-editor-selection-dom-functions.h        |   5 +
+ web-extensions/e-html-editor-view-dom-functions.c  |  46 +-
+ web-extensions/e-html-editor-view-dom-functions.h  |  26 +-
+ web-extensions/e-html-editor-web-extension.c       | 486 ++++++++++++++++++++-
+ web-extensions/e-html-editor-web-extension.h       |   5 +
+ web-extensions/e-web-extension.c                   |   8 +
+ 13 files changed, 690 insertions(+), 121 deletions(-)
+
+diff --git a/e-util/e-html-editor-replace-dialog.c b/e-util/e-html-editor-replace-dialog.c
+index 936d13e01f..edc0489786 100644
+--- a/e-util/e-html-editor-replace-dialog.c
++++ b/e-util/e-html-editor-replace-dialog.c
+@@ -70,13 +70,17 @@ webkit_find_controller_found_text_cb (WebKitFindController *find_controller,
+                                       guint match_count,
+                                       EHTMLEditorReplaceDialog *dialog)
+ {
++	EHTMLEditorSelection *selection;
++
++	selection = e_html_editor_view_get_selection (
++		E_HTML_EDITOR_VIEW (webkit_find_controller_get_web_view (find_controller)));
++
+ 	gtk_widget_hide (dialog->priv->result_label);
+ 
+ 	if (!dialog->priv->skip) {
+-		/* FIXME WK2
+ 		e_html_editor_selection_replace (
+ 			selection,
+-			gtk_entry_get_text (GTK_ENTRY (dialog->priv->replace_entry)));*/
++			gtk_entry_get_text (GTK_ENTRY (dialog->priv->replace_entry)));
+ 	}
+ 
+ 	dialog->priv->skip = FALSE;
+@@ -200,6 +204,17 @@ html_editor_replace_dialog_show (GtkWidget *widget)
+ 	GTK_WIDGET_CLASS (e_html_editor_replace_dialog_parent_class)->show (widget);
+ }
+ 
++static void
++html_editor_replace_dialog_hide (GtkWidget *widget)
++{
++	EHTMLEditorReplaceDialog *dialog = E_HTML_EDITOR_REPLACE_DIALOG (widget);
++
++	webkit_find_controller_search_finish (dialog->priv->find_controller);
++
++	/* Chain up to parent implementation */
++	GTK_WIDGET_CLASS (e_html_editor_replace_dialog_parent_class)->hide (widget);
++}
++
+ static void
+ html_editor_replace_dialog_dispose (GObject *object)
+ {
+@@ -245,6 +260,7 @@ e_html_editor_replace_dialog_class_init (EHTMLEditorReplaceDialogClass *class)
+ 
+ 	widget_class = GTK_WIDGET_CLASS (class);
+ 	widget_class->show = html_editor_replace_dialog_show;
++	widget_class->hide = html_editor_replace_dialog_hide;
+ }
+ 
+ static void
+@@ -273,7 +289,7 @@ e_html_editor_replace_dialog_init (EHTMLEditorReplaceDialog *dialog)
+ 		G_CALLBACK (webkit_find_controller_failed_to_found_text_cb), dialog);
+ 
+ 	dialog->priv->counted_matches_handler_id = g_signal_connect (
+-		find_controller, "failed-to-find-text",
++		find_controller, "counted-matches",
+ 		G_CALLBACK (webkit_find_controller_counted_matches_cb), dialog);
+ 
+ 	dialog->priv->find_controller = find_controller;
+diff --git a/e-util/e-html-editor-spell-check-dialog.c b/e-util/e-html-editor-spell-check-dialog.c
+index e1799cac5c..1bd7dc2f70 100644
+--- a/e-util/e-html-editor-spell-check-dialog.c
++++ b/e-util/e-html-editor-spell-check-dialog.c
+@@ -50,6 +50,10 @@ struct _EHTMLEditorSpellCheckDialogPrivate {
+ 
+ 	gchar *word;
+ 	ESpellDictionary *current_dict;
++
++	WebKitFindController *find_controller;
++	gulong found_text_handler_id;
++	gchar *replacement;
+ };
+ 
+ enum {
+@@ -63,6 +67,21 @@ G_DEFINE_TYPE (
+ 	e_html_editor_spell_check_dialog,
+ 	E_TYPE_HTML_EDITOR_DIALOG)
+ 
++static void
++webkit_find_controller_found_text_cb (WebKitFindController *find_controller,
++                                      guint match_count,
++                                      EHTMLEditorSpellCheckDialog *dialog)
++{
++	/* Repeatedly search for 'word', then replace selection by
++	 * 'replacement'. Repeat until there's at least one occurence of
++	 * 'word' in the document */
++	e_html_editor_view_insert_html (
++		E_HTML_EDITOR_VIEW (webkit_find_controller_get_web_view (find_controller)), dialog->priv->replacement);
++
++	webkit_find_controller_search_next (find_controller);
++
++}
++
+ static void
+ html_editor_spell_check_dialog_set_word (EHTMLEditorSpellCheckDialog *dialog,
+                                          const gchar *word)
+@@ -202,28 +221,26 @@ html_editor_spell_check_dialog_replace_all (EHTMLEditorSpellCheckDialog *dialog)
+ 	GtkTreeModel *model;
+ 	GtkTreeSelection *selection;
+ 	GtkTreeIter iter;
+-	gchar *replacement;
++	WebKitFindController *find_controller;
+ 
+ 	editor = e_html_editor_dialog_get_editor (E_HTML_EDITOR_DIALOG (dialog));
+ 	view = e_html_editor_get_view (editor);
++	find_controller = webkit_web_view_get_find_controller (WEBKIT_WEB_VIEW (view));
+ 
+ 	selection = gtk_tree_view_get_selection (
+ 		GTK_TREE_VIEW (dialog->priv->tree_view));
+ 	gtk_tree_selection_get_selected (selection, &model, &iter);
+-	gtk_tree_model_get (model, &iter, 0, &replacement, -1);
++	if (dialog->priv->replacement)
++		g_free (dialog->priv->replacement);
++	gtk_tree_model_get (model, &iter, 0, &dialog->priv->replacement, -1);
+ 
+-	/* Repeatedly search for 'word', then replace selection by
+-	 * 'replacement'. Repeat until there's at least one occurence of
+-	 * 'word' in the document */
+-#if 0 /* FIXME WK2 */
+-	while (webkit_web_view_search_text (
+-			WEBKIT_WEB_VIEW (view), dialog->priv->word,
+-			FALSE, TRUE, TRUE)) {
++	webkit_find_controller_search (
++		find_controller,
++		dialog->priv->word,
++		WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE |
++		WEBKIT_FIND_OPTIONS_WRAP_AROUND,
++		G_MAXUINT);
+ 
+-		e_html_editor_view_insert_html (view, replacement);
+-	}
+-#endif
+-	g_free (replacement);
+ 	html_editor_spell_check_dialog_next (dialog);
+ }
+ 
+@@ -289,6 +306,17 @@ html_editor_spell_check_dialog_show (GtkWidget *widget)
+ 	}
+ }
+ 
++static void
++html_editor_spell_check_dialog_hide (GtkWidget *widget)
++{
++	EHTMLEditorSpellCheckDialog *dialog = E_HTML_EDITOR_SPELL_CHECK_DIALOG (widget);
++
++	webkit_find_controller_search_finish (dialog->priv->find_controller);
++
++	/* Chain up to parent implementation */
++	GTK_WIDGET_CLASS (e_html_editor_spell_check_dialog_parent_class)->hide (widget);
++}
++
+ static void
+ html_editor_spell_check_dialog_finalize (GObject *object)
+ {
+@@ -297,10 +325,28 @@ html_editor_spell_check_dialog_finalize (GObject *object)
+ 	priv = E_HTML_EDITOR_SPELL_CHECK_DIALOG_GET_PRIVATE (object);
+ 
+ 	g_free (priv->word);
++	g_free (priv->replacement);
+ 
+ 	/* Chain up to parent's finalize() method. */
+-	G_OBJECT_CLASS (e_html_editor_spell_check_dialog_parent_class)->
+-		finalize (object);
++	G_OBJECT_CLASS (e_html_editor_spell_check_dialog_parent_class)->finalize (object);
++}
++
++static void
++html_editor_spell_check_dialog_dispose (GObject *object)
++{
++	EHTMLEditorSpellCheckDialogPrivate *priv;
++
++	priv = E_HTML_EDITOR_SPELL_CHECK_DIALOG_GET_PRIVATE (object);
++
++	if (priv->found_text_handler_id > 0) {
++		g_signal_handler_disconnect (
++			priv->find_controller,
++			priv->found_text_handler_id);
++		priv->found_text_handler_id = 0;
++	}
++
++	/* Chain up to parent's dispose() method. */
++	G_OBJECT_CLASS (e_html_editor_spell_check_dialog_parent_class)->dispose (object);
+ }
+ 
+ static void
+@@ -327,19 +373,24 @@ e_html_editor_spell_check_dialog_class_init (EHTMLEditorSpellCheckDialogClass *c
+ 	object_class = G_OBJECT_CLASS (class);
+ 	object_class->finalize = html_editor_spell_check_dialog_finalize;
+ 	object_class->constructed = html_editor_spell_check_dialog_constructed;
++	object_class->dispose = html_editor_spell_check_dialog_dispose;
+ 
+ 	widget_class = GTK_WIDGET_CLASS (class);
+ 	widget_class->show = html_editor_spell_check_dialog_show;
++	widget_class->hide = html_editor_spell_check_dialog_hide;
+ }
+ 
+ static void
+ e_html_editor_spell_check_dialog_init (EHTMLEditorSpellCheckDialog *dialog)
+ {
++	EHTMLEditor *editor;
++	EHTMLEditorView *view;
+ 	GtkWidget *widget;
+ 	GtkGrid *main_layout;
+ 	GtkListStore *store;
+ 	GtkTreeViewColumn *column;
+ 	GtkCellRenderer *renderer;
++	WebKitFindController *find_controller;
+ 
+ 	dialog->priv = E_HTML_EDITOR_SPELL_CHECK_DIALOG_GET_PRIVATE (dialog);
+ 
+@@ -455,6 +506,19 @@ e_html_editor_spell_check_dialog_init (EHTMLEditorSpellCheckDialog *dialog)
+ 		widget, "clicked",
+ 		G_CALLBACK (html_editor_spell_check_dialog_learn), dialog);
+ 
++	editor = e_html_editor_dialog_get_editor (E_HTML_EDITOR_DIALOG (dialog));
++	view = e_html_editor_get_view (editor);
++
++	find_controller =
++		webkit_web_view_get_find_controller (WEBKIT_WEB_VIEW (view));
++
++	dialog->priv->found_text_handler_id = g_signal_connect (
++		find_controller, "found-text",
++		G_CALLBACK (webkit_find_controller_found_text_cb), dialog);
++
++	dialog->priv->find_controller = find_controller;
++	dialog->priv->replacement = NULL;
++
+ 	gtk_widget_show_all (GTK_WIDGET (main_layout));
+ }
+ 
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index b9cef78fdc..9ecb795f5b 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -586,32 +586,6 @@ html_editor_view_constructed (GObject *object)
+ 		"enable-spell-checking", TRUE,
+ 		NULL);*/
+ }
+-/* FIXME WK2
+-static void
+-html_editor_view_save_element_under_mouse_click (GtkWidget *widget)
+-{
+-	gint x, y;
+-	GdkDeviceManager *device_manager;
+-	GdkDevice *pointer;
+-	EHTMLEditorView *view;
+-	WebKitDOMDocument *document;
+-	WebKitDOMElement *element;
+-
+-	g_return_if_fail (E_IS_HTML_EDITOR_VIEW (widget));
+-
+-	device_manager = gdk_display_get_device_manager (
+-		gtk_widget_get_display (GTK_WIDGET (widget)));
+-	pointer = gdk_device_manager_get_client_pointer (device_manager);
+-	gdk_window_get_device_position (
+-		gtk_widget_get_window (GTK_WIDGET (widget)), pointer, &x, &y, NULL);
+-
+-	document = webkit_web_view_get_dom_document (WEBKIT_WEB_VIEW (widget));
+-	element = webkit_dom_document_element_from_point (document, x, y);
+-
+-	view = E_HTML_EDITOR_VIEW (widget);
+-	view->priv->element_under_mouse = element;
+-}
+-*/
+ static gboolean
+ html_editor_view_button_press_event (GtkWidget *widget,
+                                      GdkEventButton *event)
+@@ -623,8 +597,6 @@ html_editor_view_button_press_event (GtkWidget *widget,
+ 		g_signal_emit (widget, signals[PASTE_PRIMARY_CLIPBOARD], 0);
+ 		event_handled = TRUE;
+ 	} else if (event->button == 3) {
+-/* FIXME WK2
+-		html_editor_view_save_element_under_mouse_click (widget); */
+ 		g_signal_emit (
+ 			widget, signals[POPUP_EVENT],
+ 			0, event, &event_handled);
+@@ -672,8 +644,6 @@ html_editor_view_key_press_event (GtkWidget *widget,
+ 
+ 	if (event->keyval == GDK_KEY_Menu) {
+ 		gboolean event_handled;
+-/* FIXME WK2
+-		html_editor_view_save_element_under_mouse_click (widget); */
+ 		g_signal_emit (
+ 			widget, signals[POPUP_EVENT],
+ 			0, event, &event_handled);
+@@ -804,6 +774,28 @@ e_html_editor_view_get_web_extension_proxy (EHTMLEditorView *view)
+ 	return view->priv->web_extension;
+ }
+ 
++void
++e_html_editor_view_call_simple_extension_function_sync (EHTMLEditorView *view,
++                                                        const gchar *function)
++{
++	g_return_if_fail (E_IS_HTML_EDITOR_VIEW (view));
++	g_return_if_fail (function && *function);
++
++	if (!view->priv->web_extension)
++		return;
++
++	g_dbus_proxy_call_sync (
++		view->priv->web_extension,
++		function,
++		g_variant_new (
++			"(t)",
++			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view))),
++		G_DBUS_CALL_FLAGS_NONE,
++		-1,
++		NULL,
++		NULL);
++}
++
+ void
+ e_html_editor_view_call_simple_extension_function (EHTMLEditorView *view,
+                                                    const gchar *function)
+@@ -1461,17 +1453,8 @@ e_html_editor_view_set_html_mode (EHTMLEditorView *view,
+ 		view->priv->html_mode = html_mode;
+ 		set_cached_boolean_property (view, "HTMLMode", html_mode);
+ 
+-		g_dbus_proxy_call (
+-			web_extension,
+-			"ConvertWhenChangingComposerMode",
+-			g_variant_new (
+-				"(t)",
+-				webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view))),
+-			G_DBUS_CALL_FLAGS_NONE,
+-			-1,
+-			NULL,
+-			NULL,
+-			NULL);
++		e_html_editor_view_call_simple_extension_function (
++			view, "ConvertWhenChangingComposerMode");
+ 
+ 		/* Update fonts - in plain text we only want monospace */
+ 		e_html_editor_view_update_fonts (view);
+@@ -1484,16 +1467,9 @@ e_html_editor_view_set_html_mode (EHTMLEditorView *view,
+ 
+ 	view->priv->html_mode = html_mode;
+ 
+-	g_dbus_proxy_call_sync (
+-		web_extension,
+-		"DOMProcessContentAfterModeChange",
+-		g_variant_new (
+-			"(t)",
+-			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view))),
+-		G_DBUS_CALL_FLAGS_NONE,
+-		-1,
+-		NULL,
+-		NULL);
++
++	e_html_editor_view_call_simple_extension_function_sync (
++		view, "DOMProcessContentAfterModeChange");
+ 
+ 	/* Update fonts - in plain text we only want monospace */
+ 	e_html_editor_view_update_fonts (view);
+@@ -1802,7 +1778,7 @@ process_document (EHTMLEditorView *view,
+ gchar *
+ e_html_editor_view_get_text_html (EHTMLEditorView *view)
+ {
+-	return process_document (view, "ProcessDocumentForHTML");
++	return process_document (view, "DOMProcessContentForHTML");
+ }
+ 
+ /**
+@@ -1817,7 +1793,7 @@ e_html_editor_view_get_text_html (EHTMLEditorView *view)
+ gchar *
+ e_html_editor_view_get_text_html_for_drafts (EHTMLEditorView *view)
+ {
+-	return process_document (view, "ProcessDocumentForDrafts");
++	return process_document (view, "DOMProcessContentForDraft");
+ }
+ 
+ /**
+@@ -1833,7 +1809,7 @@ e_html_editor_view_get_text_html_for_drafts (EHTMLEditorView *view)
+ gchar *
+ e_html_editor_view_get_text_plain (EHTMLEditorView *view)
+ {
+-	return process_document (view, "ProcessDocumentForPlainText");
++	return process_document (view, "DOMProcessContentForPlainText");
+ }
+ 
+ void
+@@ -2627,8 +2603,8 @@ e_html_editor_view_get_parts_for_inline_images (EHTMLEditorView *view,
+ 		"DOMGetInlineImagesData",
+ 		g_variant_new (
+ 			"(ts)",
+-			uid_domain,
+-			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view))),
++			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view)),
++			uid_domain),
+ 		G_DBUS_CALL_FLAGS_NONE,
+ 		-1,
+ 		NULL,
+@@ -2667,7 +2643,7 @@ e_html_editor_view_add_inline_image_from_mime_part (EHTMLEditorView *view,
+ 	CamelStream *stream;
+ 	GDBusProxy *web_extension;
+ 	GByteArray *byte_array;
+-	gchar *src, *base64_encoded, *mime_type, *cid_src;
++	gchar *src, *base64_encoded, *mime_type, *cid_uri;
+ 	const gchar *cid, *name;
+ 
+ 	web_extension = e_html_editor_view_get_web_extension_proxy (view);
+@@ -2698,7 +2674,7 @@ e_html_editor_view_add_inline_image_from_mime_part (EHTMLEditorView *view,
+ 		camel_mime_part_set_content_id (part, NULL);
+ 		cid = camel_mime_part_get_content_id (part);
+ 	}
+-	cid_src = g_strdup_printf ("cid:%s", cid);
++	cid_uri = g_strdup_printf ("cid:%s", cid);
+ 
+ 	g_dbus_proxy_call (
+ 		web_extension,
+@@ -2706,7 +2682,8 @@ e_html_editor_view_add_inline_image_from_mime_part (EHTMLEditorView *view,
+ 		g_variant_new (
+ 			"(tss)",
+ 			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view)),
+-			cid_src,
++			name,
++			cid_uri,
+ 			src),
+ 		G_DBUS_CALL_FLAGS_NONE,
+ 		-1,
+@@ -2845,7 +2822,7 @@ replace_base64_image_src (EHTMLEditorView *view,
+ 
+ 	g_dbus_proxy_call (
+ 		web_extension,
+-		"EHTMLEditorSelectionReplaceBase64ImageSrc",
++		"DOMReplaceBase64ImageSrc",
+ 		g_variant_new (
+ 			"(tssss)",
+ 			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view)),
+diff --git a/e-util/e-html-editor-view.h b/e-util/e-html-editor-view.h
+index 22891f393e..f59df151ba 100644
+--- a/e-util/e-html-editor-view.h
++++ b/e-util/e-html-editor-view.h
+@@ -84,6 +84,9 @@ GDBusProxy *
+ void		e_html_editor_view_call_simple_extension_function
+ 						(EHTMLEditorView *view,
+ 						 const gchar *extension_function);
++void		e_html_editor_view_call_simple_extension_function_sync
++						(EHTMLEditorView *view,
++						 const gchar *function);
+ GVariant *	e_html_editor_view_get_element_attribute
+ 						(EHTMLEditorView *view,
+ 						 const gchar *selector,
+diff --git a/e-util/e-spell-checker.c b/e-util/e-spell-checker.c
+index f312cff182..d1901d5d8f 100644
+--- a/e-util/e-spell-checker.c
++++ b/e-util/e-spell-checker.c
+@@ -372,7 +372,7 @@ spell_checker_constructed (GObject *object)
+ 	/* Chain up to parent's constructed() method. */
+ 	G_OBJECT_CLASS (e_spell_checker_parent_class)->constructed (object);
+ 
+-	e_extensible_load_extensions (E_EXTENSIBLE (object));
++	e_extensible_load_extension (E_EXTENSIBLE (object));
+ }
+ 
+ static void
+diff --git a/e-util/e-web-view.c b/e-util/e-web-view.c
+index 2f76b5a716..c2a72532c0 100644
+--- a/e-util/e-web-view.c
++++ b/e-util/e-web-view.c
+@@ -1001,7 +1001,6 @@ web_view_constructed (GObject *object)
+ 	web_view_initialize (WEBKIT_WEB_VIEW (object));
+ 
+ 	web_view_set_find_controller (E_WEB_VIEW (object));
+-
+ }
+ 
+ static gboolean
+@@ -2253,8 +2252,6 @@ e_web_view_load_string (EWebView *web_view,
+ 	class = E_WEB_VIEW_GET_CLASS (web_view);
+ 	g_return_if_fail (class->load_string != NULL);
+ 
+-	printf ("%s\n", __FUNCTION__);
+-	printf ("%s\n", string);
+ 	class->load_string (web_view, string);
+ }
+ 
+@@ -3265,8 +3262,6 @@ e_web_view_get_default_webkit_settings (void)
+ 		"enable-smooth-scrolling", TRUE,
+ 		"media-playback-allows-inline", FALSE,
+ 		NULL);
+-/* FIXME WK2
+-	"respect-image-orientation", TRUE,*/
+ }
+ 
+ void
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index d51a50c159..d5e64d5c7d 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -334,11 +334,11 @@ dom_restore_caret_position (WebKitDOMDocument *document)
+ */
+ }
+ 
+-static void
++void
+ dom_insert_base64_image (WebKitDOMDocument *document,
+-                         const gchar *base64_content,
+                          const gchar *filename,
+-                         const gchar *uri)
++                         const gchar *uri,
++                         const gchar *base64_content)
+ {
+ 	WebKitDOMElement *element, *caret_position, *resizable_wrapper;
+ 	WebKitDOMText *text;
+@@ -2253,7 +2253,7 @@ wrap_lines (WebKitDOMDocument *document,
+ 		html = webkit_dom_html_element_get_inner_html (WEBKIT_DOM_HTML_ELEMENT (element));
+ 
+ 		/* Overwrite the current selection be the processed content */
+-		dom_insert_html (extension, document, html);
++		dom_insert_html (document, extension, html);
+ 
+ 		g_free (html);
+ 
+@@ -3099,7 +3099,7 @@ dom_selection_set_monospaced (WebKitDOMDocument *document,
+ 				"<span id=\"-x-evo-selection-end-marker\"></span>",
+ 				NULL),
+ 
+-			dom_insert_html (extension, document, html);
++			dom_insert_html (document, extension, html);
+ 
+ 			dom_selection_restore (document);
+ 
+@@ -4723,7 +4723,7 @@ dom_replace_caret_word (WebKitDOMDocument *document,
+ 	webkit_dom_range_expand (range, "word", NULL);
+ 	webkit_dom_dom_selection_add_range (dom_selection, range);
+ 
+-	dom_insert_html (extension, document, replacement);
++	dom_insert_html (document, extension, replacement);
+ }
+ 
+ /**
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.h b/web-extensions/e-html-editor-selection-dom-functions.h
+index a852cebb5b..612c45259e 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.h
++++ b/web-extensions/e-html-editor-selection-dom-functions.h
+@@ -77,6 +77,11 @@ void		dom_move_caret_into_element	(WebKitDOMDocument *document,
+ 
+ void		dom_restore_caret_position	(WebKitDOMDocument *document);
+ 
++void		dom_insert_base64_image		(WebKitDOMDocument *document,
++						 const gchar *filename,
++						 const gchar *uri,
++						 const gchar *base64_content);
++
+ void		dom_unlink			(WebKitDOMDocument *document);
+ 
+ void		dom_create_link			(WebKitDOMDocument *document,
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 59be69ba8e..73c2e17108 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -1986,8 +1986,8 @@ fix_structure_after_pasting_multiline_content (WebKitDOMNode *node)
+ }
+ 
+ void
+-dom_quote_and_insert_text_into_selection (EHTMLEditorWebExtension *extension,
+-                                          WebKitDOMDocument *document,
++dom_quote_and_insert_text_into_selection (WebKitDOMDocument *document,
++                                          EHTMLEditorWebExtension *extension,
+                                           const gchar *text)
+ {
+ 	gchar *escaped_text;
+@@ -2041,7 +2041,7 @@ dom_quote_and_insert_text_into_selection (EHTMLEditorWebExtension *extension,
+ 	g_free (escaped_text);
+ }
+ 
+-gboolean
++static gboolean
+ dom_change_quoted_block_to_normal (WebKitDOMDocument *document,
+                                    EHTMLEditorWebExtension *extension)
+ {
+@@ -2784,7 +2784,7 @@ dom_quote_plain_text_element (WebKitDOMDocument *document,
+  * As this function is cloning and replacing all citation blockquotes keep on
+  * mind that any pointers to nodes inside these blockquotes will be invalidated.
+  */
+-WebKitDOMElement *
++static WebKitDOMElement *
+ dom_quote_plain_text (WebKitDOMDocument *document)
+ {
+ 	WebKitDOMHTMLElement *body;
+@@ -2866,7 +2866,7 @@ dom_quote_plain_text (WebKitDOMDocument *document)
+  * Editor have to be quoted with e_html_editor_view_quote_plain_text otherwise
+  * it's not working.
+  */
+-void
++static void
+ dom_dequote_plain_text (WebKitDOMDocument *document)
+ {
+ 	WebKitDOMNodeList *paragraphs;
+@@ -3549,7 +3549,7 @@ register_html_events_handlers (WebKitDOMHTMLElement *body,
+ }
+ 
+ void
+-dom_convert_document (WebKitDOMDocument *document,
++dom_convert_content (WebKitDOMDocument *document,
+                       EHTMLEditorWebExtension *extension,
+                       const gchar *preferred_text)
+ {
+@@ -5265,8 +5265,8 @@ toggle_paragraphs_style (WebKitDOMDocument *document,
+ 		e_html_editor_web_extension_get_html_mode (extension));
+ }
+ 
+-static gchar *
+-process_content_for_saving_as_draft (WebKitDOMDocument *document)
++gchar *
++dom_process_content_for_draft (WebKitDOMDocument *document)
+ {
+ 	WebKitDOMHTMLElement *body;
+ 	WebKitDOMElement *document_element;
+@@ -5427,9 +5427,9 @@ convert_element_from_html_to_plain_text (WebKitDOMDocument *document,
+ 		dom_selection_restore (document);
+ }
+ 
+-static gchar *
+-process_content_for_plain_text (EHTMLEditorWebExtension *extension,
+-                                WebKitDOMDocument *document)
++gchar *
++dom_process_content_for_plain_text (WebKitDOMDocument *document,
++                                    EHTMLEditorWebExtension *extension)
+ {
+ 	gboolean wrap = FALSE, quote = FALSE, clean = FALSE;
+ 	gboolean converted, is_from_new_message;
+@@ -5557,9 +5557,9 @@ process_content_for_plain_text (EHTMLEditorWebExtension *extension,
+ 	return g_string_free (plain_text, FALSE);
+ }
+ 
+-static gchar *
+-process_content_for_html (WebKitDOMDocument *document,
+-                          EHTMLEditorWebExtension *extension)
++gchar *
++dom_process_content_for_html (WebKitDOMDocument *document,
++                              EHTMLEditorWebExtension *extension)
+ {
+ 	WebKitDOMNode *body, *document_clone;
+ 	gchar *html_content;
+@@ -5578,9 +5578,9 @@ process_content_for_html (WebKitDOMDocument *document,
+ 	return html_content;
+ }
+ 
+-static void
+-convert_when_changing_composer_mode (WebKitDOMDocument *document,
+-                                     EHTMLEditorWebExtension *extension)
++void
++dom_convert_when_changing_composer_mode (WebKitDOMDocument *document,
++                                         EHTMLEditorWebExtension *extension)
+ {
+ 	gboolean quote = FALSE, wrap = FALSE;
+ 	WebKitDOMHTMLElement *body;
+@@ -5753,7 +5753,7 @@ dom_process_content_after_load (WebKitDOMDocument *document,
+ 		WEBKIT_DOM_ELEMENT (body), "data-message", "", NULL);
+ 
+ 	if (e_html_editor_web_extension_get_convert_in_situ (extension)) {
+-		dom_convert_document (document, extension, NULL);
++		dom_convert_content (document, extension, NULL);
+ 		e_html_editor_web_extension_set_convert_in_situ (extension, FALSE);
+ 
+ 		return;
+@@ -5785,9 +5785,9 @@ dom_process_content_after_load (WebKitDOMDocument *document,
+ }
+ 
+ GVariant *
+-dom_get_inline_images (WebKitDOMDocument *document,
+-                       EHTMLEditorWebExtension *extension,
+-                       const gchar *uid_domain)
++dom_get_inline_images_data (WebKitDOMDocument *document,
++                            EHTMLEditorWebExtension *extension,
++                            const gchar *uid_domain)
+ {
+ 	GVariant *result;
+ 	GVariantBuilder *builder;
+@@ -5885,8 +5885,8 @@ dom_get_inline_images (WebKitDOMDocument *document,
+  * is selected, it will be replaced by @html_text.
+  */
+ void
+-dom_insert_html (EHTMLEditorWebExtension *extension,
+-                 WebKitDOMDocument *document,
++dom_insert_html (WebKitDOMDocument *document,
++                 EHTMLEditorWebExtension *extension,
+                  const gchar *html_text)
+ {
+ 	g_return_if_fail (html_text != NULL);
+diff --git a/web-extensions/e-html-editor-view-dom-functions.h b/web-extensions/e-html-editor-view-dom-functions.h
+index b0d0ed1138..d743df0904 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.h
++++ b/web-extensions/e-html-editor-view-dom-functions.h
+@@ -45,11 +45,16 @@ void		dom_embed_style_sheet		(WebKitDOMDocument *document,
+ 
+ void		dom_remove_embed_style_sheet	(WebKitDOMDocument *document);
+ 
++void		dom_quote_and_insert_text_into_selection
++						(WebKitDOMDocument *document,
++						 EHTMLEditorWebExtension *extension,
++						 const gchar *text);
++
+ void		dom_check_magic_links		(WebKitDOMDocument *document,
+ 						 EHTMLEditorWebExtension *extension,
+ 						 gboolean include_space_by_user);
+ 
+-void		dom_convert_document		(WebKitDOMDocument *document,
++void		dom_convert_content		(WebKitDOMDocument *document,
+ 						 EHTMLEditorWebExtension *extension,
+ 						 const gchar *preferred_text);
+ 
+@@ -63,21 +68,34 @@ WebKitDOMElement *
+ 		dom_quote_plain_text_element	(WebKitDOMDocument *document,
+ 						 WebKitDOMElement *element);
+ 
++void		dom_convert_when_changing_composer_mode
++						(WebKitDOMDocument *document,
++						 EHTMLEditorWebExtension *extension);
++
+ void		dom_process_content_after_load	(WebKitDOMDocument *document,
+ 						 EHTMLEditorWebExtension *extension);
+ 
+-GVariant *	dom_get_inline_images		(WebKitDOMDocument *document,
++GVariant *	dom_get_inline_images_data	(WebKitDOMDocument *document,
+ 						 EHTMLEditorWebExtension *extension,
+ 						 const gchar *uid_domain);
+ 
+-void		dom_insert_html			(EHTMLEditorWebExtension *extension,
+-						 WebKitDOMDocument *document,
++void		dom_insert_html			(WebKitDOMDocument *document,
++						 EHTMLEditorWebExtension *extension,
+ 						 const gchar *html_text);
+ 
+ gboolean	dom_process_on_key_press	(WebKitDOMDocument *document,
+ 						 EHTMLEditorWebExtension *extension,
+ 						 guint key_val);
+ 
++gchar *		dom_process_content_for_draft	(WebKitDOMDocument *document);
++
++gchar *		dom_process_content_for_plain_text
++						(WebKitDOMDocument *document,
++						 EHTMLEditorWebExtension *extension);
++
++gchar *		dom_process_content_for_html	(WebKitDOMDocument *document,
++						 EHTMLEditorWebExtension *extension);
++
+ gboolean	dom_check_if_conversion_needed	(WebKitDOMDocument *document);
+ 
+ void		dom_process_content_after_mode_change
+diff --git a/web-extensions/e-html-editor-web-extension.c b/web-extensions/e-html-editor-web-extension.c
+index 6237a94433..ee5331a8b3 100644
+--- a/web-extensions/e-html-editor-web-extension.c
++++ b/web-extensions/e-html-editor-web-extension.c
+@@ -30,6 +30,7 @@
+ 
+ #include <e-util/e-misc-utils.h>
+ 
++#include "e-composer-private-dom-functions.h"
+ #include "e-dom-utils.h"
+ #include "e-html-editor-actions-dom-functions.h"
+ #include "e-html-editor-cell-dialog-dom-functions.h"
+@@ -41,6 +42,7 @@
+ #include "e-html-editor-spell-check-dialog-dom-functions.h"
+ #include "e-html-editor-table-dialog-dom-functions.h"
+ #include "e-html-editor-view-dom-functions.h"
++#include "e-msg-composer-dom-functions.h"
+ 
+ #define E_HTML_EDITOR_WEB_EXTENSION_GET_PRIVATE(obj) \
+ 	(G_TYPE_INSTANCE_GET_PRIVATE \
+@@ -380,6 +382,104 @@ static const char introspection_xml[] =
+ "    <method name='DOMScrollToCaret'>"
+ "      <arg type='t' name='page_id' direction='in'/>"
+ "    </method>"
++"    <method name='DOMEmbedStyleSheet'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='s' name='style_sheet_content' direction='in'/>"
++"    </method>"
++"    <method name='DOMRemoveEmbedStyleSheet'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"    </method>"
++"    <method name='DOMSaveSelection'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"    </method>"
++"    <method name='DOMRestoreSelection'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"    </method>"
++"    <method name='DOMQuoteAndInsertTextIntoSelection'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='s' name='text' direction='in'/>"
++"    </method>"
++"    <method name='DOMConvertAndInsertHTMLIntoSelection'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='s' name='text' direction='in'/>"
++"      <arg type='b' name='is_html' direction='in'/>"
++"    </method>"
++"    <method name='DOMProcessOnKeyPress'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='u' name='key_val' direction='in'/>"
++"      <arg type='b' name='stop_handlers' direction='out'/>"
++"    </method>"
++"    <method name='DOMCheckIfConversionNeeded'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='b' name='conversion_needed' direction='out'/>"
++"    </method>"
++"    <method name='DOMConvertWhenChangingComposerMode'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"    </method>"
++"    <method name='DOMProcessContentAfterModeChange'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"    </method>"
++"    <method name='DOMProcessContentForHTML'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='s' name='content' direction='out'/>"
++"    </method>"
++"    <method name='DOMProcessContentForDraft'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='s' name='content' direction='out'/>"
++"    </method>"
++"    <method name='DOMProcessContentForPlainText'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='s' name='content' direction='out'/>"
++"    </method>"
++"    <method name='DOMInsertHTML'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='s' name='html' direction='in'/>"
++"    </method>"
++"    <method name='DOMConvertContent'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='s' name='preffered_text' direction='in'/>"
++"    </method>"
++"    <method name='DOMGetInlineImagesData'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='s' name='uid_domain' direction='in'/>"
++"      <arg type='a*' name='image_data' direction='out'/>"
++"    </method>"
++"    <method name='DOMAddNewInlineImageIntoList'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='s' name='filename' direction='in'/>"
++"      <arg type='s' name='cid_src' direction='in'/>"
++"      <arg type='s' name='src' direction='in'/>"
++"    </method>"
++"    <method name='DOMReplaceBase64ImageSrc'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='s' name='selector' direction='in'/>"
++"      <arg type='s' name='base64_content' direction='in'/>"
++"      <arg type='s' name='filename' direction='in'/>"
++"      <arg type='s' name='uri' direction='in'/>"
++"    </method>"
++"<!-- ********************************************************* -->"
++"<!--     Functions that are used in EHTMLEditorSelection       -->"
++"<!-- ********************************************************* -->"
++"    <method name='DOMSelectionIndent'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"    </method>"
++"    <method name='DOMSelectionUnindent'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"    </method>"
++"<!-- ********************************************************* -->"
++"<!--     Functions that are used in EComposerPrivate           -->"
++"<!-- ********************************************************* -->"
++"    <method name='DOMRemoveSignatures'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='b' name='top_signature' direction='in'/>"
++"      <arg type='s' name='active_signature' direction='out'/>"
++"    </method>"
++"    <method name='DOMInsertSignature'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='s' name='signature_html' direction='in'/>"
++"      <arg type='b' name='top_signature' direction='in'/>"
++"      <arg type='b' name='start_bottom' direction='in'/>"
++"    </method>"
+ "  </interface>"
+ "</node>";
+ 
+@@ -1203,6 +1303,384 @@ handle_method_call (GDBusConnection *connection,
+ 
+ 		g_dbus_method_invocation_return_value (
+ 			invocation, g_variant_new_int32 (value));
++	} else if (g_strcmp0 (method_name, "DOMSaveSelection") == 0) {
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_selection_save (document);
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMRestoreSelection") == 0) {
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_selection_restore (document);
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMTurnSpellCheckOff") == 0) {
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_turn_spell_check_off (document);
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMQuoteAndInsertTextIntoSelection") == 0) {
++		const gchar *text;
++
++		g_variant_get (parameters, "(t&s)", &page_id, &text);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_quote_and_insert_text_into_selection (document, extension, text);
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMConvertAndInsertHTMLIntoSelection") == 0) {
++		gboolean is_html;
++		const gchar *text;
++
++		g_variant_get (parameters, "(t&sb)", &page_id, &text, &is_html);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_convert_and_insert_html_into_selection (document, extension, text, is_html);
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMEmbedStyleSheet") == 0) {
++		const gchar *style_sheet_content;
++
++		g_variant_get (parameters, "(t&s)", &page_id, &style_sheet_content);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_embed_style_sheet (document, style_sheet_content);
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMRemoveEmbedStyleSheet") == 0) {
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_remove_embed_style_sheet (document);
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMForceSpellCheck") == 0) {
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_force_spell_check (document, extension);
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMCheckMagicLinks") == 0) {
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_check_magic_links (document, extension, FALSE);
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMProcessOnKeyPress") == 0) {
++		gboolean stop_handlers;
++		guint key_val;
++
++		g_variant_get (parameters, "(tu)", &page_id, &key_val);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		stop_handlers = dom_process_on_key_press (document, extension, key_val);
++		g_dbus_method_invocation_return_value (
++			invocation, g_variant_new_boolean (stop_handlers));
++	} else if (g_strcmp0 (method_name, "DOMCheckIfConversionNeeded") == 0) {
++		gboolean conversion_needed;
++
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		conversion_needed = dom_check_if_conversion_needed (document);
++		g_dbus_method_invocation_return_value (
++			invocation, g_variant_new_boolean (conversion_needed));
++	} else if (g_strcmp0 (method_name, "DOMConvertWhenChangingComposerMode") == 0) {
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_convert_when_changing_composer_mode (document, extension);
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMProcessContentAfterModeChange") == 0) {
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_process_content_after_mode_change (document, extension);
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMProcessContentForDraft") == 0) {
++		gchar *value = NULL;
++
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		value = dom_process_content_for_draft (document);
++
++		g_dbus_method_invocation_return_value (
++			invocation,
++			value ? g_variant_new_take_string (value) : NULL);
++	} else if (g_strcmp0 (method_name, "DOMProcessContentForHTML") == 0) {
++		gchar *value = NULL;
++
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		value = dom_process_content_for_html (document, extension);
++
++		g_dbus_method_invocation_return_value (
++			invocation,
++			value ? g_variant_new_take_string (value) : NULL);
++	} else if (g_strcmp0 (method_name, "DOMProcessContentForPlainText") == 0) {
++		gchar *value = NULL;
++
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		value = dom_process_content_for_plain_text (document, extension);
++
++		g_dbus_method_invocation_return_value (
++			invocation,
++			value ? g_variant_new_take_string (value) : NULL);
++	} else if (g_strcmp0 (method_name, "DOMInsertHTML") == 0) {
++		const gchar *html;
++
++		g_variant_get (parameters, "(t&s)", &page_id, &html);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_insert_html (document, extension, html);
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMConvertContent") == 0) {
++		const gchar *preferred_text;
++
++		g_variant_get (parameters, "(t&s)", &page_id, &preferred_text);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_convert_content (document, extension, preferred_text);
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMGetInlineImagesData") == 0) {
++		const gchar *uid_domain;
++		GVariant *images_data;
++
++		g_variant_get (parameters, "(t&s)", &page_id, &uid_domain);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		images_data = dom_get_inline_images_data (document, extension, uid_domain);
++		g_dbus_method_invocation_return_value (invocation, images_data);
++	} else if (g_strcmp0 (method_name, "DOMAddNewInlineImageIntoList") == 0) {
++		const gchar *cid_uri, *src, *filename;
++
++		g_variant_get (parameters, "(t&s&s&s)", &page_id, &filename, &cid_uri, &src);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		e_html_editor_web_extension_add_new_inline_image_into_list (
++			extension, cid_uri, src);
++
++		dom_insert_base64_image (document, filename, cid_uri, src);
++
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMReplaceBase64ImageSrc") == 0) {
++		const gchar *selector, *base64_content, *filename, *uri;
++
++		g_variant_get (parameters, "(t&s&s)", &page_id, &selector, &base64_content, &filename, &uri);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_replace_base64_image_src (document, selector, base64_content, filename, uri);
++
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMSelectionIndent") == 0) {
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_selection_indent (document, extension);
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMSelectionUnindent") == 0) {
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_selection_unindent (document, extension);
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMRemoveSignatures") == 0) {
++		gboolean top_signature;
++		gchar *active_signature;
++
++		g_variant_get (parameters, "(tb)", &page_id, &top_signature);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		active_signature = dom_remove_signatures (document, extension, top_signature);
++
++		g_dbus_method_invocation_return_value (
++			invocation,
++			active_signature ? g_variant_new_take_string (active_signature) : NULL);
++	} else if (g_strcmp0 (method_name, "DOMInsertSignature") == 0) {
++		gboolean top_signature, start_bottom;
++		const gchar *signature_html;
++
++		g_variant_get (
++			parameters, "(t&sbb)", &page_id, &signature_html, &top_signature, &start_bottom);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_insert_signature (document, extension, signature_html, top_signature, start_bottom);
++
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMGetActiveSignatureUid") == 0) {
++		gchar *value;
++
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		value = dom_get_active_signature_uid (document);
++
++		g_dbus_method_invocation_return_value (
++			invocation,
++			value ? g_variant_new_take_string (value) : NULL);
++	} else if (g_strcmp0 (method_name, "DOMGetRawBodyContentWithoutSignature") == 0) {
++		gchar *value;
++
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		value = dom_get_raw_body_content_without_signature (document);
++
++		g_dbus_method_invocation_return_value (
++			invocation,
++			value ? g_variant_new_take_string (value) : NULL);
++	} else if (g_strcmp0 (method_name, "DOMGetRawBodyContent") == 0) {
++		gchar *value;
++
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		value = dom_get_raw_body_content (document);
++
++		g_dbus_method_invocation_return_value (
++			invocation,
++			value ? g_variant_new_take_string (value) : NULL);
+ 	}
+ }
+ 
+@@ -2106,10 +2584,10 @@ e_html_editor_web_extension_get_inline_images (EHTMLEditorWebExtension *extensio
+ 	return extension->priv->inline_images;
+ }
+ 
+-static void
+-add_new_inline_image_into_list (EHTMLEditorWebExtension *extension,
+-                                const gchar *cid_src,
+-                                const gchar *src)
++void
++e_html_editor_web_extension_add_new_inline_image_into_list (EHTMLEditorWebExtension *extension,
++                                                            const gchar *cid_src,
++                                                            const gchar *src)
+ {
+ 	g_hash_table_insert (extension->priv->inline_images, g_strdup(cid_src), g_strdup(src));
+ }
+diff --git a/web-extensions/e-html-editor-web-extension.h b/web-extensions/e-html-editor-web-extension.h
+index 39a00de40a..e68ae14c2c 100644
+--- a/web-extensions/e-html-editor-web-extension.h
++++ b/web-extensions/e-html-editor-web-extension.h
+@@ -162,6 +162,11 @@ void		e_html_editor_web_extension_set_convert_in_situ
+ GHashTable *	e_html_editor_web_extension_get_inline_images
+ 						(EHTMLEditorWebExtension *extension);
+ 
++void		e_html_editor_web_extension_add_new_inline_image_into_list
++						(EHTMLEditorWebExtension *extension,
++						 const gchar *cid_src,
++						 const gchar *src);
++
+ gboolean	e_html_editor_web_extension_is_message_from_draft
+ 						(EHTMLEditorWebExtension *extension);
+ 
+diff --git a/web-extensions/e-web-extension.c b/web-extensions/e-web-extension.c
+index 2b52abde3f..08545f5a4d 100644
+--- a/web-extensions/e-web-extension.c
++++ b/web-extensions/e-web-extension.c
+@@ -42,6 +42,8 @@ struct _EWebExtensionPrivate {
+ 	GDBusConnection *dbus_connection;
+ 	guint registration_id;
+ 
++	gboolean initialized;
++
+ 	gboolean need_input;
+ 	gboolean force_image_load;
+ };
+@@ -478,6 +480,7 @@ e_web_extension_init (EWebExtension *extension)
+ {
+ 	extension->priv = G_TYPE_INSTANCE_GET_PRIVATE (extension, E_TYPE_WEB_EXTENSION, EWebExtensionPrivate);
+ 
++	extension->priv->initialized = FALSE;
+ 	extension->priv->need_input = FALSE;
+ 	extension->priv->force_image_load = FALSE;
+ }
+@@ -653,6 +656,11 @@ e_web_extension_initialize (EWebExtension *extension,
+ {
+ 	g_return_if_fail (E_IS_WEB_EXTENSION (extension));
+ 
++	if (extension->priv->initialized)
++		return;
++
++	extension->priv->initialized = TRUE;
++
+ 	extension->priv->wk_extension = g_object_ref (wk_extension);
+ 
+ 	if (emd_global_http_cache == NULL) {
+-- 
+2.15.0
+

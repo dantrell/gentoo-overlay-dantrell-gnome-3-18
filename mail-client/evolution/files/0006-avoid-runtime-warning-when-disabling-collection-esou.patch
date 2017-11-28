@@ -1,0 +1,79 @@
+From a1df61c8cc2507b9f2c59c474f6d3aeb7db860b7 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 30 Oct 2014 10:45:19 +0100
+Subject: [PATCH 0006/1800] Avoid runtime warning when disabling collection
+ ESource
+
+This is related to an ESourceSelector, which checks ESource's
+selected state when it is removed or disabled, but the corresponding
+row in the selector could be already gone, which could produce
+a runtime warning about invalid GtkTreeRowReference.
+---
+ e-util/e-source-selector.c                  |  5 +++++
+ modules/calendar/e-cal-base-shell-content.c | 20 +++++++++++---------
+ 2 files changed, 16 insertions(+), 9 deletions(-)
+
+diff --git a/e-util/e-source-selector.c b/e-util/e-source-selector.c
+index c9bdabd5b1..1c1f8fddb7 100644
+--- a/e-util/e-source-selector.c
++++ b/e-util/e-source-selector.c
+@@ -2187,6 +2187,11 @@ e_source_selector_source_is_selected (ESourceSelector *selector,
+ 	/* Make sure the ESource is in our tree model. */
+ 	source_index = selector->priv->source_index;
+ 	reference = g_hash_table_lookup (source_index, source);
++
++	/* Can be NULL when the source was just removed */
++	if (!reference)
++		return FALSE;
++
+ 	g_return_val_if_fail (gtk_tree_row_reference_valid (reference), FALSE);
+ 
+ 	class = E_SOURCE_SELECTOR_GET_CLASS (selector);
+diff --git a/modules/calendar/e-cal-base-shell-content.c b/modules/calendar/e-cal-base-shell-content.c
+index d95b77fda9..c4b77c5bb0 100644
+--- a/modules/calendar/e-cal-base-shell-content.c
++++ b/modules/calendar/e-cal-base-shell-content.c
+@@ -104,13 +104,13 @@ cal_base_shell_content_object_created_cb (ECalBaseShellContent *cal_base_shell_c
+ }
+ 
+ static void
+-cal_base_sahell_content_view_state_changed_cb (ECalDataModel *data_model,
+-					       ECalClientView *view,
+-					       ECalDataModelViewState state,
+-					       guint percent,
+-					       const gchar *message,
+-					       const GError *error,
+-					       ECalBaseShellContent *cal_base_shell_content)
++cal_base_shell_content_view_state_changed_cb (ECalDataModel *data_model,
++					      ECalClientView *view,
++					      ECalDataModelViewState state,
++					      guint percent,
++					      const gchar *message,
++					      const GError *error,
++					      ECalBaseShellContent *cal_base_shell_content)
+ {
+ 	EShellView *shell_view;
+ 	EShellSidebar *shell_sidebar;
+@@ -126,7 +126,9 @@ cal_base_sahell_content_view_state_changed_cb (ECalDataModel *data_model,
+ 
+ 	selector = e_cal_base_shell_sidebar_get_selector (E_CAL_BASE_SHELL_SIDEBAR (shell_sidebar));
+ 	client = e_cal_client_view_ref_client (view);
+-	g_return_if_fail (client != NULL);
++	/* Can be NULL when the corresponding source had been removed or disabled */
++	if (!client)
++		return;
+ 
+ 	source = e_client_get_source (E_CLIENT (client));
+ 	g_clear_object (&client);
+@@ -185,7 +187,7 @@ cal_base_shell_content_view_created_cb (EShellWindow *shell_window,
+ 
+ 	cal_base_shell_content->priv->view_state_changed_id = g_signal_connect (
+ 		cal_base_shell_content->priv->data_model, "view-state-changed",
+-		G_CALLBACK (cal_base_sahell_content_view_state_changed_cb), cal_base_shell_content);
++		G_CALLBACK (cal_base_shell_content_view_state_changed_cb), cal_base_shell_content);
+ 
+ 	klass = E_CAL_BASE_SHELL_CONTENT_GET_CLASS (cal_base_shell_content);
+ 	g_return_if_fail (klass != NULL);
+-- 
+2.15.0
+

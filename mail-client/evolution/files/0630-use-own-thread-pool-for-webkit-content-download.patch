@@ -1,0 +1,147 @@
+From a704671e49dd9b12dd6f28341d9da5e8dcca3b37 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 3 Apr 2015 08:22:10 +0200
+Subject: [PATCH 0630/1800] Use own thread pool for WebKit content download
+
+Mails with many images (remote content in general) could block GTask's
+thread pool for a long time, making starve other requests. Adding our
+own thread pool avoids such job starving.
+---
+ e-util/e-misc-utils.c | 74 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ e-util/e-misc-utils.h |  4 +++
+ mail/e-http-request.c |  4 +--
+ mail/e-mail-request.c |  4 +--
+ 4 files changed, 82 insertions(+), 4 deletions(-)
+
+diff --git a/e-util/e-misc-utils.c b/e-util/e-misc-utils.c
+index ff53bbc46c..9da55f3855 100644
+--- a/e-util/e-misc-utils.c
++++ b/e-util/e-misc-utils.c
+@@ -3179,3 +3179,77 @@ e_util_prompt_user (GtkWindow *parent,
+ 
+ 	return button == GTK_RESPONSE_YES;
+ }
++
++typedef struct _EUtilSimpleAsyncResultThreadData {
++	GSimpleAsyncResult *simple;
++	GSimpleAsyncThreadFunc func;
++	GCancellable *cancellable;
++} EUtilSimpleAsyncResultThreadData;
++
++static void
++e_util_simple_async_result_thread (gpointer data,
++				   gpointer user_data)
++{
++	EUtilSimpleAsyncResultThreadData *thread_data = data;
++	GError *error = NULL;
++
++	g_return_if_fail (thread_data != NULL);
++	g_return_if_fail (G_IS_SIMPLE_ASYNC_RESULT (thread_data->simple));
++	g_return_if_fail (thread_data->func != NULL);
++
++	if (g_cancellable_set_error_if_cancelled (thread_data->cancellable, &error)) {
++		g_simple_async_result_take_error (thread_data->simple, error);
++	} else {
++		thread_data->func (thread_data->simple,
++			g_async_result_get_source_object (G_ASYNC_RESULT (thread_data->simple)),
++			thread_data->cancellable);
++	}
++
++	g_simple_async_result_complete_in_idle (thread_data->simple);
++
++	g_clear_object (&thread_data->simple);
++	g_clear_object (&thread_data->cancellable);
++	g_free (thread_data);
++}
++
++/**
++ * e_util_run_simple_async_result_in_thread:
++ * @simple: a #GSimpleAsyncResult
++ * @func: a #GSimpleAsyncThreadFunc to execute in the thread
++ * @cancellable: an optional #GCancellable, or %NULL
++ *
++ * Similar to g_simple_async_result_run_in_thread(), except
++ * it doesn't use GTask internally, thus doesn't block the GTask
++ * thread pool with possibly long job.
++ *
++ * It doesn't behave exactly the same as the g_simple_async_result_run_in_thread(),
++ * the @cancellable checking is not done before the finish.
++ *
++ * Since: 3.18
++ **/
++void
++e_util_run_simple_async_result_in_thread (GSimpleAsyncResult *simple,
++					  GSimpleAsyncThreadFunc func,
++					  GCancellable *cancellable)
++{
++	static GThreadPool *thread_pool = NULL;
++	static GMutex thread_pool_mutex;
++	EUtilSimpleAsyncResultThreadData *thread_data;
++
++	g_return_if_fail (G_IS_SIMPLE_ASYNC_RESULT (simple));
++	g_return_if_fail (func != NULL);
++
++	g_mutex_lock (&thread_pool_mutex);
++
++	if (!thread_pool)
++		thread_pool = g_thread_pool_new (e_util_simple_async_result_thread, NULL, 20, FALSE, NULL);
++
++	thread_data = g_new0 (EUtilSimpleAsyncResultThreadData, 1);
++	thread_data->simple = g_object_ref (simple);
++	thread_data->func = func;
++	thread_data->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
++
++	g_thread_pool_push (thread_pool, thread_data, NULL);
++
++	g_mutex_unlock (&thread_pool_mutex);
++}
+diff --git a/e-util/e-misc-utils.h b/e-util/e-misc-utils.h
+index b7ef19d62c..b4d9faacbc 100644
+--- a/e-util/e-misc-utils.h
++++ b/e-util/e-misc-utils.h
+@@ -277,6 +277,10 @@ gboolean	e_util_prompt_user		(GtkWindow *parent,
+ 						 const gchar *promptkey,
+ 						 const gchar *tag,
+ 						 ...);
++void		e_util_run_simple_async_result_in_thread
++						(GSimpleAsyncResult *simple,
++						 GSimpleAsyncThreadFunc func,
++						 GCancellable *cancellable);
+ 
+ guint		e_util_normalize_font_size	(GtkWidget *widget,
+ 						 gdouble font_size);
+diff --git a/mail/e-http-request.c b/mail/e-http-request.c
+index 97cd9c9350..f59d26cca6 100644
+--- a/mail/e-http-request.c
++++ b/mail/e-http-request.c
+@@ -522,9 +522,9 @@ http_request_send_async (SoupRequest *request,
+ 
+ 	g_simple_async_result_set_check_cancellable (simple, cancellable);
+ 
+-	g_simple_async_result_run_in_thread (
++	e_util_run_simple_async_result_in_thread (
+ 		simple, handle_http_request,
+-		G_PRIORITY_DEFAULT, cancellable);
++		cancellable);
+ 
+ 	g_object_unref (simple);
+ }
+diff --git a/mail/e-mail-request.c b/mail/e-mail-request.c
+index f11b3be01d..9a97f4fa05 100644
+--- a/mail/e-mail-request.c
++++ b/mail/e-mail-request.c
+@@ -362,9 +362,9 @@ mail_request_send_async (SoupRequest *request,
+ 	g_simple_async_result_set_check_cancellable (simple, cancellable);
+ 
+ 	if (g_strcmp0 (uri->host, "contact-photo") == 0) {
+-		g_simple_async_result_run_in_thread (
++		e_util_run_simple_async_result_in_thread (
+ 			simple, handle_contact_photo_request,
+-			G_PRIORITY_DEFAULT, cancellable);
++			cancellable);
+ 	} else {
+ 		/* Process e-mail mail requests in this thread, which should be
+ 		 * the main/UI thread, because any EMailFormatter can create
+-- 
+2.15.0
+

@@ -1,0 +1,43 @@
+From 3cf946bdca34f6e23d66c7b99acb225410117c50 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 12 Aug 2015 11:45:13 +0200
+Subject: [PATCH 0938/1800] Add safety checks for `file_info` into
+ emfe_attachment_format()
+
+This could rise when printing. The attachment print can be called
+multiple times, sometimes with not set `file_info` yet, which resulted
+in runtime warnings.
+---
+ em-format/e-mail-formatter-attachment.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/em-format/e-mail-formatter-attachment.c b/em-format/e-mail-formatter-attachment.c
+index 48f4183639..dc605144a7 100644
+--- a/em-format/e-mail-formatter-attachment.c
++++ b/em-format/e-mail-formatter-attachment.c
+@@ -205,7 +205,10 @@ emfe_attachment_format (EMailFormatterExtension *extension,
+ 				E_MAIL_PART_ATTACHMENT (part));
+ 
+ 			file_info = e_attachment_ref_file_info (attachment);
+-			display_name = g_file_info_get_display_name (file_info);
++			if (file_info)
++				display_name = g_file_info_get_display_name (file_info);
++			else
++				display_name = "";
+ 
+ 			description = e_attachment_dup_description (attachment);
+ 			if (description != NULL && *description != '\0') {
+@@ -225,8 +228,8 @@ emfe_attachment_format (EMailFormatterExtension *extension,
+ 			g_free (description);
+ 			g_free (name);
+ 
+-			g_object_unref (attachment);
+-			g_object_unref (file_info);
++			g_clear_object (&attachment);
++			g_clear_object (&file_info);
+ 		}
+ 
+ 		head = g_queue_peek_head_link (extensions);
+-- 
+2.15.0
+

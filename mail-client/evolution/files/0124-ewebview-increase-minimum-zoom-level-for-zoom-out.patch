@@ -1,0 +1,30 @@
+From 6641e5ff8fba0a8956f76b307dbef59a7ee08c1c Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 1 Dec 2014 13:39:03 +0100
+Subject: [PATCH 0124/1800] EWebView - Increase minimum zoom level for zoom out
+
+Newer WebKitGTK (like 2.2.8) breaks the view for a small zoom
+sooner than the older one.
+
+Conflicts:
+	e-util/e-web-view.c
+---
+ e-util/e-web-view.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/e-util/e-web-view.c b/e-util/e-web-view.c
+index c2a72532c0..0bdcd63ecb 100644
+--- a/e-util/e-web-view.c
++++ b/e-util/e-web-view.c
+@@ -2868,7 +2868,7 @@ e_web_view_zoom_out (EWebView *web_view)
+ 	zoom_level = webkit_web_view_get_zoom_level (WEBKIT_WEB_VIEW (web_view));
+ 	/* zoom-step in WK1 was 0.1 */
+ 	zoom_level -= 0.1;
+-	if (zoom_level > 0.1999)
++	if (zoom_level > 0.7999)
+ 		webkit_web_view_set_zoom_level (WEBKIT_WEB_VIEW (web_view), zoom_level);
+ }
+ 
+-- 
+2.15.0
+

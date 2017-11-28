@@ -1,0 +1,86 @@
+From d6d8c4a70ea6aa0067a3ff7b6202824644484b80 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 19 Nov 2014 21:47:54 +0100
+Subject: [PATCH 0089/1800] Bug 736950 - Message with empty body and attachment
+ shows body as attachment.dat
+
+---
+ em-format/e-mail-parser-multipart-mixed.c |  5 +++--
+ em-format/e-mail-parser-text-plain.c      | 26 --------------------------
+ 2 files changed, 3 insertions(+), 28 deletions(-)
+
+diff --git a/em-format/e-mail-parser-multipart-mixed.c b/em-format/e-mail-parser-multipart-mixed.c
+index ad9489557f..432fef4a7d 100644
+--- a/em-format/e-mail-parser-multipart-mixed.c
++++ b/em-format/e-mail-parser-multipart-mixed.c
+@@ -69,12 +69,13 @@ empe_mp_mixed_parse (EMailParserExtension *extension,
+ 		EMailPart *mail_part;
+ 		CamelMimePart *subpart;
+ 		CamelContentType *ct;
++		gboolean handled;
+ 
+ 		subpart = camel_multipart_get_part (mp, i);
+ 
+ 		g_string_append_printf (part_id, ".mixed.%d", i);
+ 
+-		e_mail_parser_parse_part (
++		handled = e_mail_parser_parse_part (
+ 			parser, subpart, part_id, cancellable, &work_queue);
+ 
+ 		mail_part = g_queue_peek_head (&work_queue);
+@@ -95,7 +96,7 @@ empe_mp_mixed_parse (EMailParserExtension *extension,
+ 				parser, subpart, part_id, &work_queue);
+ 
+ 		/* Force messages to be expandable */
+-		} else if (mail_part == NULL ||
++		} else if ((mail_part == NULL && !handled) ||
+ 		    (camel_content_type_is (ct, "message", "*") &&
+ 		     mail_part != NULL &&
+ 		     !e_mail_part_get_is_attachment (mail_part))) {
+diff --git a/em-format/e-mail-parser-text-plain.c b/em-format/e-mail-parser-text-plain.c
+index 26e459ce85..7fbc59c07c 100644
+--- a/em-format/e-mail-parser-text-plain.c
++++ b/em-format/e-mail-parser-text-plain.c
+@@ -44,29 +44,6 @@ static const gchar *parser_mime_types[] = {
+ 	NULL
+ };
+ 
+-static gboolean
+-part_is_empty (CamelMimePart *part)
+-{
+-	CamelDataWrapper *dw;
+-	GByteArray *ba;
+-	guint i;
+-
+-	dw = camel_medium_get_content (CAMEL_MEDIUM (part));
+-	ba = camel_data_wrapper_get_byte_array (dw);
+-
+-	if (!ba)
+-		return TRUE;
+-
+-	for (i = 0; i < ba->len; i++) {
+-
+-		/* Checks for \n, \t, \f, \r, \v and space */
+-		if (!isspace (ba->data[i]))
+-			return FALSE;
+-	}
+-
+-	return TRUE;
+-}
+-
+ static gboolean
+ process_part (EMailParser *parser,
+               GString *part_id,
+@@ -80,9 +57,6 @@ process_part (EMailParser *parser,
+ 	EMailPart *mail_part;
+ 	gint s_len = part_id->len;
+ 
+-	if (part_is_empty (part))
+-		return TRUE;
+-
+ 	type = camel_mime_part_get_content_type (part);
+ 	if (!camel_content_type_is (type, "text", "*")) {
+ 		e_mail_parser_parse_part (
+-- 
+2.15.0
+

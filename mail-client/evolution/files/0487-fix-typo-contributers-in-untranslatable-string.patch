@@ -1,0 +1,25 @@
+From dcd545c4d77c9c0a5e9e837074f0613a0284495e Mon Sep 17 00:00:00 2001
+From: Andre Klapper <a9016009@gmx.de>
+Date: Tue, 10 Mar 2015 23:35:41 +0100
+Subject: [PATCH 0487/1800] Fix typo 'contributers' (in untranslatable string)
+
+---
+ shell/e-shell-window-actions.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/shell/e-shell-window-actions.c b/shell/e-shell-window-actions.c
+index 60afaa0b43..e76f63baec 100644
+--- a/shell/e-shell-window-actions.c
++++ b/shell/e-shell-window-actions.c
+@@ -43,7 +43,7 @@ static const gchar *authors[] = {
+ 	"Milan Crha <mcrha@redhat.com>",
+ 	"Fabiano Fid\xC3\xAAncio <fabiano@fidencio.org>",
+ 	"",
+-	"and many past contributers",
++	"and many past contributors",
+ 	NULL
+ };
+ 
+-- 
+2.15.0
+

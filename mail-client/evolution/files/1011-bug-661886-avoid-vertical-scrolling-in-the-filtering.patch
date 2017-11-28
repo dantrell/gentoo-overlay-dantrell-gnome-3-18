@@ -1,0 +1,43 @@
+From e6a9c99d9962bcae7a953e070bcad2ab98ba4018 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 10 Sep 2015 11:47:04 +0200
+Subject: [PATCH 1011/1800] Bug 661886 - Avoid vertical scrolling in the
+ filtering rules editor dialog
+
+---
+ e-util/e-filter-rule.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/e-util/e-filter-rule.c b/e-util/e-filter-rule.c
+index 3211e166fe..af8b29192d 100644
+--- a/e-util/e-filter-rule.c
++++ b/e-util/e-filter-rule.c
+@@ -727,6 +727,16 @@ ensure_scrolled_height_cb (GtkAdjustment *adj,
+ 	gtk_scrolled_window_set_min_content_height (scrolled_window, require_scw_height);
+ }
+ 
++static void
++parts_mapped_cb (GtkWidget *widget,
++		 GtkScrolledWindow *scrolled_window)
++{
++	g_return_if_fail (GTK_IS_SCROLLED_WINDOW (scrolled_window));
++
++	ensure_scrolled_width_cb (gtk_scrolled_window_get_hadjustment (scrolled_window), NULL, scrolled_window);
++	ensure_scrolled_height_cb (gtk_scrolled_window_get_vadjustment (scrolled_window), NULL, scrolled_window);
++}
++
+ static GtkWidget *
+ filter_rule_get_widget (EFilterRule *rule,
+                         ERuleContext *context)
+@@ -904,6 +914,8 @@ filter_rule_get_widget (EFilterRule *rule,
+ 	vadj = GTK_ADJUSTMENT (gtk_adjustment_new (0.0, 0.0, 1.0, 1.0, 1.0, 1.0));
+ 	scrolledwindow = gtk_scrolled_window_new (hadj, vadj);
+ 
++	g_signal_connect (parts, "map",
++		G_CALLBACK (parts_mapped_cb), scrolledwindow);
+ 	e_signal_connect_notify (
+ 		hadj, "notify::upper",
+ 		G_CALLBACK (ensure_scrolled_width_cb), scrolledwindow);
+-- 
+2.15.0
+

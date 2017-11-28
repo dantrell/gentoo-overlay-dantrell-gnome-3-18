@@ -1,0 +1,146 @@
+From 6e6dab0b07f967ac46c89144e18284bd05fd4214 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 11:21:16 +0100
+Subject: [PATCH 0236/1800] WebKit2 - Build fixes
+
+---
+ web-extensions/e-composer-private-dom-functions.c   |  7 +++----
+ .../e-html-editor-selection-dom-functions.c         |  1 -
+ web-extensions/e-html-editor-view-dom-functions.c   | 21 ++++++++++-----------
+ 3 files changed, 13 insertions(+), 16 deletions(-)
+
+diff --git a/web-extensions/e-composer-private-dom-functions.c b/web-extensions/e-composer-private-dom-functions.c
+index 30e96dad5d..e3f14536f5 100644
+--- a/web-extensions/e-composer-private-dom-functions.c
++++ b/web-extensions/e-composer-private-dom-functions.c
+@@ -91,7 +91,7 @@ prepare_top_signature_spacer (WebKitDOMDocument *document,
+ {
+ 	WebKitDOMElement *element;
+ 
+-	element = prepare_paragraph (document, extension, FALSE);
++	element = dom_prepare_paragraph (document, extension, FALSE);
+ 	webkit_dom_element_remove_attribute (element, "id");
+ 	element_add_class (element, "-x-evo-top-signature-spacer");
+ 
+@@ -104,7 +104,6 @@ composer_move_caret (WebKitDOMDocument *document,
+                      gboolean top_signature,
+ 		     gboolean start_bottom)
+ {
+-	EHTMLEditorSelection *editor_selection;
+ 	gboolean is_message_from_draft;
+ 	gboolean is_message_from_edit_as_new;
+ 	gboolean is_from_new_message;
+@@ -179,7 +178,7 @@ composer_move_caret (WebKitDOMDocument *document,
+ 	if (signature && top_signature) {
+ 		WebKitDOMElement *spacer;
+ 
+-		spacer = prepare_top_signature_spacer (editor_selection, document);
++		spacer = prepare_top_signature_spacer (document, extension);
+ 		webkit_dom_element_set_id (element, "-x-evo-input-start");
+ 		webkit_dom_node_insert_before (
+ 			WEBKIT_DOM_NODE (body),
+@@ -195,7 +194,7 @@ composer_move_caret (WebKitDOMDocument *document,
+ 	if (!signature) {
+ 		if (start_bottom) {
+ 			if (!element) {
+-				element = prepare_paragraph (editor_selection, document);
++				element = dom_prepare_paragraph (document, extension, FALSE);
+ 				webkit_dom_node_append_child (
+ 					WEBKIT_DOM_NODE (body),
+ 					WEBKIT_DOM_NODE (element),
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index 2ba548bb27..7ee4514dfb 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -680,7 +680,6 @@ get_parent_block_node_from_child (WebKitDOMNode *node)
+ 
+ 	return parent;
+ }
+-}
+ 
+ static void
+ merge_list_into_list (WebKitDOMNode *from,
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 2fc9f4bf0e..1a5c4e9509 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -1991,7 +1991,7 @@ body_keyup_event_cb (WebKitDOMElement *element,
+ 			prev_sibling = webkit_dom_node_get_previous_sibling (
+ 				WEBKIT_DOM_NODE (selection_start_marker));
+ 			if (!prev_sibling ||
+-			    (WEBKIT_DOM_IS_HTMLBR_ELEMENT (prev_sibling) &&
++			    (WEBKIT_DOM_IS_HTML_BR_ELEMENT (prev_sibling) &&
+ 			    !webkit_dom_node_get_previous_sibling (prev_sibling))) {
+ 				WebKitDOMElement *block;
+ 
+@@ -2002,8 +2002,8 @@ body_keyup_event_cb (WebKitDOMElement *element,
+ 
+ 					word_wrap_length = e_html_editor_web_extension_get_word_wrap_length (extension);
+ 					length = word_wrap_length - 2 * (level - 1);
+-					block = e_html_editor_selection_wrap_paragraph_length (
+-					selection, block, length);
++					block = dom_wrap_paragraph_length (
++						document, extension, block, length);
+ 					webkit_dom_node_normalize (WEBKIT_DOM_NODE (block));
+ 				}
+ 				quote_plain_text_element_after_wrapping (
+@@ -2023,8 +2023,8 @@ body_keyup_event_cb (WebKitDOMElement *element,
+ 		 */
+ 		tmp_element = webkit_dom_document_get_element_by_id (document, "-x-evo-tmp-block");
+ 		if (tmp_element) {
+-			remove_wrapping_from_element (tmp_element);
+-			remove_quoting_from_element (tmp_element);
++			dom_remove_wrapping_from_element (tmp_element);
++			dom_remove_quoting_from_element (tmp_element);
+ 			webkit_dom_element_remove_attribute (tmp_element, "id");
+ 
+ 			parent = webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (tmp_element));
+@@ -3856,7 +3856,7 @@ dom_convert_content (WebKitDOMDocument *document,
+ 	else
+ 		webkit_dom_node_append_child (
+ 			WEBKIT_DOM_NODE (content_wrapper),
+-			WEBKIT_DOM_NODE (prepare_paragraph (selection, document, FALSE)),
++			WEBKIT_DOM_NODE (dom_prepare_paragraph (document, extension, FALSE)),
+ 			NULL);
+ 
+ 	if (!cite_body) {
+@@ -6113,7 +6113,6 @@ static gboolean
+ fix_structure_after_delete_before_quoted_content (WebKitDOMDocument *document)
+ {
+ 	gboolean collapsed = FALSE;
+-	WebKitDOMDocument *document;
+ 	WebKitDOMElement *selection_start_marker, *selection_end_marker;
+ 	WebKitDOMNode *block, *node;
+ 
+@@ -6147,7 +6146,7 @@ fix_structure_after_delete_before_quoted_content (WebKitDOMDocument *document)
+ 
+ 		/* If there is just BR element go ahead */
+ 		node = webkit_dom_node_get_next_sibling (WEBKIT_DOM_NODE (selection_end_marker));
+-		if (node && !WEBKIT_DOM_IS_HTMLBR_ELEMENT (node))
++		if (node && !WEBKIT_DOM_IS_HTML_BR_ELEMENT (node))
+ 			goto restore;
+ 		else {
+ 			/* Remove the empty block and move caret into the beginning of the citation */
+@@ -6215,7 +6214,7 @@ fix_structure_after_delete_before_quoted_content (WebKitDOMDocument *document)
+ 		}
+ 		node = webkit_dom_node_get_next_sibling (
+ 		WEBKIT_DOM_NODE (selection_end_marker));
+-		if (!node || WEBKIT_DOM_IS_HTMLBR_ELEMENT (node)) {
++		if (!node || WEBKIT_DOM_IS_HTML_BR_ELEMENT (node)) {
+ 			webkit_dom_element_set_id (
+ 				WEBKIT_DOM_ELEMENT (block), "-x-evo-tmp-block");
+ 		}
+@@ -6310,8 +6309,8 @@ dom_process_on_key_press (WebKitDOMDocument *document,
+ 			return TRUE;
+ 	}
+ 
+-	if (event->keyval == GDK_KEY_Delete || event->keyval == GDK_KEY_BackSpace)
+-		if (fix_structure_after_delete_before_quoted_content (view))
++	if (key_val == GDK_KEY_Delete || key_val == GDK_KEY_BackSpace)
++		if (fix_structure_after_delete_before_quoted_content (document))
+ 			return TRUE;
+ 
+ 	return FALSE;
+-- 
+2.15.0
+

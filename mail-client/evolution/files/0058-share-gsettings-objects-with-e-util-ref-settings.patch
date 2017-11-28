@@ -1,0 +1,3072 @@
+From 59e2efa77435a5c948534424b623d03f4dbfafa8 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 13 Nov 2014 10:06:04 +0100
+Subject: [PATCH 0058/1800] Share GSettings objects with e_util_ref_settings()
+
+A simple Evolution run and move between all views means creation of
+more than 100 GSettings objects, with only a bit more than 10 schemas.
+Reusing the objects should have a positive impact on a performance too.
+---
+ addressbook/gui/contact-editor/e-contact-editor.c  |  8 +--
+ addressbook/tools/Makefile.am                      |  4 +-
+ addressbook/tools/evolution-addressbook-export.c   |  3 +
+ calendar/alarm-notify/config-data.c                |  3 +-
+ calendar/alarm-notify/notify-main.c                |  3 +
+ calendar/gui/calendar-config.c                     |  6 +-
+ calendar/gui/dialogs/comp-editor.c                 |  2 +-
+ calendar/gui/e-cal-config.c                        |  2 +-
+ calendar/gui/e-week-view-layout.c                  |  2 +-
+ calendar/gui/itip-utils.c                          |  2 +-
+ calendar/gui/print.c                               |  4 +-
+ calendar/gui/tag-calendar.c                        |  4 +-
+ calendar/importers/icalendar-importer.c            |  4 +-
+ composer/e-composer-actions.c                      |  2 +-
+ composer/e-composer-header-table.c                 |  4 +-
+ composer/e-composer-private.c                      | 12 ++--
+ composer/e-msg-composer.c                          |  4 +-
+ e-util/e-attachment-bar.c                          |  2 +-
+ e-util/e-attachment-handler-image.c                |  4 +-
+ e-util/e-attachment-paned.c                        |  2 +-
+ e-util/e-attachment-store.c                        |  7 ++-
+ e-util/e-attachment.c                              |  4 +-
+ e-util/e-html-editor-actions.c                     |  3 +-
+ e-util/e-html-editor-selection.c                   |  2 +-
+ e-util/e-html-editor-view.c                        | 10 ++--
+ e-util/e-mail-signature-manager.c                  |  3 +-
+ e-util/e-misc-utils.c                              | 64 ++++++++++++++++++++++
+ e-util/e-misc-utils.h                              |  3 +
+ e-util/e-plugin.c                                  |  5 +-
+ e-util/e-spell-text-view.c                         |  3 +-
+ e-util/e-web-view.c                                |  6 +-
+ e-util/evolution-source-viewer.c                   |  5 +-
+ e-util/test-calendar.c                             |  2 +
+ e-util/test-category-completion.c                  |  2 +
+ e-util/test-contact-store.c                        |  2 +
+ e-util/test-dateedit.c                             |  3 +
+ e-util/test-html-editor.c                          |  1 +
+ e-util/test-mail-signatures.c                      |  2 +
+ e-util/test-name-selector.c                        |  1 +
+ e-util/test-preferences-window.c                   |  2 +
+ e-util/test-proxy-preferences.c                    |  2 +
+ e-util/test-source-combo-box.c                     |  2 +
+ e-util/test-source-config.c                        |  3 +
+ e-util/test-source-selector.c                      |  1 +
+ e-util/test-tree-view-frame.c                      |  3 +
+ libemail-engine/e-mail-session.c                   |  6 +-
+ libemail-engine/mail-config.c                      |  2 +-
+ libemail-engine/mail-ops.c                         |  2 +-
+ mail/e-http-request.c                              |  2 +-
+ mail/e-mail-display.c                              |  2 +-
+ mail/e-mail-label-list-store.c                     |  3 +-
+ mail/e-mail-paned-view.c                           |  8 +--
+ mail/e-mail-reader-utils.c                         |  2 +-
+ mail/e-mail-reader.c                               | 16 +++---
+ mail/e-mail-ui-session.c                           |  2 +-
+ mail/em-composer-utils.c                           | 14 ++---
+ mail/em-folder-properties.c                        |  2 +-
+ mail/em-folder-tree.c                              |  2 +-
+ mail/em-utils.c                                    |  8 +--
+ mail/mail-send-recv.c                              |  2 +-
+ mail/message-list.c                                |  6 +-
+ modules/addressbook/autocompletion-config.c        |  4 +-
+ modules/addressbook/e-book-shell-content.c         |  2 +-
+ modules/addressbook/e-book-shell-sidebar.c         |  2 +-
+ modules/addressbook/e-book-shell-view-actions.c    |  2 +-
+ modules/backup-restore/evolution-backup-tool.c     |  3 +-
+ modules/bogofilter/evolution-bogofilter.c          |  2 +-
+ modules/calendar/e-cal-base-shell-backend.c        |  2 +-
+ modules/calendar/e-cal-base-shell-sidebar.c        |  2 +-
+ modules/calendar/e-cal-shell-backend.c             |  4 +-
+ modules/calendar/e-cal-shell-content.c             |  4 +-
+ modules/calendar/e-cal-shell-view-private.c        |  4 +-
+ modules/calendar/e-calendar-preferences.c          | 14 ++---
+ modules/calendar/e-memo-shell-content.c            |  2 +-
+ modules/calendar/e-memo-shell-view-actions.c       |  2 +-
+ modules/calendar/e-task-shell-content.c            |  2 +-
+ modules/calendar/e-task-shell-view-actions.c       |  2 +-
+ modules/calendar/e-task-shell-view-private.c       |  2 +-
+ modules/gravatar/e-gravatar-photo-source.c         |  2 +-
+ modules/itip-formatter/e-mail-parser-itip.c        |  2 +-
+ .../evolution-module-itip-formatter.c              |  2 +-
+ modules/itip-formatter/itip-view.c                 |  4 +-
+ modules/itip-formatter/plugin/config-ui.c          |  4 +-
+ modules/mail/e-mail-attachment-handler.c           |  4 +-
+ modules/mail/e-mail-shell-backend.c                |  8 +--
+ modules/mail/e-mail-shell-sidebar.c                |  2 +-
+ modules/mail/e-mail-shell-view-actions.c           |  6 +-
+ modules/mail/em-composer-prefs.c                   |  2 +-
+ modules/mail/em-mailer-prefs.c                     | 10 ++--
+ modules/mailto-handler/evolution-mailto-handler.c  |  4 +-
+ modules/prefer-plain/e-mail-parser-prefer-plain.c  |  3 +-
+ .../prefer-plain/evolution-module-prefer-plain.c   |  8 ++-
+ modules/prefer-plain/plugin/Makefile.am            |  1 +
+ modules/prefer-plain/plugin/config-ui.c            |  2 +-
+ modules/settings/e-settings-cal-model.c            |  4 +-
+ modules/settings/e-settings-calendar-item.c        |  2 +-
+ modules/settings/e-settings-calendar-view.c        |  2 +-
+ modules/settings/e-settings-client-cache.c         |  4 +-
+ modules/settings/e-settings-comp-editor.c          |  4 +-
+ modules/settings/e-settings-date-edit.c            |  2 +-
+ modules/settings/e-settings-deprecated.c           |  4 +-
+ modules/settings/e-settings-html-editor-view.c     |  2 +-
+ modules/settings/e-settings-mail-browser.c         |  2 +-
+ modules/settings/e-settings-mail-formatter.c       |  2 +-
+ modules/settings/e-settings-mail-part-headers.c    |  2 +-
+ modules/settings/e-settings-mail-reader.c          |  2 +-
+ modules/settings/e-settings-mail-session.c         |  4 +-
+ modules/settings/e-settings-meeting-store.c        |  4 +-
+ .../settings/e-settings-meeting-time-selector.c    |  2 +-
+ modules/settings/e-settings-message-list.c         |  2 +-
+ modules/settings/e-settings-name-selector-entry.c  |  2 +-
+ modules/settings/e-settings-spell-checker.c        |  2 +-
+ modules/settings/e-settings-spell-entry.c          |  2 +-
+ modules/settings/e-settings-weekday-chooser.c      |  8 ++-
+ modules/spamassassin/evolution-spamassassin.c      |  2 +-
+ .../e-mail-formatter-text-highlight.c              |  5 +-
+ plugins/attachment-reminder/attachment-reminder.c  |  4 +-
+ plugins/bbdb/bbdb.c                                | 18 +++---
+ plugins/bbdb/gaimbuddies.c                         |  4 +-
+ plugins/email-custom-header/email-custom-header.c  |  6 +-
+ plugins/external-editor/external-editor.c          | 10 ++--
+ plugins/face/face.c                                |  4 +-
+ plugins/mail-notification/mail-notification.c      | 10 ++--
+ plugins/publish-calendar/publish-calendar.c        |  6 +-
+ plugins/publish-calendar/publish-location.c        |  2 +-
+ plugins/save-calendar/rdf-format.c                 |  2 +-
+ plugins/templates/templates.c                      |  2 +-
+ shell/e-shell-migrate.c                            |  4 +-
+ shell/e-shell-window-actions.c                     |  4 +-
+ shell/e-shell-window-private.c                     |  8 +--
+ shell/e-shell.c                                    |  2 +-
+ shell/main.c                                       | 12 ++--
+ 132 files changed, 354 insertions(+), 225 deletions(-)
+
+diff --git a/addressbook/gui/contact-editor/e-contact-editor.c b/addressbook/gui/contact-editor/e-contact-editor.c
+index e0a54858da..a7c5a8bcbf 100644
+--- a/addressbook/gui/contact-editor/e-contact-editor.c
++++ b/addressbook/gui/contact-editor/e-contact-editor.c
+@@ -1813,7 +1813,7 @@ static void
+ configure_visibility (EContactEditor *editor)
+ {
+ 	gboolean show_tab;
+-	GSettings *settings = g_settings_new ("org.gnome.evolution.addressbook");
++	GSettings *settings = e_util_ref_settings ("org.gnome.evolution.addressbook");
+ 
+ 	configure_widget_visibility (editor, settings, "vbox-contact-phone", "editor-show-contact-phone", CHECK_PHONE);
+ 	configure_widget_visibility (editor, settings, "vbox-contact-sip",   "editor-show-contact-sip",   CHECK_SIP);
+@@ -1861,7 +1861,7 @@ config_save_cb (GtkWidget *button,
+ {
+ 	GSettings *settings;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.addressbook");
++	settings = e_util_ref_settings ("org.gnome.evolution.addressbook");
+ 
+ 	config_menuitem_save (editor, settings, "menuitem-config-phone", "editor-show-contact-phone");
+ 	config_menuitem_save (editor, settings, "menuitem-config-sip",   "editor-show-contact-sip");
+@@ -1917,7 +1917,7 @@ init_config (EContactEditor *editor)
+ 		button, "clicked",
+ 		G_CALLBACK (config_sensitize_cb), editor);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.addressbook");
++	settings = e_util_ref_settings ("org.gnome.evolution.addressbook");
+ 
+ 	init_config_menuitem (editor, settings, "menuitem-config-phone", "editor-show-contact-phone");
+ 	init_config_menuitem (editor, settings, "menuitem-config-sip",   "editor-show-contact-sip");
+@@ -2445,7 +2445,7 @@ set_address_label (EContact *contact,
+ 		return;
+ 	}
+ 
+-	settings = g_settings_new ("org.gnome.evolution.addressbook");
++	settings = e_util_ref_settings ("org.gnome.evolution.addressbook");
+ 	format_address = g_settings_get_boolean (settings, "address-formatting");
+ 	g_object_unref (settings);
+ 
+diff --git a/addressbook/tools/Makefile.am b/addressbook/tools/Makefile.am
+index b715b9fe80..d46b373f65 100644
+--- a/addressbook/tools/Makefile.am
++++ b/addressbook/tools/Makefile.am
+@@ -16,6 +16,7 @@ evolution_addressbook_export_CPPFLAGS =			\
+ 	-I$(top_srcdir)/addressbook			\
+ 	-I$(top_builddir)/addressbook			\
+ 	$(EVOLUTION_DATA_SERVER_CFLAGS)			\
++	$(GNOME_PLATFORM_CFLAGS)			\
+ 	$(CODE_COVERAGE_CFLAGS)
+ 
+ evolution_addressbook_export_SOURCES =				\
+@@ -26,7 +27,8 @@ evolution_addressbook_export_SOURCES =				\
+ 
+ evolution_addressbook_export_LDADD =				\
+ 	$(top_builddir)/e-util/libevolution-util.la		\
+-	$(EVOLUTION_DATA_SERVER_LIBS)
++	$(EVOLUTION_DATA_SERVER_LIBS)				\
++	$(GNOME_PLATFORM_LIBS)
+ 
+ evolution_addressbook_export_LDFLAGS = $(CODE_COVERAGE_LDFLAGS)
+ 
+diff --git a/addressbook/tools/evolution-addressbook-export.c b/addressbook/tools/evolution-addressbook-export.c
+index 8aa9e732cd..6f065bbc8b 100644
+--- a/addressbook/tools/evolution-addressbook-export.c
++++ b/addressbook/tools/evolution-addressbook-export.c
+@@ -29,6 +29,7 @@
+ 
+ #include <libebook/libebook.h>
+ 
++#include <e-util/e-util.h>
+ #include "e-util/e-util-private.h"
+ 
+ #include "evolution-addressbook-export.h"
+@@ -158,6 +159,8 @@ main (gint argc,
+ 
+ 	g_object_unref (actctx.registry);
+ 
++	e_util_cleanup_settings ();
++
+ 	/*FIXME:should free actctx's some gchar * field, such as output_file! but since the program will end, so that will not cause mem leak.  */
+ 
+ 	return 0;
+diff --git a/calendar/alarm-notify/config-data.c b/calendar/alarm-notify/config-data.c
+index 5c624c3097..d52dbba193 100644
+--- a/calendar/alarm-notify/config-data.c
++++ b/calendar/alarm-notify/config-data.c
+@@ -26,6 +26,7 @@
+ #endif
+ 
+ #include <string.h>
++#include <e-util/e-util.h>
+ #include "config-data.h"
+ 
+ /* Whether we have initied ourselves by reading
+@@ -60,7 +61,7 @@ ensure_inited (void)
+ 	if (calendar_settings)
+ 		return;
+ 
+-	calendar_settings = g_settings_new ("org.gnome.evolution.calendar");
++	calendar_settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ }
+ 
+ icaltimezone *
+diff --git a/calendar/alarm-notify/notify-main.c b/calendar/alarm-notify/notify-main.c
+index eb8478aebb..c77b84a5da 100644
+--- a/calendar/alarm-notify/notify-main.c
++++ b/calendar/alarm-notify/notify-main.c
+@@ -29,6 +29,8 @@
+ #include <stdlib.h>
+ #include <glib/gi18n.h>
+ 
++#include <e-util/e-util.h>
++
+ #include "alarm-notify.h"
+ #include "config-data.h"
+ 
+@@ -83,6 +85,7 @@ main (gint argc,
+ 
+ 	g_object_unref (alarm_notify_service);
+ 	config_data_cleanup ();
++	e_util_cleanup_settings ();
+ 
+ 	return exit_status;
+ }
+diff --git a/calendar/gui/calendar-config.c b/calendar/gui/calendar-config.c
+index edf242d0c6..06d9f4ab6a 100644
+--- a/calendar/gui/calendar-config.c
++++ b/calendar/gui/calendar-config.c
+@@ -52,7 +52,7 @@ calendar_config_init (void)
+ 	if (config)
+ 		return;
+ 
+-	config = g_settings_new ("org.gnome.evolution.calendar");
++	config = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	/* will be freed together with EShell */
+ 	g_object_set_data_full (
+@@ -102,7 +102,7 @@ calendar_config_get_timezone (void)
+ 	GSettings *settings;
+ 	gboolean use_system_timezone;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	use_system_timezone =
+ 		g_settings_get_boolean (settings, "use-system-timezone");
+@@ -445,7 +445,7 @@ calendar_config_get_prefer_meeting (void)
+ 	gchar *prefer_new_item;
+ 	gboolean prefer_meeting;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	prefer_new_item = g_settings_get_string (settings, "prefer-new-item");
+ 	prefer_meeting = g_strcmp0 (prefer_new_item, "event-meeting-new") == 0;
+diff --git a/calendar/gui/dialogs/comp-editor.c b/calendar/gui/dialogs/comp-editor.c
+index 57486de988..5c0925d187 100644
+--- a/calendar/gui/dialogs/comp-editor.c
++++ b/calendar/gui/dialogs/comp-editor.c
+@@ -2102,7 +2102,7 @@ comp_editor_init (CompEditor *editor)
+ 
+ 	active_editors = g_list_prepend (active_editors, editor);
+ 
+-	priv->calendar_settings = g_settings_new ("org.gnome.evolution.calendar");
++	priv->calendar_settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	/* Each editor window gets its own window group. */
+ 	window = GTK_WINDOW (editor);
+diff --git a/calendar/gui/e-cal-config.c b/calendar/gui/e-cal-config.c
+index ef29338ea6..15fda00c14 100644
+--- a/calendar/gui/e-cal-config.c
++++ b/calendar/gui/e-cal-config.c
+@@ -154,7 +154,7 @@ e_cal_config_target_new_prefs (ECalConfig *ecp)
+ 	t = e_config_target_new (
+ 		&ecp->config, EC_CONFIG_TARGET_PREFS, sizeof (*t));
+ 
+-	t->settings = g_settings_new ("org.gnome.evolution.calendar");
++	t->settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	return t;
+ }
+diff --git a/calendar/gui/e-week-view-layout.c b/calendar/gui/e-week-view-layout.c
+index 813c9d3f8b..3dc9a59988 100644
+--- a/calendar/gui/e-week-view-layout.c
++++ b/calendar/gui/e-week-view-layout.c
+@@ -351,7 +351,7 @@ e_week_view_layout_get_day_position (gint day,
+ 
+ 		g_return_if_fail (day < 7);
+ 
+-		settings = g_settings_new ("org.gnome.evolution.calendar");
++		settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 		if (g_settings_get_boolean (settings, "work-day-monday"))
+ 			work_days[0] = 1, n_work_days_mon_wed++;
+diff --git a/calendar/gui/itip-utils.c b/calendar/gui/itip-utils.c
+index 731fda71f0..91ff5b074d 100644
+--- a/calendar/gui/itip-utils.c
++++ b/calendar/gui/itip-utils.c
+@@ -1772,7 +1772,7 @@ itip_send_component_finish (ItipSendComponentData *isc)
+ 
+ 	isc->success = FALSE;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 	use_24hour_format = g_settings_get_boolean (settings, "use-24hour-format");
+ 	g_object_unref (settings);
+ 
+diff --git a/calendar/gui/print.c b/calendar/gui/print.c
+index 158f851774..7cc5f634fe 100644
+--- a/calendar/gui/print.c
++++ b/calendar/gui/print.c
+@@ -118,7 +118,7 @@ get_day_view_time_divisions (void)
+ 	GSettings *settings;
+ 	gint time_divisions;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	time_divisions = g_settings_get_int (settings, "time-divisions");
+ 	if (time_divisions < 5 || time_divisions > 30)
+@@ -643,7 +643,7 @@ get_show_week_numbers (void)
+ 	GSettings *settings;
+ 	gboolean show_week_numbers;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	show_week_numbers =
+ 		g_settings_get_boolean (settings, "show-week-numbers");
+diff --git a/calendar/gui/tag-calendar.c b/calendar/gui/tag-calendar.c
+index 6759338e86..259fddcb8d 100644
+--- a/calendar/gui/tag-calendar.c
++++ b/calendar/gui/tag-calendar.c
+@@ -671,7 +671,7 @@ e_tag_calendar_constructed (GObject *object)
+ 
+ 	gtk_widget_set_has_tooltip (GTK_WIDGET (tag_calendar->priv->calendar), TRUE);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	g_settings_bind (
+ 		settings, "recur-events-italic",
+@@ -1028,7 +1028,7 @@ tag_calendar_by_comp (ECalendar *ecal,
+ 	if (!prepare_tag (ecal, &closure, display_zone, clear_first))
+ 		return;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	closure.skip_transparent_events = FALSE;
+ 	closure.recur_events_italic =
+diff --git a/calendar/importers/icalendar-importer.c b/calendar/importers/icalendar-importer.c
+index 6344326188..fd4c9ad85c 100644
+--- a/calendar/importers/icalendar-importer.c
++++ b/calendar/importers/icalendar-importer.c
+@@ -1052,7 +1052,7 @@ gnome_calendar_getwidget (EImport *ei,
+ 	GSettings *settings;
+ 	gboolean done_cal, done_tasks;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.importer");
++	settings = e_util_ref_settings ("org.gnome.evolution.importer");
+ 	done_cal = g_settings_get_boolean (settings, "gnome-calendar-done-calendar");
+ 	done_tasks = g_settings_get_boolean (settings, "gnome-calendar-done-tasks");
+ 	g_object_unref (settings);
+@@ -1405,7 +1405,7 @@ get_users_timezone (void)
+ 	icaltimezone *zone = NULL;
+ 	gchar *location;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	if (g_settings_get_boolean (settings, "use-system-timezone")) {
+ 		location = e_cal_util_get_system_timezone_location ();
+diff --git a/composer/e-composer-actions.c b/composer/e-composer-actions.c
+index eb61ebed2c..cc33a6feb3 100644
+--- a/composer/e-composer-actions.c
++++ b/composer/e-composer-actions.c
+@@ -42,7 +42,7 @@ composer_copy_em_utils_prompt_user (GtkWindow *parent,
+ 	GSettings *settings;
+ 	EAlert *alert = NULL;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	if (promptkey && !g_settings_get_boolean (settings, promptkey)) {
+ 		g_object_unref (settings);
+diff --git a/composer/e-composer-header-table.c b/composer/e-composer-header-table.c
+index af63fca604..bf0ab0b3a1 100644
+--- a/composer/e-composer-header-table.c
++++ b/composer/e-composer-header-table.c
+@@ -270,7 +270,7 @@ composer_header_table_setup_mail_headers (EComposerHeaderTable *table)
+ 	GSettings *settings;
+ 	gint ii;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	for (ii = 0; ii < E_COMPOSER_NUM_HEADERS; ii++) {
+ 		EComposerHeader *header;
+@@ -341,7 +341,7 @@ composer_header_table_setup_post_headers (EComposerHeaderTable *table)
+ 	GSettings *settings;
+ 	gint ii;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	for (ii = 0; ii < E_COMPOSER_NUM_HEADERS; ii++) {
+ 		EComposerHeader *header;
+diff --git a/composer/e-composer-private.c b/composer/e-composer-private.c
+index 0d1c9003e0..7eb656a043 100644
+--- a/composer/e-composer-private.c
++++ b/composer/e-composer-private.c
+@@ -112,7 +112,7 @@ e_composer_private_constructed (EMsgComposer *composer)
+ 	ui_manager = e_html_editor_get_ui_manager (editor);
+ 	view = e_html_editor_get_view (editor);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	shell = e_msg_composer_get_shell (composer);
+ 	client_cache = e_shell_get_client_cache (shell);
+@@ -460,7 +460,7 @@ e_composer_get_default_charset (void)
+ 	GSettings *settings;
+ 	gchar *charset;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	charset = g_settings_get_string (settings, "composer-charset");
+ 
+@@ -766,7 +766,7 @@ add_signature_delimiter (EMsgComposer *composer)
+ 	gboolean signature_delim;
+ 
+ 	/* FIXME This should be an EMsgComposer property. */
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	signature_delim = !g_settings_get_boolean (
+ 		settings, "composer-no-signature-delim");
+ 	g_object_unref (settings);
+@@ -781,7 +781,7 @@ use_top_signature (EMsgComposer *composer)
+ 	gboolean top_signature;
+ 
+ 	/* FIXME This should be an EMsgComposer property. */
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	top_signature = g_settings_get_boolean (
+ 		settings, "composer-top-signature");
+ 	g_object_unref (settings);
+@@ -846,7 +846,7 @@ composer_move_caret (EMsgComposer *composer)
+ 
+ 	/* When there is an option composer-reply-start-bottom set we have
+ 	 * to move the caret between reply and signature. */
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	start_bottom = g_settings_get_boolean (settings, "composer-reply-start-bottom");
+ 	g_object_unref (settings);
+ 
+@@ -1046,7 +1046,7 @@ composer_load_signature_cb (EMailSignatureComboBox *combo_box,
+ 		!is_message_from_edit_as_new &&
+ 		!composer->priv->is_from_new_message;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	start_bottom = g_settings_get_boolean (settings, "composer-reply-start-bottom");
+ 	g_object_unref (settings);
+ 
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 090c9e3adf..3604f2902e 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -2179,7 +2179,7 @@ msg_composer_constructed (GObject *object)
+ 	/* Honor User Preferences */
+ 
+ 	/* FIXME This should be an EMsgComposer property. */
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	action = GTK_TOGGLE_ACTION (ACTION (REQUEST_READ_RECEIPT));
+ 	active = g_settings_get_boolean (settings, "composer-request-receipt");
+ 	gtk_toggle_action_set_active (action, active);
+@@ -5111,7 +5111,7 @@ e_save_spell_languages (const GList *spell_dicts)
+ 	g_ptr_array_add (lang_array, NULL);
+ 
+ 	/* Save the language codes to GSettings. */
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	g_settings_set_strv (
+ 		settings, "composer-spell-languages",
+ 		(const gchar * const *) lang_array->pdata);
+diff --git a/e-util/e-attachment-bar.c b/e-util/e-attachment-bar.c
+index 83c3c69430..f67227902b 100644
+--- a/e-util/e-attachment-bar.c
++++ b/e-util/e-attachment-bar.c
+@@ -361,7 +361,7 @@ attachment_bar_constructed (GObject *object)
+ 		G_BINDING_SYNC_CREATE);
+ 
+ 	/* Set up property-to-GSettings bindings. */
+-	settings = g_settings_new ("org.gnome.evolution.shell");
++	settings = e_util_ref_settings ("org.gnome.evolution.shell");
+ 	g_settings_bind (
+ 		settings, "attachment-view",
+ 		object, "active-view",
+diff --git a/e-util/e-attachment-handler-image.c b/e-util/e-attachment-handler-image.c
+index 4da72e1c5e..5de55e9c68 100644
+--- a/e-util/e-attachment-handler-image.c
++++ b/e-util/e-attachment-handler-image.c
+@@ -27,6 +27,8 @@
+ #include <glib/gi18n.h>
+ #include <gdesktop-enums.h>
+ 
++#include "e-misc-utils.h"
++
+ #define E_ATTACHMENT_HANDLER_IMAGE_GET_PRIVATE(obj) \
+ 	(G_TYPE_INSTANCE_GET_PRIVATE \
+ 	((obj), E_TYPE_ATTACHMENT_HANDLER_IMAGE, EAttachmentHandlerImagePrivate))
+@@ -64,7 +66,7 @@ action_image_set_as_background_saved_cb (EAttachment *attachment,
+ 	GError *error = NULL;
+ 
+ 	view = e_attachment_handler_get_view (handler);
+-	settings = g_settings_new ("org.gnome.desktop.background");
++	settings = e_util_ref_settings ("org.gnome.desktop.background");
+ 
+ 	file = e_attachment_save_finish (attachment, result, &error);
+ 
+diff --git a/e-util/e-attachment-paned.c b/e-util/e-attachment-paned.c
+index 1b53cd4532..99d90c1576 100644
+--- a/e-util/e-attachment-paned.c
++++ b/e-util/e-attachment-paned.c
+@@ -363,7 +363,7 @@ attachment_paned_constructed (GObject *object)
+ 
+ 	priv = E_ATTACHMENT_PANED_GET_PRIVATE (object);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.shell");
++	settings = e_util_ref_settings ("org.gnome.evolution.shell");
+ 
+ 	/* Set up property-to-property bindings. */
+ 
+diff --git a/e-util/e-attachment-store.c b/e-util/e-attachment-store.c
+index 10970bb8cc..57fefdb307 100644
+--- a/e-util/e-attachment-store.c
++++ b/e-util/e-attachment-store.c
+@@ -34,6 +34,7 @@
+ #endif
+ 
+ #include "e-mktemp.h"
++#include "e-misc-utils.h"
+ 
+ #define E_ATTACHMENT_STORE_GET_PRIVATE(obj) \
+ 	(G_TYPE_INSTANCE_GET_PRIVATE \
+@@ -525,7 +526,7 @@ e_attachment_store_run_load_dialog (EAttachmentStore *store,
+ 	option_format_box = GTK_BOX (option_format_box_widget);
+ 	gtk_box_pack_start (extra_box, option_format_box_widget, FALSE, FALSE, 0);
+ 
+-	settings = g_settings_new (AUTOAR_PREF_DEFAULT_GSCHEMA_ID);
++	settings = e_util_ref_settings (AUTOAR_PREF_DEFAULT_GSCHEMA_ID);
+ 	arpref = autoar_pref_new_with_gsettings (settings);
+ 
+ 	option_format_label = gtk_label_new (
+@@ -693,7 +694,7 @@ e_attachment_store_run_save_dialog (EAttachmentStore *store,
+ 
+ #ifdef HAVE_AUTOAR
+ 		mime_type = e_attachment_dup_mime_type (attachment);
+-		settings = g_settings_new (AUTOAR_PREF_DEFAULT_GSCHEMA_ID);
++		settings = e_util_ref_settings (AUTOAR_PREF_DEFAULT_GSCHEMA_ID);
+ 		arpref = autoar_pref_new_with_gsettings (settings);
+ 		if (!autoar_pref_check_file_name (arpref, name) &&
+ 		    !autoar_pref_check_mime_type_d (arpref, mime_type)) {
+@@ -733,7 +734,7 @@ e_attachment_store_run_save_dialog (EAttachmentStore *store,
+ 			GSettings *settings;
+ 			GList *iter;
+ 
+-			settings = g_settings_new (AUTOAR_PREF_DEFAULT_GSCHEMA_ID);
++			settings = e_util_ref_settings (AUTOAR_PREF_DEFAULT_GSCHEMA_ID);
+ 			arpref = autoar_pref_new_with_gsettings (settings);
+ 
+ 			for (iter = attachment_list; iter != NULL; iter = iter->next) {
+diff --git a/e-util/e-attachment.c b/e-util/e-attachment.c
+index 97287f4a40..eb74037c09 100644
+--- a/e-util/e-attachment.c
++++ b/e-util/e-attachment.c
+@@ -189,7 +189,7 @@ attachment_get_default_charset (void)
+ 
+ 	/* XXX This doesn't really belong here. */
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	charset = g_settings_get_string (settings, "composer-charset");
+ 	if (charset == NULL || *charset == '\0') {
+ 		g_free (charset);
+@@ -3173,7 +3173,7 @@ attachment_save_got_output_stream (SaveContext *save_context)
+ 		AutoarPref *arpref;
+ 		AutoarExtract *arextract;
+ 
+-		settings = g_settings_new (AUTOAR_PREF_DEFAULT_GSCHEMA_ID);
++		settings = e_util_ref_settings (AUTOAR_PREF_DEFAULT_GSCHEMA_ID);
+ 		arpref = autoar_pref_new_with_gsettings (settings);
+ 		autoar_pref_set_delete_if_succeed (arpref, FALSE);
+ 
+diff --git a/e-util/e-html-editor-actions.c b/e-util/e-html-editor-actions.c
+index 19b2c7bb24..713248d676 100644
+--- a/e-util/e-html-editor-actions.c
++++ b/e-util/e-html-editor-actions.c
+@@ -34,6 +34,7 @@
+ #include "e-emoticon-chooser.h"
+ #include "e-image-chooser-dialog.h"
+ #include "e-spell-checker.h"
++#include "e-misc-utils.h"
+ 
+ static void
+ insert_html_file_ready_cb (GFile *file,
+@@ -2067,7 +2068,7 @@ editor_actions_init (EHTMLEditor *editor)
+ 		editor->priv->suggestion_actions, "sensitive",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	gtk_action_set_visible (
+ 		ACTION (WEBKIT_INSPECTOR),
+ 		g_settings_get_boolean (settings, "composer-developer-mode"));
+diff --git a/e-util/e-html-editor-selection.c b/e-util/e-html-editor-selection.c
+index c45f476b23..7299304001 100644
+--- a/e-util/e-html-editor-selection.c
++++ b/e-util/e-html-editor-selection.c
+@@ -847,7 +847,7 @@ e_html_editor_selection_init (EHTMLEditorSelection *selection)
+ 
+ 	selection->priv = E_HTML_EDITOR_SELECTION_GET_PRIVATE (selection);
+ 
+-	g_settings = g_settings_new ("org.gnome.evolution.mail");
++	g_settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	selection->priv->word_wrap_length =
+ 		g_settings_get_int (g_settings, "composer-word-wrap-length");
+ 	g_object_unref (g_settings);
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 96137a665c..595ee33fb7 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -2944,7 +2944,7 @@ html_editor_view_redirect_uri (EHTMLEditorView *view,
+ 		/* Check Evolution's cache */
+ 		image_exists = html_editor_view_image_exists_in_cache (uri);
+ 
+-		settings = g_settings_new ("org.gnome.evolution.mail");
++		settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 		image_policy = g_settings_get_enum (settings, "image-loading-policy");
+ 		g_object_unref (settings);
+ 		/* If the URI is not cached and we are not allowed to load it
+@@ -4457,7 +4457,7 @@ html_editor_convert_view_content (EHTMLEditorView *view,
+ 	WebKitDOMNodeList *list;
+ 	WebKitDOMNode *node;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	start_bottom = g_settings_get_boolean (settings, "composer-reply-start-bottom");
+ 	g_object_unref (settings);
+ 
+@@ -7115,7 +7115,7 @@ e_html_editor_view_init (EHTMLEditorView *view)
+ 		"html-editor-view", view,
+ 		NULL);
+ 
+-	g_settings = g_settings_new ("org.gnome.desktop.interface");
++	g_settings = e_util_ref_settings ("org.gnome.desktop.interface");
+ 	g_signal_connect (
+ 		g_settings, "changed::font-name",
+ 		G_CALLBACK (e_html_editor_settings_changed_cb), view);
+@@ -7124,7 +7124,7 @@ e_html_editor_view_init (EHTMLEditorView *view)
+ 		G_CALLBACK (e_html_editor_settings_changed_cb), view);
+ 	view->priv->font_settings = g_settings;
+ 
+-	g_settings = g_settings_new ("org.gnome.evolution.mail");
++	g_settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	view->priv->mail_settings = g_settings;
+ 
+ 	/* This schema is optional.  Use if available. */
+@@ -7132,7 +7132,7 @@ e_html_editor_view_init (EHTMLEditorView *view)
+ 		g_settings_schema_source_get_default (),
+ 		"org.gnome.settings-daemon.plugins.xsettings", FALSE);
+ 	if (settings_schema != NULL) {
+-		g_settings = g_settings_new ("org.gnome.settings-daemon.plugins.xsettings");
++		g_settings = e_util_ref_settings ("org.gnome.settings-daemon.plugins.xsettings");
+ 		g_signal_connect (
+ 			settings, "changed::antialiasing",
+ 			G_CALLBACK (e_html_editor_settings_changed_cb), view);
+diff --git a/e-util/e-mail-signature-manager.c b/e-util/e-mail-signature-manager.c
+index 7d1efdb43e..1ebb9a5250 100644
+--- a/e-util/e-mail-signature-manager.c
++++ b/e-util/e-mail-signature-manager.c
+@@ -24,6 +24,7 @@
+ #include <libedataserver/libedataserver.h>
+ 
+ #include "e-dialog-widgets.h"
++#include "e-misc-utils.h"
+ #include "e-mail-signature-preview.h"
+ #include "e-mail-signature-tree-view.h"
+ #include "e-mail-signature-script-dialog.h"
+@@ -338,7 +339,7 @@ mail_signature_manager_constructed (GObject *object)
+ 	manager->priv->add_script_button = widget;  /* not referenced */
+ 	gtk_widget_show (widget);
+ 
+-	settings = g_settings_new ("org.gnome.desktop.lockdown");
++	settings = e_util_ref_settings ("org.gnome.desktop.lockdown");
+ 
+ 	g_settings_bind (
+ 		settings, "disable-command-line",
+diff --git a/e-util/e-misc-utils.c b/e-util/e-misc-utils.c
+index 49ec6657b7..0cf65d2672 100644
+--- a/e-util/e-misc-utils.c
++++ b/e-util/e-misc-utils.c
+@@ -3017,3 +3017,67 @@ e_signal_disconnect_notify_handler (gpointer instance,
+ 	g_signal_handler_disconnect (instance, *handler_id);
+ 	*handler_id = 0;
+ }
++
++static GMutex settings_hash_lock;
++static GHashTable *settings_hash = NULL;
++
++/**
++ * e_util_ref_settings:
++ * @schema_id: the id of the schema to reference settings for
++ *
++ * Either returns an existing referenced #GSettings object for the given @schema_id,
++ * or creates a new one and remembers it for later use, to avoid having too many
++ * #GSettings objects created for the same @schema_id.
++ *
++ * Returns: A #GSettings for the given @schema_id. The returned #GSettings object
++ *   is referenced, thus free it with g_object_unref() when done with it.
++ *
++ * Since: 3.14
++ **/
++GSettings *
++e_util_ref_settings (const gchar *schema_id)
++{
++	GSettings *settings;
++
++	g_return_val_if_fail (schema_id != NULL, NULL);
++	g_return_val_if_fail (*schema_id, NULL);
++
++	g_mutex_lock (&settings_hash_lock);
++
++	if (!settings_hash) {
++		settings_hash = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_object_unref);
++	}
++
++	settings = g_hash_table_lookup (settings_hash, schema_id);
++	if (!settings) {
++		settings = g_settings_new (schema_id);
++		g_hash_table_insert (settings_hash, g_strdup (schema_id), settings);
++	}
++
++	if (settings)
++		g_object_ref (settings);
++
++	g_mutex_unlock (&settings_hash_lock);
++
++	return settings;
++}
++
++/**
++ * e_util_cleanup_settings:
++ *
++ * Frees all the memory taken by e_util_ref_settings().
++ *
++ * Since: 3.14
++ **/
++void
++e_util_cleanup_settings (void)
++{
++	g_mutex_lock (&settings_hash_lock);
++
++	if (settings_hash) {
++		g_hash_table_destroy (settings_hash);
++		settings_hash = NULL;
++	}
++
++	g_mutex_unlock (&settings_hash_lock);
++}
+diff --git a/e-util/e-misc-utils.h b/e-util/e-misc-utils.h
+index b480aa6a08..3bd5f4869e 100644
+--- a/e-util/e-misc-utils.h
++++ b/e-util/e-misc-utils.h
+@@ -282,6 +282,9 @@ void		e_signal_disconnect_notify_handler
+ 						(gpointer instance,
+ 						 gulong *handler_id);
+ 
++GSettings *	e_util_ref_settings		(const gchar *schema_id);
++void		e_util_cleanup_settings		(void);
++
+ G_END_DECLS
+ 
+ #endif /* E_MISC_UTILS_H */
+diff --git a/e-util/e-plugin.c b/e-util/e-plugin.c
+index 167571e1c1..5657b75a89 100644
+--- a/e-util/e-plugin.c
++++ b/e-util/e-plugin.c
+@@ -28,6 +28,7 @@
+ 
+ #include "e-plugin.h"
+ #include "e-util-private.h"
++#include "e-misc-utils.h"
+ 
+ /* plugin debug */
+ #define pd(x)
+@@ -121,7 +122,7 @@ ep_set_enabled (const gchar *id,
+ 	} else
+ 		ep_disabled = g_slist_prepend (ep_disabled, g_strdup (id));
+ 
+-	settings = g_settings_new ("org.gnome.evolution");
++	settings = e_util_ref_settings ("org.gnome.evolution");
+ 	array = g_ptr_array_new ();
+ 	for (link = ep_disabled; link != NULL; link = link->next)
+ 		g_ptr_array_add (array, link->data);
+@@ -505,7 +506,7 @@ e_plugin_load_plugins (void)
+ 		E_TYPE_PLUGIN_HOOK, (ETypeFunc)
+ 		plugin_hook_load_subclass, eph_types);
+ 
+-	settings = g_settings_new ("org.gnome.evolution");
++	settings = e_util_ref_settings ("org.gnome.evolution");
+ 	strv = g_settings_get_strv (settings, "disabled-eplugins");
+ 	for (i = 0, ep_disabled = NULL; strv[i] != NULL; i++)
+ 		ep_disabled = g_slist_append (ep_disabled, g_strdup (strv[i]));
+diff --git a/e-util/e-spell-text-view.c b/e-util/e-spell-text-view.c
+index 623713acc8..e6f4412ad7 100644
+--- a/e-util/e-spell-text-view.c
++++ b/e-util/e-spell-text-view.c
+@@ -27,6 +27,7 @@
+ #include <gtkspell/gtkspell.h>
+ #endif
+ 
++#include "e-misc-utils.h"
+ #include "e-spell-text-view.h"
+ 
+ /**
+@@ -69,7 +70,7 @@ e_spell_text_view_attach (GtkTextView *text_view)
+ 	gchar **strv;
+ 	gboolean success;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	/* do nothing, if spell-checking is disabled */
+ 	if (!g_settings_get_boolean (settings, "composer-inline-spelling")) {
+diff --git a/e-util/e-web-view.c b/e-util/e-web-view.c
+index df89e8de71..ad94c8394c 100644
+--- a/e-util/e-web-view.c
++++ b/e-util/e-web-view.c
+@@ -863,7 +863,7 @@ web_view_constructed (GObject *object)
+ #ifndef G_OS_WIN32
+ 	GSettings *settings;
+ 
+-	settings = g_settings_new ("org.gnome.desktop.lockdown");
++	settings = e_util_ref_settings ("org.gnome.desktop.lockdown");
+ 
+ 	g_settings_bind (
+ 		settings, "disable-printing",
+@@ -1673,7 +1673,7 @@ e_web_view_init (EWebView *web_view)
+ 	e_web_view_install_request_handler (web_view, E_TYPE_FILE_REQUEST);
+ 	e_web_view_install_request_handler (web_view, E_TYPE_STOCK_REQUEST);
+ 
+-	settings = g_settings_new ("org.gnome.desktop.interface");
++	settings = e_util_ref_settings ("org.gnome.desktop.interface");
+ 	web_view->priv->font_settings = g_object_ref (settings);
+ 	handler_id = g_signal_connect_swapped (
+ 		settings, "changed::font-name",
+@@ -1690,7 +1690,7 @@ e_web_view_init (EWebView *web_view)
+ 	settings_schema = g_settings_schema_source_lookup (
+ 		g_settings_schema_source_get_default (), id, FALSE);
+ 	if (settings_schema != NULL) {
+-		settings = g_settings_new (id);
++		settings = e_util_ref_settings (id);
+ 		web_view->priv->aliasing_settings = g_object_ref (settings);
+ 		handler_id = g_signal_connect_swapped (
+ 			settings, "changed::antialiasing",
+diff --git a/e-util/evolution-source-viewer.c b/e-util/evolution-source-viewer.c
+index a268beb950..79a827f7f8 100644
+--- a/e-util/evolution-source-viewer.c
++++ b/e-util/evolution-source-viewer.c
+@@ -22,6 +22,7 @@
+ #include <libedataserver/libedataserver.h>
+ 
+ #include "e-dialog-widgets.h"
++#include "e-misc-utils.h"
+ 
+ /* XXX Even though this is all one file, I'm still being pedantic about data
+  *     encapsulation (except for a private struct, even I'm not that anal!).
+@@ -174,7 +175,7 @@ source_viewer_get_monospace_font_name (void)
+ 	GSettings *settings;
+ 	gchar *font_name;
+ 
+-	settings = g_settings_new ("org.gnome.desktop.interface");
++	settings = e_util_ref_settings ("org.gnome.desktop.interface");
+ 	font_name = g_settings_get_string (settings, "monospace-font-name");
+ 	g_object_unref (settings);
+ 
+@@ -1175,5 +1176,7 @@ main (gint argc,
+ 
+ 	gtk_main ();
+ 
++	e_util_cleanup_settings ();
++
+ 	return 0;
+ }
+diff --git a/e-util/test-calendar.c b/e-util/test-calendar.c
+index 050e468be9..da3f661cb7 100644
+--- a/e-util/test-calendar.c
++++ b/e-util/test-calendar.c
+@@ -98,6 +98,8 @@ main (gint argc,
+ 
+ 	gtk_main ();
+ 
++	e_util_cleanup_settings ();
++
+ 	return 0;
+ }
+ 
+diff --git a/e-util/test-category-completion.c b/e-util/test-category-completion.c
+index 61d9a13e41..e8b35d96d3 100644
+--- a/e-util/test-category-completion.c
++++ b/e-util/test-category-completion.c
+@@ -62,5 +62,7 @@ main (gint argc,
+ 
+ 	gtk_main ();
+ 
++	e_util_cleanup_settings ();
++
+ 	return 0;
+ }
+diff --git a/e-util/test-contact-store.c b/e-util/test-contact-store.c
+index 1f649801dd..d62836c7dc 100644
+--- a/e-util/test-contact-store.c
++++ b/e-util/test-contact-store.c
+@@ -140,5 +140,7 @@ main (gint argc,
+ 
+ 	gtk_main ();
+ 
++	e_util_cleanup_settings ();
++
+ 	return 0;
+ }
+diff --git a/e-util/test-dateedit.c b/e-util/test-dateedit.c
+index bb0cc6dfcc..03e8df147b 100644
+--- a/e-util/test-dateedit.c
++++ b/e-util/test-dateedit.c
+@@ -29,6 +29,7 @@
+ 
+ #include <gtk/gtk.h>
+ #include "e-dateedit.h"
++#include "e-misc-utils.h"
+ 
+ static void delete_event_cb		(GtkWidget	*widget,
+ 					 GdkEventAny	*event,
+@@ -185,6 +186,8 @@ main (gint argc,
+ 
+ 	gtk_main ();
+ 
++	e_util_cleanup_settings ();
++
+ 	return 0;
+ }
+ 
+diff --git a/e-util/test-html-editor.c b/e-util/test-html-editor.c
+index 3a3b301667..9bb8a3bee4 100644
+--- a/e-util/test-html-editor.c
++++ b/e-util/test-html-editor.c
+@@ -496,6 +496,7 @@ main (gint argc,
+ 	gtk_main ();
+ 
+ 	g_object_unref (editor);
++	e_util_cleanup_settings ();
+ 
+ 	return 0;
+ }
+diff --git a/e-util/test-mail-signatures.c b/e-util/test-mail-signatures.c
+index d08cb2a8b9..a398c72629 100644
+--- a/e-util/test-mail-signatures.c
++++ b/e-util/test-mail-signatures.c
+@@ -190,5 +190,7 @@ main (gint argc,
+ 
+ 	gtk_main ();
+ 
++	e_util_cleanup_settings ();
++
+ 	return 0;
+ }
+diff --git a/e-util/test-name-selector.c b/e-util/test-name-selector.c
+index f9f26c2e9e..e253232781 100644
+--- a/e-util/test-name-selector.c
++++ b/e-util/test-name-selector.c
+@@ -106,6 +106,7 @@ main (gint argc,
+ 
+ 	g_object_unref (registry);
+ 	g_object_unref (client_cache);
++	e_util_cleanup_settings ();
+ 
+ 	return 0;
+ }
+diff --git a/e-util/test-preferences-window.c b/e-util/test-preferences-window.c
+index b6d3b0f6b4..33bbd50e42 100644
+--- a/e-util/test-preferences-window.c
++++ b/e-util/test-preferences-window.c
+@@ -103,5 +103,7 @@ main (gint argc,
+ 
+ 	gtk_main ();
+ 
++	e_util_cleanup_settings ();
++
+ 	return 0;
+ }
+diff --git a/e-util/test-proxy-preferences.c b/e-util/test-proxy-preferences.c
+index 18ae84fa5b..eb8cab2793 100644
+--- a/e-util/test-proxy-preferences.c
++++ b/e-util/test-proxy-preferences.c
+@@ -80,6 +80,8 @@ main (gint argc,
+ 
+ 	gtk_main ();
+ 
++	e_util_cleanup_settings ();
++
+ 	return 0;
+ }
+ 
+diff --git a/e-util/test-source-combo-box.c b/e-util/test-source-combo-box.c
+index 2a8791c6e6..764d252518 100644
+--- a/e-util/test-source-combo-box.c
++++ b/e-util/test-source-combo-box.c
+@@ -101,5 +101,7 @@ main (gint argc,
+ 
+ 	gtk_main ();
+ 
++	e_util_cleanup_settings ();
++
+ 	return 0;
+ }
+diff --git a/e-util/test-source-config.c b/e-util/test-source-config.c
+index 4a5ce30d91..9d41813caf 100644
+--- a/e-util/test-source-config.c
++++ b/e-util/test-source-config.c
+@@ -3,6 +3,7 @@
+ 
+ #include <libedataserver/libedataserver.h>
+ 
++#include "e-misc-utils.h"
+ #include "e-source-config-dialog.h"
+ 
+ static void
+@@ -53,5 +54,7 @@ main (gint argc,
+ 
+ 	gtk_main ();
+ 
++	e_util_cleanup_settings ();
++
+ 	return 0;
+ }
+diff --git a/e-util/test-source-selector.c b/e-util/test-source-selector.c
+index 6751d5a5cc..8b0914244a 100644
+--- a/e-util/test-source-selector.c
++++ b/e-util/test-source-selector.c
+@@ -470,6 +470,7 @@ main (gint argc,
+ 	gtk_main ();
+ 
+ 	g_object_unref (registry);
++	e_util_cleanup_settings ();
+ 
+ 	return 0;
+ }
+diff --git a/e-util/test-tree-view-frame.c b/e-util/test-tree-view-frame.c
+index 136c45fba8..fa0f846d45 100644
+--- a/e-util/test-tree-view-frame.c
++++ b/e-util/test-tree-view-frame.c
+@@ -1,6 +1,7 @@
+ #include <gtk/gtk.h>
+ #include <libedataserver/libedataserver.h>
+ 
++#include "e-misc-utils.h"
+ #include "e-tree-view-frame.h"
+ 
+ static GtkTreeView *tree_view;
+@@ -370,6 +371,8 @@ main (gint argc,
+ 
+ 	gtk_main ();
+ 
++	e_util_cleanup_settings ();
++
+ 	return 0;
+ }
+ 
+diff --git a/libemail-engine/e-mail-session.c b/libemail-engine/e-mail-session.c
+index da3bf32823..da8e297481 100644
+--- a/libemail-engine/e-mail-session.c
++++ b/libemail-engine/e-mail-session.c
+@@ -738,7 +738,7 @@ mail_session_force_refresh (EMailSession *session)
+ 		return;
+ 
+ 	/* FIXME EMailSession should define properties for these. */
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	unconditionally =
+ 		g_settings_get_boolean (settings, "send-recv-on-start") &&
+ 		g_settings_get_boolean (settings, "send-recv-all-on-start");
+@@ -1112,7 +1112,7 @@ mail_session_constructed (GObject *object)
+ 	 * before starting the first mail store refresh. */
+ 	mail_msg_init ();
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	/* The application is not yet fully initialized at this point,
+ 	 * so run the first mail store refresh from an idle callback. */
+@@ -1587,7 +1587,7 @@ mail_session_forward_to_sync (CamelSession *session,
+ 		GSettings *settings;
+ 		gboolean flush_outbox;
+ 
+-		settings = g_settings_new ("org.gnome.evolution.mail");
++		settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 		flush_outbox = g_settings_get_boolean (settings, "flush-outbox");
+ 		g_object_unref (settings);
+ 
+diff --git a/libemail-engine/mail-config.c b/libemail-engine/mail-config.c
+index fe8defb3fe..68834b99b3 100644
+--- a/libemail-engine/mail-config.c
++++ b/libemail-engine/mail-config.c
+@@ -259,7 +259,7 @@ mail_config_init (EMailSession *session)
+ 
+ 	config = g_new0 (MailConfig, 1);
+ 
+-	mail_settings = g_settings_new ("org.gnome.evolution.mail");
++	mail_settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	/* Composer Configuration */
+ 
+diff --git a/libemail-engine/mail-ops.c b/libemail-engine/mail-ops.c
+index 5296e1cae2..cae580e728 100644
+--- a/libemail-engine/mail-ops.c
++++ b/libemail-engine/mail-ops.c
+@@ -1273,7 +1273,7 @@ sync_folder_exec (struct _sync_folder_msg *m,
+ 		GSettings *settings;
+ 		gboolean delete_junk;
+ 
+-		settings = g_settings_new ("org.gnome.evolution.mail");
++		settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 		expunge = g_settings_get_boolean (settings, "trash-empty-on-exit") &&
+ 			  g_settings_get_int (settings, "trash-empty-on-exit-days") == -1;
+diff --git a/mail/e-http-request.c b/mail/e-http-request.c
+index 39db7a1b84..39ceb56654 100644
+--- a/mail/e-http-request.c
++++ b/mail/e-http-request.c
+@@ -300,7 +300,7 @@ handle_http_request (GSimpleAsyncResult *res,
+ 	if (!e_shell_get_online (shell))
+ 		goto cleanup;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	image_policy = g_settings_get_enum (settings, "image-loading-policy");
+ 	g_object_unref (settings);
+ 
+diff --git a/mail/e-mail-display.c b/mail/e-mail-display.c
+index 74010e1ff9..3f572616c0 100644
+--- a/mail/e-mail-display.c
++++ b/mail/e-mail-display.c
+@@ -1658,7 +1658,7 @@ e_mail_display_init (EMailDisplay *display)
+ 		display, "drag-data-get",
+ 		G_CALLBACK (mail_display_drag_data_get), display);
+ 
+-	display->priv->settings = g_settings_new ("org.gnome.evolution.mail");
++	display->priv->settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	g_signal_connect_swapped (
+ 		display->priv->settings , "changed::monospace-font",
+ 		G_CALLBACK (e_mail_display_test_change_and_update_fonts_cb), display);
+diff --git a/mail/e-mail-label-list-store.c b/mail/e-mail-label-list-store.c
+index 6ddd4ceafe..cb477b229c 100644
+--- a/mail/e-mail-label-list-store.c
++++ b/mail/e-mail-label-list-store.c
+@@ -26,6 +26,7 @@
+ 
+ #include <glib/gi18n.h>
+ #include <camel/camel.h>
++#include <e-util/e-util.h>
+ 
+ #define E_MAIL_LABEL_LIST_STORE_GET_PRIVATE(obj) \
+ 	(G_TYPE_INSTANCE_GET_PRIVATE \
+@@ -358,7 +359,7 @@ mail_label_list_store_constructed (GObject *object)
+ 	store = E_MAIL_LABEL_LIST_STORE (object);
+ 
+ 	/* Connect to GSettings' change notifications */
+-	store->priv->mail_settings = g_settings_new ("org.gnome.evolution.mail");
++	store->priv->mail_settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	g_signal_connect (
+ 		store->priv->mail_settings, "changed::labels",
+ 		G_CALLBACK (labels_settings_changed_cb), store);
+diff --git a/mail/e-mail-paned-view.c b/mail/e-mail-paned-view.c
+index 5d7cb9d67d..9a8fd2d1e1 100644
+--- a/mail/e-mail-paned-view.c
++++ b/mail/e-mail-paned-view.c
+@@ -223,7 +223,7 @@ mail_paned_view_restore_state_cb (EShellWindow *shell_window,
+ 
+ 	/* Bind GObject properties to GSettings keys. */
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	g_settings_bind (
+ 		settings, "hpaned-size",
+@@ -524,7 +524,7 @@ mail_paned_view_set_folder (EMailReader *reader,
+ 
+ 	shell = e_shell_window_get_shell (shell_window);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	/* FIXME This should be an EMailReader property. */
+ 	global_view_setting = g_settings_get_boolean (
+@@ -655,7 +655,7 @@ mail_paned_view_constructed (GObject *object)
+ 	/* FIXME This should be an EMailPanedView property, so
+ 	 *       it can be configured from the settings module. */
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	g_settings_bind (
+ 		settings, "headers-collapsed",
+@@ -853,7 +853,7 @@ mail_paned_view_update_view_instance (EMailView *view)
+ 		em_utils_folder_is_outbox (registry, folder) ||
+ 		em_utils_folder_is_sent (registry, folder);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	global_view_setting = g_settings_get_boolean (
+ 		settings, "global-view-setting");
+ 	g_object_unref (settings);
+diff --git a/mail/e-mail-reader-utils.c b/mail/e-mail-reader-utils.c
+index 9fccee8e2b..e8e6f80192 100644
+--- a/mail/e-mail-reader-utils.c
++++ b/mail/e-mail-reader-utils.c
+@@ -124,7 +124,7 @@ e_mail_reader_confirm_delete (EMailReader *reader)
+ 	folder = e_mail_reader_ref_folder (reader);
+ 	window = e_mail_reader_get_window (reader);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	prompt_delete_in_vfolder = g_settings_get_boolean (
+ 		settings, "prompt-on-delete-in-vfolder");
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index 033c2fb915..d86bf44416 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -1311,7 +1311,7 @@ action_mail_reply_all_check (CamelFolder *folder,
+ 			GSettings *settings;
+ 			const gchar *key;
+ 
+-			settings = g_settings_new ("org.gnome.evolution.mail");
++			settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 			key = "prompt-on-reply-many-recips";
+ 			g_settings_set_boolean (settings, key, FALSE);
+@@ -1352,7 +1352,7 @@ action_mail_reply_all_cb (GtkAction *action,
+ 
+ 	state = e_mail_reader_check_state (reader);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	key = "prompt-on-reply-many-recips";
+ 	ask = g_settings_get_boolean (settings, key);
+@@ -1404,7 +1404,7 @@ action_mail_reply_group_cb (GtkAction *action,
+ 
+ 	state = e_mail_reader_check_state (reader);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	key = "composer-group-reply-to-list";
+ 	reply_list = g_settings_get_boolean (settings, key);
+@@ -1481,7 +1481,7 @@ action_mail_reply_sender_check (CamelFolder *folder,
+ 		return;
+ 	}
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	key = "composer-ignore-list-reply-to";
+ 	ask_ignore_list_reply_to = g_settings_get_boolean (settings, key);
+@@ -1617,7 +1617,7 @@ action_mail_reply_sender_cb (GtkAction *action,
+ 
+ 	state = e_mail_reader_check_state (reader);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	key = "prompt-on-list-reply-to";
+ 	ask_list_reply_to = g_settings_get_boolean (settings, key);
+@@ -2881,7 +2881,7 @@ maybe_schedule_timeout_mark_seen (EMailReader *reader)
+ 	    e_tree_is_dragging (E_TREE (message_list)))
+ 		return FALSE;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	/* FIXME These should be EMailReader properties. */
+ 	schedule_timeout =
+@@ -4111,7 +4111,7 @@ e_mail_reader_init (EMailReader *reader,
+ 
+ 	/* Bind GObject properties to GSettings keys. */
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	action_name = "mail-caret-mode";
+ 	action = e_mail_reader_get_action (reader, action_name);
+@@ -4192,7 +4192,7 @@ e_mail_reader_init (EMailReader *reader,
+ #ifndef G_OS_WIN32
+ 	/* Lockdown integration. */
+ 
+-	settings = g_settings_new ("org.gnome.desktop.lockdown");
++	settings = e_util_ref_settings ("org.gnome.desktop.lockdown");
+ 
+ 	action_name = "mail-print";
+ 	action = e_mail_reader_get_action (reader, action_name);
+diff --git a/mail/e-mail-ui-session.c b/mail/e-mail-ui-session.c
+index 3f12abc0e6..959b2fb6c6 100644
+--- a/mail/e-mail-ui-session.c
++++ b/mail/e-mail-ui-session.c
+@@ -228,7 +228,7 @@ main_get_filter_driver (CamelSession *session,
+ 
+ 	priv = E_MAIL_UI_SESSION_GET_PRIVATE (session);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	config_dir = mail_session_get_config_dir ();
+ 	user = g_build_filename (config_dir, "filters.xml", NULL);
+diff --git a/mail/em-composer-utils.c b/mail/em-composer-utils.c
+index cf44bedbad..df1cbf2b05 100644
+--- a/mail/em-composer-utils.c
++++ b/mail/em-composer-utils.c
+@@ -455,7 +455,7 @@ composer_presend_check_unwanted_html (EMsgComposer *composer,
+ 	gboolean confirm_html;
+ 	gint ii;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	editor = e_msg_composer_get_editor (composer);
+ 	view = e_html_editor_get_view (editor);
+@@ -615,7 +615,7 @@ em_utils_composer_send_cb (EMsgComposer *composer,
+ 	GCancellable *cancellable;
+ 	GSettings *settings;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	if (g_settings_get_boolean (settings, "composer-use-outbox")) {
+ 		e_msg_composer_save_to_outbox (composer);
+ 		g_object_unref (settings);
+@@ -1009,7 +1009,7 @@ composer_save_to_outbox_completed (GObject *source_object,
+ 		G_OBJECT (activity), (GWeakNotify)
+ 		gtk_widget_destroy, async_context->composer);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	if (g_settings_get_boolean (settings, "composer-use-outbox")) {
+ 		gint delay_flush = g_settings_get_int (settings, "composer-delay-outbox-flush");
+ 
+@@ -1525,7 +1525,7 @@ quoting_text (QuotingTextEnum type)
+ 	GSettings *settings;
+ 	gchar *text;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	text = g_settings_get_string (settings, conf_messages[type].conf_key);
+ 	g_object_unref (settings);
+ 
+@@ -1577,7 +1577,7 @@ em_utils_edit_message (EShell *shell,
+ 		gint i;
+ 		GSList *clue_list = NULL;
+ 
+-		settings = g_settings_new ("org.gnome.evolution.plugin.templates");
++		settings = e_util_ref_settings ("org.gnome.evolution.plugin.templates");
+ 
+ 		/* Get the list from GSettings */
+ 		strv = g_settings_get_strv (settings, "template-placeholders");
+@@ -1660,7 +1660,7 @@ emu_update_composers_security (EMsgComposer *composer,
+ 
+ 	g_return_if_fail (composer != NULL);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	sign_by_default =
+ 		(validity_found & E_MAIL_PART_VALIDITY_SIGNED) != 0 &&
+@@ -2328,7 +2328,7 @@ get_reply_to (CamelMimeMessage *message)
+ 		GSettings *settings;
+ 		gboolean ignore_list_reply_to;
+ 
+-		settings = g_settings_new ("org.gnome.evolution.mail");
++		settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 		ignore_list_reply_to = g_settings_get_boolean (
+ 			settings, "composer-ignore-list-reply-to");
+ 		g_object_unref (settings);
+diff --git a/mail/em-folder-properties.c b/mail/em-folder-properties.c
+index 908d5a7b36..1ff917ed23 100644
+--- a/mail/em-folder-properties.c
++++ b/mail/em-folder-properties.c
+@@ -366,7 +366,7 @@ emfp_dialog_run (AsyncContext *context)
+ 	context->unread = camel_folder_summary_get_unread_count (summary);
+ 	deleted = camel_folder_summary_get_deleted_count (summary);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	hide_deleted = !g_settings_get_boolean (settings, "show-deleted");
+ 	g_object_unref (settings);
+ 
+diff --git a/mail/em-folder-tree.c b/mail/em-folder-tree.c
+index a8967d6d2d..eb8e676cb7 100644
+--- a/mail/em-folder-tree.c
++++ b/mail/em-folder-tree.c
+@@ -2032,7 +2032,7 @@ ask_drop_folder (EMFolderTree *folder_tree,
+ 	g_return_val_if_fail (src_folder_uri != NULL, FALSE);
+ 	g_return_val_if_fail (des_full_name != NULL || des_store != NULL, FALSE);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	set_value = g_settings_get_string (settings, key);
+ 
+ 	if (g_strcmp0 (set_value, "never") == 0) {
+diff --git a/mail/em-utils.c b/mail/em-utils.c
+index 544a7d507a..2991629d24 100644
+--- a/mail/em-utils.c
++++ b/mail/em-utils.c
+@@ -110,7 +110,7 @@ em_utils_prompt_user (GtkWindow *parent,
+ 	GSettings *settings;
+ 	EAlert *alert = NULL;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	if (promptkey && !g_settings_get_boolean (settings, promptkey)) {
+ 		g_object_unref (settings);
+@@ -950,7 +950,7 @@ em_utils_selection_set_urilist (GtkSelectionData *data,
+ 	if (tmpdir == NULL)
+ 		return;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	/* Save format is mbox unless pdf is explicitly requested. */
+ 	save_file_format = g_settings_get_string (
+@@ -1223,7 +1223,7 @@ em_utils_message_to_html (CamelSession *session,
+ 
+ 		/* FIXME We should be getting this from the
+ 		 *       current view, not the global setting. */
+-		settings = g_settings_new ("org.gnome.evolution.mail");
++		settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 		charset = g_settings_get_string (settings, "charset");
+ 		if (charset && *charset)
+ 			e_mail_formatter_set_default_charset (formatter, charset);
+@@ -1475,7 +1475,7 @@ em_utils_is_re_in_subject (const gchar *subject,
+ 		GSettings *settings;
+ 		gchar *prefixes;
+ 
+-		settings = g_settings_new ("org.gnome.evolution.mail");
++		settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 		prefixes = g_settings_get_string (settings, "composer-localized-re");
+ 		g_object_unref (settings);
+ 
+diff --git a/mail/mail-send-recv.c b/mail/mail-send-recv.c
+index 6530043e53..4fac17950b 100644
+--- a/mail/mail-send-recv.c
++++ b/mail/mail-send-recv.c
+@@ -1121,7 +1121,7 @@ test_should_delete_junk_or_expunge (CamelStore *store,
+ 	uid = camel_service_get_uid (CAMEL_SERVICE (store));
+ 	g_return_if_fail (uid != NULL);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	now = time (NULL) / 60 / 60 / 24;
+ 
+diff --git a/mail/message-list.c b/mail/message-list.c
+index 4455fadd79..e8fbd820ae 100644
+--- a/mail/message-list.c
++++ b/mail/message-list.c
+@@ -1942,12 +1942,12 @@ static ECell * create_composite_cell (gint col)
+ 	gint alt_col = (col == COL_FROM) ? COL_SENDER : COL_RECIPIENTS;
+ 	gboolean same_font = FALSE;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	show_email = g_settings_get_boolean (settings, "show-email");
+ 	same_font = g_settings_get_boolean (settings, "vertical-view-fonts");
+ 	g_object_unref (settings);
+ 	if (!same_font) {
+-		settings = g_settings_new ("org.gnome.desktop.interface");
++		settings = e_util_ref_settings ("org.gnome.desktop.interface");
+ 		fixed_name = g_settings_get_string (settings, "monospace-font-name");
+ 		g_object_unref (settings);
+ 	}
+@@ -3419,7 +3419,7 @@ message_list_init (MessageList *message_list)
+ 	target_list = gtk_target_list_new (NULL, 0);
+ 	message_list->priv->paste_target_list = target_list;
+ 
+-	message_list->priv->mail_settings = g_settings_new ("org.gnome.evolution.mail");
++	message_list->priv->mail_settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	message_list->priv->re_prefixes = NULL;
+ 	message_list->priv->group_by_threads = TRUE;
+ }
+diff --git a/modules/addressbook/autocompletion-config.c b/modules/addressbook/autocompletion-config.c
+index 25611edb46..80b4f742fd 100644
+--- a/modules/addressbook/autocompletion-config.c
++++ b/modules/addressbook/autocompletion-config.c
+@@ -105,7 +105,7 @@ get_general_page (EConfig *config,
+ 	shell = E_SHELL (user_data);
+ 	registry = e_shell_get_registry (shell);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.addressbook");
++	settings = e_util_ref_settings ("org.gnome.evolution.addressbook");
+ 
+ 	vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
+ 	gtk_container_set_border_width (GTK_CONTAINER (vbox), 12);
+@@ -211,7 +211,7 @@ autocompletion_config_new (EPreferencesWindow *window)
+ 	e_config_add_items (
+ 		E_CONFIG (config), items, config_items_free, shell);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.addressbook");
++	settings = e_util_ref_settings ("org.gnome.evolution.addressbook");
+ 
+ 	target = eab_config_target_new_prefs (config, settings);
+ 	e_config_set_target (E_CONFIG (config), (EConfigTarget *) target);
+diff --git a/modules/addressbook/e-book-shell-content.c b/modules/addressbook/e-book-shell-content.c
+index b92930d2b9..781d8d9eba 100644
+--- a/modules/addressbook/e-book-shell-content.c
++++ b/modules/addressbook/e-book-shell-content.c
+@@ -92,7 +92,7 @@ book_shell_content_restore_state_cb (EShellWindow *shell_window,
+ 
+ 	/* Bind GObject properties to GSettings keys. */
+ 
+-	settings = g_settings_new ("org.gnome.evolution.addressbook");
++	settings = e_util_ref_settings ("org.gnome.evolution.addressbook");
+ 
+ 	g_settings_bind (
+ 		settings, "hpane-position",
+diff --git a/modules/addressbook/e-book-shell-sidebar.c b/modules/addressbook/e-book-shell-sidebar.c
+index 393ddc6148..1dcc565806 100644
+--- a/modules/addressbook/e-book-shell-sidebar.c
++++ b/modules/addressbook/e-book-shell-sidebar.c
+@@ -166,7 +166,7 @@ book_shell_sidebar_constructed (GObject *object)
+ 	priv->selector = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.addressbook");
++	settings = e_util_ref_settings ("org.gnome.evolution.addressbook");
+ 
+ 	g_settings_bind_with_mapping (
+ 		settings, "primary-addressbook",
+diff --git a/modules/addressbook/e-book-shell-view-actions.c b/modules/addressbook/e-book-shell-view-actions.c
+index 57fd7e9df9..b5c0e28b0f 100644
+--- a/modules/addressbook/e-book-shell-view-actions.c
++++ b/modules/addressbook/e-book-shell-view-actions.c
+@@ -1386,7 +1386,7 @@ e_book_shell_view_actions_init (EBookShellView *book_shell_view)
+ 
+ 	/* Bind GObject properties to GSettings keys. */
+ 
+-	settings = g_settings_new ("org.gnome.evolution.addressbook");
++	settings = e_util_ref_settings ("org.gnome.evolution.addressbook");
+ 
+ 	g_settings_bind (
+ 		settings, "show-preview",
+diff --git a/modules/backup-restore/evolution-backup-tool.c b/modules/backup-restore/evolution-backup-tool.c
+index 1e0ff4bb38..70b358efe8 100644
+--- a/modules/backup-restore/evolution-backup-tool.c
++++ b/modules/backup-restore/evolution-backup-tool.c
+@@ -544,7 +544,7 @@ restore (const gchar *filename,
+ 		if (restored_version != NULL && *restored_version != '\0') {
+ 			GSettings *settings;
+ 
+-			settings = g_settings_new ("org.gnome.evolution");
++			settings = e_util_ref_settings ("org.gnome.evolution");
+ 			g_settings_set_string (
+ 				settings, "version", restored_version);
+ 			g_object_unref (settings);
+@@ -1020,6 +1020,7 @@ main (gint argc,
+ 	gtk_main ();
+ 
+ 	g_object_unref (cancellable);
++	e_util_cleanup_settings ();
+ 
+ 	return result;
+ }
+diff --git a/modules/bogofilter/evolution-bogofilter.c b/modules/bogofilter/evolution-bogofilter.c
+index 4b061b6526..318bfb0e97 100644
+--- a/modules/bogofilter/evolution-bogofilter.c
++++ b/modules/bogofilter/evolution-bogofilter.c
+@@ -502,7 +502,7 @@ e_bogofilter_init (EBogofilter *extension)
+ {
+ 	GSettings *settings;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.bogofilter");
++	settings = e_util_ref_settings ("org.gnome.evolution.bogofilter");
+ 	g_settings_bind (
+ 		settings, "utf8-for-spam-filter",
+ 		G_OBJECT (extension), "convert-to-unicode",
+diff --git a/modules/calendar/e-cal-base-shell-backend.c b/modules/calendar/e-cal-base-shell-backend.c
+index 43f48d056b..15a9f35b8b 100644
+--- a/modules/calendar/e-cal-base-shell-backend.c
++++ b/modules/calendar/e-cal-base-shell-backend.c
+@@ -453,7 +453,7 @@ e_cal_base_shell_backend_util_handle_uri (EShellBackend *shell_backend,
+ 	g_date_clear (&start_date, 1);
+ 	g_date_clear (&end_date, 1);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	if (g_settings_get_boolean (settings, "use-system-timezone"))
+ 		zone = e_cal_util_get_system_timezone ();
+diff --git a/modules/calendar/e-cal-base-shell-sidebar.c b/modules/calendar/e-cal-base-shell-sidebar.c
+index b5bf20d171..f51cab0e13 100644
+--- a/modules/calendar/e-cal-base-shell-sidebar.c
++++ b/modules/calendar/e-cal-base-shell-sidebar.c
+@@ -136,7 +136,7 @@ cal_base_shell_sidebar_restore_state_cb (EShellWindow *shell_window,
+ 
+ 	/* Bind GObject properties to settings keys. */
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	g_settings_bind_with_mapping (
+ 		settings, primary_source_key,
+diff --git a/modules/calendar/e-cal-shell-backend.c b/modules/calendar/e-cal-shell-backend.c
+index a7b402c086..eb89729b91 100644
+--- a/modules/calendar/e-cal-shell-backend.c
++++ b/modules/calendar/e-cal-shell-backend.c
+@@ -90,7 +90,7 @@ action_event_new_cb (GtkAction *action,
+ 	shell_backend = e_shell_get_backend_by_name (shell, "calendar");
+ 	e_shell_backend_set_prefer_new_item (shell_backend, action_name);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	e_cal_ops_new_event_editor (shell_window, NULL, is_meeting, is_all_day,
+ 		g_settings_get_boolean (settings, "use-default-reminder"),
+@@ -257,7 +257,7 @@ cal_shell_backend_constructed (GObject *object)
+ 		e_calendar_preferences_new,
+ 		600);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	g_settings_bind (
+ 		settings, "prefer-new-item",
+diff --git a/modules/calendar/e-cal-shell-content.c b/modules/calendar/e-cal-shell-content.c
+index b128f7b2b8..3af8ea11a3 100644
+--- a/modules/calendar/e-cal-shell-content.c
++++ b/modules/calendar/e-cal-shell-content.c
+@@ -634,7 +634,7 @@ cal_shell_content_notify_view_id_cb (ECalShellContent *cal_shell_content)
+ 	const gchar *key;
+ 	const gchar *view_id;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 	paned = cal_shell_content->priv->hpaned;
+ 
+ 	shell_content = E_SHELL_CONTENT (cal_shell_content);
+@@ -1621,7 +1621,7 @@ cal_shell_content_constructed (GObject *object)
+ 		G_CALLBACK (cal_shell_content_notify_view_id_cb),
+ 		cal_shell_content);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	g_settings_bind (
+ 		settings, "tag-vpane-position",
+diff --git a/modules/calendar/e-cal-shell-view-private.c b/modules/calendar/e-cal-shell-view-private.c
+index afaccaa317..a916d670ea 100644
+--- a/modules/calendar/e-cal-shell-view-private.c
++++ b/modules/calendar/e-cal-shell-view-private.c
+@@ -191,7 +191,7 @@ system_timezone_monitor_changed (GFileMonitor *handle,
+ 	    event != G_FILE_MONITOR_EVENT_CREATED)
+ 		return;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 	g_signal_emit_by_name (settings, "changed::timezone", "timezone");
+ 	g_object_unref (settings);
+ }
+@@ -484,7 +484,7 @@ cal_searching_get_search_range_years (ECalShellView *cal_shell_view)
+ 	GSettings *settings;
+ 	gint search_range_years;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	search_range_years =
+ 		g_settings_get_int (settings, "search-range-years");
+diff --git a/modules/calendar/e-calendar-preferences.c b/modules/calendar/e-calendar-preferences.c
+index f821c819bb..09b85dba2b 100644
+--- a/modules/calendar/e-calendar-preferences.c
++++ b/modules/calendar/e-calendar-preferences.c
+@@ -93,7 +93,7 @@ calendar_preferences_map_string_to_icaltimezone (GValue *value,
+ 	const gchar *location = NULL;
+ 	icaltimezone *timezone = NULL;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	if (g_settings_get_boolean (settings, "use-system-timezone"))
+ 		timezone = e_cal_util_get_system_timezone ();
+@@ -124,7 +124,7 @@ calendar_preferences_map_icaltimezone_to_string (const GValue *value,
+ 	gchar *location_str = NULL;
+ 	icaltimezone *timezone;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	if (g_settings_get_boolean (settings, "use-system-timezone")) {
+ 		location_str = g_settings_get_string (settings, "timezone");
+@@ -424,7 +424,7 @@ start_of_day_changed (GtkWidget *widget,
+ 		return;
+ 	}
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	g_settings_set_int (settings, "day-start-hour", start_hour);
+ 	g_settings_set_int (settings, "day-start-minute", start_minute);
+@@ -458,7 +458,7 @@ end_of_day_changed (GtkWidget *widget,
+ 		return;
+ 	}
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	g_settings_set_int (settings, "day-end-hour", end_hour);
+ 	g_settings_set_int (settings, "day-end-minute", end_minute);
+@@ -524,7 +524,7 @@ show_config (ECalendarPreferences *prefs)
+ {
+ 	GSettings *settings;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	/* Day's second zone */
+ 	update_day_second_zone_caption (prefs);
+@@ -586,7 +586,7 @@ calendar_preferences_construct (ECalendarPreferences *prefs,
+ 	GtkWidget *table;
+ 	GSList *l;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	locale_supports_12_hour_format =
+ 		calendar_config_locale_supports_12_hour_format ();
+@@ -761,7 +761,7 @@ calendar_preferences_construct (ECalendarPreferences *prefs,
+ 	/* These settings control the "Birthdays & Anniversaries" backend. */
+ 
+ 	eds_settings =
+-		g_settings_new ("org.gnome.evolution-data-server.calendar");
++		e_util_ref_settings ("org.gnome.evolution-data-server.calendar");
+ 
+ 	widget = e_builder_get_widget (prefs->builder, "ba_reminder");
+ 	g_settings_bind (
+diff --git a/modules/calendar/e-memo-shell-content.c b/modules/calendar/e-memo-shell-content.c
+index e1ff53f5e9..8433a4eb6c 100644
+--- a/modules/calendar/e-memo-shell-content.c
++++ b/modules/calendar/e-memo-shell-content.c
+@@ -352,7 +352,7 @@ memo_shell_content_view_created (ECalBaseShellContent *cal_base_shell_content)
+ 
+ 	/* Bind GObject properties to settings keys. */
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	g_settings_bind (
+ 		settings, "memo-hpane-position",
+diff --git a/modules/calendar/e-memo-shell-view-actions.c b/modules/calendar/e-memo-shell-view-actions.c
+index 7cfb7c85a6..7ae86220f9 100644
+--- a/modules/calendar/e-memo-shell-view-actions.c
++++ b/modules/calendar/e-memo-shell-view-actions.c
+@@ -867,7 +867,7 @@ e_memo_shell_view_actions_init (EMemoShellView *memo_shell_view)
+ 
+ 	/* Bind GObject properties to settings keys. */
+ 
+-	memo_settings = g_settings_new ("org.gnome.evolution.calendar");
++	memo_settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	g_settings_bind (
+ 		memo_settings, "show-memo-preview",
+diff --git a/modules/calendar/e-task-shell-content.c b/modules/calendar/e-task-shell-content.c
+index 9a87f7e7c1..2e6729d55c 100644
+--- a/modules/calendar/e-task-shell-content.c
++++ b/modules/calendar/e-task-shell-content.c
+@@ -373,7 +373,7 @@ task_shell_content_view_created (ECalBaseShellContent *cal_base_shell_content)
+ 
+ 	/* Bind GObject properties to settings keys. */
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	g_settings_bind (
+ 		settings, "task-hpane-position",
+diff --git a/modules/calendar/e-task-shell-view-actions.c b/modules/calendar/e-task-shell-view-actions.c
+index 26de4325b4..bc6df8a3a9 100644
+--- a/modules/calendar/e-task-shell-view-actions.c
++++ b/modules/calendar/e-task-shell-view-actions.c
+@@ -1067,7 +1067,7 @@ e_task_shell_view_actions_init (ETaskShellView *task_shell_view)
+ 
+ 	/* Bind GObject properties to settings keys. */
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	g_settings_bind (
+ 		settings, "show-task-preview",
+diff --git a/modules/calendar/e-task-shell-view-private.c b/modules/calendar/e-task-shell-view-private.c
+index 5a8d15872f..a7775f723f 100644
+--- a/modules/calendar/e-task-shell-view-private.c
++++ b/modules/calendar/e-task-shell-view-private.c
+@@ -212,7 +212,7 @@ e_task_shell_view_private_constructed (ETaskShellView *task_shell_view)
+ 	priv->task_shell_content = g_object_ref (shell_content);
+ 	priv->task_shell_sidebar = g_object_ref (shell_sidebar);
+ 
+-	priv->settings = g_settings_new ("org.gnome.evolution.calendar");
++	priv->settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	/* Keep our own reference to this so we can
+ 	 * disconnect our signal handlers in dispose(). */
+diff --git a/modules/gravatar/e-gravatar-photo-source.c b/modules/gravatar/e-gravatar-photo-source.c
+index 6c01e522e3..a1afa5ef94 100644
+--- a/modules/gravatar/e-gravatar-photo-source.c
++++ b/modules/gravatar/e-gravatar-photo-source.c
+@@ -282,7 +282,7 @@ e_gravatar_photo_source_init (EGravatarPhotoSource *photo_source)
+ 
+ 	photo_source->priv = E_GRAVATAR_PHOTO_SOURCE_GET_PRIVATE (photo_source);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	g_settings_bind (settings, "search-gravatar-for-photo",
+ 			 photo_source, "enabled",
+diff --git a/modules/itip-formatter/e-mail-parser-itip.c b/modules/itip-formatter/e-mail-parser-itip.c
+index baccced678..bd2e96135c 100644
+--- a/modules/itip-formatter/e-mail-parser-itip.c
++++ b/modules/itip-formatter/e-mail-parser-itip.c
+@@ -83,7 +83,7 @@ empe_itip_parse (EMailParserExtension *extension,
+ 	len = part_id->len;
+ 	g_string_append_printf (part_id, ".itip");
+ 
+-	settings = g_settings_new ("org.gnome.evolution.plugin.itip");
++	settings = e_util_ref_settings ("org.gnome.evolution.plugin.itip");
+ 
+ 	shell = e_shell_get_default ();
+ 	client_cache = e_shell_get_client_cache (shell);
+diff --git a/modules/itip-formatter/evolution-module-itip-formatter.c b/modules/itip-formatter/evolution-module-itip-formatter.c
+index be7f89d43c..f5ee64b271 100644
+--- a/modules/itip-formatter/evolution-module-itip-formatter.c
++++ b/modules/itip-formatter/evolution-module-itip-formatter.c
+@@ -33,7 +33,7 @@ e_module_load (GTypeModule *type_module)
+ 	gchar **disabled_plugins;
+ 	gint i = 0;
+ 
+-	settings = g_settings_new ("org.gnome.evolution");
++	settings = e_util_ref_settings ("org.gnome.evolution");
+ 	disabled_plugins = g_settings_get_strv (settings, "disabled-eplugins");
+ 
+ 	for (i = 0; disabled_plugins && disabled_plugins[i] != NULL; i++) {
+diff --git a/modules/itip-formatter/itip-view.c b/modules/itip-formatter/itip-view.c
+index 064c322b57..395eabbaf9 100644
+--- a/modules/itip-formatter/itip-view.c
++++ b/modules/itip-formatter/itip-view.c
+@@ -5650,7 +5650,7 @@ extract_itip_data (EMailPartItip *pitip,
+ 
+ 	/* Add default reminder if the config says so */
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	use_default_reminder =
+ 		g_settings_get_boolean (settings, "use-default-reminder");
+@@ -6146,7 +6146,7 @@ itip_view_init_view (ItipView *view)
+ 		g_free (html);
+ 	}
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	if (g_settings_get_boolean (settings, "use-system-timezone"))
+ 		to_zone = e_cal_util_get_system_timezone ();
+diff --git a/modules/itip-formatter/plugin/config-ui.c b/modules/itip-formatter/plugin/config-ui.c
+index 88f4836de5..4891ba5f7b 100644
+--- a/modules/itip-formatter/plugin/config-ui.c
++++ b/modules/itip-formatter/plugin/config-ui.c
+@@ -46,7 +46,7 @@ delete_toggled_cb (GtkWidget *widget)
+ 	GSettings *settings;
+ 	gboolean active;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.plugin.itip");
++	settings = e_util_ref_settings ("org.gnome.evolution.plugin.itip");
+ 	active = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
+ 	g_settings_set_boolean (settings, CONF_KEY_DELETE, active);
+ 	g_object_unref (settings);
+@@ -102,7 +102,7 @@ itip_formatter_page_factory (EPlugin *ep,
+ 	gtk_box_pack_start (GTK_BOX (hbox), inner_vbox, FALSE, FALSE, 0);
+ 
+ 	/* Delete message after acting */
+-	settings = g_settings_new ("org.gnome.evolution.plugin.itip");
++	settings = e_util_ref_settings ("org.gnome.evolution.plugin.itip");
+ 
+ 	check = gtk_check_button_new_with_mnemonic (_("_Delete message after acting"));
+ 	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (check), g_settings_get_boolean (settings, CONF_KEY_DELETE));
+diff --git a/modules/mail/e-mail-attachment-handler.c b/modules/mail/e-mail-attachment-handler.c
+index 17d6b2ee33..edce6a5333 100644
+--- a/modules/mail/e-mail-attachment-handler.c
++++ b/modules/mail/e-mail-attachment-handler.c
+@@ -147,7 +147,7 @@ mail_attachment_handler_forward (GtkAction *action,
+ 	message = mail_attachment_handler_get_selected_message (handler);
+ 	g_return_if_fail (message != NULL);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	style = g_settings_get_enum (settings, "forward-style-name");
+ 	g_object_unref (settings);
+ 
+@@ -172,7 +172,7 @@ mail_attachment_handler_reply (EAttachmentHandler *handler,
+ 	message = mail_attachment_handler_get_selected_message (handler);
+ 	g_return_if_fail (message != NULL);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	style = g_settings_get_enum (settings, "reply-style-name");
+ 	g_object_unref (settings);
+ 
+diff --git a/modules/mail/e-mail-shell-backend.c b/modules/mail/e-mail-shell-backend.c
+index 1c3ba28f0d..bf2d1a3734 100644
+--- a/modules/mail/e-mail-shell-backend.c
++++ b/modules/mail/e-mail-shell-backend.c
+@@ -496,7 +496,7 @@ mail_shell_backend_window_added_cb (GtkApplication *application,
+ 
+ 		view = e_html_editor_get_view (editor);
+ 
+-		settings = g_settings_new ("org.gnome.evolution.mail");
++		settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 		active = g_settings_get_boolean (
+ 			settings, "composer-send-html");
+@@ -717,7 +717,7 @@ mail_shell_backend_constructed (GObject *object)
+ 		CAMEL_SESSION (mail_session), E_MAIL_SESSION_VFOLDER_UID);
+ 	g_return_if_fail (vstore != NULL);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	g_settings_bind (
+ 		settings, "enable-unmatched",
+@@ -770,7 +770,7 @@ mail_shell_backend_delete_junk_policy_decision (EMailBackend *backend)
+ 	gint empty_days = 0;
+ 	gint now;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	now = time (NULL) / 60 / 60 / 24;
+ 
+@@ -804,7 +804,7 @@ mail_shell_backend_empty_trash_policy_decision (EMailBackend *backend)
+ 	gint empty_days = 0;
+ 	gint now;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	now = time (NULL) / 60 / 60 / 24;
+ 
+diff --git a/modules/mail/e-mail-shell-sidebar.c b/modules/mail/e-mail-shell-sidebar.c
+index e0e12a081b..0ae59950d8 100644
+--- a/modules/mail/e-mail-shell-sidebar.c
++++ b/modules/mail/e-mail-shell-sidebar.c
+@@ -172,7 +172,7 @@ mail_shell_sidebar_constructed (GObject *object)
+ 		widget, "key-file",
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	g_settings_bind (
+ 		settings, "side-bar-search",
+diff --git a/modules/mail/e-mail-shell-view-actions.c b/modules/mail/e-mail-shell-view-actions.c
+index 4da4c3ff85..17cd2dd3bb 100644
+--- a/modules/mail/e-mail-shell-view-actions.c
++++ b/modules/mail/e-mail-shell-view-actions.c
+@@ -1320,7 +1320,7 @@ action_mail_smart_backward_cb (GtkAction *action,
+ 	display = e_mail_reader_get_mail_display (reader);
+ 	message_list = e_mail_reader_get_message_list (reader);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	magic_spacebar = g_settings_get_boolean (settings, "magic-spacebar");
+ 	g_object_unref (settings);
+ 
+@@ -1404,7 +1404,7 @@ action_mail_smart_forward_cb (GtkAction *action,
+ 	display = e_mail_reader_get_mail_display (reader);
+ 	message_list = e_mail_reader_get_message_list (reader);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	magic_spacebar = g_settings_get_boolean (settings, "magic-spacebar");
+ 	g_object_unref (settings);
+ 
+@@ -2217,7 +2217,7 @@ e_mail_shell_view_actions_init (EMailShellView *mail_shell_view)
+ 
+ 	/* Bind GObject properties for GSettings keys. */
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	g_settings_bind (
+ 		settings, "show-deleted",
+diff --git a/modules/mail/em-composer-prefs.c b/modules/mail/em-composer-prefs.c
+index 2f63285e84..474382248e 100644
+--- a/modules/mail/em-composer-prefs.c
++++ b/modules/mail/em-composer-prefs.c
+@@ -1039,7 +1039,7 @@ em_composer_prefs_construct (EMComposerPrefs *prefs,
+ 
+ 	registry = e_shell_get_registry (shell);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	/* Make sure our custom widget classes are registered with
+ 	 * GType before we load the GtkBuilder definition file. */
+diff --git a/modules/mail/em-mailer-prefs.c b/modules/mail/em-mailer-prefs.c
+index fc7c99c0e7..1fa963121e 100644
+--- a/modules/mail/em-mailer-prefs.c
++++ b/modules/mail/em-mailer-prefs.c
+@@ -112,7 +112,7 @@ em_mailer_prefs_class_init (EMMailerPrefsClass *class)
+ static void
+ em_mailer_prefs_init (EMMailerPrefs *preferences)
+ {
+-	preferences->settings = g_settings_new ("org.gnome.evolution.mail");
++	preferences->settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ }
+ 
+ static gboolean
+@@ -733,7 +733,7 @@ image_loading_policy_always_cb (GtkToggleButton *toggle_button)
+ 	if (gtk_toggle_button_get_active (toggle_button)) {
+ 		GSettings *settings;
+ 
+-		settings = g_settings_new ("org.gnome.evolution.mail");
++		settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 		g_settings_set_enum (
+ 			settings, "image-loading-policy",
+@@ -749,7 +749,7 @@ image_loading_policy_sometimes_cb (GtkToggleButton *toggle_button)
+ 	if (gtk_toggle_button_get_active (toggle_button)) {
+ 		GSettings *settings;
+ 
+-		settings = g_settings_new ("org.gnome.evolution.mail");
++		settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 		g_settings_set_enum (
+ 			settings, "image-loading-policy",
+@@ -765,7 +765,7 @@ image_loading_policy_never_cb (GtkToggleButton *toggle_button)
+ 	if (gtk_toggle_button_get_active (toggle_button)) {
+ 		GSettings *settings;
+ 
+-		settings = g_settings_new ("org.gnome.evolution.mail");
++		settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 		g_settings_set_enum (
+ 			settings, "image-loading-policy",
+@@ -839,7 +839,7 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 	EMConfigTargetPrefs *target;
+ 	GSList *l;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	/* Make sure our custom widget classes are registered with
+ 	 * GType before we load the GtkBuilder definition file. */
+diff --git a/modules/mailto-handler/evolution-mailto-handler.c b/modules/mailto-handler/evolution-mailto-handler.c
+index 3da4b58c80..9cd2c95180 100644
+--- a/modules/mailto-handler/evolution-mailto-handler.c
++++ b/modules/mailto-handler/evolution-mailto-handler.c
+@@ -150,7 +150,7 @@ mailto_handler_prompt (EMailtoHandler *extension)
+ 	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 12);
+ 	gtk_widget_show (widget);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	g_settings_bind (
+ 		settings, "prompt-check-if-default-mailer",
+@@ -181,7 +181,7 @@ mailto_handler_check (EMailtoHandler *extension)
+ 	GAppInfo *app_info = NULL;
+ 	GError *error = NULL;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	check_mailto_handler = g_settings_get_boolean (
+ 		settings, "prompt-check-if-default-mailer");
+diff --git a/modules/prefer-plain/e-mail-parser-prefer-plain.c b/modules/prefer-plain/e-mail-parser-prefer-plain.c
+index 91a748c1e5..682d49f89a 100644
+--- a/modules/prefer-plain/e-mail-parser-prefer-plain.c
++++ b/modules/prefer-plain/e-mail-parser-prefer-plain.c
+@@ -28,6 +28,7 @@
+ #include <em-format/e-mail-part-utils.h>
+ 
+ #include <libebackend/libebackend.h>
++#include <e-util/e-util.h>
+ 
+ #define d(x)
+ 
+@@ -485,7 +486,7 @@ e_mail_parser_prefer_plain_init (EMailParserPreferPlain *parser)
+ 	gchar *key;
+ 	gint i;
+ 
+-	parser->settings = g_settings_new ("org.gnome.evolution.plugin.prefer-plain");
++	parser->settings = e_util_ref_settings ("org.gnome.evolution.plugin.prefer-plain");
+ 	g_settings_bind_with_mapping (
+ 		parser->settings, "mode",
+ 		parser, "mode", G_SETTINGS_BIND_DEFAULT,
+diff --git a/modules/prefer-plain/evolution-module-prefer-plain.c b/modules/prefer-plain/evolution-module-prefer-plain.c
+index 6de3a6acca..59de774259 100644
+--- a/modules/prefer-plain/evolution-module-prefer-plain.c
++++ b/modules/prefer-plain/evolution-module-prefer-plain.c
+@@ -15,12 +15,18 @@
+  *
+  */
+ 
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
+ #include "e-mail-parser-prefer-plain.h"
+ #include "e-mail-display-popup-prefer-plain.h"
+ 
+ #include <gmodule.h>
+ #include <gio/gio.h>
+ 
++#include <e-util/e-util.h>
++
+ void e_module_load (GTypeModule *type_module);
+ void e_module_unload (GTypeModule *type_module);
+ const gchar * g_module_check_init (GModule *module);
+@@ -32,7 +38,7 @@ e_module_load (GTypeModule *type_module)
+ 	gchar **disabled_plugins;
+ 	gint i = 0;
+ 
+-	settings = g_settings_new ("org.gnome.evolution");
++	settings = e_util_ref_settings ("org.gnome.evolution");
+ 	disabled_plugins = g_settings_get_strv (settings, "disabled-eplugins");
+ 
+ 	for (i = 0; disabled_plugins && disabled_plugins[i] != NULL; i++) {
+diff --git a/modules/prefer-plain/plugin/Makefile.am b/modules/prefer-plain/plugin/Makefile.am
+index e1f73c6d66..3ae9015d12 100644
+--- a/modules/prefer-plain/plugin/Makefile.am
++++ b/modules/prefer-plain/plugin/Makefile.am
+@@ -18,6 +18,7 @@ liborg_gnome_prefer_plain_la_SOURCES =		\
+ liborg_gnome_prefer_plain_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED) $(CODE_COVERAGE_LDFLAGS)
+ 
+ liborg_gnome_prefer_plain_la_LIBADD =				\
++	$(top_builddir)/e-util/libevolution-util.la		\
+ 	$(EVOLUTION_DATA_SERVER_LIBS)				\
+ 	$(GNOME_PLATFORM_LIBS)					\
+ 	$(NULL)
+diff --git a/modules/prefer-plain/plugin/config-ui.c b/modules/prefer-plain/plugin/config-ui.c
+index 1407240ad4..9d8b73046a 100644
+--- a/modules/prefer-plain/plugin/config-ui.c
++++ b/modules/prefer-plain/plugin/config-ui.c
+@@ -163,7 +163,7 @@ e_plugin_lib_enable (EPlugin *ep,
+ 
+ 	if (enable) {
+ 
+-		epp_settings = g_settings_new ("org.gnome.evolution.plugin.prefer-plain");
++		epp_settings = e_util_ref_settings ("org.gnome.evolution.plugin.prefer-plain");
+ 		key = g_settings_get_string (epp_settings, "mode");
+ 		if (key) {
+ 			for (i = 0; i < G_N_ELEMENTS (epp_options); i++) {
+diff --git a/modules/settings/e-settings-cal-model.c b/modules/settings/e-settings-cal-model.c
+index 39fcda1ea7..4646d172e1 100644
+--- a/modules/settings/e-settings-cal-model.c
++++ b/modules/settings/e-settings-cal-model.c
+@@ -46,7 +46,7 @@ settings_map_string_to_icaltimezone (GValue *value,
+ 	const gchar *location = NULL;
+ 	icaltimezone *timezone = NULL;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	if (g_settings_get_boolean (settings, "use-system-timezone"))
+ 		timezone = e_cal_util_get_system_timezone ();
+@@ -76,7 +76,7 @@ settings_cal_model_constructed (GObject *object)
+ 	extension = E_EXTENSION (object);
+ 	extensible = e_extension_get_extensible (extension);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	/*** ECalModel ***/
+ 
+diff --git a/modules/settings/e-settings-calendar-item.c b/modules/settings/e-settings-calendar-item.c
+index b1484d0c8b..555b08a10c 100644
+--- a/modules/settings/e-settings-calendar-item.c
++++ b/modules/settings/e-settings-calendar-item.c
+@@ -46,7 +46,7 @@ settings_calendar_item_constructed (GObject *object)
+ 	extension = E_EXTENSION (object);
+ 	extensible = e_extension_get_extensible (extension);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	g_settings_bind (
+ 		settings, "show-week-numbers",
+diff --git a/modules/settings/e-settings-calendar-view.c b/modules/settings/e-settings-calendar-view.c
+index d379833f06..a144cfb962 100644
+--- a/modules/settings/e-settings-calendar-view.c
++++ b/modules/settings/e-settings-calendar-view.c
+@@ -47,7 +47,7 @@ settings_calendar_view_constructed (GObject *object)
+ 	extension = E_EXTENSION (object);
+ 	extensible = e_extension_get_extensible (extension);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	g_settings_bind (
+ 		settings, "time-divisions",
+diff --git a/modules/settings/e-settings-client-cache.c b/modules/settings/e-settings-client-cache.c
+index c632e26ec4..df9c01b227 100644
+--- a/modules/settings/e-settings-client-cache.c
++++ b/modules/settings/e-settings-client-cache.c
+@@ -43,7 +43,7 @@ settings_map_string_to_icaltimezone (GValue *value,
+ 	const gchar *location = NULL;
+ 	icaltimezone *timezone = NULL;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	if (g_settings_get_boolean (settings, "use-system-timezone"))
+ 		timezone = e_cal_util_get_system_timezone ();
+@@ -70,7 +70,7 @@ settings_client_cache_client_connected_cb (EClientCache *client_cache,
+ 	if (E_IS_CAL_CLIENT (client)) {
+ 		GSettings *settings;
+ 
+-		settings = g_settings_new ("org.gnome.evolution.calendar");
++		settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 		g_settings_bind_with_mapping (
+ 			settings, "timezone",
+diff --git a/modules/settings/e-settings-comp-editor.c b/modules/settings/e-settings-comp-editor.c
+index 36468f7be2..54c43c2026 100644
+--- a/modules/settings/e-settings-comp-editor.c
++++ b/modules/settings/e-settings-comp-editor.c
+@@ -45,7 +45,7 @@ settings_map_string_to_icaltimezone (GValue *value,
+ 	const gchar *location = NULL;
+ 	icaltimezone *timezone = NULL;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	if (g_settings_get_boolean (settings, "use-system-timezone"))
+ 		timezone = e_cal_util_get_system_timezone ();
+@@ -75,7 +75,7 @@ settings_comp_editor_constructed (GObject *object)
+ 	extension = E_EXTENSION (object);
+ 	extensible = e_extension_get_extensible (extension);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	g_settings_bind_with_mapping (
+ 		settings, "timezone",
+diff --git a/modules/settings/e-settings-date-edit.c b/modules/settings/e-settings-date-edit.c
+index aebdd74852..f1c8f38016 100644
+--- a/modules/settings/e-settings-date-edit.c
++++ b/modules/settings/e-settings-date-edit.c
+@@ -46,7 +46,7 @@ settings_date_edit_constructed (GObject *object)
+ 	extension = E_EXTENSION (object);
+ 	extensible = e_extension_get_extensible (extension);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	g_settings_bind (
+ 		settings, "show-week-numbers",
+diff --git a/modules/settings/e-settings-deprecated.c b/modules/settings/e-settings-deprecated.c
+index c083f626c2..55ad72eb1b 100644
+--- a/modules/settings/e-settings-deprecated.c
++++ b/modules/settings/e-settings-deprecated.c
+@@ -665,10 +665,10 @@ e_settings_deprecated_init (ESettingsDeprecated *extension)
+ 
+ 	extension->priv = E_SETTINGS_DEPRECATED_GET_PRIVATE (extension);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 	extension->priv->calendar_settings = settings;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	extension->priv->mail_settings = settings;
+ }
+ 
+diff --git a/modules/settings/e-settings-html-editor-view.c b/modules/settings/e-settings-html-editor-view.c
+index 97a8c081be..1920940416 100644
+--- a/modules/settings/e-settings-html-editor-view.c
++++ b/modules/settings/e-settings-html-editor-view.c
+@@ -200,7 +200,7 @@ e_settings_html_editor_view_init (ESettingsHTMLEditorView *extension)
+ 
+ 	extension->priv = E_SETTINGS_HTML_EDITOR_VIEW_GET_PRIVATE (extension);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	extension->priv->settings = settings;
+ 
+ 	extension->priv->old_settings = g_hash_table_new_full (
+diff --git a/modules/settings/e-settings-mail-browser.c b/modules/settings/e-settings-mail-browser.c
+index 89b8dbfd98..3d75485953 100644
+--- a/modules/settings/e-settings-mail-browser.c
++++ b/modules/settings/e-settings-mail-browser.c
+@@ -39,7 +39,7 @@ settings_mail_browser_constructed (GObject *object)
+ 
+ 	extensible = e_extension_get_extensible (E_EXTENSION (object));
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	/* This preference is selected directly from the mail
+ 	 * browser window, so the binding must be bi-directional. */
+diff --git a/modules/settings/e-settings-mail-formatter.c b/modules/settings/e-settings-mail-formatter.c
+index 3c984c8770..fb00016cdc 100644
+--- a/modules/settings/e-settings-mail-formatter.c
++++ b/modules/settings/e-settings-mail-formatter.c
+@@ -68,7 +68,7 @@ settings_mail_formatter_constructed (GObject *object)
+ 	extension = E_SETTINGS_MAIL_FORMATTER (object);
+ 	formatter = settings_mail_formatter_get_extensible (extension);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	g_settings_bind_with_mapping (
+ 		settings, "citation-color",
+diff --git a/modules/settings/e-settings-mail-part-headers.c b/modules/settings/e-settings-mail-part-headers.c
+index 4b5c46616b..a22d9ac9be 100644
+--- a/modules/settings/e-settings-mail-part-headers.c
++++ b/modules/settings/e-settings-mail-part-headers.c
+@@ -74,7 +74,7 @@ settings_mail_part_headers_constructed (GObject *object)
+ 	extension = E_SETTINGS_MAIL_PART_HEADERS (object);
+ 	part = settings_mail_part_headers_get_extensible (extension);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	g_settings_bind_with_mapping (
+ 		settings, "show-headers",
+diff --git a/modules/settings/e-settings-mail-reader.c b/modules/settings/e-settings-mail-reader.c
+index bd9266802d..c323ec8bef 100644
+--- a/modules/settings/e-settings-mail-reader.c
++++ b/modules/settings/e-settings-mail-reader.c
+@@ -49,7 +49,7 @@ settings_mail_reader_idle_cb (EExtension *extension)
+ 
+ 	extensible = e_extension_get_extensible (extension);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	g_settings_bind (
+ 		settings, "forward-style-name",
+diff --git a/modules/settings/e-settings-mail-session.c b/modules/settings/e-settings-mail-session.c
+index 31cc7a4d9c..fe54eda848 100644
+--- a/modules/settings/e-settings-mail-session.c
++++ b/modules/settings/e-settings-mail-session.c
+@@ -85,7 +85,7 @@ settings_mail_session_idle_cb (gpointer user_data)
+ 
+ 	session = E_MAIL_SESSION (user_data);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	/* Need to delay the settings binding to give EMailSession a
+ 	 * chance to set up its junk filter table.  The junk filters
+@@ -113,7 +113,7 @@ settings_mail_session_constructed (GObject *object)
+ 	extension = E_EXTENSION (object);
+ 	extensible = e_extension_get_extensible (extension);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	if (E_IS_MAIL_UI_SESSION (extensible)) {
+ 		g_settings_bind (
+diff --git a/modules/settings/e-settings-meeting-store.c b/modules/settings/e-settings-meeting-store.c
+index 3c5e8fa8c4..a373e00aad 100644
+--- a/modules/settings/e-settings-meeting-store.c
++++ b/modules/settings/e-settings-meeting-store.c
+@@ -45,7 +45,7 @@ settings_map_string_to_icaltimezone (GValue *value,
+ 	const gchar *location = NULL;
+ 	icaltimezone *timezone = NULL;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	if (g_settings_get_boolean (settings, "use-system-timezone"))
+ 		timezone = e_cal_util_get_system_timezone ();
+@@ -75,7 +75,7 @@ settings_meeting_store_constructed (GObject *object)
+ 	extension = E_EXTENSION (object);
+ 	extensible = e_extension_get_extensible (extension);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	g_settings_bind (
+ 		settings, "default-reminder-interval",
+diff --git a/modules/settings/e-settings-meeting-time-selector.c b/modules/settings/e-settings-meeting-time-selector.c
+index 58642c8358..8e4a69f7c0 100644
+--- a/modules/settings/e-settings-meeting-time-selector.c
++++ b/modules/settings/e-settings-meeting-time-selector.c
+@@ -46,7 +46,7 @@ settings_meeting_time_selector_constructed (GObject *object)
+ 	extension = E_EXTENSION (object);
+ 	extensible = e_extension_get_extensible (extension);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	g_settings_bind (
+ 		settings, "use-24hour-format",
+diff --git a/modules/settings/e-settings-message-list.c b/modules/settings/e-settings-message-list.c
+index 75c49620b1..5ea0df5858 100644
+--- a/modules/settings/e-settings-message-list.c
++++ b/modules/settings/e-settings-message-list.c
+@@ -44,7 +44,7 @@ settings_message_list_constructed (GObject *object)
+ 	extension = E_SETTINGS_MESSAGE_LIST (object);
+ 	message_list = settings_message_list_get_extensible (extension);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	g_settings_bind (
+ 		settings, "show-deleted",
+diff --git a/modules/settings/e-settings-name-selector-entry.c b/modules/settings/e-settings-name-selector-entry.c
+index c088e43066..5d069d0be7 100644
+--- a/modules/settings/e-settings-name-selector-entry.c
++++ b/modules/settings/e-settings-name-selector-entry.c
+@@ -106,7 +106,7 @@ e_settings_name_selector_entry_init (ESettingsNameSelectorEntry *extension)
+ 	extension->priv =
+ 		E_SETTINGS_NAME_SELECTOR_ENTRY_GET_PRIVATE (extension);
+ 	extension->priv->settings =
+-		g_settings_new ("org.gnome.evolution.addressbook");
++		e_util_ref_settings ("org.gnome.evolution.addressbook");
+ }
+ 
+ void
+diff --git a/modules/settings/e-settings-spell-checker.c b/modules/settings/e-settings-spell-checker.c
+index 22669668df..8192766d80 100644
+--- a/modules/settings/e-settings-spell-checker.c
++++ b/modules/settings/e-settings-spell-checker.c
+@@ -65,7 +65,7 @@ settings_spell_checker_constructed (GObject *object)
+ 	g_warn_if_fail (
+ 		e_spell_checker_count_active_languages (spell_checker) == 0);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 	strv = g_settings_get_strv (settings, "composer-spell-languages");
+ 	g_object_unref (settings);
+ 
+diff --git a/modules/settings/e-settings-spell-entry.c b/modules/settings/e-settings-spell-entry.c
+index 77dae81de2..8fd3a63287 100644
+--- a/modules/settings/e-settings-spell-entry.c
++++ b/modules/settings/e-settings-spell-entry.c
+@@ -42,7 +42,7 @@ settings_spell_entry_constructed (GObject *object)
+ 	extension = E_EXTENSION (object);
+ 	extensible = e_extension_get_extensible (extension);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.mail");
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+ 	g_settings_bind (
+ 		settings, "composer-inline-spelling",
+diff --git a/modules/settings/e-settings-weekday-chooser.c b/modules/settings/e-settings-weekday-chooser.c
+index 552db48044..3c66293d64 100644
+--- a/modules/settings/e-settings-weekday-chooser.c
++++ b/modules/settings/e-settings-weekday-chooser.c
+@@ -15,6 +15,12 @@
+  *
+  */
+ 
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <e-util/e-util.h>
++
+ #include "e-settings-weekday-chooser.h"
+ 
+ #include <calendar/gui/e-weekday-chooser.h>
+@@ -42,7 +48,7 @@ settings_weekday_chooser_constructed (GObject *object)
+ 	extension = E_EXTENSION (object);
+ 	extensible = e_extension_get_extensible (extension);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 
+ 	g_settings_bind (
+ 		settings, "week-start-day-name",
+diff --git a/modules/spamassassin/evolution-spamassassin.c b/modules/spamassassin/evolution-spamassassin.c
+index 868d056e80..b32d71fedf 100644
+--- a/modules/spamassassin/evolution-spamassassin.c
++++ b/modules/spamassassin/evolution-spamassassin.c
+@@ -588,7 +588,7 @@ e_spam_assassin_init (ESpamAssassin *extension)
+ {
+ 	GSettings *settings;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.spamassassin");
++	settings = e_util_ref_settings ("org.gnome.evolution.spamassassin");
+ 
+ 	g_settings_bind (
+ 		settings, "local-only",
+diff --git a/modules/text-highlight/e-mail-formatter-text-highlight.c b/modules/text-highlight/e-mail-formatter-text-highlight.c
+index c35f90a44b..2ffd67516d 100644
+--- a/modules/text-highlight/e-mail-formatter-text-highlight.c
++++ b/modules/text-highlight/e-mail-formatter-text-highlight.c
+@@ -280,15 +280,14 @@ emfe_text_highlight_format (EMailFormatterExtension *extension,
+ 			goto exit;
+ 		}
+ 
+-		settings = g_settings_new ("org.gnome.evolution.mail");
++		settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 		if (g_settings_get_boolean (settings, "use-custom-font"))
+ 			font = g_settings_get_string (
+ 				settings, "monospace-font");
+ 		g_object_unref (settings);
+ 
+ 		if (font == NULL) {
+-			settings = g_settings_new (
+-				"org.gnome.desktop.interface");
++			settings = e_util_ref_settings ("org.gnome.desktop.interface");
+ 			font = g_settings_get_string (
+ 				settings, "monospace-font-name");
+ 			g_object_unref (settings);
+diff --git a/plugins/attachment-reminder/attachment-reminder.c b/plugins/attachment-reminder/attachment-reminder.c
+index 17b2b5c020..b0a1bb0cff 100644
+--- a/plugins/attachment-reminder/attachment-reminder.c
++++ b/plugins/attachment-reminder/attachment-reminder.c
+@@ -243,7 +243,7 @@ check_for_attachment_clues (GByteArray *msg_text)
+ 	gchar **clue_list;
+ 	gboolean found = FALSE;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.plugin.attachment-reminder");
++	settings = e_util_ref_settings ("org.gnome.evolution.plugin.attachment-reminder");
+ 
+ 	/* Get the list from GSettings */
+ 	clue_list = g_settings_get_strv (settings, CONF_KEY_ATTACH_REMINDER_CLUES);
+@@ -569,7 +569,7 @@ e_plugin_lib_get_configure_widget (EPlugin *plugin)
+ 	gtk_container_add (GTK_CONTAINER (vbuttonbox2), clue_remove);
+ 	gtk_widget_set_can_default (clue_remove, TRUE);
+ 
+-	ui->settings = g_settings_new ("org.gnome.evolution.plugin.attachment-reminder");
++	ui->settings = e_util_ref_settings ("org.gnome.evolution.plugin.attachment-reminder");
+ 
+ 	ui->treeview = clue_treeview;
+ 
+diff --git a/plugins/bbdb/bbdb.c b/plugins/bbdb/bbdb.c
+index 4e05864520..1213586d32 100644
+--- a/plugins/bbdb/bbdb.c
++++ b/plugins/bbdb/bbdb.c
+@@ -62,7 +62,7 @@ get_check_interval (void)
+ 	GSettings *settings;
+ 	gint res = BBDB_BLIST_DEFAULT_CHECK_INTERVAL;
+ 
+-	settings = g_settings_new (CONF_SCHEMA);
++	settings = e_util_ref_settings (CONF_SCHEMA);
+ 	res = g_settings_get_int (settings, CONF_KEY_GAIM_CHECK_INTERVAL);
+ 
+ 	g_object_unref (settings);
+@@ -251,7 +251,7 @@ bbdb_handle_send (EPlugin *ep,
+ 	GSettings *settings;
+ 	gboolean enable;
+ 
+-	settings = g_settings_new (CONF_SCHEMA);
++	settings = e_util_ref_settings (CONF_SCHEMA);
+ 	enable = g_settings_get_boolean (settings, CONF_KEY_ENABLE);
+ 	g_object_unref (settings);
+ 
+@@ -447,7 +447,7 @@ bbdb_create_book_client (gint type,
+ 	gboolean enable = TRUE;
+ 	gchar *uid;
+ 
+-	settings = g_settings_new (CONF_SCHEMA);
++	settings = e_util_ref_settings (CONF_SCHEMA);
+ 
+ 	/* Check to see if we're supposed to be running */
+ 	if (type == AUTOMATIC_CONTACTS_ADDRESSBOOK)
+@@ -494,7 +494,7 @@ bbdb_check_gaim_enabled (void)
+ 	GSettings *settings;
+ 	gboolean   gaim_enabled;
+ 
+-	settings = g_settings_new (CONF_SCHEMA);
++	settings = e_util_ref_settings (CONF_SCHEMA);
+ 	gaim_enabled = g_settings_get_boolean (settings, CONF_KEY_ENABLE_GAIM);
+ 
+ 	g_object_unref (settings);
+@@ -523,7 +523,7 @@ enable_toggled_cb (GtkWidget *widget,
+ 	gboolean active;
+ 	ESource *selected_source;
+ 	gchar *addressbook;
+-	GSettings *settings = g_settings_new (CONF_SCHEMA);
++	GSettings *settings = e_util_ref_settings (CONF_SCHEMA);
+ 
+ 	active = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
+ 
+@@ -560,7 +560,7 @@ enable_gaim_toggled_cb (GtkWidget *widget,
+ 	gboolean active;
+ 	ESource *selected_source;
+ 	gchar *addressbook_gaim;
+-	GSettings *settings = g_settings_new (CONF_SCHEMA);
++	GSettings *settings = e_util_ref_settings (CONF_SCHEMA);
+ 
+ 	active = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
+ 
+@@ -605,7 +605,7 @@ source_changed_cb (ESourceComboBox *source_combo_box,
+ 	source = e_source_combo_box_ref_active (source_combo_box);
+ 	uid = (source != NULL) ? e_source_get_uid (source) : "";
+ 
+-	settings = g_settings_new (CONF_SCHEMA);
++	settings = e_util_ref_settings (CONF_SCHEMA);
+ 	g_settings_set_string (settings, CONF_KEY_WHICH_ADDRESSBOOK, uid);
+ 	g_object_unref (settings);
+ 
+@@ -624,7 +624,7 @@ gaim_source_changed_cb (ESourceComboBox *source_combo_box,
+ 	source = e_source_combo_box_ref_active (source_combo_box);
+ 	uid = (source != NULL) ? e_source_get_uid (source) : "";
+ 
+-	settings = g_settings_new (CONF_SCHEMA);
++	settings = e_util_ref_settings (CONF_SCHEMA);
+ 	g_settings_set_string (settings, CONF_KEY_WHICH_ADDRESSBOOK_GAIM, uid);
+ 	g_object_unref (settings);
+ 
+@@ -681,7 +681,7 @@ bbdb_create_config_widget (void)
+ 	GtkWidget *gaim_label;
+ 	GtkWidget *button;
+ 	gchar *str;
+-	GSettings *settings = g_settings_new (CONF_SCHEMA);
++	GSettings *settings = e_util_ref_settings (CONF_SCHEMA);
+ 
+ 	/* A structure to pass some stuff around */
+ 	stuff = g_new0 (struct bbdb_stuff, 1);
+diff --git a/plugins/bbdb/gaimbuddies.c b/plugins/bbdb/gaimbuddies.c
+index 0d2795fe85..5129583c57 100644
+--- a/plugins/bbdb/gaimbuddies.c
++++ b/plugins/bbdb/gaimbuddies.c
+@@ -122,7 +122,7 @@ bbdb_sync_buddy_list_check (void)
+ 	gchar *md5;
+ 	gchar *blist_path;
+ 	gchar *last_sync_str;
+-	GSettings *settings = g_settings_new (CONF_SCHEMA);
++	GSettings *settings = e_util_ref_settings (CONF_SCHEMA);
+ 
+ 	blist_path = get_buddy_filename ();
+ 	if (stat (blist_path, &statbuf) < 0) {
+@@ -177,7 +177,7 @@ store_last_sync_idle_cb (gpointer data)
+ 
+ 	md5 = get_md5_as_string (blist_path);
+ 
+-	settings = g_settings_new (CONF_SCHEMA);
++	settings = e_util_ref_settings (CONF_SCHEMA);
+ 	g_settings_set_string (
+ 		settings, CONF_KEY_GAIM_LAST_SYNC_TIME, last_sync_time);
+ 	g_settings_set_string (
+diff --git a/plugins/email-custom-header/email-custom-header.c b/plugins/email-custom-header/email-custom-header.c
+index eed2954857..af5e258346 100644
+--- a/plugins/email-custom-header/email-custom-header.c
++++ b/plugins/email-custom-header/email-custom-header.c
+@@ -205,7 +205,7 @@ epech_dialog_run (CustomHeaderOptionsDialog *mch,
+ 	g_return_val_if_fail (mch != NULL || EMAIL_CUSTOM_HEADER_OPTIONS_IS_DIALOG (mch), FALSE);
+ 	priv = mch->priv;
+ 
+-	settings = g_settings_new (ECM_SETTINGS_ID);
++	settings = e_util_ref_settings (ECM_SETTINGS_ID);
+ 	epech_load_from_settings (settings, ECM_SETTINGS_KEY, mch);
+ 	g_object_unref (settings);
+ 
+@@ -600,7 +600,7 @@ commit_changes (ConfigData *cd)
+ 
+ 	g_ptr_array_add (headers, NULL);
+ 
+-	settings = g_settings_new (ECM_SETTINGS_ID);
++	settings = e_util_ref_settings (ECM_SETTINGS_ID);
+ 	g_settings_set_strv (settings, ECM_SETTINGS_KEY, (const gchar * const *) headers->pdata);
+ 	g_object_unref (settings);
+ 
+@@ -912,7 +912,7 @@ e_plugin_lib_get_configure_widget (EPlugin *epl)
+ 	gtk_widget_set_sensitive (cd->header_edit, FALSE);
+ 
+ 	/* Populate tree view with values from settings */
+-	settings = g_settings_new (ECM_SETTINGS_ID);
++	settings = e_util_ref_settings (ECM_SETTINGS_ID);
+ 	headers = g_settings_get_strv (settings, ECM_SETTINGS_KEY);
+ 	g_object_unref (settings);
+ 
+diff --git a/plugins/external-editor/external-editor.c b/plugins/external-editor/external-editor.c
+index 5efff46979..924ae23af2 100644
+--- a/plugins/external-editor/external-editor.c
++++ b/plugins/external-editor/external-editor.c
+@@ -80,7 +80,7 @@ ee_editor_command_changed (GtkWidget *textbox)
+ 	d (printf ("\n\aeditor is : [%s] \n\a", editor));
+ 
+ 	/* GSettings access for every key-press. Sucky ? */
+-	settings = g_settings_new ("org.gnome.evolution.plugin.external-editor");
++	settings = e_util_ref_settings ("org.gnome.evolution.plugin.external-editor");
+ 	g_settings_set_string (settings, "command", editor);
+ 	g_object_unref (settings);
+ }
+@@ -94,7 +94,7 @@ ee_editor_immediate_launch_changed (GtkWidget *checkbox)
+ 	immediately = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (checkbox));
+ 	d (printf ("\n\aimmediate launch is : [%d] \n\a", immediately));
+ 
+-	settings = g_settings_new ("org.gnome.evolution.plugin.external-editor");
++	settings = e_util_ref_settings ("org.gnome.evolution.plugin.external-editor");
+ 	g_settings_set_boolean (settings, "launch-on-key-press", immediately);
+ 	g_object_unref (settings);
+ }
+@@ -112,7 +112,7 @@ e_plugin_lib_get_configure_widget (EPlugin *epl)
+ 	textbox = gtk_entry_new ();
+ 	label = gtk_label_new (_("Command to be executed to launch the editor: "));
+ 	help = gtk_label_new (_("For XEmacs use \"xemacs\"\nFor Vim use \"gvim -f\""));
+-	settings = g_settings_new ("org.gnome.evolution.plugin.external-editor");
++	settings = e_util_ref_settings ("org.gnome.evolution.plugin.external-editor");
+ 
+ 	editor = g_settings_get_string (settings, "command");
+ 	if (editor) {
+@@ -340,7 +340,7 @@ external_editor_thread (gpointer user_data)
+ 		goto finished;
+ 	}
+ 
+-	settings = g_settings_new ("org.gnome.evolution.plugin.external-editor");
++	settings = e_util_ref_settings ("org.gnome.evolution.plugin.external-editor");
+ 	editor_cmd = g_settings_get_string (settings, "command");
+ 	if (!editor_cmd) {
+ 		if (!(editor_cmd = g_strdup (g_getenv ("EDITOR"))) )
+@@ -491,7 +491,7 @@ key_press_cb (GtkWidget *widget,
+ 		break;
+ 	}
+ 
+-	settings = g_settings_new ("org.gnome.evolution.plugin.external-editor");
++	settings = e_util_ref_settings ("org.gnome.evolution.plugin.external-editor");
+ 	immediately = g_settings_get_boolean (settings, "launch-on-key-press");
+ 	g_object_unref (settings);
+ 	if (!immediately)
+diff --git a/plugins/face/face.c b/plugins/face/face.c
+index cfcdb968b0..c0396cb05c 100644
+--- a/plugins/face/face.c
++++ b/plugins/face/face.c
+@@ -36,7 +36,7 @@
+ static gboolean
+ get_include_face_by_default (void)
+ {
+-	GSettings *settings = g_settings_new ("org.gnome.evolution.plugin.face-picture");
++	GSettings *settings = e_util_ref_settings ("org.gnome.evolution.plugin.face-picture");
+ 	gboolean res;
+ 
+ 	res = g_settings_get_boolean (settings, SETTINGS_KEY);
+@@ -49,7 +49,7 @@ get_include_face_by_default (void)
+ static void
+ set_include_face_by_default (gboolean value)
+ {
+-	GSettings *settings = g_settings_new ("org.gnome.evolution.plugin.face-picture");
++	GSettings *settings = e_util_ref_settings ("org.gnome.evolution.plugin.face-picture");
+ 
+ 	g_settings_set_boolean (settings, SETTINGS_KEY, value);
+ 
+diff --git a/plugins/mail-notification/mail-notification.c b/plugins/mail-notification/mail-notification.c
+index f374e46e0b..e5f9feb9f3 100644
+--- a/plugins/mail-notification/mail-notification.c
++++ b/plugins/mail-notification/mail-notification.c
+@@ -82,7 +82,7 @@ is_part_enabled (const gchar *key)
+ 	gboolean res = TRUE;
+ 	GSettings *settings;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.plugin.mail-notification");
++	settings = e_util_ref_settings ("org.gnome.evolution.plugin.mail-notification");
+ 
+ 	res = g_settings_get_boolean (settings, key);
+ 
+@@ -538,7 +538,7 @@ sound_file_set_cb (GtkFileChooser *file_chooser,
+ 	gchar *file;
+ 	GSettings *settings;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.plugin.mail-notification");
++	settings = e_util_ref_settings ("org.gnome.evolution.plugin.mail-notification");
+ 	file = gtk_file_chooser_get_filename (file_chooser);
+ 
+ 	g_settings_set_string (settings, CONF_KEY_SOUND_FILE, (file != NULL) ? file : "");
+@@ -580,7 +580,7 @@ sound_notify_idle_cb (gpointer user_data)
+ 
+ 	g_return_val_if_fail (data != NULL, FALSE);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.plugin.mail-notification");
++	settings = e_util_ref_settings ("org.gnome.evolution.plugin.mail-notification");
+ 	file = g_settings_get_string (settings, CONF_KEY_SOUND_FILE);
+ 
+ 	do_play_sound (
+@@ -663,7 +663,7 @@ get_config_widget_sound (void)
+ 	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+ 	gtk_widget_show (widget);
+ 
+-	settings = g_settings_new ("org.gnome.evolution.plugin.mail-notification");
++	settings = e_util_ref_settings ("org.gnome.evolution.plugin.mail-notification");
+ 
+ 	g_settings_bind (
+ 		settings, CONF_KEY_ENABLED_SOUND,
+@@ -780,7 +780,7 @@ get_cfg_widget (void)
+ 	GSettings *settings;
+ 	const gchar *text;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.plugin.mail-notification");
++	settings = e_util_ref_settings ("org.gnome.evolution.plugin.mail-notification");
+ 
+ 	widget = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
+ 	gtk_widget_show (widget);
+diff --git a/plugins/publish-calendar/publish-calendar.c b/plugins/publish-calendar/publish-calendar.c
+index f48f1af10e..f3423ba856 100644
+--- a/plugins/publish-calendar/publish-calendar.c
++++ b/plugins/publish-calendar/publish-calendar.c
+@@ -547,7 +547,7 @@ update_timestamp (EPublishUri *uri)
+ 	uri->last_pub_time = g_strdup_printf ("%d", (gint) time (NULL));
+ 
+ 	uris_array = g_ptr_array_new_full (3, g_free);
+-	settings = g_settings_new (PC_SETTINGS_ID);
++	settings = e_util_ref_settings (PC_SETTINGS_ID);
+ 	set_uris = g_settings_get_strv (settings, PC_SETTINGS_URIS);
+ 
+ 	for (ii = 0; set_uris && set_uris[ii]; ii++) {
+@@ -638,7 +638,7 @@ url_list_changed (PublishUIData *ui)
+ 
+ 	g_ptr_array_add (uris, NULL);
+ 
+-	settings = g_settings_new (PC_SETTINGS_ID);
++	settings = e_util_ref_settings (PC_SETTINGS_ID);
+ 	g_settings_set_strv (settings, PC_SETTINGS_URIS, (const gchar * const *) uris->pdata);
+ 	g_object_unref (settings);
+ 
+@@ -1023,7 +1023,7 @@ e_plugin_lib_enable (EPlugin *ep,
+ 		GThread *thread = NULL;
+ 		GError *error = NULL;
+ 
+-		settings = g_settings_new (PC_SETTINGS_ID);
++		settings = e_util_ref_settings (PC_SETTINGS_ID);
+ 		uris = g_settings_get_strv (settings, PC_SETTINGS_URIS);
+ 		g_object_unref (settings);
+ 
+diff --git a/plugins/publish-calendar/publish-location.c b/plugins/publish-calendar/publish-location.c
+index f867586c51..8d9f91e17b 100644
+--- a/plugins/publish-calendar/publish-location.c
++++ b/plugins/publish-calendar/publish-location.c
+@@ -95,7 +95,7 @@ migrateURI (const gchar *xml,
+ 
+ 	uris_array = g_ptr_array_new_full (3, g_free);
+ 
+-	settings = g_settings_new (PC_SETTINGS_ID);
++	settings = e_util_ref_settings (PC_SETTINGS_ID);
+ 	set_uris = g_settings_get_strv (settings, PC_SETTINGS_URIS);
+ 
+ 	for (ii = 0; set_uris && set_uris[ii]; ii++) {
+diff --git a/plugins/save-calendar/rdf-format.c b/plugins/save-calendar/rdf-format.c
+index 50abdcabda..c967b9cae2 100644
+--- a/plugins/save-calendar/rdf-format.c
++++ b/plugins/save-calendar/rdf-format.c
+@@ -53,7 +53,7 @@ calendar_config_get_timezone (void)
+ 	GSettings *settings;
+ 	gchar *retval = NULL;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.calendar");
++	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 	retval = g_settings_get_string (settings, "timezone");
+ 	g_object_unref (settings);
+ 	if (!retval)
+diff --git a/plugins/templates/templates.c b/plugins/templates/templates.c
+index e3883a1fbe..fe9dd98c73 100644
+--- a/plugins/templates/templates.c
++++ b/plugins/templates/templates.c
+@@ -465,7 +465,7 @@ e_plugin_lib_get_configure_widget (EPlugin *epl)
+ 	gtk_container_add (GTK_CONTAINER (vbuttonbox2), clue_remove);
+ 	gtk_widget_set_can_default (clue_remove, TRUE);
+ 
+-	ui->settings = g_settings_new ("org.gnome.evolution.plugin.templates");
++	ui->settings = e_util_ref_settings ("org.gnome.evolution.plugin.templates");
+ 
+ 	ui->treeview = clue_treeview;
+ 
+diff --git a/shell/e-shell-migrate.c b/shell/e-shell-migrate.c
+index 36f3397757..5aa3efa837 100644
+--- a/shell/e-shell-migrate.c
++++ b/shell/e-shell-migrate.c
+@@ -101,7 +101,7 @@ shell_migrate_get_version (EShell *shell,
+ 	*minor = 0;
+ 	*micro = 0;
+ 
+-	settings = g_settings_new ("org.gnome.evolution");
++	settings = e_util_ref_settings ("org.gnome.evolution");
+ 	string = g_settings_get_string (settings, "version");
+ 
+ 	if (string != NULL) {
+@@ -197,7 +197,7 @@ shell_migrate_save_current_version (void)
+ 	 * This implies an awareness of module behavior from within the
+ 	 * application core, but practical considerations overrule here. */
+ 
+-	settings = g_settings_new ("org.gnome.evolution");
++	settings = e_util_ref_settings ("org.gnome.evolution");
+ 
+ 	version = g_strdup_printf (
+ 		"%d.%d.%d",
+diff --git a/shell/e-shell-window-actions.c b/shell/e-shell-window-actions.c
+index 7b5bfea45e..0aec08c1c5 100644
+--- a/shell/e-shell-window-actions.c
++++ b/shell/e-shell-window-actions.c
+@@ -826,7 +826,7 @@ action_work_offline_cb (GtkAction *action,
+ 
+ 	/* XXX The boolean sense of the setting is backwards.  Would
+ 	 *     be more intuitive and less error-prone as "start-online". */
+-	settings = g_settings_new ("org.gnome.evolution.shell");
++	settings = e_util_ref_settings ("org.gnome.evolution.shell");
+ 	g_settings_set_boolean (settings, "start-offline", TRUE);
+ 	g_object_unref (settings);
+ }
+@@ -852,7 +852,7 @@ action_work_online_cb (GtkAction *action,
+ 
+ 	/* XXX The boolean sense of the setting is backwards.  Would
+ 	 *     be more intuitive and less error-prone as "start-online". */
+-	settings = g_settings_new ("org.gnome.evolution.shell");
++	settings = e_util_ref_settings ("org.gnome.evolution.shell");
+ 	g_settings_set_boolean (settings, "start-offline", FALSE);
+ 	g_object_unref (settings);
+ }
+diff --git a/shell/e-shell-window-private.c b/shell/e-shell-window-private.c
+index 7a84b2e118..77749fbbeb 100644
+--- a/shell/e-shell-window-private.c
++++ b/shell/e-shell-window-private.c
+@@ -33,7 +33,7 @@ shell_window_save_switcher_style_cb (GtkRadioAction *action,
+ 	GtkToolbarStyle style;
+ 	const gchar *string;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.shell");
++	settings = e_util_ref_settings ("org.gnome.evolution.shell");
+ 
+ 	style = gtk_radio_action_get_current_value (action);
+ 
+@@ -68,7 +68,7 @@ shell_window_init_switcher_style (EShellWindow *shell_window)
+ 	GtkToolbarStyle style;
+ 	gchar *string;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.shell");
++	settings = e_util_ref_settings ("org.gnome.evolution.shell");
+ 
+ 	action = ACTION (SWITCHER_STYLE_ICONS);
+ 	string = g_settings_get_string (settings, "buttons-style");
+@@ -346,7 +346,7 @@ e_shell_window_private_constructed (EShellWindow *shell_window)
+ #ifndef G_OS_WIN32
+ 	/* Support lockdown. */
+ 
+-	settings = g_settings_new ("org.gnome.desktop.lockdown");
++	settings = e_util_ref_settings ("org.gnome.desktop.lockdown");
+ 
+ 	action_group = ACTION_GROUP (LOCKDOWN_PRINTING);
+ 
+@@ -404,7 +404,7 @@ e_shell_window_private_constructed (EShellWindow *shell_window)
+ 
+ 	/* Bind GObject properties to GSettings keys. */
+ 
+-	settings = g_settings_new ("org.gnome.evolution.shell");
++	settings = e_util_ref_settings ("org.gnome.evolution.shell");
+ 
+ 	/* Use G_SETTINGS_BIND_GET_NO_CHANGES so shell windows
+ 	 * are initialized to the most recently used shell view,
+diff --git a/shell/e-shell.c b/shell/e-shell.c
+index 8136d89cca..c1f85210b8 100644
+--- a/shell/e-shell.c
++++ b/shell/e-shell.c
+@@ -1472,7 +1472,7 @@ e_shell_create_shell_window (EShell *shell,
+ 	if (view_name != NULL) {
+ 		GSettings *settings;
+ 
+-		settings = g_settings_new ("org.gnome.evolution.shell");
++		settings = e_util_ref_settings ("org.gnome.evolution.shell");
+ 		g_settings_set_string (
+ 			settings, "default-component-id", view_name);
+ 		g_object_unref (settings);
+diff --git a/shell/main.c b/shell/main.c
+index ac7ee65f1d..972c0bd57f 100644
+--- a/shell/main.c
++++ b/shell/main.c
+@@ -349,7 +349,7 @@ create_default_shell (void)
+ 	gboolean online = TRUE;
+ 	GError *error = NULL;
+ 
+-	settings = g_settings_new ("org.gnome.evolution.shell");
++	settings = e_util_ref_settings ("org.gnome.evolution.shell");
+ 
+ 	/* Requesting online or offline mode from the command-line
+ 	 * should be persistent, just like selecting it in the UI. */
+@@ -528,15 +528,15 @@ main (gint argc,
+ 		shell_force_shutdown ();
+ 
+ 	if (disable_preview) {
+-		settings = g_settings_new ("org.gnome.evolution.mail");
++		settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 		g_settings_set_boolean (settings, "safe-list", TRUE);
+ 		g_object_unref (settings);
+ 
+-		settings = g_settings_new ("org.gnome.evolution.addressbook");
++		settings = e_util_ref_settings ("org.gnome.evolution.addressbook");
+ 		g_settings_set_boolean (settings, "show-preview", FALSE);
+ 		g_object_unref (settings);
+ 
+-		settings = g_settings_new ("org.gnome.evolution.calendar");
++		settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+ 		g_settings_set_boolean (settings, "show-memo-preview", FALSE);
+ 		g_settings_set_boolean (settings, "show-task-preview", FALSE);
+ 		g_object_unref (settings);
+@@ -559,7 +559,7 @@ main (gint argc,
+ 	gtk_accel_map_load (e_get_accels_filename ());
+ 
+ #ifdef DEVELOPMENT
+-	settings = g_settings_new ("org.gnome.evolution.shell");
++	settings = e_util_ref_settings ("org.gnome.evolution.shell");
+ 	skip_warning_dialog = g_settings_get_boolean (
+ 		settings, "skip-warning-dialog");
+ 
+@@ -637,5 +637,7 @@ exit:
+ 
+ 	gtk_accel_map_save (e_get_accels_filename ());
+ 
++	e_util_cleanup_settings ();
++
+ 	return 0;
+ }
+-- 
+2.15.0
+

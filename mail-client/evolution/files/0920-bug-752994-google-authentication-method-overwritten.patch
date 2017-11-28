@@ -1,0 +1,44 @@
+From 76e65e033dea846516aa8a20f01d65d29d51d5e7 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 5 Aug 2015 22:45:22 +0200
+Subject: [PATCH 0920/1800] Bug 752994 - Google authentication method
+ overwritten for GOA books
+
+---
+ modules/book-config-google/evolution-book-config-google.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/modules/book-config-google/evolution-book-config-google.c b/modules/book-config-google/evolution-book-config-google.c
+index 06d2786470..13c3963366 100644
+--- a/modules/book-config-google/evolution-book-config-google.c
++++ b/modules/book-config-google/evolution-book-config-google.c
+@@ -89,15 +89,24 @@ static void
+ book_config_google_commit_changes (ESourceConfigBackend *backend,
+                                    ESource *scratch_source)
+ {
++	ESource *collection_source;
++	ESourceConfig *config;
+ 	ESourceAuthentication *extension;
+ 	const gchar *extension_name;
+ 	const gchar *user;
+ 
++	config = e_source_config_backend_get_config (backend);
++	collection_source = e_source_config_get_collection_source (config);
++
+ 	extension_name = E_SOURCE_EXTENSION_AUTHENTICATION;
+ 	extension = e_source_get_extension (scratch_source, extension_name);
+ 
+-	e_source_authentication_set_host (extension, "www.google.com");
+-	e_source_authentication_set_method (extension, "ClientLogin");
++	if (!collection_source || (
++	    !e_source_has_extension (collection_source, E_SOURCE_EXTENSION_GOA) &&
++	    !e_source_has_extension (collection_source, E_SOURCE_EXTENSION_UOA))) {
++		e_source_authentication_set_host (extension, "www.google.com");
++		e_source_authentication_set_method (extension, "ClientLogin");
++	}
+ 
+ 	user = e_source_authentication_get_user (extension);
+ 	g_return_if_fail (user != NULL);
+-- 
+2.15.0
+

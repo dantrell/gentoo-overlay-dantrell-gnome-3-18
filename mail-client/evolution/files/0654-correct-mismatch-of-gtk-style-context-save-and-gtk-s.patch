@@ -1,0 +1,50 @@
+From 8e61a4d21604fa8fcbd0c881b926ba7293a81450 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 8 Apr 2015 15:15:07 +0200
+Subject: [PATCH 0654/1800] Correct mismatch of gtk_style_context_save() and
+ gtk_style_context_restore()
+
+---
+ e-util/e-table-header-utils.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/e-util/e-table-header-utils.c b/e-util/e-table-header-utils.c
+index 371d1737b8..1430db62e8 100644
+--- a/e-util/e-table-header-utils.c
++++ b/e-util/e-table-header-utils.c
+@@ -174,6 +174,7 @@ e_table_header_draw_button (cairo_t *cr,
+ 		(padding.top + padding.bottom + 2 * HEADER_PADDING);
+ 
+ 	if (inner_width < 1 || inner_height < 1) {
++		gtk_style_context_restore (context);
+ 		return; /* nothing fits */
+ 	}
+ 
+@@ -195,8 +196,9 @@ e_table_header_draw_button (cairo_t *cr,
+ 			inner_width -= arrow_width + HEADER_PADDING;
+ 		break;
+ 	default:
+-		cairo_restore (cr);
+-		g_return_if_reached ();
++		gtk_style_context_restore (context);
++		g_warn_if_reached ();
++		return;
+ 	}
+ 
+ 	if (inner_width < 1) {
+@@ -275,10 +277,9 @@ e_table_header_draw_button (cairo_t *cr,
+ 		break;
+ 	}
+ 
+-	/* coverity[dead_error_begin] */
+ 	default:
+-		cairo_restore (cr);
+-		g_return_if_reached ();
++		g_warn_if_reached ();
++		break;
+ 	}
+ 
+ 	g_object_unref (layout);
+-- 
+2.15.0
+

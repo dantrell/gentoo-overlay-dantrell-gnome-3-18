@@ -1,0 +1,25 @@
+From 87c714764058f5d35e6e348244c9b5311eda2cad Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 25 Feb 2016 15:33:53 +0100
+Subject: [PATCH 0746/1800] Bug 749108 - Embedded inline images pretend message
+ attachments
+
+---
+ e-util/e-html-editor-view.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 51b44df4a6..9def9dd4ba 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -2004,6 +2004,7 @@ create_part_for_inline_image_from_element_data (const gchar *element_src,
+ 
+ 	camel_mime_part_set_content_id (part, id);
+ 	camel_mime_part_set_filename (part, name);
++	camel_mime_part_set_disposition (part, "inline");
+ 	camel_mime_part_set_encoding (part, CAMEL_TRANSFER_ENCODING_BASE64);
+ out:
+ 	g_free (mime_type);
+-- 
+2.15.0
+

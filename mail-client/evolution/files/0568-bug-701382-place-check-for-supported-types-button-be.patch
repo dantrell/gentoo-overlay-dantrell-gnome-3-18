@@ -1,0 +1,51 @@
+From 1626f4cedd54dbfe9d003497dc85d589e797d65b Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Mat=C4=9Bj=20Cepl?= <mcepl@cepl.eu>
+Date: Mon, 23 Mar 2015 12:19:13 +0100
+Subject: [PATCH 0568/1800] Bug 701382 - Place "Check for supported types"
+ button before dropdown
+
+---
+ mail/e-mail-config-auth-check.c | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/mail/e-mail-config-auth-check.c b/mail/e-mail-config-auth-check.c
+index f547843936..350d17c9db 100644
+--- a/mail/e-mail-config-auth-check.c
++++ b/mail/e-mail-config-auth-check.c
+@@ -334,6 +334,16 @@ mail_config_auth_check_constructed (GObject *object)
+ 	backend = e_mail_config_auth_check_get_backend (auth_check);
+ 	provider = e_mail_config_service_backend_get_provider (backend);
+ 
++	text = _("Check for Supported Types");
++	widget = gtk_button_new_with_label (text);
++	gtk_box_pack_start (GTK_BOX (object), widget, FALSE, FALSE, 0);
++	gtk_widget_show (widget);
++
++	g_signal_connect (
++		widget, "clicked",
++		G_CALLBACK (mail_config_auth_check_clicked_cb),
++		auth_check);
++
+ 	widget = e_auth_combo_box_new ();
+ 	e_auth_combo_box_set_provider (E_AUTH_COMBO_BOX (widget), provider);
+ 	gtk_box_pack_start (GTK_BOX (object), widget, FALSE, FALSE, 0);
+@@ -346,16 +356,6 @@ mail_config_auth_check_constructed (GObject *object)
+ 		G_BINDING_BIDIRECTIONAL |
+ 		G_BINDING_SYNC_CREATE);
+ 
+-	text = _("Check for Supported Types");
+-	widget = gtk_button_new_with_label (text);
+-	gtk_box_pack_start (GTK_BOX (object), widget, FALSE, FALSE, 0);
+-	gtk_widget_show (widget);
+-
+-	g_signal_connect (
+-		widget, "clicked",
+-		G_CALLBACK (mail_config_auth_check_clicked_cb),
+-		auth_check);
+-
+ 	mail_config_auth_check_init_mechanism (auth_check);
+ }
+ 
+-- 
+2.15.0
+

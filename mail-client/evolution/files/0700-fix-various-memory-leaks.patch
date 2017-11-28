@@ -1,0 +1,71 @@
+From 8302baa4f3099eedfa31940fc2bb011a7a33c855 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 23 Apr 2015 17:50:23 +0200
+Subject: [PATCH 0700/1800] Fix various memory leaks
+
+---
+ em-format/e-mail-formatter-quote.c  | 7 +++++++
+ em-format/e-mail-formatter-utils.c  | 2 +-
+ libemail-engine/mail-folder-cache.c | 1 +
+ mail/e-mail-reader-utils.c          | 2 ++
+ 4 files changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/em-format/e-mail-formatter-quote.c b/em-format/e-mail-formatter-quote.c
+index 1916bbad8f..99b31fe7e3 100644
+--- a/em-format/e-mail-formatter-quote.c
++++ b/em-format/e-mail-formatter-quote.c
+@@ -148,6 +148,13 @@ e_mail_formatter_quote_init (EMailFormatterQuote *formatter)
+ static void
+ e_mail_formatter_quote_finalize (GObject *object)
+ {
++	EMailFormatterQuote *formatter;
++
++	formatter = E_MAIL_FORMATTER_QUOTE (object);
++
++	g_free (formatter->priv->credits);
++	formatter->priv->credits = NULL;
++
+ 	/* Chain up to parent's finalize() */
+ 	G_OBJECT_CLASS (e_mail_formatter_quote_parent_class)->finalize (object);
+ }
+diff --git a/em-format/e-mail-formatter-utils.c b/em-format/e-mail-formatter-utils.c
+index 0e0eac93d4..10252f7c0a 100644
+--- a/em-format/e-mail-formatter-utils.c
++++ b/em-format/e-mail-formatter-utils.c
+@@ -431,7 +431,7 @@ e_mail_formatter_format_header (EMailFormatter *formatter,
+ 		camel_header_newsgroups_free (ng);
+ 
+ 		txt = html->str;
+-		g_string_free (html, FALSE);
++		value = g_string_free (html, FALSE);
+ 
+ 		flags |= E_MAIL_FORMATTER_HEADER_FLAG_HTML;
+ 		flags |= E_MAIL_FORMATTER_HEADER_FLAG_BOLD;
+diff --git a/libemail-engine/mail-folder-cache.c b/libemail-engine/mail-folder-cache.c
+index 2244c04390..07d6bace5d 100644
+--- a/libemail-engine/mail-folder-cache.c
++++ b/libemail-engine/mail-folder-cache.c
+@@ -909,6 +909,7 @@ folder_cache_check_ignore_thread (CamelFolder *folder,
+ 					   the rest is just a guess. */
+ 					found_first_msgid = TRUE;
+ 					first_ignore_thread = camel_message_info_user_flag (refrinfo, "ignore-thread");
++					camel_message_info_unref (refrinfo);
+ 					break;
+ 				}
+ 
+diff --git a/mail/e-mail-reader-utils.c b/mail/e-mail-reader-utils.c
+index aedcd5ec48..5ae29817e0 100644
+--- a/mail/e-mail-reader-utils.c
++++ b/mail/e-mail-reader-utils.c
+@@ -874,6 +874,8 @@ mark_ignore_thread_traverse_uids (CamelFolder *folder,
+ 
+ 		mi = camel_folder_get_message_info (folder, uid);
+ 		if (!mi || !camel_message_info_message_id (mi)) {
++			if (mi)
++				camel_message_info_unref (mi);
+ 			camel_pstring_free (uid);
+ 			continue;
+ 		}
+-- 
+2.15.0
+

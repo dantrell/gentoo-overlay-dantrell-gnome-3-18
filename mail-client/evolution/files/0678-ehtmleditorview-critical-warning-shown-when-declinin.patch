@@ -1,0 +1,26 @@
+From f8812e4576084e1aa7e2fe8cde8393dcf2fc8d4c Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 24 Feb 2016 18:04:48 +0100
+Subject: [PATCH 0678/1800] EHTMLEditorView - Critical warning shown when
+ declining a meeting invitation
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 098e7052fb..e6e548a8af 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -360,6 +360,8 @@ dom_force_spell_check_in_viewport (WebKitDOMDocument *document,
+ 
+ 	/* We have to add 10 px offset as otherwise just the HTML element will be returned */
+ 	actual = webkit_dom_document_caret_range_from_point (document, 10, 10);
++	if (!actual)
++		return;
+ 
+ 	/* Append some text on the end of the body */
+ 	text = webkit_dom_document_create_text_node (document, "-x-evo-end");
+-- 
+2.15.0
+

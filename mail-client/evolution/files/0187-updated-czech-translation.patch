@@ -1,0 +1,25 @@
+From 52e36cf6add0dd3133cbc35e2d280a28a5e8011a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marek=20=C4=8Cernock=C3=BD?= <marek@manet.cz>
+Date: Tue, 20 Jan 2015 19:52:00 +0100
+Subject: [PATCH 0187/1800] Updated Czech translation
+
+---
+ po/cs.po | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/po/cs.po b/po/cs.po
+index a776ab91ca..f8adda435f 100644
+--- a/po/cs.po
++++ b/po/cs.po
+@@ -21064,7 +21064,7 @@ msgstr "Zobrazovat panel s náhledem zprávy"
+ 
+ #: ../modules/mail/e-mail-shell-view-actions.c:1965
+ msgid "Show _Deleted Messages"
+-msgstr "Zobrazit s_mazané zprávy"
++msgstr "Zobrazovat s_mazané zprávy"
+ 
+ #: ../modules/mail/e-mail-shell-view-actions.c:1967
+ msgid "Show deleted messages with a line through them"
+-- 
+2.15.0
+

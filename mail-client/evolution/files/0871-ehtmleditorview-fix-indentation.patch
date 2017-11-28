@@ -1,0 +1,29 @@
+From 71baf3e3b3cf34abef1321567bd8d0bbf2cf0451 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 26 Feb 2016 10:40:34 +0100
+Subject: [PATCH 0871/1800] EHTMLEditorView - Fix indentation
+
+---
+ e-util/e-html-editor-view.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 31c7939253..56b607cb5d 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -131,9 +131,9 @@ G_DEFINE_TYPE_WITH_CODE (
+ 
+ static void
+ html_editor_view_queue_post_reload_operation (EHTMLEditorView *view,
+-                                              PostReloadOperationFunc func,
+-                                              gpointer data,
+-                                              GDestroyNotify data_free_func)
++					      PostReloadOperationFunc func,
++					      gpointer data,
++					      GDestroyNotify data_free_func)
+ {
+ 	PostReloadOperation *op;
+ 
+-- 
+2.15.0
+

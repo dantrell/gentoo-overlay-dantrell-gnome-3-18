@@ -1,0 +1,97 @@
+From 6018cb515553d06e8114c2fd9b22bf622785dace Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 14:21:59 +0100
+Subject: [PATCH 0276/1800] EHTMLEditorView, EHTMLEditorSelection - Use
+ webkit_dom_html_element_insert_adjacent_html
+
+To avoid some unnecessary string allocation/manipulation.
+---
+ .../e-html-editor-selection-dom-functions.c          | 14 ++++----------
+ web-extensions/e-html-editor-view-dom-functions.c    | 20 ++++++--------------
+ 2 files changed, 10 insertions(+), 24 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index 00858540c3..aee2d2dc2f 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -3322,17 +3322,14 @@ dom_selection_set_monospaced (WebKitDOMDocument *document,
+ 			g_free (end);
+ 		} else {
+ 			WebKitDOMRange *new_range;
+-			gchar *outer_html;
+-			gchar *tmp;
+ 
+ 			webkit_dom_element_set_id (tt_element, "ev-tt");
+ 
+-		        outer_html = webkit_dom_html_element_get_outer_html (
+-				WEBKIT_DOM_HTML_ELEMENT (tt_element));
+-			tmp = g_strconcat (outer_html, UNICODE_ZERO_WIDTH_SPACE, NULL);
+-			webkit_dom_html_element_set_outer_html (
++			webkit_dom_html_element_insert_adjacent_html (
+ 				WEBKIT_DOM_HTML_ELEMENT (tt_element),
+-				tmp, NULL);
++				"beforeend",
++				UNICODE_ZERO_WIDTH_SPACE,
++				NULL);
+ 
+ 			/* We need to get that element again */
+ 			tt_element = webkit_dom_document_get_element_by_id (
+@@ -3354,9 +3351,6 @@ dom_selection_set_monospaced (WebKitDOMDocument *document,
+ 			webkit_dom_dom_selection_modify (
+ 				window_selection, "move", "right", "character");
+ 
+-			g_free (outer_html);
+-			g_free (tmp);
+-
+ 			dom_force_spell_check_for_current_paragraph (document, extension);
+ 		}
+ 
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 1f342db263..b77a5b5a47 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -1014,17 +1014,13 @@ dom_check_magic_links (WebKitDOMDocument *document,
+ 					new_href);
+ 
+ 				if (appending_to_link) {
+-					gchar *tmp;
+-
+-					tmp = g_strconcat (inner_html, text_to_append, NULL);
+-					webkit_dom_html_element_set_inner_html (
++					webkit_dom_html_element_insert_adjacent_html (
+ 						WEBKIT_DOM_HTML_ELEMENT (parent),
+-						tmp,
++						"beforeend",
++						text_to_append,
+ 						NULL);
+ 
+ 					remove_node (node);
+-
+-					g_free (tmp);
+ 				}
+ 
+ 				g_free (new_href);
+@@ -1052,17 +1048,13 @@ dom_check_magic_links (WebKitDOMDocument *document,
+ 					new_href);
+ 
+ 				if (appending_to_link) {
+-					gchar *tmp;
+-
+-					tmp = g_strconcat (inner_html, text_to_append, NULL);
+-					webkit_dom_html_element_set_inner_html (
++					webkit_dom_html_element_insert_adjacent_html (
+ 						WEBKIT_DOM_HTML_ELEMENT (parent),
+-						tmp,
++						"beforeend",
++						text_to_append,
+ 						NULL);
+ 
+ 					remove_node (node);
+-
+-					g_free (tmp);
+ 				}
+ 
+ 				g_free (new_href);
+-- 
+2.15.0
+

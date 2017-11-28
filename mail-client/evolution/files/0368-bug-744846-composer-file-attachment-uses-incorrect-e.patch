@@ -1,0 +1,26 @@
+From 7471bcb2f7307c3ad8f5135550e64e61d44eed5f Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 25 Feb 2015 16:49:14 +0100
+Subject: [PATCH 0368/1800] Bug 744846 - Composer file attachment uses
+ incorrect EAlertSink
+
+---
+ composer/e-msg-composer.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 22c8da762f..6580df3c80 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -4421,7 +4421,7 @@ handle_mailto (EMsgComposer *composer,
+ 				camel_url_decode (content);
+ 				if (file_is_blacklisted (content))
+ 					e_alert_submit (
+-						E_ALERT_SINK (composer),
++						E_ALERT_SINK (e_msg_composer_get_editor (composer)),
+ 						"mail:blacklisted-file",
+ 						content, NULL);
+ 				if (g_ascii_strncasecmp (content, "file:", 5) == 0)
+-- 
+2.15.0
+

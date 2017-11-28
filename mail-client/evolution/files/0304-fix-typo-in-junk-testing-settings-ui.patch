@@ -1,0 +1,25 @@
+From ebf40b136de7dafbb02fa42e18273b636746f3fc Mon Sep 17 00:00:00 2001
+From: Andre Klapper <ak-47@gmx.net>
+Date: Mon, 16 Feb 2015 00:23:46 +0100
+Subject: [PATCH 0304/1800] Fix typo in Junk Testing Settings UI
+
+---
+ mail/mail-config.ui | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mail/mail-config.ui b/mail/mail-config.ui
+index d309d98341..edb52f9867 100644
+--- a/mail/mail-config.ui
++++ b/mail/mail-config.ui
+@@ -2834,7 +2834,7 @@
+                         <property name="can_focus">False</property>
+                         <property name="xalign">0</property>
+                         <property name="margin-top">12</property>
+-                        <property name="label" translatable="yes">Just Test Options</property>
++                        <property name="label" translatable="yes">Junk Test Options</property>
+                         <attributes>
+                           <attribute name="weight" value="bold"/>
+                         </attributes>
+-- 
+2.15.0
+

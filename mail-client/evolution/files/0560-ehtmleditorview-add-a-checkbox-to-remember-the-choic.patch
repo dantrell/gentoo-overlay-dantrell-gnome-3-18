@@ -1,0 +1,97 @@
+From b3ec91a6270151ac4be3965fb36d849ed4d5bad7 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 6 May 2015 09:52:30 +0200
+Subject: [PATCH 0560/1800] EHTMLEditorView - Add a checkbox to remember the
+ choice when asking if lose formatting
+
+---
+ composer/mail-composer.error.xml             |  7 +++++++
+ data/org.gnome.evolution.mail.gschema.xml.in |  5 +++++
+ e-util/e-html-editor-view.c                  | 26 ++++++--------------------
+ 3 files changed, 18 insertions(+), 20 deletions(-)
+
+diff --git a/composer/mail-composer.error.xml b/composer/mail-composer.error.xml
+index 06d4d42bef..8b9db2daa2 100644
+--- a/composer/mail-composer.error.xml
++++ b/composer/mail-composer.error.xml
+@@ -102,4 +102,11 @@
+   <button _label="_Send" response="GTK_RESPONSE_YES"/>
+  </error>
+ 
++  <error id="prompt-composer-mode-switch" type="question" default="GTK_RESPONSE_YES">
++  <_primary>Are you sure you want to change the composer mode?</_primary>
++  <_secondary xml:space="preserve">Turning HTML mode off will cause the text to lose all formatting. Do you want to continue?</_secondary>
++  <button _label="_Don't lose formatting" response="GTK_RESPONSE_NO"/>
++  <button _label="Lose _formatting" response="GTK_RESPONSE_YES"/>
++ </error>
++
+ </error-list>
+diff --git a/data/org.gnome.evolution.mail.gschema.xml.in b/data/org.gnome.evolution.mail.gschema.xml.in
+index 89373bb14b..9cc4c3a8e5 100644
+--- a/data/org.gnome.evolution.mail.gschema.xml.in
++++ b/data/org.gnome.evolution.mail.gschema.xml.in
+@@ -456,6 +456,11 @@
+       <_summary>Prompt when replying to many recipients</_summary>
+       <_description>It disables/enables the repeated prompts to warn that you are sending a reply to many people.</_description>
+     </key>
++    <key name="prompt-on-composer-mode-switch" type="b">
++      <default>true</default>
++      <_summary>Prompt when switching composer mode and the content needs to lose its formatting</_summary>
++      <_description>It disables/enables the repeated prompts to warn that you are switching composer mode and the content needs to lose its formatting.</_description>
++    </key>
+     <key name="browser-close-on-reply-policy" enum="org.gnome.evolution.mail.AutomaticActionPolicy">
+       <default>'ask'</default>
+       <_summary>Policy for automatically closing the message browser window when forwarding or replying to the displayed message.</_summary>
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index ed3629d4da..0f555024db 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -1382,8 +1382,8 @@ e_html_editor_view_get_html_mode (EHTMLEditorView *view)
+ static gboolean
+ show_lose_formatting_dialog (EHTMLEditorView *view)
+ {
+-	gint result;
+-	GtkWidget *toplevel, *dialog;
++	gboolean lose;
++	GtkWidget *toplevel;
+ 	GtkWindow *parent = NULL;
+ 
+ 	toplevel = gtk_widget_get_toplevel (GTK_WIDGET (view));
+@@ -1391,30 +1391,16 @@ show_lose_formatting_dialog (EHTMLEditorView *view)
+ 	if (GTK_IS_WINDOW (toplevel))
+ 		parent = GTK_WINDOW (toplevel);
+ 
+-	dialog = gtk_message_dialog_new (
+-		parent,
+-		GTK_DIALOG_DESTROY_WITH_PARENT,
+-		GTK_MESSAGE_WARNING,
+-		GTK_BUTTONS_NONE,
+-		_("Turning HTML mode off will cause the text "
+-		"to lose all formatting. Do you want to continue?"));
+-	gtk_dialog_add_buttons (
+-		GTK_DIALOG (dialog),
+-		_("_Don't lose formatting"), GTK_RESPONSE_CANCEL,
+-		_("_Lose formatting"), GTK_RESPONSE_OK,
+-		NULL);
++	lose = e_util_prompt_user (
++		parent, "org.gnome.evolution.mail", "prompt-on-composer-mode-switch",
++		"mail-composer:prompt-composer-mode-switch", NULL);
+ 
+-	result = gtk_dialog_run (GTK_DIALOG (dialog));
+-
+-	if (result != GTK_RESPONSE_OK) {
+-		gtk_widget_destroy (dialog);
++	if (!lose) {
+ 		/* Nothing has changed, but notify anyway */
+ 		g_object_notify (G_OBJECT (view), "html-mode");
+ 		return FALSE;
+ 	}
+ 
+-	gtk_widget_destroy (dialog);
+-
+ 	return TRUE;
+ }
+ 
+-- 
+2.15.0
+

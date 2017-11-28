@@ -1,0 +1,27 @@
+From 62113d45b306d500d162bc8b212794846e9601cd Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 15 Jul 2015 21:56:53 +0200
+Subject: [PATCH 0890/1800] All-day event covers two days in the mini-calendar
+
+Typo in the end time calculation, instead of subtracting one second
+it was adding one second.
+---
+ calendar/gui/tag-calendar.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/calendar/gui/tag-calendar.c b/calendar/gui/tag-calendar.c
+index 2f00f042f3..ffb2dc1eb9 100644
+--- a/calendar/gui/tag-calendar.c
++++ b/calendar/gui/tag-calendar.c
+@@ -403,7 +403,7 @@ get_component_julian_range (ECalClient *client,
+ 		zone, &instance_start, &start_is_date, &instance_end, &end_is_date, NULL);
+ 
+ 	*start_julian = encode_timet_to_julian (instance_start, start_is_date, zone);
+-	*end_julian = encode_timet_to_julian (instance_end - (instance_end == instance_start ? 0 : - 1), end_is_date, zone);
++	*end_julian = encode_timet_to_julian (instance_end - (instance_end == instance_start ? 0 : 1), end_is_date, zone);
+ }
+ 
+ static void
+-- 
+2.15.0
+

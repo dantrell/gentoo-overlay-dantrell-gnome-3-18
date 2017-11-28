@@ -1,0 +1,26 @@
+From 8b405c4413b10d7cbc0397e90646aca3d1969f25 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Micha=C5=82=20Grzybowski?= <michalg0x5a@gmail.com>
+Date: Wed, 14 Jan 2015 15:23:23 +0100
+Subject: [PATCH 0176/1800] Fix a typo in Polish translation
+
+http://bugs.aviary.pl/show_bug.cgi?id=4982
+---
+ po/pl.po | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/po/pl.po b/po/pl.po
+index 4b91035aeb..c36a8f0ee2 100644
+--- a/po/pl.po
++++ b/po/pl.po
+@@ -3115,7 +3115,7 @@ msgstr "_Powtarzanie"
+ 
+ #: ../calendar/gui/dialogs/event-editor.c:227
+ msgid "Make this a recurring event"
+-msgstr "Oznacza jako wydarz4enie powtarzalne"
++msgstr "Oznacza jako wydarzenie powtarzalne"
+ 
+ #: ../calendar/gui/dialogs/event-editor.c:232 ../e-util/e-send-options.ui.h:14
+ msgid "Send Options"
+-- 
+2.15.0
+

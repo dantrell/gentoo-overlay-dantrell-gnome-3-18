@@ -1,0 +1,239 @@
+From 01d3897866d1a66fba13945a25fb205f6b8286e0 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 27 Nov 2014 17:24:58 +0100
+Subject: [PATCH 0090/1800] EHTMLEditorView - Get rid of GdkKeyEvent and use
+ boolean flags instead.
+
+This is mainly for WebKit2 port.
+---
+ e-util/e-html-editor-view-dom-functions.c          | 31 +++++++++++++++++++---
+ e-util/e-html-editor-view.c                        | 26 +++++++-----------
+ .../web-extensions/e-html-editor-web-extension.c   | 30 +++++++++++++++++++++
+ .../web-extensions/e-html-editor-web-extension.h   | 14 ++++++++++
+ 4 files changed, 81 insertions(+), 20 deletions(-)
+
+diff --git a/e-util/e-html-editor-view-dom-functions.c b/e-util/e-html-editor-view-dom-functions.c
+index f164c80071..d5b51ca65f 100644
+--- a/e-util/e-html-editor-view-dom-functions.c
++++ b/e-util/e-html-editor-view-dom-functions.c
+@@ -1171,6 +1171,22 @@ surround_text_with_paragraph_if_needed (WebKitDOMDocument *document,
+ 
+ 	return FALSE;
+ }
++ static void
++body_keypress_event_cb (WebKitDOMElement *element,
++                        WebKitDOMUIEvent *event,
++                        EHTMLEditorWebExtension *extension)
++{
++	glong key_code;
++
++	e_html_editor_web_extension_set_return_key_pressed (extension, FALSE);
++	e_html_editor_web_extension_set_space_key_pressed (extension, FALSE);
++
++	key_code = webkit_dom_ui_event_get_key_code (event);
++	if (key_code == 13)
++		e_html_editor_web_extension_set_return_key_pressed (extension, TRUE);
++	else if (key_code == 32)
++		e_html_editor_web_extension_set_space_key_pressed (extension, TRUE);
++}
+ 
+ static void
+ body_input_event_cb (WebKitDOMElement *element,
+@@ -1191,8 +1207,9 @@ body_input_event_cb (WebKitDOMElement *element,
+ 	if (extension->priv->magic_smileys && html_mode)
+ 		html_editor_view_check_magic_smileys (view, range);
+ 
+-	if (is_return_key (key_event) || (key_event->keyval == GDK_KEY_space)) {
+-		html_editor_view_check_magic_links (view, range, FALSE, key_event);
++	if (e_html_editor_web_extension_get_return_key_pressed (extension) ||
++	    e_html_editor_web_extension_get_space_key_pressed (extension)) {
++		html_editor_view_check_magic_links (view, range, FALSE);
+ 		mark_node_as_paragraph_after_ending_list (document);
+ 		if (html_mode)
+ 			fix_paragraph_structure_after_pressing_enter_after_smiley (document);
+@@ -1218,7 +1235,7 @@ body_input_event_cb (WebKitDOMElement *element,
+ 				prev_sibling = webkit_dom_node_get_previous_sibling (node);
+ 
+ 				if (WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (prev_sibling))
+-					html_editor_view_check_magic_links (view, range, FALSE, key_event);
++					html_editor_view_check_magic_links (view, range, FALSE);
+ 			}
+ 			g_free (text);
+ 		}
+@@ -3504,6 +3521,14 @@ html_editor_convert_view_content (EHTMLEditorWebExtension *extension,
+ 		FALSE,
+ 		document);
+ 
++	webkit_dom_event_target_add_event_listener (
++		WEBKIT_DOM_EVENT_TARGET (body),
++		"keypress",
++		G_CALLBACK (body_keypress_event_cb),
++		FALSE,
++		extension);
++
++
+ 	g_free (inner_html);
+ }
+ 
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 13f934da03..1c15b91531 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -106,8 +106,6 @@ struct _EHTMLEditorViewPrivate {
+ 
+ 	GHashTable *old_settings;
+ 
+-	GdkEventKey *key_event;
+-
+ 	GQueue *post_reload_operations;
+ };
+ 
+@@ -556,8 +554,7 @@ is_return_key (GdkEventKey *event)
+ static void
+ html_editor_view_check_magic_links (EHTMLEditorView *view,
+                                     WebKitDOMRange *range,
+-                                    gboolean include_space_by_user,
+-                                    GdkEventKey *event)
++                                    gboolean include_space_by_user)
+ {
+ 	gchar *node_text;
+ 	gchar **urls;
+@@ -566,19 +563,16 @@ html_editor_view_check_magic_links (EHTMLEditorView *view,
+ 	gint start_pos_url, end_pos_url;
+ 	WebKitDOMNode *node;
+ 	gboolean include_space = FALSE;
+-	gboolean return_pressed = FALSE;
+ 	gboolean is_email_address = FALSE;
+ 
+-	if (event != NULL) {
+-		return_pressed = is_return_key (event);
+-		include_space = (event->keyval == GDK_KEY_space);
+-	} else {
+-		include_space = include_space_by_user;
+-	}
++	if (include_space_by_user == TRUE)
++		include_space = TRUE;
++	else
++		include_space = view->priv->space_key_pressed;
+ 
+ 	node = webkit_dom_range_get_end_container (range, NULL);
+ 
+-	if (return_pressed)
++	if (view->priv->return_key_pressed)
+ 		node = webkit_dom_node_get_previous_sibling (node);
+ 
+ 	if (!node)
+@@ -620,7 +614,7 @@ html_editor_view_check_magic_links (EHTMLEditorView *view,
+ 
+ 		document = webkit_web_view_get_dom_document (WEBKIT_WEB_VIEW (view));
+ 
+-		if (!return_pressed)
++		if (!view->priv->return_key_pressed)
+ 			e_html_editor_selection_save_caret_position (
+ 				e_html_editor_view_get_selection (view));
+ 
+@@ -672,7 +666,7 @@ html_editor_view_check_magic_links (EHTMLEditorView *view,
+ 			WEBKIT_DOM_NODE (url_text_node),
+ 			NULL);
+ 
+-		if (!return_pressed)
++		if (!view->priv->return_key_pressed)
+ 			e_html_editor_selection_restore_caret_position (
+ 				e_html_editor_view_get_selection (view));
+ 
+@@ -1509,8 +1503,6 @@ html_editor_view_key_press_event (GtkWidget *widget,
+ {
+ 	EHTMLEditorView *view = E_HTML_EDITOR_VIEW (widget);
+ 
+-	view->priv->key_event = event;
+-
+ 	if (event->keyval == GDK_KEY_Menu) {
+ 		gboolean event_handled;
+ 
+@@ -3558,7 +3550,7 @@ e_html_editor_view_check_magic_links (EHTMLEditorView *view,
+ 	g_return_if_fail (E_IS_HTML_EDITOR_VIEW (view));
+ 
+ 	range = dom_get_range (view);
+-	html_editor_view_check_magic_links (view, range, include_space, NULL);
++	html_editor_view_check_magic_links (view, range, include_space);
+ }
+ 
+ static CamelMimePart *
+diff --git a/e-util/web-extensions/e-html-editor-web-extension.c b/e-util/web-extensions/e-html-editor-web-extension.c
+index 251d471b72..6455ba9881 100644
+--- a/e-util/web-extensions/e-html-editor-web-extension.c
++++ b/e-util/web-extensions/e-html-editor-web-extension.c
+@@ -70,6 +70,8 @@ struct _EWebExtensionPrivate {
+ 	gboolean magic_links;
+ 	gboolean magic_smileys;
+ 	gboolean html_mode;
++	gboolean return_key_pressed;
++	gboolean space_key_pressed;
+ 	gint word_wrap_length;
+ };
+ 
+@@ -1492,6 +1494,8 @@ e_html_editor_web_extension_init (EHTMLEditorWebExtension *extension)
+ 	extension->priv->magic_links = FALSE;
+ 	extension->priv->magic_smileys = FALSE;
+ 	extension->priv->html_mode = FALSE;
++	extension->priv->return_key_pressed = FALSE;
++	extension->priv->space_key_pressed = FALSE;
+ 	extension->priv->word_wrap_length = 71;
+ }
+ 
+@@ -1792,3 +1796,29 @@ e_html_editor_web_extension_get_remove_initial_input_line (EHTMLEditorWebExtensi
+ 	return extension->priv->remove_initial_input_line;
+ }
+ 
++gboolean
++e_html_editor_web_extension_get_return_key_pressed (EHTMLEditorWebExtension *extension)
++{
++	return extension->priv->return_key_pressed;
++}
++
++void
++e_html_editor_web_extension_set_return_key_pressed (EHTMLEditorWebExtension *extension,
++                                                    gboolean value)
++{
++	extension->priv->return_key_pressed = value;
++}
++
++gboolean
++e_html_editor_web_extension_get_space_key_pressed (EHTMLEditorWebExtension *extension)
++{
++	return extension->priv->space_key_pressed;
++}
++
++void
++e_html_editor_web_extension_set_space_key_pressed (EHTMLEditorWebExtension *extension,
++                                                   gboolean value)
++{
++	extension->priv->space_key_pressed = value;
++}
++
+diff --git a/e-util/web-extensions/e-html-editor-web-extension.h b/e-util/web-extensions/e-html-editor-web-extension.h
+index 9803b2aa97..50c10dd10c 100644
+--- a/e-util/web-extensions/e-html-editor-web-extension.h
++++ b/e-util/web-extensions/e-html-editor-web-extension.h
+@@ -121,4 +121,18 @@ gboolean	e_html_editor_web_extension_is_message_from_edit_as_new
+ gboolean	e_html_editor_web_extension_get_remove_initial_input_line
+ 						(EHTMLEditorWebExtension *extension);
+ 
++gboolean	e_html_editor_web_extension_get_return_key_pressed
++						(EHTMLEditorWebExtension *extension);
++
++void		e_html_editor_web_extension_set_return_key_pressed
++						(EHTMLEditorWebExtension *extension,
++						 gboolean value);
++
++gboolean	e_html_editor_web_extension_get_space_key_pressed
++						(EHTMLEditorWebExtension *extension);
++
++void		e_html_editor_web_extension_set_space_key_pressed
++						(EHTMLEditorWebExtension *extension,
++						 gboolean value);
++
+ #endif /* E_HTML_EDITOR_WEB_EXTENSION_H */
+-- 
+2.15.0
+

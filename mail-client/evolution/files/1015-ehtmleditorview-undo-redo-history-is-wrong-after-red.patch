@@ -1,0 +1,56 @@
+From 19977db3164fa90576396814e1fc7567aa7d28b8 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 1 Mar 2016 14:04:06 +0100
+Subject: [PATCH 1015/1800] EHTMLEditorView - Undo/Redo history is wrong after
+ redoing UNQUOTE operation
+
+---
+ .../composer/e-html-editor-view-dom-functions.c          | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 4ddd9aca47..c44c56617a 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -2980,7 +2980,9 @@ dom_change_quoted_block_to_normal (WebKitDOMDocument *document,
+ 	gboolean html_mode;
+ 	gint citation_level, success = FALSE;
+ 	WebKitDOMElement *selection_start_marker, *selection_end_marker, *block;
++	EHTMLEditorUndoRedoManager *manager;
+ 
++	manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
+ 	html_mode = e_html_editor_web_extension_get_html_mode (extension);
+ 
+ 	selection_start_marker = webkit_dom_document_query_selector (
+@@ -3036,11 +3038,13 @@ dom_change_quoted_block_to_normal (WebKitDOMDocument *document,
+ 	if (!success)
+ 		return FALSE;
+ 
+-	ev = g_new0 (EHTMLEditorHistoryEvent, 1);
+-	ev->type = HISTORY_UNQUOTE;
++	if (!e_html_editor_undo_redo_manager_is_operation_in_progress (manager)) {
++		ev = g_new0 (EHTMLEditorHistoryEvent, 1);
++		ev->type = HISTORY_UNQUOTE;
+ 
+-	dom_selection_get_coordinates (document, &ev->before.start.x, &ev->before.start.y, &ev->before.end.x, &ev->before.end.y);
+-	ev->data.dom.from = webkit_dom_node_clone_node (WEBKIT_DOM_NODE (block), TRUE);
++		dom_selection_get_coordinates (document, &ev->before.start.x, &ev->before.start.y, &ev->before.end.x, &ev->before.end.y);
++		ev->data.dom.from = webkit_dom_node_clone_node (WEBKIT_DOM_NODE (block), TRUE);
++	}
+ 
+ 	if (citation_level == 1) {
+ 		gchar *inner_html;
+@@ -3168,10 +3172,6 @@ dom_change_quoted_block_to_normal (WebKitDOMDocument *document,
+ 	}
+ 
+ 	if (ev) {
+-		EHTMLEditorUndoRedoManager *manager;
+-
+-		manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
+-
+ 		dom_selection_get_coordinates (
+ 			document,
+ 			&ev->after.start.x,
+-- 
+2.15.0
+

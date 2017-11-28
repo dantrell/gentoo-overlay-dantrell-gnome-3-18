@@ -1,0 +1,66 @@
+From 31c2e809c3c262ecfdd73cc5976d65e731ac8b65 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 4 Nov 2014 09:55:17 +0100
+Subject: [PATCH 0031/1800] EHTMLEditorView - Queue load operations for HTML
+ content
+
+Do the same as for plain text load operations. Change the behavior for
+re-applying of these queued operations: process just the latest one and
+discard the rest.
+---
+ e-util/e-html-editor-view.c | 25 ++++++++++++++++++++++---
+ 1 file changed, 22 insertions(+), 3 deletions(-)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 37eec581ae..d2dbaeec5a 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -6848,9 +6848,10 @@ html_editor_view_load_status_changed (EHTMLEditorView *view)
+ 	if (status != WEBKIT_LOAD_FINISHED)
+ 		return;
+ 
+-	/* Dispatch queued operations */
+-	while (view->priv->post_reload_operations &&
+-	       !g_queue_is_empty (view->priv->post_reload_operations)) {
++	/* Dispatch queued operations - as we are using this just for load
++	 * operations load just the latest request and throw away the rest. */
++	if (view->priv->post_reload_operations &&
++	    !g_queue_is_empty (view->priv->post_reload_operations)) {
+ 
+ 		PostReloadOperation *op;
+ 
+@@ -6862,6 +6863,8 @@ html_editor_view_load_status_changed (EHTMLEditorView *view)
+ 			op->data_free_func (op->data);
+ 		g_free (op);
+ 
++		g_queue_clear (view->priv->post_reload_operations);
++
+ 		return;
+ 	}
+ 
+@@ -7379,6 +7382,22 @@ void
+ e_html_editor_view_set_text_html (EHTMLEditorView *view,
+                                   const gchar *text)
+ {
++	WebKitLoadStatus status;
++
++	/* It can happen that the view is not ready yet (it is in the middle of
++	 * another load operation) so we have to queue the current operation and
++	 * redo it again when the view is ready. This was happening when loading
++	 * the stuff in EMailSignatureEditor. */
++	status = webkit_web_view_get_load_status (WEBKIT_WEB_VIEW (view));
++	if (status != WEBKIT_LOAD_FINISHED) {
++		html_editor_view_queue_post_reload_operation (
++			view,
++			(PostReloadOperationFunc) e_html_editor_view_set_text_html,
++			g_strdup (text),
++			g_free);
++		return;
++	}
++
+ 	view->priv->reload_in_progress = TRUE;
+ 
+ 	if (view->priv->is_message_from_draft) {
+-- 
+2.15.0
+

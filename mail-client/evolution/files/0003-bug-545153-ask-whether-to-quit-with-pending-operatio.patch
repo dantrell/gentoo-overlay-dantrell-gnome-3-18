@@ -1,0 +1,139 @@
+From 4646811a3612a7155603bce798304bd5850e2676 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 29 Oct 2014 21:53:32 +0100
+Subject: [PATCH 0003/1800] Bug 545153 - Ask whether to quit with pending
+ operations
+
+---
+ shell/e-shell.c       | 53 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+ shell/shell.error.xml |  9 +++++++++
+ 2 files changed, 61 insertions(+), 1 deletion(-)
+
+diff --git a/shell/e-shell.c b/shell/e-shell.c
+index be8de7441b..8136d89cca 100644
+--- a/shell/e-shell.c
++++ b/shell/e-shell.c
+@@ -67,6 +67,7 @@ struct _EShellPrivate {
+ 
+ 	guint inhibit_cookie;
+ 	guint set_online_timeout_id;
++	guint prepare_quit_timeout_id;
+ 
+ 	gulong backend_died_handler_id;
+ 
+@@ -421,6 +422,11 @@ shell_ready_for_quit (EShell *shell,
+ 		shell->priv->inhibit_cookie = 0;
+ 	}
+ 
++	if (shell->priv->prepare_quit_timeout_id) {
++		g_source_remove (shell->priv->prepare_quit_timeout_id);
++		shell->priv->prepare_quit_timeout_id = 0;
++	}
++
+ 	/* Destroy all watched windows.  Note, we iterate over a -copy-
+ 	 * of the watched windows list because the act of destroying a
+ 	 * watched window will modify the watched windows list, which
+@@ -433,6 +439,20 @@ shell_ready_for_quit (EShell *shell,
+ 		gtk_main_quit ();
+ }
+ 
++static gboolean
++shell_ask_quit_with_pending_activities (EShell *shell)
++{
++	GList *windows;
++
++	windows = gtk_application_get_windows (GTK_APPLICATION (shell));
++
++	return e_alert_run_dialog_for_args (windows ? windows->data : NULL,
++		"shell:ask-quit-with-pending", NULL) == GTK_RESPONSE_OK;
++}
++
++static gboolean
++shell_prepare_for_quit_timeout_cb (gpointer user_data);
++
+ static void
+ shell_prepare_for_quit (EShell *shell)
+ {
+@@ -440,8 +460,15 @@ shell_prepare_for_quit (EShell *shell)
+ 	GList *list, *iter;
+ 
+ 	/* Are preparations already in progress? */
+-	if (shell->priv->preparing_for_quit != NULL)
++	if (shell->priv->preparing_for_quit != NULL) {
++		if (shell_ask_quit_with_pending_activities (shell)) {
++			e_activity_cancel (shell->priv->preparing_for_quit);
++			camel_operation_cancel_all ();
++
++			shell_ready_for_quit (shell, shell->priv->preparing_for_quit, TRUE);
++		}
+ 		return;
++	}
+ 
+ 	application = GTK_APPLICATION (shell);
+ 
+@@ -470,6 +497,9 @@ shell_prepare_for_quit (EShell *shell)
+ 		shell, signals[PREPARE_FOR_QUIT], 0,
+ 		shell->priv->preparing_for_quit);
+ 
++	shell->priv->prepare_quit_timeout_id =
++		e_named_timeout_add_seconds (60, shell_prepare_for_quit_timeout_cb, shell);
++
+ 	g_object_unref (shell->priv->preparing_for_quit);
+ 
+ 	/* Desensitize all watched windows to prevent user action. */
+@@ -478,6 +508,22 @@ shell_prepare_for_quit (EShell *shell)
+ 		gtk_widget_set_sensitive (GTK_WIDGET (iter->data), FALSE);
+ }
+ 
++static gboolean
++shell_prepare_for_quit_timeout_cb (gpointer user_data)
++{
++	EShell *shell = user_data;
++
++	g_return_val_if_fail (E_IS_SHELL (shell), FALSE);
++	g_return_val_if_fail (shell->priv->preparing_for_quit != 0, FALSE);
++
++	shell->priv->prepare_quit_timeout_id = 0;
++
++	/* This asks whether to quit or wait and does all the work */
++	shell_prepare_for_quit (shell);
++
++	return FALSE;
++}
++
+ static gboolean
+ shell_request_quit (EShell *shell,
+                     EShellQuitReason reason)
+@@ -684,6 +730,11 @@ shell_dispose (GObject *object)
+ 		priv->set_online_timeout_id = 0;
+ 	}
+ 
++	if (priv->prepare_quit_timeout_id) {
++		g_source_remove (priv->prepare_quit_timeout_id);
++		priv->prepare_quit_timeout_id = 0;
++	}
++
+ 	while ((alert = g_queue_pop_head (&priv->alerts)) != NULL) {
+ 		g_signal_handlers_disconnect_by_func (
+ 			alert, shell_alert_response_cb, object);
+diff --git a/shell/shell.error.xml b/shell/shell.error.xml
+index 8c5a2e6921..a0c59cfc57 100644
+--- a/shell/shell.error.xml
++++ b/shell/shell.error.xml
+@@ -26,4 +26,13 @@ If you choose to continue, you may not have access to some of your old data.
+   <button _label="Quit Now" response="GTK_RESPONSE_CANCEL"/>
+  </error>
+ 
++ <error id="ask-quit-with-pending" type="question" default="GTK_RESPONSE_CANCEL">
++  <_primary>Close Evolution with pending background operations?</_primary>
++  <_secondary>Evolution is taking a long time to shut down, possibly due to network
++  connectivity issues. Would you like to cancel all pending operations
++  and close immediately, or keep waiting?</_secondary>
++  <button _label="_Close Immediately" response="GTK_RESPONSE_OK"/>
++  <button _label="Keep _Waiting" response="GTK_RESPONSE_CANCEL"/>
++ </error>
++
+ </error-list>
+-- 
+2.15.0
+

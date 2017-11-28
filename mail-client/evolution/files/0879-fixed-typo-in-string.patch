@@ -1,0 +1,25 @@
+From db8c84a96ac24c92233756a0dffaca7168ee12f3 Mon Sep 17 00:00:00 2001
+From: Daniel Mustieles <daniel.mustieles@gmail.com>
+Date: Mon, 13 Jul 2015 10:19:52 +0200
+Subject: [PATCH 0879/1800] Fixed typo in string
+
+---
+ data/org.gnome.evolution.calendar.gschema.xml.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/data/org.gnome.evolution.calendar.gschema.xml.in b/data/org.gnome.evolution.calendar.gschema.xml.in
+index 652c0448b9..3a024541dc 100644
+--- a/data/org.gnome.evolution.calendar.gschema.xml.in
++++ b/data/org.gnome.evolution.calendar.gschema.xml.in
+@@ -82,7 +82,7 @@
+     <key name="day-start-mon" type="i">
+       <default>-1</default>
+       <_summary>Workday start time for Monday</_summary>
+-      <_description>Time the workday ends on, in twenty four hour format HHMM, 0000 to 2359, or -1 to use day-start-hour and day-start-minute</_description>
++      <_description>Time the workday starts on, in twenty four hour format HHMM, 0000 to 2359, or -1 to use day-start-hour and day-start-minute</_description>
+     </key>
+     <key name="day-end-mon" type="i">
+       <default>-1</default>
+-- 
+2.15.0
+

@@ -1,0 +1,26 @@
+From 08b0dbcb282a74027e0b8fbe4d5fd05421a63245 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 4 Feb 2015 12:05:20 +0100
+Subject: [PATCH 0230/1800] EMsgComposer - Draft of a HTML mail is saved with
+ plain/text X-Evolution-Format header
+
+---
+ composer/e-msg-composer.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 20eece4cad..54e7485ffb 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -1045,7 +1045,7 @@ composer_add_evolution_format_header (CamelMedium *medium,
+ 
+ 	string = g_string_sized_new (128);
+ 
+-	if (flags & COMPOSER_FLAG_HTML_CONTENT)
++	if ((flags & COMPOSER_FLAG_HTML_CONTENT) || (flags & COMPOSER_FLAG_SAVE_DRAFT))
+ 		g_string_append (string, "text/html");
+ 	else
+ 		g_string_append (string, "text/plain");
+-- 
+2.15.0
+

@@ -1,0 +1,96 @@
+From 22e5a08ed6692d80bc15f72ac184b129b886ff49 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 18 Feb 2015 15:59:54 +0100
+Subject: [PATCH 0322/1800] Bug 741093 - Force icon sizes when loading theme
+ icons
+
+---
+ e-util/e-attachment-button.c | 4 ++--
+ e-util/e-cell-toggle.c       | 2 +-
+ e-util/e-icon-factory.c      | 4 ++--
+ e-util/e-table-col.c         | 2 +-
+ e-util/e-web-view.c          | 2 +-
+ 5 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/e-util/e-attachment-button.c b/e-util/e-attachment-button.c
+index 7a99775c69..8377a27760 100644
+--- a/e-util/e-attachment-button.c
++++ b/e-util/e-attachment-button.c
+@@ -229,11 +229,11 @@ attachment_button_update_pixbufs (EAttachmentButton *button)
+ 
+ 	pixbuf_expander_open = gtk_icon_theme_load_icon (
+ 		icon_theme, "go-down",
+-		GTK_ICON_SIZE_BUTTON, 0, NULL);
++		GTK_ICON_SIZE_BUTTON, GTK_ICON_LOOKUP_FORCE_SIZE, NULL);
+ 
+ 	pixbuf_expander_closed = gtk_icon_theme_load_icon (
+ 		icon_theme, "go-next",
+-		GTK_ICON_SIZE_BUTTON, 0, NULL);
++		GTK_ICON_SIZE_BUTTON, GTK_ICON_LOOKUP_FORCE_SIZE, NULL);
+ 
+ 	g_object_set (
+ 		renderer,
+diff --git a/e-util/e-cell-toggle.c b/e-util/e-cell-toggle.c
+index 0e58c4f3e7..716e70cb88 100644
+--- a/e-util/e-cell-toggle.c
++++ b/e-util/e-cell-toggle.c
+@@ -77,7 +77,7 @@ cell_toggle_load_icons (ECellToggle *cell_toggle)
+ 
+ 		if (icon_name != NULL)
+ 			pixbuf = gtk_icon_theme_load_icon (
+-				icon_theme, icon_name, height, 0, &error);
++				icon_theme, icon_name, height, GTK_ICON_LOOKUP_FORCE_SIZE, &error);
+ 
+ 		if (error != NULL) {
+ 			g_warning ("%s", error->message);
+diff --git a/e-util/e-icon-factory.c b/e-util/e-icon-factory.c
+index 7aac6f61ce..9263ee4929 100644
+--- a/e-util/e-icon-factory.c
++++ b/e-util/e-icon-factory.c
+@@ -106,7 +106,7 @@ e_icon_factory_get_icon (const gchar *icon_name,
+ 		width = height = 16;
+ 
+ 	pixbuf = gtk_icon_theme_load_icon (
+-		icon_theme, icon_name, height, 0, &error);
++		icon_theme, icon_name, height, GTK_ICON_LOOKUP_FORCE_SIZE, &error);
+ 
+ 	if (error != NULL) {
+ 		g_warning ("%s", error->message);
+@@ -115,7 +115,7 @@ e_icon_factory_get_icon (const gchar *icon_name,
+ 		/* Fallback to missing image */
+ 		pixbuf = gtk_icon_theme_load_icon (
+ 			icon_theme, "image-missing",
+-			height, 0, &error);
++			height, GTK_ICON_LOOKUP_FORCE_SIZE, &error);
+ 
+ 		if (error != NULL) {
+ 			g_error ("%s", error->message);
+diff --git a/e-util/e-table-col.c b/e-util/e-table-col.c
+index 5f8a35e84e..df93282b39 100644
+--- a/e-util/e-table-col.c
++++ b/e-util/e-table-col.c
+@@ -42,7 +42,7 @@ etc_load_icon (ETableCol *etc)
+ 	gtk_icon_size_lookup (GTK_ICON_SIZE_MENU, &width, &height);
+ 
+ 	etc->pixbuf = gtk_icon_theme_load_icon (
+-		icon_theme, etc->icon_name, height, 0, &error);
++		icon_theme, etc->icon_name, height, GTK_ICON_LOOKUP_FORCE_SIZE, &error);
+ 
+ 	if (error != NULL) {
+ 		g_warning ("%s", error->message);
+diff --git a/e-util/e-web-view.c b/e-util/e-web-view.c
+index 5789c5aa04..e8900fd0a8 100644
+--- a/e-util/e-web-view.c
++++ b/e-util/e-web-view.c
+@@ -1085,7 +1085,7 @@ web_view_create_plugin_widget (EWebView *web_view,
+ 			size = 32;  /* arbitrary default */
+ 
+ 		pixbuf = gtk_icon_theme_load_icon (
+-			icon_theme, uri, size, 0, &error);
++			icon_theme, uri, size, GTK_ICON_LOOKUP_FORCE_SIZE, &error);
+ 		if (pixbuf != NULL) {
+ 			widget = gtk_image_new_from_pixbuf (pixbuf);
+ 			g_object_unref (pixbuf);
+-- 
+2.15.0
+

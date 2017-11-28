@@ -1,0 +1,27 @@
+From 56da09c56999bcc14d6173b832960fd791b32dd3 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 26 Mar 2015 10:05:09 +0100
+Subject: [PATCH 0357/1800] Bug 744848 - Text lost on format change
+
+Always insert the unicode zero width space when inserting a new smiley
+from UI (not writing it) after it to have the selection on the right place.
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index d57532f226..f49b16b8dc 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -1299,7 +1299,7 @@ emoticon_insert_span (EEmoticon *emoticon,
+ 	}
+ 
+ 	/* &#8203 == UNICODE_ZERO_WIDTH_SPACE */
+-	if (empty)
++	if (empty || !e_html_editor_web_extension_get_is_smiley_written (extension))
+ 		webkit_dom_html_element_insert_adjacent_html (
+ 			WEBKIT_DOM_HTML_ELEMENT (span), "afterend", "&#8203;", NULL);
+ 
+-- 
+2.15.0
+

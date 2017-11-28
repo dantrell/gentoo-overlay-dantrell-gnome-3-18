@@ -1,0 +1,348 @@
+From ab83045915aa92d193b79441debc9d3b3a870c17 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 3 Nov 2014 16:09:58 +0100
+Subject: [PATCH 0021/1800] [Send through Outbox] Add option when to flush
+ Outbox folder
+
+There are currently only three values: Keep in Outbox, Send immediately
+and Send after 5 minutes. It is partly related with the "flush-outbox"
+option, but as that is used for filtering, I rather kept it untouched.
+---
+ data/org.gnome.evolution.mail.gschema.xml.in |  5 ++
+ libemail-engine/e-mail-session.c             | 84 +++++++++++++++++++++++++++-
+ libemail-engine/e-mail-session.h             |  8 +++
+ libemail-engine/mail-ops.c                   |  2 +
+ mail/em-composer-utils.c                     | 13 +++++
+ mail/mail-config.ui                          | 37 +++++++++---
+ modules/mail/em-composer-prefs.c             | 55 ++++++++++++++++++
+ 7 files changed, 195 insertions(+), 9 deletions(-)
+
+diff --git a/data/org.gnome.evolution.mail.gschema.xml.in b/data/org.gnome.evolution.mail.gschema.xml.in
+index 4f5131b838..92df8e23e4 100644
+--- a/data/org.gnome.evolution.mail.gschema.xml.in
++++ b/data/org.gnome.evolution.mail.gschema.xml.in
+@@ -140,6 +140,11 @@
+       <_summary>Send messages through Outbox folder</_summary>
+       <_description>Always save messages to Outbox folder when sending, to let a user choose when the messages should be sent.</_description>
+     </key>
++    <key type="i" name="composer-delay-outbox-flush">
++      <default>-1</default>
++      <summary>How long to delay Outbox flush when sending messages through Outbox folder</summary>
++      <description>A delay, in minutes, to wait for the Outbox folder flush. Less than 0 means never flush, 0 means immediately, the rest is the delay interval in minutes.</description>
++    </key>
+     <key name="composer-top-signature" type="b">
+       <default>false</default>
+       <_summary>Put personalized signatures at the top of replies</_summary>
+diff --git a/libemail-engine/e-mail-session.c b/libemail-engine/e-mail-session.c
+index 5578a786c4..da3bf32823 100644
+--- a/libemail-engine/e-mail-session.c
++++ b/libemail-engine/e-mail-session.c
+@@ -90,6 +90,7 @@ struct _EMailSessionPrivate {
+ 	GPtrArray *local_folder_uris;
+ 
+ 	guint preparing_flush;
++	guint outbox_flush_id;
+ 	GMutex preparing_flush_lock;
+ };
+ 
+@@ -154,8 +155,7 @@ session_forward_to_flush_outbox_cb (gpointer user_data)
+ 	session->priv->preparing_flush = 0;
+ 	g_mutex_unlock (&session->priv->preparing_flush_lock);
+ 
+-	/* Connect to this and call mail_send in the main email client.*/
+-	g_signal_emit (session, signals[FLUSH_OUTBOX], 0);
++	e_mail_session_flush_outbox (session);
+ 
+ 	return FALSE;
+ }
+@@ -904,11 +904,20 @@ mail_session_dispose (GObject *object)
+ 	g_ptr_array_set_size (priv->local_folders, 0);
+ 	g_ptr_array_set_size (priv->local_folder_uris, 0);
+ 
++	g_mutex_lock (&priv->preparing_flush_lock);
++
+ 	if (priv->preparing_flush > 0) {
+ 		g_source_remove (priv->preparing_flush);
+ 		priv->preparing_flush = 0;
+ 	}
+ 
++	if (priv->outbox_flush_id > 0) {
++		g_source_remove (priv->outbox_flush_id);
++		priv->outbox_flush_id = 0;
++	}
++
++	g_mutex_unlock (&priv->preparing_flush_lock);
++
+ 	if (priv->local_store != NULL) {
+ 		g_object_unref (priv->local_store);
+ 		priv->local_store = NULL;
+@@ -2367,3 +2376,74 @@ e_mail_session_create_vfolder_context (EMailSession *session)
+ 	return class->create_vfolder_context (session);
+ }
+ 
++static gboolean
++mail_session_flush_outbox_timeout_cb (gpointer user_data)
++{
++	EMailSession *session = user_data;
++
++	if (g_source_is_destroyed (g_main_current_source ()))
++		return FALSE;
++
++	g_return_val_if_fail (E_IS_MAIL_SESSION (session), FALSE);
++
++	g_mutex_lock (&session->priv->preparing_flush_lock);
++	if (session->priv->outbox_flush_id == g_source_get_id (g_main_current_source ()))
++		session->priv->outbox_flush_id = 0;
++	g_mutex_unlock (&session->priv->preparing_flush_lock);
++
++	e_mail_session_flush_outbox (session);
++
++	return FALSE;
++}
++
++void
++e_mail_session_flush_outbox (EMailSession *session)
++{
++	g_return_if_fail (E_IS_MAIL_SESSION (session));
++
++	g_mutex_lock (&session->priv->preparing_flush_lock);
++	if (session->priv->outbox_flush_id > 0) {
++		g_source_remove (session->priv->outbox_flush_id);
++		session->priv->outbox_flush_id = 0;
++	}
++	g_mutex_unlock (&session->priv->preparing_flush_lock);
++
++	/* Connect to this and call mail_send in the main email client.*/
++	g_signal_emit (session, signals[FLUSH_OUTBOX], 0);
++}
++
++void
++e_mail_session_schedule_outbox_flush (EMailSession *session,
++				      gint delay_minutes)
++{
++	g_return_if_fail (E_IS_MAIL_SESSION (session));
++	g_return_if_fail (delay_minutes >= 0);
++
++	if (delay_minutes == 0) {
++		e_mail_session_flush_outbox (session);
++		return;
++	}
++
++	g_mutex_lock (&session->priv->preparing_flush_lock);
++	if (session->priv->outbox_flush_id > 0) {
++		g_source_remove (session->priv->outbox_flush_id);
++		session->priv->outbox_flush_id = 0;
++	}
++
++	session->priv->outbox_flush_id = e_named_timeout_add_seconds (60 * delay_minutes, mail_session_flush_outbox_timeout_cb, session);
++
++	g_mutex_unlock (&session->priv->preparing_flush_lock);
++}
++
++void
++e_mail_session_cancel_scheduled_outbox_flush (EMailSession *session)
++{
++	g_return_if_fail (E_IS_MAIL_SESSION (session));
++
++	g_mutex_lock (&session->priv->preparing_flush_lock);
++	if (session->priv->outbox_flush_id > 0) {
++		g_source_remove (session->priv->outbox_flush_id);
++		session->priv->outbox_flush_id = 0;
++	}
++	g_mutex_unlock (&session->priv->preparing_flush_lock);
++}
+diff --git a/libemail-engine/e-mail-session.h b/libemail-engine/e-mail-session.h
+index 7959d0cfbc..fb4df1e899 100644
+--- a/libemail-engine/e-mail-session.h
++++ b/libemail-engine/e-mail-session.h
+@@ -151,6 +151,14 @@ EMVFolderContext *
+ 		e_mail_session_create_vfolder_context
+ 						(EMailSession *session);
+ 
++void		e_mail_session_flush_outbox	(EMailSession *session);
++void		e_mail_session_schedule_outbox_flush
++						(EMailSession *session,
++						 gint delay_minutes);
++void		e_mail_session_cancel_scheduled_outbox_flush
++						(EMailSession *session);
++
++
+ /* Useful GBinding transform functions */
+ gboolean	e_binding_transform_service_to_source
+ 						(GBinding *binding,
+diff --git a/libemail-engine/mail-ops.c b/libemail-engine/mail-ops.c
+index af4cd9a0b3..5296e1cae2 100644
+--- a/libemail-engine/mail-ops.c
++++ b/libemail-engine/mail-ops.c
+@@ -1097,6 +1097,8 @@ mail_send_queue (EMailSession *session,
+ 
+ 	g_return_if_fail (E_IS_MAIL_SESSION (session));
+ 
++	e_mail_session_cancel_scheduled_outbox_flush (session);
++
+ 	m = mail_msg_new (&send_queue_info);
+ 	m->session = g_object_ref (session);
+ 	m->queue = g_object_ref (queue);
+diff --git a/mail/em-composer-utils.c b/mail/em-composer-utils.c
+index e3e317c421..dfbea1e92c 100644
+--- a/mail/em-composer-utils.c
++++ b/mail/em-composer-utils.c
+@@ -965,6 +965,7 @@ composer_save_to_outbox_completed (GObject *source_object,
+ 	EAlertSink *alert_sink;
+ 	GCancellable *cancellable;
+ 	AsyncContext *async_context;
++	GSettings *settings;
+ 	GError *local_error = NULL;
+ 
+ 	session = E_MAIL_SESSION (source_object);
+@@ -1005,6 +1006,18 @@ composer_save_to_outbox_completed (GObject *source_object,
+ 		G_OBJECT (activity), (GWeakNotify)
+ 		gtk_widget_destroy, async_context->composer);
+ 
++	settings = g_settings_new ("org.gnome.evolution.mail");
++	if (g_settings_get_boolean (settings, "composer-use-outbox")) {
++		gint delay_flush = g_settings_get_int (settings, "composer-delay-outbox-flush");
++
++		if (delay_flush == 0) {
++			e_mail_session_flush_outbox (session);
++		} else if (delay_flush > 0) {
++			e_mail_session_schedule_outbox_flush (session, delay_flush);
++		}
++	}
++	g_object_unref (settings);
++
+ exit:
+ 	async_context_free (async_context);
+ }
+diff --git a/mail/mail-config.ui b/mail/mail-config.ui
+index b4baab1bb4..d309d98341 100644
+--- a/mail/mail-config.ui
++++ b/mail/mail-config.ui
+@@ -285,14 +285,37 @@
+                       </packing>
+                     </child>
+                     <child>
+-                      <object class="GtkCheckButton" id="chkUseOutbox">
+-                        <property name="label" translatable="yes">Send messages through Outbo_x folder</property>
++                      <object class="GtkBox" id="hboxUseOutbox">
+                         <property name="visible">True</property>
+-                        <property name="can_focus">True</property>
+-                        <property name="receives_default">False</property>
+-                        <property name="use_underline">True</property>
+-                        <property name="xalign">0.5</property>
+-                        <property name="draw_indicator">True</property>
++                        <property name="spacing">6</property>
++                        <property name="orientation">horizontal</property>
++                        <child>
++                          <object class="GtkCheckButton" id="chkUseOutbox">
++                            <property name="label" translatable="yes">Send messages through Outbo_x folder</property>
++                            <property name="visible">True</property>
++                            <property name="can_focus">True</property>
++                            <property name="receives_default">False</property>
++                            <property name="use_underline">True</property>
++                            <property name="xalign">0.5</property>
++                            <property name="draw_indicator">True</property>
++                          </object>
++                          <packing>
++                            <property name="expand">False</property>
++                            <property name="fill">False</property>
++                            <property name="position">0</property>
++                          </packing>
++                        </child>
++                        <child>
++                          <object class="GtkComboBoxText" id="comboboxFlushOutbox">
++                            <property name="visible">True</property>
++                            <property name="can_focus">False</property>
++                          </object>
++                          <packing>
++                            <property name="expand">False</property>
++                            <property name="fill">False</property>
++                            <property name="position">1</property>
++                          </packing>
++                        </child>
+                       </object>
+                       <packing>
+                         <property name="expand">False</property>
+diff --git a/modules/mail/em-composer-prefs.c b/modules/mail/em-composer-prefs.c
+index 28071760ee..2f63285e84 100644
+--- a/modules/mail/em-composer-prefs.c
++++ b/modules/mail/em-composer-prefs.c
+@@ -974,6 +974,40 @@ static EMConfigItem emcp_items[] = {
+ 	  emcp_widget_glade },
+ };
+ 
++static gboolean
++em_composer_prefs_outbox_delay_setting_to_id (GValue *value,
++					      GVariant *variant,
++					      gpointer user_data)
++{
++	gint to_set = g_variant_get_int32 (variant);
++	gchar *str;
++
++	if (to_set < 0)
++		to_set = -1;
++	else if (to_set != 0 && to_set != 5)
++		to_set = 5;
++
++	str = g_strdup_printf ("%d", to_set);
++	g_value_set_string (value, str);
++	g_free (str);
++
++	return TRUE;
++}
++
++static GVariant *
++em_composer_prefs_outbox_delay_id_to_setting (const GValue *value,
++					      const GVariantType *expected_type,
++					      gpointer user_data)
++{
++	gint to_set;
++
++	to_set = g_value_get_string (value) ? atoi (g_value_get_string (value)) : -1;
++	if (to_set == 0 && g_strcmp0 (g_value_get_string (value), "0") != 0)
++		to_set = -1;
++
++	return g_variant_new_int32 (to_set);
++}
++
+ static void
+ emcp_free (EConfig *ec,
+            GSList *items,
+@@ -995,6 +1029,7 @@ em_composer_prefs_construct (EMComposerPrefs *prefs,
+ 	GtkListStore *store;
+ 	GtkTreeSelection *selection;
+ 	GtkCellRenderer *renderer;
++	GtkComboBoxText *combo_text;
+ 	EMConfig *ec;
+ 	EMConfigTargetPrefs *target;
+ 	EMailBackend *mail_backend;
+@@ -1116,6 +1151,26 @@ em_composer_prefs_construct (EMComposerPrefs *prefs,
+ 		widget, "active",
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
++	widget = e_builder_get_widget (prefs->builder, "comboboxFlushOutbox");
++
++	combo_text = GTK_COMBO_BOX_TEXT (widget);
++	gtk_combo_box_text_append (combo_text, "-1", _("Keep in Outbox"));
++	gtk_combo_box_text_append (combo_text,  "0", _("Send immediately"));
++	gtk_combo_box_text_append (combo_text,  "5", _("Send after 5 minutes"));
++
++	g_settings_bind_with_mapping (
++		settings, "composer-delay-outbox-flush",
++		widget, "active-id",
++		G_SETTINGS_BIND_DEFAULT,
++		em_composer_prefs_outbox_delay_setting_to_id,
++		em_composer_prefs_outbox_delay_id_to_setting,
++		NULL, NULL);
++
++	g_object_bind_property (
++		e_builder_get_widget (prefs->builder, "chkUseOutbox"), "active",
++		widget, "sensitive",
++		G_BINDING_SYNC_CREATE);
++
+ 	widget = e_builder_get_widget (prefs->builder, "chkIgnoreListReplyTo");
+ 	g_settings_bind (
+ 		settings, "composer-ignore-list-reply-to",
+-- 
+2.15.0
+

@@ -1,0 +1,76 @@
+From 3ade8880925b1614fff6e854d4269fe6ace4c684 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 3 Nov 2014 17:16:55 +0100
+Subject: [PATCH 0025/1800] EMailSignatureEditor, EHTMLEditorView - Don't
+ insert unnecessary new line when editting the signature
+
+---
+ e-util/e-html-editor-view.c      | 12 +++++++++++-
+ e-util/e-html-editor-view.h      |  3 +++
+ e-util/e-mail-signature-editor.c |  2 ++
+ 3 files changed, 16 insertions(+), 1 deletion(-)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 207c9f3ae0..8966b514de 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -89,6 +89,7 @@ struct _EHTMLEditorViewPrivate {
+ 	gboolean is_message_from_draft;
+ 	gboolean is_message_from_edit_as_new;
+ 	gboolean is_message_from_selection;
++	gboolean is_editting_signature;
+ 
+ 	WebKitWebView *convertor_web_view;
+ 
+@@ -4618,7 +4619,7 @@ html_editor_view_process_document_from_convertor (EHTMLEditorView *view,
+ 		remove_node (WEBKIT_DOM_NODE (wrapper));
+ 	}
+ 
+-	if (view->priv->is_message_from_edit_as_new) {
++	if (view->priv->is_message_from_edit_as_new || view->priv->is_editting_signature) {
+ 		remove_node (WEBKIT_DOM_NODE (paragraph));
+ 		add_selection_markers_into_element_start (
+ 			document,
+@@ -8183,3 +8184,12 @@ e_html_editor_view_set_is_message_from_edit_as_new (EHTMLEditorView *view,
+ 
+ 	view->priv->is_message_from_edit_as_new = value;
+ }
++
++void
++e_html_editor_view_set_is_editting_signature (EHTMLEditorView *view,
++                                              gboolean value)
++{
++	g_return_if_fail (E_IS_HTML_EDITOR_VIEW (view));
++
++	view->priv->is_editting_signature = value;
++}
+diff --git a/e-util/e-html-editor-view.h b/e-util/e-html-editor-view.h
+index 6414d46a17..f43775d801 100644
+--- a/e-util/e-html-editor-view.h
++++ b/e-util/e-html-editor-view.h
+@@ -180,6 +180,9 @@ gboolean	e_html_editor_view_is_message_from_edit_as_new
+ void		e_html_editor_view_set_is_message_from_edit_as_new
+ 						(EHTMLEditorView *view,
+ 						 gboolean value);
++void		e_html_editor_view_set_is_editting_signature
++						(EHTMLEditorView *view,
++						 gboolean value);
+ G_END_DECLS
+ 
+ #endif /* E_HTML_EDITOR_VIEW_H */
+diff --git a/e-util/e-mail-signature-editor.c b/e-util/e-mail-signature-editor.c
+index 286efbd727..5c58b5eeb3 100644
+--- a/e-util/e-mail-signature-editor.c
++++ b/e-util/e-mail-signature-editor.c
+@@ -499,6 +499,8 @@ mail_signature_editor_constructed (GObject *object)
+ 	editor = e_mail_signature_editor_get_editor (window);
+ 	view = e_html_editor_get_view (editor);
+ 
++	e_html_editor_view_set_is_editting_signature (view, TRUE);
++
+ 	ui_manager = e_html_editor_get_ui_manager (editor);
+ 
+ 	/* Because we are loading from a hard-coded string, there is
+-- 
+2.15.0
+

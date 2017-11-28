@@ -1,0 +1,29 @@
+From 65bc40d11270b4c5f3c0e25bf27792bb3c02efed Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 24 Feb 2016 19:19:57 +0100
+Subject: [PATCH 0687/1800] EHTMLEditorView - Avoid crash under
+ force_spell_check_on_timeout()
+
+---
+ web-extensions/composer/e-html-editor-web-extension.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/web-extensions/composer/e-html-editor-web-extension.c b/web-extensions/composer/e-html-editor-web-extension.c
+index d5b7c44d9c..3166d67814 100644
+--- a/web-extensions/composer/e-html-editor-web-extension.c
++++ b/web-extensions/composer/e-html-editor-web-extension.c
+@@ -2843,6 +2843,11 @@ e_html_editor_web_extension_dispose (GObject *object)
+ {
+ 	EHTMLEditorWebExtension *extension = E_HTML_EDITOR_WEB_EXTENSION (object);
+ 
++	if (extension->priv->spell_check_on_scroll_event_source_id > 0) {
++		g_source_remove (extension->priv->spell_check_on_scroll_event_source_id);
++		extension->priv->spell_check_on_scroll_event_source_id = 0;
++	}
++
+ 	if (extension->priv->dbus_connection) {
+ 		g_dbus_connection_unregister_object (
+ 			extension->priv->dbus_connection,
+-- 
+2.15.0
+

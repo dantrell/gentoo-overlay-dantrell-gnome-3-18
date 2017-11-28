@@ -1,0 +1,27 @@
+From 9aaeedd46148df91314d1badfc84e905dc18f1b8 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 14:25:13 +0100
+Subject: [PATCH 0282/1800] Bug 744372 - When pasting text evolution drops the
+ carriage returns
+
+Initial value of the property that is used for preserving the blocks was set on wrong value.
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index b77a5b5a47..69af62b82c 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -3197,7 +3197,7 @@ parse_html_into_paragraphs (WebKitDOMDocument *document,
+ 	GRegex *regex_nbsp = NULL, *regex_link = NULL, *regex_email = NULL;
+ 	GString *start, *end;
+ 	WebKitDOMElement *paragraph = NULL;
+-	gboolean preserve_next_line = TRUE;
++	gboolean preserve_next_line = FALSE;
+ 
+ 	webkit_dom_html_element_set_inner_html (
+ 		WEBKIT_DOM_HTML_ELEMENT (blockquote), "", NULL);
+-- 
+2.15.0
+

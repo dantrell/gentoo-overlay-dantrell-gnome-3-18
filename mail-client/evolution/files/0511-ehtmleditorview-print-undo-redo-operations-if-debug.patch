@@ -1,0 +1,27 @@
+From 1ad033b382c3d4ce9a207b8a196eecdec6ef5e79 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 22 Apr 2015 11:11:50 +0200
+Subject: [PATCH 0511/1800] EHTMLEditorView - Print undo/redo operations if
+ debug output is activated
+
+---
+ web-extensions/e-html-editor-undo-redo-manager.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/web-extensions/e-html-editor-undo-redo-manager.c b/web-extensions/e-html-editor-undo-redo-manager.c
+index d660509e1b..d5874ab8d7 100644
+--- a/web-extensions/e-html-editor-undo-redo-manager.c
++++ b/web-extensions/e-html-editor-undo-redo-manager.c
+@@ -1444,6 +1444,9 @@ e_html_editor_undo_redo_manager_insert_history_event (EHTMLEditorUndoRedoManager
+ 	manager->priv->history_size++;
+ 	manager->priv->can_undo = TRUE;
+ 
++	d (print_undo_events (manager));
++	d (print_redo_events (manager));
++
+ 	g_object_notify (G_OBJECT (manager), "can-undo");
+ }
+ 
+-- 
+2.15.0
+

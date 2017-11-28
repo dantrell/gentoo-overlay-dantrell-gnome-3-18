@@ -1,0 +1,27 @@
+From 17728d2c33bdf34a9fca501b7db01f33d92b9277 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 19 Jun 2015 11:05:56 +0200
+Subject: [PATCH 0824/1800] EShell: Do not require Authentication extension for
+ trust prompts
+
+It was made optional earlier, but the code still required it.
+---
+ shell/e-shell.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/shell/e-shell.c b/shell/e-shell.c
+index e9d2bd87a3..6c2aba2e47 100644
+--- a/shell/e-shell.c
++++ b/shell/e-shell.c
+@@ -979,8 +979,6 @@ shell_process_credentials_required_errors (EShell *shell,
+ 		shell_submit_source_connection_alert (shell, source, alert);
+ 		g_object_unref (alert);
+ 	} else if (reason == E_SOURCE_CREDENTIALS_REASON_SSL_FAILED) {
+-		g_return_if_fail (e_source_has_extension (source, E_SOURCE_EXTENSION_AUTHENTICATION));
+-
+ 		if (e_credentials_prompter_get_auto_prompt_disabled_for (shell->priv->credentials_prompter, source)) {
+ 			/* Only show an alert */
+ 			EAlert *alert;
+-- 
+2.15.0
+

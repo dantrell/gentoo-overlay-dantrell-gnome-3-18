@@ -1,0 +1,25 @@
+From 30ac84c2d5104183fb48f07a420e1e6446b6c510 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 9 Dec 2015 16:05:26 +0100
+Subject: [PATCH 0594/1800] Require the latest WebKitGtk+ version
+
+---
+ configure.ac | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/configure.ac b/configure.ac
+index 8860abd23b..d2264551b0 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -50,7 +50,7 @@ m4_define([gcr_minimum_version], [3.4])
+ m4_define([enchant_minimum_version], [1.1.7])
+ m4_define([gnome_desktop_minimum_version], [2.91.3])
+ m4_define([gsettings_desktop_schemas_minimum_version], [2.91.92])
+-m4_define([webkit2gtk_minimum_version], [2.10.3])
++m4_define([webkit2gtk_minimum_version], [2.11.2])
+ m4_define([libgdata_minimum_version], [0.10])
+ m4_define([libxml_minimum_version], [2.7.3])
+ m4_define([shared_mime_info_minimum_version], [0.22])
+-- 
+2.15.0
+

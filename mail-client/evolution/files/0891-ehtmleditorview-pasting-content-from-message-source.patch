@@ -1,0 +1,26 @@
+From 4a0973f154ffc47431ed00930b7d3cd913855273 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 26 Feb 2016 11:37:42 +0100
+Subject: [PATCH 0891/1800] EHTMLEditorView - Pasting content from message
+ source into plain text composer preserves formatting
+
+---
+ e-util/e-html-editor-view.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 0edcacca71..05bdf2f24d 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -1685,7 +1685,7 @@ html_editor_view_owner_change_primary_cb (GtkClipboard *clipboard,
+ 	if (!E_IS_HTML_EDITOR_VIEW (view))
+ 		return;
+ 
+-	if (!event->owner)
++	if (!event->owner || !view->priv->can_copy)
+ 		view->priv->copy_paste_primary_in_view = FALSE;
+ 	html_editor_update_pasting_content_from_itself (view);
+ }
+-- 
+2.15.0
+

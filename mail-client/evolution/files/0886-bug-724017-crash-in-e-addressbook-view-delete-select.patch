@@ -1,0 +1,56 @@
+From 04fa36a7010b77ad57778e325720c314f04c46af Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 14 Jul 2015 19:41:39 +0200
+Subject: [PATCH 0886/1800] Bug 724017 - Crash in
+ e_addressbook_view_delete_selection()
+
+---
+ addressbook/gui/widgets/e-addressbook-view.c | 2 ++
+ e-util/e-selection-model-simple.c            | 9 ++++++++-
+ 2 files changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/addressbook/gui/widgets/e-addressbook-view.c b/addressbook/gui/widgets/e-addressbook-view.c
+index 4260d0822d..7fe052c8b6 100644
+--- a/addressbook/gui/widgets/e-addressbook-view.c
++++ b/addressbook/gui/widgets/e-addressbook-view.c
+@@ -1364,6 +1364,8 @@ e_addressbook_view_delete_selection (EAddressbookView *view,
+ 	gal_view = gal_view_instance_get_current_view (view_instance);
+ 
+ 	list = e_addressbook_view_get_selected (view);
++	g_return_if_fail (list != NULL);
++
+ 	contact = list->data;
+ 
+ 	if (g_slist_next (list))
+diff --git a/e-util/e-selection-model-simple.c b/e-util/e-selection-model-simple.c
+index c4d521deb9..06691171bb 100644
+--- a/e-util/e-selection-model-simple.c
++++ b/e-util/e-selection-model-simple.c
+@@ -66,16 +66,23 @@ void
+ e_selection_model_simple_set_row_count (ESelectionModelSimple *esms,
+                                         gint row_count)
+ {
++	gboolean any_selected = FALSE;
++
+ 	if (esms->row_count != row_count) {
+ 		ESelectionModelArray *esma = E_SELECTION_MODEL_ARRAY (esms);
+-		if (esma->eba)
++		if (esma->eba) {
++			any_selected = e_bit_array_selected_count (esma->eba) > 0;
+ 			g_object_unref (esma->eba);
++		}
+ 		esma->eba = NULL;
+ 		esma->selected_row = -1;
+ 		esma->selected_range_end = -1;
+ 	}
+ 
+ 	esms->row_count = row_count;
++
++	if (any_selected)
++		e_selection_model_selection_changed (E_SELECTION_MODEL (esms));
+ }
+ 
+ static gint
+-- 
+2.15.0
+

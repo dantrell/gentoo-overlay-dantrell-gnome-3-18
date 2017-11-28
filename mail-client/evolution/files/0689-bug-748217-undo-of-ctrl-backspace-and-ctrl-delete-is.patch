@@ -1,0 +1,316 @@
+From eddd5632c6c69bd9613b2c9eade56770fe0c37db Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 24 Feb 2016 19:47:36 +0100
+Subject: [PATCH 0689/1800] Bug 748217 - undo of Ctrl-Backspace and Ctrl-Delete
+ is broken for multi-character strings
+
+---
+ e-util/e-html-editor-view.c                        |   5 +-
+ .../composer/e-html-editor-undo-redo-manager.c     |  42 +++++---
+ .../composer/e-html-editor-view-dom-functions.c    | 107 +++++++++++++++------
+ .../composer/e-html-editor-view-dom-functions.h    |   3 +-
+ .../composer/e-html-editor-web-extension.c         |   7 +-
+ 5 files changed, 118 insertions(+), 46 deletions(-)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index fb74dc1f0f..c9144922d4 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -733,9 +733,10 @@ html_editor_view_key_press_event (GtkWidget *widget,
+ 			web_extension,
+ 			"DOMProcessOnKeyPress",
+ 			g_variant_new (
+-				"(tu)",
++				"(tuu)",
+ 				webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view)),
+-				event->keyval),
++				event->keyval,
++				event->state),
+ 			G_DBUS_CALL_FLAGS_NONE,
+ 			-1,
+ 			NULL,
+diff --git a/web-extensions/composer/e-html-editor-undo-redo-manager.c b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+index 1e20747cce..a790d4531d 100644
+--- a/web-extensions/composer/e-html-editor-undo-redo-manager.c
++++ b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+@@ -511,6 +511,12 @@ undo_delete (WebKitDOMDocument *document,
+ 	g_object_unref (dom_selection);
+ }
+ 
++static gboolean
++event_selection_was_collapsed (EHTMLEditorHistoryEvent *ev)
++{
++	return (ev->before.start.x == ev->before.end.x) && (ev->before.start.y == ev->before.end.y);
++}
++
+ static void
+ redo_delete (WebKitDOMDocument *document,
+              EHTMLEditorWebExtension *extension,
+@@ -524,7 +530,9 @@ redo_delete (WebKitDOMDocument *document,
+ 	restore_selection_to_history_event_state (document, event->before);
+ 
+ 	if (webkit_dom_document_fragment_query_selector (fragment, "span#-x-evo-selection-start-marker", NULL)) {
+-		gboolean delete = FALSE;
++		gboolean delete = FALSE, control_key = FALSE;
++		glong length = 1;
++		gint ii;
+ 		WebKitDOMDOMWindow *dom_window;
+ 		WebKitDOMDOMSelection *dom_selection;
+ 
+@@ -532,18 +540,32 @@ redo_delete (WebKitDOMDocument *document,
+ 		g_object_unref (dom_window);
+ 		dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+ 
++		control_key = event_selection_was_collapsed (event);
++		if (control_key) {
++			gchar *text_content;
++
++			text_content = webkit_dom_node_get_text_content (WEBKIT_DOM_NODE (fragment));
++			length = g_utf8_strlen (text_content, -1);
++			control_key = control_key && length > 1;
++
++			g_free (text_content);
++		}
++
+ 		/* Check if the event was delete or backspace press. */
+ 		delete = WEBKIT_DOM_IS_ELEMENT (first_child);
+ 		delete = delete && element_has_id (WEBKIT_DOM_ELEMENT (first_child), "-x-evo-selection-start-marker");
+-		if (delete)
+-			webkit_dom_dom_selection_modify (dom_selection, "extend", "right", "character");
+-		else
+-			webkit_dom_dom_selection_modify (dom_selection, "extend", "left", "character");
++		for (ii = 0; ii < length; ii++) {
++			dom_exec_command (
++				document, extension,
++				delete ? E_HTML_EDITOR_VIEW_COMMAND_FORWARD_DELETE :
++					 E_HTML_EDITOR_VIEW_COMMAND_DELETE,
++				NULL);
++		}
+ 
+ 		g_object_unref (dom_selection);
+-	}
++	} else
++		dom_exec_command (document, extension, E_HTML_EDITOR_VIEW_COMMAND_DELETE, NULL);
+ 
+-	dom_exec_command (document, extension, E_HTML_EDITOR_VIEW_COMMAND_DELETE, NULL);
+ 	dom_force_spell_check_for_current_paragraph (document, extension);
+ }
+ 
+@@ -1730,12 +1752,6 @@ e_html_editor_undo_redo_manager_can_undo (EHTMLEditorUndoRedoManager *manager)
+ 		return FALSE;
+ }
+ 
+-static gboolean
+-event_selection_was_collapsed (EHTMLEditorHistoryEvent *ev)
+-{
+-	return (ev->before.start.x == ev->before.end.x) && (ev->before.start.y == ev->before.end.y);
+-}
+-
+ void
+ e_html_editor_undo_redo_manager_undo (EHTMLEditorUndoRedoManager *manager)
+ {
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 4683abdda9..6e65a5e295 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -7133,7 +7133,8 @@ fix_structure_after_delete_before_quoted_content (WebKitDOMDocument *document)
+ static void
+ save_history_for_delete_or_backspace (WebKitDOMDocument *document,
+                                       EHTMLEditorWebExtension *extension,
+-                                      gboolean delete_key)
++                                      gboolean delete_key,
++                                      gboolean control_key)
+ {
+ 	EHTMLEditorHistoryEvent *ev;
+ 	EHTMLEditorUndoRedoManager *manager;
+@@ -7173,46 +7174,97 @@ save_history_for_delete_or_backspace (WebKitDOMDocument *document,
+ 		e_html_editor_web_extension_block_selection_changed_callback (extension);
+ 
+ 		range_clone = webkit_dom_range_clone_range (range, NULL);
+-		if (delete_key) {
+-			glong offset = webkit_dom_range_get_start_offset (range_clone, NULL);
+-			webkit_dom_range_set_end (
+-				range_clone,
+-				webkit_dom_range_get_end_container (range_clone, NULL),
+-				offset + 1,
+-				NULL);
++		if (control_key) {
++			WebKitDOMRange *tmp_range;
++
++			/* Control + Delete/Backspace deletes previous/next word. */
++			webkit_dom_dom_selection_modify (
++				dom_selection, "move", delete_key ? "right" : "left", "word");
++			tmp_range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
++			if (delete_key)
++				webkit_dom_range_set_end (
++					range_clone,
++					webkit_dom_range_get_end_container (tmp_range, NULL),
++					webkit_dom_range_get_end_offset (tmp_range, NULL),
++					NULL);
++			else
++				webkit_dom_range_set_start (
++					range_clone,
++					webkit_dom_range_get_start_container (tmp_range, NULL),
++					webkit_dom_range_get_start_offset (tmp_range, NULL),
++					NULL);
++			g_object_unref (tmp_range);
+ 		} else {
+-			webkit_dom_range_set_start (
+-				range_clone,
+-				webkit_dom_range_get_start_container (range_clone, NULL),
+-				webkit_dom_range_get_start_offset (range_clone, NULL) - 1,
+-				NULL);
++			if (delete_key) {
++				glong offset = webkit_dom_range_get_start_offset (range_clone, NULL);
++				webkit_dom_range_set_end (
++					range_clone,
++					webkit_dom_range_get_end_container (range_clone, NULL),
++					offset + 1,
++					NULL);
++			} else {
++				webkit_dom_range_set_start (
++					range_clone,
++					webkit_dom_range_get_start_container (range_clone, NULL),
++					webkit_dom_range_get_start_offset (range_clone, NULL) - 1,
++					NULL);
++			}
+ 		}
+ 
+ 		fragment = webkit_dom_range_clone_contents (range_clone, NULL);
+-		g_object_unref (range_clone);
+ 		if (!webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (fragment))) {
+ 			g_free (ev);
+ 			e_html_editor_web_extension_unblock_selection_changed_callback (extension);
+ 			g_object_unref (range);
++			g_object_unref (range_clone);
+ 			g_object_unref (dom_selection);
+ 			return;
+ 		}
+ 
+-		if (delete_key) {
+-			dom_selection_get_coordinates (
+-				document, &ev->after.start.x, &ev->after.start.y, &ev->after.end.x, &ev->after.end.y);
++		if (control_key) {
++			if (delete_key) {
++				ev->after.start.x = ev->before.start.x;
++				ev->after.start.y = ev->before.start.y;
++				ev->after.end.x = ev->before.end.x;
++				ev->after.end.y = ev->before.end.y;
++
++				webkit_dom_range_collapse (range_clone, TRUE, NULL);
++				webkit_dom_dom_selection_remove_all_ranges (dom_selection);
++				webkit_dom_dom_selection_add_range (dom_selection, range_clone);
++			} else {
++				WebKitDOMRange *tmp_range;
++
++				tmp_range = webkit_dom_range_clone_range (range_clone, NULL);
++				/* Prepare the selection to the right position after
++				 * delete and save it. */
++				webkit_dom_range_collapse (range_clone, TRUE, NULL);
++				webkit_dom_dom_selection_remove_all_ranges (dom_selection);
++				webkit_dom_dom_selection_add_range (dom_selection, range_clone);
++				dom_selection_get_coordinates (
++					document, &ev->after.start.x, &ev->after.start.y, &ev->after.end.x, &ev->after.end.y);
++				/* Restore the selection where it was before the
++				 * history event was saved. */
++				webkit_dom_range_collapse (tmp_range, FALSE, NULL);
++				webkit_dom_dom_selection_remove_all_ranges (dom_selection);
++				webkit_dom_dom_selection_add_range (dom_selection, tmp_range);
++				g_object_unref (tmp_range);
++			}
+ 		} else {
+-			webkit_dom_dom_selection_modify (dom_selection, "move", "left", "character");
+-			dom_selection_get_coordinates (
+-				document, &ev->after.start.x, &ev->after.start.y, &ev->after.end.x, &ev->after.end.y);
++			if (delete_key) {
++				dom_selection_get_coordinates (
++					document, &ev->after.start.x, &ev->after.start.y, &ev->after.end.x, &ev->after.end.y);
++			} else {
++				webkit_dom_dom_selection_modify (dom_selection, "move", "left", "character");
++				dom_selection_get_coordinates (
++					document, &ev->after.start.x, &ev->after.start.y, &ev->after.end.x, &ev->after.end.y);
++				webkit_dom_dom_selection_modify (dom_selection, "move", "right", "character");
+ 
+-			webkit_dom_dom_selection_modify (dom_selection, "move", "right", "character");
++				ev->after.end.x = ev->after.start.x;
++				ev->after.end.y = ev->after.start.y;
++			}
+ 		}
+ 
+-		if (!delete_key) {
+-			ev->after.end.x = ev->after.start.x;
+-			ev->after.end.y = ev->after.start.y;
+-		}
++		g_object_unref (range_clone);
+ 
+ 		if (delete_key) {
+ 			webkit_dom_node_insert_before (
+@@ -7579,7 +7631,8 @@ insert_tabulator (WebKitDOMDocument *document,
+ gboolean
+ dom_process_on_key_press (WebKitDOMDocument *document,
+                           EHTMLEditorWebExtension *extension,
+-                          guint key_val)
++                          guint key_val,
++			  guint state)
+ {
+ 	e_html_editor_web_extension_set_dont_save_history_in_body_input (extension, FALSE);
+ 
+@@ -7715,7 +7768,7 @@ dom_process_on_key_press (WebKitDOMDocument *document,
+ 			}
+ 			dom_selection_restore (document);
+ 		}
+-		save_history_for_delete_or_backspace (document, extension, key_val == GDK_KEY_Delete);
++		save_history_for_delete_or_backspace (document, extension, key_val == GDK_KEY_Delete, (state & GDK_CONTROL_MASK) != 0);
+ 		if (key_val == GDK_KEY_BackSpace && !html_mode) {
+ 			if (delete_character_from_quoted_line_start (document))
+ 				return TRUE;
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.h b/web-extensions/composer/e-html-editor-view-dom-functions.h
+index aa35701c0f..213d3f0f86 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.h
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.h
+@@ -127,7 +127,8 @@ void		dom_insert_html			(WebKitDOMDocument *document,
+ 
+ gboolean	dom_process_on_key_press	(WebKitDOMDocument *document,
+ 						 EHTMLEditorWebExtension *extension,
+-						 guint key_val);
++						 guint key_val,
++						 guint state);
+ 
+ gchar *		dom_process_content_for_draft	(WebKitDOMDocument *document);
+ 
+diff --git a/web-extensions/composer/e-html-editor-web-extension.c b/web-extensions/composer/e-html-editor-web-extension.c
+index 3166d67814..5949ec71d6 100644
+--- a/web-extensions/composer/e-html-editor-web-extension.c
++++ b/web-extensions/composer/e-html-editor-web-extension.c
+@@ -481,6 +481,7 @@ static const char introspection_xml[] =
+ "    <method name='DOMProcessOnKeyPress'>"
+ "      <arg type='t' name='page_id' direction='in'/>"
+ "      <arg type='u' name='key_val' direction='in'/>"
++"      <arg type='u' name='state' direction='in'/>"
+ "      <arg type='b' name='stop_handlers' direction='out'/>"
+ "    </method>"
+ "    <method name='DOMCheckIfConversionNeeded'>"
+@@ -1823,9 +1824,9 @@ handle_method_call (GDBusConnection *connection,
+ 		g_dbus_method_invocation_return_value (invocation, NULL);
+ 	} else if (g_strcmp0 (method_name, "DOMProcessOnKeyPress") == 0) {
+ 		gboolean stop_handlers;
+-		guint key_val;
++		guint key_val, state;
+ 
+-		g_variant_get (parameters, "(tu)", &page_id, &key_val);
++		g_variant_get (parameters, "(tuu)", &page_id, &key_val, &state);
+ 
+ 		web_page = get_webkit_web_page_or_return_dbus_error (
+ 			invocation, web_extension, page_id);
+@@ -1833,7 +1834,7 @@ handle_method_call (GDBusConnection *connection,
+ 			goto error;
+ 
+ 		document = webkit_web_page_get_dom_document (web_page);
+-		stop_handlers = dom_process_on_key_press (document, extension, key_val);
++		stop_handlers = dom_process_on_key_press (document, extension, key_val, state);
+ 		g_dbus_method_invocation_return_value (
+ 			invocation, g_variant_new ("(b)", stop_handlers));
+ 	} else if (g_strcmp0 (method_name, "DOMCheckIfConversionNeeded") == 0) {
+-- 
+2.15.0
+

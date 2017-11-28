@@ -1,0 +1,26 @@
+From 71e4748ff685893c92fa694b4bc4c516da454158 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 3 Apr 2015 15:04:43 +0200
+Subject: [PATCH 0644/1800] Bug 270166 - Preset Ctrl+Alt+J shortcut to "Check
+ for Junk" action
+
+---
+ mail/e-mail-reader.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index 624d72ba76..8eb2220dbe 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -1976,7 +1976,7 @@ static GtkActionEntry mail_reader_entries[] = {
+ 	{ "mail-check-for-junk",
+ 	  "mail-mark-junk",
+ 	  N_("Check for _Junk"),
+-	  NULL,
++	  "<Control><Alt>j",
+ 	  N_("Filter the selected messages for junk status"),
+ 	  G_CALLBACK (action_mail_check_for_junk_cb) },
+ 
+-- 
+2.15.0
+

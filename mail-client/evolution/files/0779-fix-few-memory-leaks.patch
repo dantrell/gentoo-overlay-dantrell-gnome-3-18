@@ -1,0 +1,95 @@
+From d2aff56c37885e90c1b8db10a2b1d9961fde6bc2 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 2 Jun 2015 17:44:59 +0200
+Subject: [PATCH 0779/1800] Fix few memory leaks
+
+---
+ addressbook/gui/widgets/e-addressbook-view.c |  1 +
+ calendar/gui/e-cal-list-view.c               |  1 +
+ e-util/gal-a11y-e-cell.c                     | 12 ++++++++++--
+ mail/e-mail-reader.c                         |  1 +
+ 4 files changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/addressbook/gui/widgets/e-addressbook-view.c b/addressbook/gui/widgets/e-addressbook-view.c
+index 158308a03f..4d5db665b2 100644
+--- a/addressbook/gui/widgets/e-addressbook-view.c
++++ b/addressbook/gui/widgets/e-addressbook-view.c
+@@ -317,6 +317,7 @@ addressbook_view_create_table_view (EAddressbookView *view,
+ 	gtk_container_add (GTK_CONTAINER (view), widget);
+ 
+ 	g_object_unref (specification);
++	g_object_unref (extras);
+ 	g_free (etspecfile);
+ 
+ 	view->priv->object = G_OBJECT (adapter);
+diff --git a/calendar/gui/e-cal-list-view.c b/calendar/gui/e-cal-list-view.c
+index 75bac8e312..149df47c79 100644
+--- a/calendar/gui/e-cal-list-view.c
++++ b/calendar/gui/e-cal-list-view.c
+@@ -295,6 +295,7 @@ setup_e_table (ECalListView *cal_list_view)
+ 	gtk_widget_show (widget);
+ 
+ 	g_object_unref (specification);
++	g_object_unref (extras);
+ 	g_free (etspecfile);
+ 
+ 	/* Connect signals */
+diff --git a/e-util/gal-a11y-e-cell.c b/e-util/gal-a11y-e-cell.c
+index 617d547ef7..537f998486 100644
+--- a/e-util/gal-a11y-e-cell.c
++++ b/e-util/gal-a11y-e-cell.c
+@@ -39,6 +39,8 @@
+ static GObjectClass *parent_class;
+ #define PARENT_TYPE (atk_object_get_type ())
+ 
++static void _gal_a11y_e_cell_destroy_action_info (gpointer action_info, gpointer user_data);
++
+ #if 0
+ static void
+ unref_item (gpointer user_data,
+@@ -98,6 +100,12 @@ gal_a11y_e_cell_dispose (GObject *object)
+ 		a11y->state_set = NULL;
+ 	}
+ 
++	if (a11y->action_list) {
++		g_list_foreach (a11y->action_list, _gal_a11y_e_cell_destroy_action_info, NULL);
++		g_list_free (a11y->action_list);
++		a11y->action_list = NULL;
++	}
++
+ 	if (parent_class->dispose)
+ 		parent_class->dispose (object);
+ 
+@@ -339,7 +347,7 @@ gal_a11y_e_cell_remove_action (GalA11yECell *cell,
+ 		return FALSE;
+ 	g_return_val_if_fail (list_node->data != NULL, FALSE);
+ 	_gal_a11y_e_cell_destroy_action_info (list_node->data, NULL);
+-	cell->action_list = g_list_remove_link (cell->action_list, list_node);
++	cell->action_list = g_list_remove (cell->action_list, list_node->data);
+ 
+ 	return TRUE;
+ }
+@@ -364,7 +372,7 @@ gal_a11y_e_cell_remove_action_by_name (GalA11yECell *cell,
+ 	}
+ 
+ 	_gal_a11y_e_cell_destroy_action_info (list_node->data, NULL);
+-	cell->action_list = g_list_remove_link (cell->action_list, list_node);
++	cell->action_list = g_list_remove (cell->action_list, list_node->data);
+ 
+ 	return TRUE;
+ }
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index c6e9effbd5..3f7c842169 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -1725,6 +1725,7 @@ mail_source_retrieved (GObject *source_object,
+ 			closure->reader, display,
+ 			closure->message_uid, message,
+ 			CAMEL_FOLDER (source_object));
++		g_object_unref (message);
+ 	} else {
+ 		gchar *status;
+ 
+-- 
+2.15.0
+

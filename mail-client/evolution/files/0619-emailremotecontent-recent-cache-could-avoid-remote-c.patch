@@ -1,0 +1,74 @@
+From ad60e77d191fa9eb2d85fc577d443401156736dd Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 2 Apr 2015 13:01:40 +0200
+Subject: [PATCH 0619/1800] [EMailRemoteContent] Recent cache could avoid
+ remote content load
+
+---
+ mail/e-mail-remote-content.c | 19 +++++++++----------
+ 1 file changed, 9 insertions(+), 10 deletions(-)
+
+diff --git a/mail/e-mail-remote-content.c b/mail/e-mail-remote-content.c
+index b1bcd905ce..a951b5fa03 100644
+--- a/mail/e-mail-remote-content.c
++++ b/mail/e-mail-remote-content.c
+@@ -197,7 +197,7 @@ e_mail_remote_content_has (EMailRemoteContent *content,
+ 	gint ii;
+ 	gchar *tmp;
+ 	const GSList *link;
+-	gboolean found = FALSE;
++	gboolean found = FALSE, recent_cache_found = FALSE;
+ 
+ 	g_return_val_if_fail (E_IS_MAIL_REMOTE_CONTENT (content), FALSE);
+ 	g_return_val_if_fail (table != NULL, FALSE);
+@@ -214,16 +214,19 @@ e_mail_remote_content_has (EMailRemoteContent *content,
+ 			gint index = (*recent_last + ii) % RECENT_CACHE_SIZE;
+ 
+ 			if (recent_cache[index].value && g_ascii_strcasecmp (recent_cache[index].value, value) == 0) {
++				recent_cache_found = TRUE;
+ 				found = recent_cache[index].result;
+-				g_mutex_unlock (&content->priv->recent_lock);
+-
+-				return found;
++				if (found)
++					break;
+ 			}
+ 		}
+ 	}
+ 
+ 	g_mutex_unlock (&content->priv->recent_lock);
+ 
++	if (recent_cache_found)
++		return found;
++
+ 	if (!content->priv->db)
+ 		return FALSE;
+ 
+@@ -255,11 +258,7 @@ e_mail_remote_content_has (EMailRemoteContent *content,
+ 
+ 	g_string_free (stmt, TRUE);
+ 
+-	for (link = values; link; link = g_slist_next (link)) {
+-		const gchar *value = link->data;
+-
+-		e_mail_remote_content_add_to_recent_cache (content, value, found, recent_cache, recent_last);
+-	}
++	e_mail_remote_content_add_to_recent_cache (content, values->data, found, recent_cache, recent_last);
+ 
+ 	return found;
+ }
+@@ -551,10 +550,10 @@ e_mail_remote_content_has_mail (EMailRemoteContent *content,
+ 	g_return_val_if_fail (E_IS_MAIL_REMOTE_CONTENT (content), FALSE);
+ 	g_return_val_if_fail (mail != NULL, FALSE);
+ 
+-	values = g_slist_append (values, (gpointer) mail);
+ 	at = strchr (mail, '@');
+ 	if (at)
+ 		values = g_slist_prepend (values, (gpointer) at);
++	values = g_slist_prepend (values, (gpointer) mail);
+ 
+ 	result = e_mail_remote_content_has (content, "mails", values, content->priv->recent_mails, &content->priv->recent_last_mails);
+ 
+-- 
+2.15.0
+

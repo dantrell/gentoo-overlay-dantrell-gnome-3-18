@@ -1,0 +1,69 @@
+From b31959cd3f36902b5d8f446b0f43c9c952a24906 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 5 May 2015 08:56:37 +0200
+Subject: [PATCH 0728/1800] Bug 671546 - Search with 'contains' in composer
+ auto-completion
+
+---
+ e-util/e-name-selector-dialog.c | 16 ++++++++++++++--
+ e-util/e-name-selector-entry.c  |  3 +++
+ 2 files changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/e-util/e-name-selector-dialog.c b/e-util/e-name-selector-dialog.c
+index c900d219f0..4f2fe4f88c 100644
+--- a/e-util/e-name-selector-dialog.c
++++ b/e-util/e-name-selector-dialog.c
+@@ -1276,7 +1276,13 @@ search_changed (ENameSelectorDialog *name_selector_dialog)
+ 			"(or (beginswith \"file_as\" %s) "
+ 			"    (beginswith \"full_name\" %s) "
+ 			"    (beginswith \"email\" %s) "
+-			"    (beginswith \"nickname\" %s)%s))",
++			"    (beginswith \"nickname\" %s)"
++			"    (contains \"file_as\" %s) "
++			"    (contains \"full_name\" %s) "
++			"    (contains \"email\" %s) "
++			"    (contains \"nickname\" %s)%s))",
++			text_escaped, text_escaped,
++			text_escaped, text_escaped,
+ 			text_escaped, text_escaped,
+ 			text_escaped, text_escaped,
+ 			user_fields_str ? user_fields_str : "");
+@@ -1286,9 +1292,15 @@ search_changed (ENameSelectorDialog *name_selector_dialog)
+ 			"(or (beginswith \"file_as\" %s) "
+ 			"    (beginswith \"full_name\" %s) "
+ 			"    (beginswith \"email\" %s) "
+-			"    (beginswith \"nickname\" %s)%s))",
++			"    (beginswith \"nickname\" %s)"
++			"    (contains \"file_as\" %s) "
++			"    (contains \"full_name\" %s) "
++			"    (contains \"email\" %s) "
++			"    (contains \"nickname\" %s)%s))",
+ 			category_escaped, text_escaped, text_escaped,
+ 			text_escaped, text_escaped,
++			text_escaped, text_escaped,
++			text_escaped, text_escaped,
+ 			user_fields_str ? user_fields_str : "");
+ 
+ 	book_query = e_book_query_from_string (query_string);
+diff --git a/e-util/e-name-selector-entry.c b/e-util/e-name-selector-entry.c
+index a82b04faf3..3dcb938dc5 100644
+--- a/e-util/e-name-selector-entry.c
++++ b/e-util/e-name-selector-entry.c
+@@ -852,11 +852,14 @@ set_completion_query (ENameSelectorEntry *name_selector_entry,
+ 		"(or "
+ 		" (beginswith \"nickname\"  %s) "
+ 		" (beginswith \"email\"     %s) "
++		" (contains \"nickname\"  %s) "
++		" (contains \"email\"     %s) "
+ 		" %s "
+ 		" %s "
+ 		" %s "
+ 		")",
+ 		encoded_cue_str, encoded_cue_str,
++		encoded_cue_str, encoded_cue_str,
+ 		full_name_query_str, file_as_query_str,
+ 		user_fields_str ? user_fields_str : "");
+ 
+-- 
+2.15.0
+

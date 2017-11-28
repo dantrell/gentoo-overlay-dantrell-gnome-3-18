@@ -1,0 +1,33 @@
+From ee7d53fc8f021436f242eead551fee07b1853809 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 28 Apr 2015 19:21:03 +0200
+Subject: [PATCH 0719/1800] Misleading counts of events in the Calendar view's
+ mini-calendar
+
+It was caused by missing view events remove notifications when replacing
+ongoing ECalClientView. The previously known (ViewData::lost_components)
+were not notified as removed, thus made incorrect counts in the mini-calendar.
+---
+ calendar/gui/e-cal-data-model.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/calendar/gui/e-cal-data-model.c b/calendar/gui/e-cal-data-model.c
+index fd84f7136a..d0130909e7 100644
+--- a/calendar/gui/e-cal-data-model.c
++++ b/calendar/gui/e-cal-data-model.c
+@@ -1676,6 +1676,12 @@ cal_data_model_remove_client_view (ECalDataModel *data_model,
+ 			cal_data_model_notify_remove_components_cb, &nrc_data);
+ 		g_hash_table_remove_all (view_data->components);
+ 
++		if (view_data->lost_components) {
++			g_hash_table_foreach (view_data->lost_components,
++				cal_data_model_notify_remove_components_cb, &nrc_data);
++			g_hash_table_remove_all (view_data->lost_components);
++		}
++
+ 		cal_data_model_thaw_all_subscribers (data_model);
+ 
+ 		if (view_data->view)
+-- 
+2.15.0
+

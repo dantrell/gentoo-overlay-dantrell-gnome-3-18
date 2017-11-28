@@ -1,0 +1,157 @@
+From 95c3fae695d29d0ddabe0d3d2597762606ffb0b9 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 24 Feb 2016 10:46:47 +0100
+Subject: [PATCH 0620/1800] EHTMLEditorSelection - Trailing space is lost when
+ wrapping content
+
+---
+ .../e-html-editor-selection-dom-functions.c        | 40 +++++++++++++++++++---
+ .../composer/e-html-editor-view-dom-functions.c    | 35 +++++++++++++++++++
+ 2 files changed, 71 insertions(+), 4 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 696a6d6495..a6da801e47 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -2019,6 +2019,23 @@ dom_scroll_to_caret (WebKitDOMDocument *document)
+ 	g_object_unref (dom_window);
+ }
+ 
++static void
++mark_and_remove_leading_space (WebKitDOMDocument *document,
++                               WebKitDOMNode *node)
++{
++	WebKitDOMElement *element;
++
++	element = webkit_dom_document_create_element (document, "SPAN", NULL);
++	webkit_dom_element_set_attribute (element, "data-hidden-space", "", NULL);
++	webkit_dom_node_insert_before (
++		webkit_dom_node_get_parent_node (node),
++		WEBKIT_DOM_NODE (element),
++		node,
++		NULL);
++	webkit_dom_character_data_replace_data (
++		WEBKIT_DOM_CHARACTER_DATA (node), 0, 1, "", NULL);
++}
++
+ static WebKitDOMElement *
+ wrap_lines (WebKitDOMDocument *document,
+             EHTMLEditorWebExtension *extension,
+@@ -2142,6 +2159,23 @@ wrap_lines (WebKitDOMDocument *document,
+ 			start_node = node;
+ 	}
+ 
++	if (start_node && WEBKIT_DOM_IS_ELEMENT (start_node)) {
++		WebKitDOMNodeList *list;
++
++		list = webkit_dom_element_query_selector_all (
++			WEBKIT_DOM_ELEMENT (start_node), "span[data-hidden-space]", NULL);
++		len = webkit_dom_node_list_get_length (list);
++		for (ii = 0; ii < len; ii++) {
++			WebKitDOMNode *hidden_space_node;
++
++			hidden_space_node = webkit_dom_node_list_item (list, ii);
++			webkit_dom_html_element_set_outer_text (
++				WEBKIT_DOM_HTML_ELEMENT (hidden_space_node), " ", NULL);
++			g_object_unref (hidden_space_node);
++		}
++		g_object_unref (list);
++	}
++
+ 	len = 0;
+ 	while (node) {
+ 		gint offset = 0;
+@@ -2316,8 +2350,7 @@ wrap_lines (WebKitDOMDocument *document,
+ 					nd_content = webkit_dom_node_get_text_content (nd);
+ 					if (nd_content && *nd_content) {
+ 						if (g_str_has_prefix (nd_content, " "))
+-							webkit_dom_character_data_replace_data (
+-								WEBKIT_DOM_CHARACTER_DATA (nd), 0, 1, "", NULL);
++							mark_and_remove_leading_space (document, nd);
+ 						g_free (nd_content);
+ 						nd_content = webkit_dom_node_get_text_content (nd);
+ 						if (g_strcmp0 (nd_content, UNICODE_NBSP) == 0)
+@@ -2349,8 +2382,7 @@ wrap_lines (WebKitDOMDocument *document,
+ 					nd_content = webkit_dom_node_get_text_content (nd);
+ 					if (nd_content && *nd_content) {
+ 						if (g_str_has_prefix (nd_content, " "))
+-							webkit_dom_character_data_replace_data (
+-								WEBKIT_DOM_CHARACTER_DATA (nd), 0, 1, "", NULL);
++							mark_and_remove_leading_space (document, nd);
+ 						g_free (nd_content);
+ 						nd_content = webkit_dom_node_get_text_content (nd);
+ 						if (g_strcmp0 (nd_content, UNICODE_NBSP) == 0)
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 0ea7fc4ca3..731b200a5f 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -6484,10 +6484,12 @@ dom_process_content_for_html (WebKitDOMDocument *document,
+                               EHTMLEditorWebExtension *extension,
+                               const gchar *from_domain)
+ {
++	gint ii, length;
+ 	GVariant *inline_images_to_restore = NULL;
+ 	gchar *html_content;
+ 	WebKitDOMElement *marker;
+ 	WebKitDOMNode *node, *document_clone;
++	WebKitDOMNodeList *list;
+ 
+ 	if (from_domain != NULL)
+ 		inline_images_to_restore = dom_get_inline_images_data (document, extension, from_domain);
+@@ -6518,6 +6520,18 @@ dom_process_content_for_html (WebKitDOMDocument *document,
+ 	if (marker)
+ 		remove_node (WEBKIT_DOM_NODE (marker));
+ 
++	list = webkit_dom_element_query_selector_all (
++		WEBKIT_DOM_ELEMENT (node), "span[data-hidden-space]", NULL);
++	length = webkit_dom_node_list_get_length (list);
++	for (ii = 0; ii < length; ii++) {
++		WebKitDOMNode *hidden_space_node;
++
++		hidden_space_node = webkit_dom_node_list_item (list, ii);
++		remove_node (hidden_space_node);
++		g_object_unref (hidden_space_node);
++	}
++	g_object_unref (list);
++
+ 	process_elements (extension, node, TRUE, FALSE, FALSE, NULL);
+ 
+ 	html_content = webkit_dom_element_get_outer_html (
+@@ -7730,6 +7744,26 @@ toggle_tables (WebKitDOMDocument *document,
+ 	g_object_unref (list);
+ }
+ 
++static void
++replace_hidden_spaces (WebKitDOMDocument *document)
++{
++	WebKitDOMNodeList *list;
++	gint ii, length;
++
++	list = webkit_dom_document_query_selector_all (
++		document, "span[data-hidden-space]", NULL);
++	length = webkit_dom_node_list_get_length (list);
++	for (ii = 0; ii < length; ii++) {
++		WebKitDOMNode *hidden_space_node;
++
++		hidden_space_node = webkit_dom_node_list_item (list, ii);
++		webkit_dom_html_element_set_outer_text (
++			WEBKIT_DOM_HTML_ELEMENT (hidden_space_node), " ", NULL);
++		g_object_unref (hidden_space_node);
++	}
++	g_object_unref (list);
++}
++
+ void
+ dom_process_content_after_mode_change (WebKitDOMDocument *document,
+                                        EHTMLEditorWebExtension *extension)
+@@ -7751,6 +7785,7 @@ dom_process_content_after_mode_change (WebKitDOMDocument *document,
+ 		toggle_smileys (document, extension);
+ 		toggle_tables (document, html_mode);
+ 		remove_wrapping_from_document (document);
++		replace_hidden_spaces (document);
+ 	} else {
+ 		gchar *plain;
+ 
+-- 
+2.15.0
+

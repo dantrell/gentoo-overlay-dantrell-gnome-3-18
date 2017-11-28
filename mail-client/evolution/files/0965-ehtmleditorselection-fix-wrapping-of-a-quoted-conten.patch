@@ -1,0 +1,96 @@
+From 00430a6aefce9c227f22d7715179d1b44ceb4a1f Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 1 Mar 2016 11:01:45 +0100
+Subject: [PATCH 0965/1800] EHTMLEditorSelection - Fix wrapping of a quoted
+ content when editing a link inside it
+
+---
+ .../e-html-editor-selection-dom-functions.c        | 47 ++++++++++++++--------
+ 1 file changed, 30 insertions(+), 17 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index c7bef7662f..25f4ed341c 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -2187,26 +2187,23 @@ wrap_lines (WebKitDOMDocument *document,
+ 
+ 			while (nd) {
+ 				WebKitDOMNode *next_nd = webkit_dom_node_get_next_sibling (nd);
++
++				if (!next_nd && !webkit_dom_node_is_same_node (webkit_dom_node_get_parent_node (nd), block_clone))
++					next_nd = webkit_dom_node_get_next_sibling (webkit_dom_node_get_parent_node (nd));
++
+ 				if (WEBKIT_DOM_IS_HTML_BR_ELEMENT (nd)) {
+ 					if (remove_all_br)
+ 						remove_node (nd);
+ 					else if (element_has_class (WEBKIT_DOM_ELEMENT (nd), "-x-evo-wrap-br"))
+ 						remove_node (nd);
+-				}
++				} else if (WEBKIT_DOM_IS_ELEMENT (nd) &&
++				           webkit_dom_element_has_attribute (WEBKIT_DOM_ELEMENT (nd), "data-hidden-space"))
++					webkit_dom_html_element_set_outer_text (
++						WEBKIT_DOM_HTML_ELEMENT (nd), " ", NULL);
++
+ 				nd = next_nd;
+ 			}
+-		}
+-
+-		webkit_dom_node_normalize (block_clone);
+-		node = webkit_dom_node_get_first_child (block_clone);
+-		if (node) {
+-			text_content = webkit_dom_node_get_text_content (node);
+-			if (g_strcmp0 ("\n", text_content) == 0)
+-				node = webkit_dom_node_get_next_sibling (node);
+-			g_free (text_content);
+-		}
+-
+-		if (block_clone && WEBKIT_DOM_IS_ELEMENT (block_clone)) {
++		} else {
+ 			gint ii, length;
+ 			WebKitDOMNodeList *list;
+ 
+@@ -2224,6 +2221,15 @@ wrap_lines (WebKitDOMDocument *document,
+ 			g_object_unref (list);
+ 		}
+ 
++		webkit_dom_node_normalize (block_clone);
++		node = webkit_dom_node_get_first_child (block_clone);
++		if (node) {
++			text_content = webkit_dom_node_get_text_content (node);
++			if (g_strcmp0 ("\n", text_content) == 0)
++				node = webkit_dom_node_get_next_sibling (node);
++			g_free (text_content);
++		}
++
+ 		/* We have to start from the end of the last wrapped line */
+ 		element = webkit_dom_element_query_selector (
+ 			WEBKIT_DOM_ELEMENT (block_clone),
+@@ -2231,14 +2237,21 @@ wrap_lines (WebKitDOMDocument *document,
+ 			NULL);
+ 
+ 		if (element) {
+-			WebKitDOMNode *nd = WEBKIT_DOM_NODE (element);
++			WebKitDOMNode *nd = webkit_dom_node_get_previous_sibling (WEBKIT_DOM_NODE (element));
++
++			element = NULL;
++			while (nd) {
++				WebKitDOMNode *prev_nd = webkit_dom_node_get_previous_sibling (nd);
++
++				if (!prev_nd && !webkit_dom_node_is_same_node (webkit_dom_node_get_parent_node (nd), block_clone))
++					prev_nd = webkit_dom_node_get_previous_sibling (webkit_dom_node_get_parent_node (nd));
+ 
+-			while ((nd = webkit_dom_node_get_previous_sibling (nd))) {
+ 				if (WEBKIT_DOM_IS_HTML_BR_ELEMENT (nd)) {
+ 					element = WEBKIT_DOM_ELEMENT (nd);
+ 					break;
+-				} else
+-					element = NULL;
++				}
++
++				nd = prev_nd;
+ 			}
+ 		}
+ 
+-- 
+2.15.0
+

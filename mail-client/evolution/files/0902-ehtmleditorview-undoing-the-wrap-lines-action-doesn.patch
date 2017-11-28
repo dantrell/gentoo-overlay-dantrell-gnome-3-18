@@ -1,0 +1,25 @@
+From f88468f82984ac84641d81e62a0ed9f28fc211c5 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 26 Feb 2016 12:23:16 +0100
+Subject: [PATCH 0902/1800] EHTMLEditorView - Undoing the 'Wrap Lines' action
+ doesn't work
+
+---
+ web-extensions/composer/e-html-editor-undo-redo-manager.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/web-extensions/composer/e-html-editor-undo-redo-manager.c b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+index 3f5f8f2362..74191ad757 100644
+--- a/web-extensions/composer/e-html-editor-undo-redo-manager.c
++++ b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+@@ -809,6 +809,7 @@ undo_redo_wrap (WebKitDOMDocument *document,
+ 		node = webkit_dom_range_get_common_ancestor_container (range, NULL);
+ 		g_object_unref (range);
+ 		element = get_parent_block_element (WEBKIT_DOM_NODE (node));
++		webkit_dom_element_remove_attribute (element, "data-user-wrapped");
+ 		dom_remove_wrapping_from_element (WEBKIT_DOM_ELEMENT (element));
+ 
+ 		dom_force_spell_check_for_current_paragraph (document, extension);
+-- 
+2.15.0
+

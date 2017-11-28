@@ -1,0 +1,33 @@
+From a7bb8aa13cda4755003a6887b01cdeeb76d18f54 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 1 Mar 2016 13:53:47 +0100
+Subject: [PATCH 1008/1800] EHTMLEditorView - Avoid plain text quote characters
+ to be inserted in HTML mode
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index a176f6c36d..741c3423da 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -3160,10 +3160,11 @@ dom_change_quoted_block_to_normal (WebKitDOMDocument *document,
+ 				NULL);
+ 		}
+ 
+-		block = dom_wrap_paragraph_length (document, extension, block, length);
+-		webkit_dom_node_normalize (WEBKIT_DOM_NODE (block));
+-		dom_quote_plain_text_element_after_wrapping (document, block, citation_level - 1);
+-
++		if (!html_mode) {
++			block = dom_wrap_paragraph_length (document, extension, block, length);
++			webkit_dom_node_normalize (WEBKIT_DOM_NODE (block));
++			dom_quote_plain_text_element_after_wrapping (document, block, citation_level - 1);
++		}
+ 	}
+ 
+ 	if (ev) {
+-- 
+2.15.0
+

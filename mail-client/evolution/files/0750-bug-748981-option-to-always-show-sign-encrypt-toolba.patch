@@ -1,0 +1,128 @@
+From ae29158aae0b53f1a506ebef258b85e7469b8f34 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 15 May 2015 07:04:04 +0200
+Subject: [PATCH 0750/1800] Bug 748981 - Option to always show sign/encrypt
+ toolbar buttons in composer
+
+---
+ composer/e-msg-composer.c                    | 80 ++++++++++++++++++++++++++++
+ data/org.gnome.evolution.mail.gschema.xml.in |  5 ++
+ 2 files changed, 85 insertions(+)
+
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index d6be24ad87..7d3cbfed8b 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -2082,6 +2082,82 @@ msg_composer_delete_event_cb (EMsgComposer *composer)
+ 	return TRUE;
+ }
+ 
++static void
++msg_composer_realize_cb (EMsgComposer *composer)
++{
++	GSettings *settings;
++	GtkAction *action;
++
++	g_return_if_fail (E_IS_MSG_COMPOSER (composer));
++
++	action = ACTION (TOOLBAR_PGP_SIGN);
++	if (gtk_action_get_visible (action) && !gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (action)))
++		gtk_action_set_visible (action, FALSE);
++
++	action = ACTION (TOOLBAR_PGP_ENCRYPT);
++	if (gtk_action_get_visible (action) && !gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (action)))
++		gtk_action_set_visible (action, FALSE);
++
++	action = ACTION (TOOLBAR_SMIME_SIGN);
++	if (gtk_action_get_visible (action) && !gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (action)))
++		gtk_action_set_visible (action, FALSE);
++
++	action = ACTION (TOOLBAR_SMIME_ENCRYPT);
++	if (gtk_action_get_visible (action) && !gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (action)))
++		gtk_action_set_visible (action, FALSE);
++
++	settings = e_util_ref_settings ("org.gnome.evolution.mail");
++
++	if (g_settings_get_boolean (settings, "composer-toolbar-show-sign-encrypt")) {
++		EComposerHeaderTable *table;
++		ESource *source;
++		const gchar *identity_uid;
++
++		table = e_msg_composer_get_header_table (composer);
++		identity_uid = e_composer_header_table_get_identity_uid (table);
++		source = e_composer_header_table_ref_source (table, identity_uid);
++
++		if (source) {
++			if (e_source_has_extension (source, E_SOURCE_EXTENSION_OPENPGP)) {
++				gchar *key_id;
++
++				key_id = e_source_openpgp_dup_key_id (e_source_get_extension (source, E_SOURCE_EXTENSION_OPENPGP));
++
++				if (key_id && *key_id) {
++					action = ACTION (TOOLBAR_PGP_SIGN);
++					gtk_action_set_visible (action, TRUE);
++
++					action = ACTION (TOOLBAR_PGP_ENCRYPT);
++					gtk_action_set_visible (action, TRUE);
++				}
++
++				g_free (key_id);
++			}
++
++			if (e_source_has_extension (source, E_SOURCE_EXTENSION_SMIME)) {
++				ESourceSMIME *smime_extension;
++				gchar *certificate;
++
++				smime_extension = e_source_get_extension (source, E_SOURCE_EXTENSION_SMIME);
++
++				certificate = e_source_smime_dup_signing_certificate (smime_extension);
++				if (certificate && *certificate)
++					gtk_action_set_visible (ACTION (TOOLBAR_SMIME_SIGN), TRUE);
++				g_free (certificate);
++
++				certificate = e_source_smime_dup_encryption_certificate (smime_extension);
++				if (certificate && *certificate)
++					gtk_action_set_visible (ACTION (TOOLBAR_SMIME_ENCRYPT), TRUE);
++				g_free (certificate);
++			}
++
++			g_clear_object (&source);
++		}
++	}
++
++	g_clear_object (&settings);
++}
++
+ static void
+ msg_composer_prepare_for_quit_cb (EShell *shell,
+                                   EActivity *activity,
+@@ -2291,6 +2367,10 @@ msg_composer_constructed (GObject *object)
+ 		object, "delete-event",
+ 		G_CALLBACK (msg_composer_delete_event_cb), NULL);
+ 
++	g_signal_connect (
++		object, "realize",
++		G_CALLBACK (msg_composer_realize_cb), NULL);
++
+ 	gtk_application_add_window (
+ 		GTK_APPLICATION (shell), GTK_WINDOW (object));
+ 
+diff --git a/data/org.gnome.evolution.mail.gschema.xml.in b/data/org.gnome.evolution.mail.gschema.xml.in
+index d1b153cde8..65e1dd76d8 100644
+--- a/data/org.gnome.evolution.mail.gschema.xml.in
++++ b/data/org.gnome.evolution.mail.gschema.xml.in
+@@ -185,6 +185,11 @@
+       <_summary>Number of characters for wrapping</_summary>
+       <_description>Will autowrap lines after given number of characters.</_description>
+     </key>
++    <key name="composer-toolbar-show-sign-encrypt" type="b">
++      <default>false</default>
++      <_summary>Whether to always show Sign and Encrypt buttons on the toolbar</_summary>
++      <_description>If set to 'true', the Sign and Encrypt buttons for either PGP or S/MIME are always shown in the composer's toolbar. Otherwise they are shown only when being used.</_description>
++    </key>
+     <key name="drag-and-drop-save-file-format" type="s">
+       <default>'mbox'</default>
+       <_summary>Save file format for drag-and-drop operation</_summary>
+-- 
+2.15.0
+

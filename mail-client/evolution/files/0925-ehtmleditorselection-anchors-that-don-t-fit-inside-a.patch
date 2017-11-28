@@ -1,0 +1,48 @@
+From 83456c9fd28d8e77437f343c978831d25be367cd Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 29 Feb 2016 17:23:07 +0100
+Subject: [PATCH 0925/1800] EHTMLEditorSelection - Anchors that don't fit
+ inside a line are not correctly wrapped
+
+---
+ .../composer/e-html-editor-selection-dom-functions.c    | 17 ++---------------
+ 1 file changed, 2 insertions(+), 15 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 8d13937e2a..6b9d5ff92e 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -2569,7 +2569,7 @@ wrap_lines (WebKitDOMDocument *document,
+ 				next_sibling = webkit_dom_node_get_next_sibling (node);
+ 				/* If the anchor doesn't fit on the line move the inner
+ 				 * nodes out of it and start to wrap them. */
+-				if (anchor_length > length_to_wrap) {
++				if ((line_length + anchor_length) > length_to_wrap) {
+ 					WebKitDOMNode *inner_node;
+ 
+ 					while ((inner_node = webkit_dom_node_get_first_child (node))) {
+@@ -2590,20 +2590,7 @@ wrap_lines (WebKitDOMDocument *document,
+ 					continue;
+ 				}
+ 
+-				if (line_length + anchor_length > length_to_wrap) {
+-					element = webkit_dom_document_create_element (
+-						document, "BR", NULL);
+-					element_add_class (element, "-x-evo-wrap-br");
+-					webkit_dom_node_insert_before (
+-						webkit_dom_node_get_parent_node (node),
+-						WEBKIT_DOM_NODE (element),
+-						node,
+-						NULL);
+-					line_length = anchor_length;
+-					compensated = FALSE;
+-				} else
+-					line_length += anchor_length;
+-
++				line_length += anchor_length;
+ 				node = next_sibling;
+ 				continue;
+ 			}
+-- 
+2.15.0
+

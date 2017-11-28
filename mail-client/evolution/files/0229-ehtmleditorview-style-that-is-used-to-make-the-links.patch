@@ -1,0 +1,30 @@
+From b17e85b56c5e57a25c5d0e0e32f96c010d114fd5 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 08:54:20 +0100
+Subject: [PATCH 0229/1800] EHTMLEditorView - Style that is used to make the
+ links clickable is send when using Ctrl + Enter to send the message
+
+Also rename the style id to sctick with other ids.
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 911395e835..56578fb395 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -5692,6 +5692,11 @@ dom_process_content_for_html (WebKitDOMDocument *document,
+ 		WEBKIT_DOM_ELEMENT (document_clone), "style#-x-evo-quote-style", NULL));
+ 	if (node)
+ 		remove_node (node);
++	/* When the Ctrl + Enter is pressed for sending, the links are activated. */
++	node = WEBKIT_DOM_NODE (webkit_dom_element_query_selector (
++		WEBKIT_DOM_ELEMENT (document_clone), "style#-x-evo-style-a", NULL));
++	if (node)
++		remove_node (node);
+ 	node = WEBKIT_DOM_NODE (webkit_dom_element_query_selector (
+ 		WEBKIT_DOM_ELEMENT (document_clone), "body", NULL));
+ 	process_elements (extension, node, TRUE, FALSE, FALSE, NULL);
+-- 
+2.15.0
+

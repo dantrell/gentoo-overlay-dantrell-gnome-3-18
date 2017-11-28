@@ -1,0 +1,27 @@
+From c8f2e62afed3c01debe0dddacea50eaef9ffcb18 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 1 Mar 2016 11:08:36 +0100
+Subject: [PATCH 0968/1800] Bug 753652 - Right click on highlighted text and
+ 'Cut' doesn't work in composer window.
+
+---
+ e-util/e-html-editor-actions.c | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/e-util/e-html-editor-actions.c b/e-util/e-html-editor-actions.c
+index d708e53000..24e5b5ff64 100644
+--- a/e-util/e-html-editor-actions.c
++++ b/e-util/e-html-editor-actions.c
+@@ -264,9 +264,6 @@ action_cut_cb (GtkAction *action,
+ {
+ 	EHTMLEditorView *view = e_html_editor_get_view (editor);
+ 
+-	if (!gtk_widget_has_focus (GTK_WIDGET (view)))
+-		return;
+-
+ 	html_editor_call_simple_extension_function (
+ 		editor, "EHTMLEditorActionsSaveHistoryForCut");
+ 
+-- 
+2.15.0
+

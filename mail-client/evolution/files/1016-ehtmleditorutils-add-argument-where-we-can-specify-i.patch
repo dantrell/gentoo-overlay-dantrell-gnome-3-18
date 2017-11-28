@@ -1,0 +1,84 @@
+From 59df14df50b45396cf32283450964ca4af4563b7 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 1 Mar 2016 14:07:01 +0100
+Subject: [PATCH 1016/1800] EHTMLEditorUtils - Add argument where we can
+ specify into what level the node will be split
+
+---
+ web-extensions/composer/e-html-editor-selection-dom-functions.c | 2 +-
+ web-extensions/composer/e-html-editor-view-dom-functions.c      | 2 +-
+ web-extensions/e-dom-utils.c                                    | 9 ++++++++-
+ web-extensions/e-dom-utils.h                                    | 3 ++-
+ 4 files changed, 12 insertions(+), 4 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index c6ea31fd7b..aa75b4c805 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -806,7 +806,7 @@ do_format_change_list_to_block (WebKitDOMDocument *document,
+ 	}
+ 
+ 	if (webkit_dom_node_contains (source_list, WEBKIT_DOM_NODE (selection_end)))
+-		source_list = split_list_into_two (item);
++		source_list = split_list_into_two (item, -1);
+ 	else {
+ 		source_list = webkit_dom_node_get_next_sibling (source_list);
+ 	}
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index c44c56617a..76822cf94c 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -8315,7 +8315,7 @@ return_pressed_in_empty_list_item (WebKitDOMDocument *document,
+ 			fragment = webkit_dom_document_create_document_fragment (document);
+ 		}
+ 
+-		list = split_list_into_two (parent);
++		list = split_list_into_two (parent, -1);
+ 
+ 		if (save_history) {
+ 			webkit_dom_node_append_child (
+diff --git a/web-extensions/e-dom-utils.c b/web-extensions/e-dom-utils.c
+index 126b90a439..fb70cfb820 100644
+--- a/web-extensions/e-dom-utils.c
++++ b/web-extensions/e-dom-utils.c
+@@ -1623,8 +1623,10 @@ remove_node_if_empty (WebKitDOMNode *node)
+ }
+ 
+ WebKitDOMNode *
+-split_list_into_two (WebKitDOMNode *item)
++split_list_into_two (WebKitDOMNode *item,
++		     gint level)
+ {
++	gint current_level = 1;
+ 	WebKitDOMDocument *document;
+ 	WebKitDOMDocumentFragment *fragment;
+ 	WebKitDOMNode *parent, *prev_parent, *tmp;
+@@ -1665,6 +1667,11 @@ split_list_into_two (WebKitDOMNode *item)
+ 					first_child, sibling, insert_before, NULL);
+ 			}
+ 		}
++
++		if (current_level >= level && level >= 0)
++			break;
++
++		current_level++;
+ 	}
+ 
+ 	tmp = webkit_dom_node_insert_before (
+diff --git a/web-extensions/e-dom-utils.h b/web-extensions/e-dom-utils.h
+index 45fd5cbd2f..037ce3ae65 100644
+--- a/web-extensions/e-dom-utils.h
++++ b/web-extensions/e-dom-utils.h
+@@ -124,7 +124,8 @@ void		element_remove_class		(WebKitDOMElement *element,
+ 						 const gchar* class);
+ void		remove_node			(WebKitDOMNode *node);
+ void		remove_node_if_empty		(WebKitDOMNode *node);
+-WebKitDOMNode *	split_list_into_two		(WebKitDOMNode *item);
++WebKitDOMNode *	split_list_into_two		(WebKitDOMNode *item,
++						 gint level);
+ 
+ WebKitDOMElement *
+ 		dom_create_selection_marker	(WebKitDOMDocument *document,
+-- 
+2.15.0
+

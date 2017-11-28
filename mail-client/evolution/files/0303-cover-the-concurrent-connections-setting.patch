@@ -1,0 +1,27 @@
+From cd98f73f0a7b8ee8fdab44f91ea06644c396edfc Mon Sep 17 00:00:00 2001
+From: Andre Klapper <ak-47@gmx.net>
+Date: Mon, 16 Feb 2015 00:17:20 +0100
+Subject: [PATCH 0303/1800] Cover the "concurrent connections" setting
+
+Bug 730460
+---
+ help/C/mail-receiving-options-imap-plus.page | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/help/C/mail-receiving-options-imap-plus.page b/help/C/mail-receiving-options-imap-plus.page
+index a41e7c3cdf..f33b60eeb8 100644
+--- a/help/C/mail-receiving-options-imap-plus.page
++++ b/help/C/mail-receiving-options-imap-plus.page
+@@ -45,6 +45,9 @@
+ <list>
+ <item><p>If you want Evolution to check automatically for new messages, click the <gui>Check for new messages every … minutes</gui> option and select the frequency in minutes.</p></item>
+ <item><p>Select <gui>Use Quick Resync</gui> if the IMAP server supports <link href="http://tools.ietf.org/html/rfc5162">IMAP4 Extensions for Quick Mailbox Resynchronization</link>.</p></item>
++<!-- https://bugzilla.gnome.org/show_bug.cgi?id=730460 -->
++<item><p>If the mail server does not allow multiple connections from Evolution to the server at the same time (for example when you have more than one account on that server), set <gui>Number of concurrent connections to use</gui> to 1.</p></item>
++<item><p>You can also define if Evolution checks for new messages in all folders, or only in subscribed folders.</p></item>
+ <item><p>Select if you want Evolution to show only <link xref="mail-imap-subscriptions">subscribed folders</link>.</p></item>
+ <item><p>Select if you want <link xref="mail-filters">filters</link> to be automatically applied on mail that you receive, if <link xref="mail-spam-marking">spam</link> should be automatically filtered, and if <link xref="mail-working-offline">mail on the server should be synchronized with your local copy for offline access to it</link>.</p></item></list>
+ 
+-- 
+2.15.0
+

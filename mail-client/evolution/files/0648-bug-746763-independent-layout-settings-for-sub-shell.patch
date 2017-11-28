@@ -1,0 +1,446 @@
+From ca8b21e787f46816c55d7f774cad19a67b0a17ec Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 7 Apr 2015 14:40:31 +0200
+Subject: [PATCH 0648/1800] Bug 746763 - Independent layout settings for
+ sub-shell windows
+
+---
+ .../org.gnome.evolution.addressbook.gschema.xml.in |  10 ++
+ data/org.gnome.evolution.calendar.gschema.xml.in   |   5 +
+ data/org.gnome.evolution.mail.gschema.xml.in       |  10 ++
+ data/org.gnome.evolution.shell.gschema.xml.in      |  25 +++++
+ mail/e-mail-paned-view.c                           |  32 +++++--
+ modules/addressbook/e-book-shell-content.c         |  30 ++++--
+ modules/calendar/e-cal-base-shell-sidebar.c        |  16 +++-
+ shell/e-shell-window-private.c                     | 101 ++++++++++++++++-----
+ shell/e-shell-window-private.h                     |   1 +
+ shell/e-shell-window.c                             |  17 ++++
+ shell/e-shell-window.h                             |   1 +
+ 11 files changed, 202 insertions(+), 46 deletions(-)
+
+diff --git a/data/org.gnome.evolution.addressbook.gschema.xml.in b/data/org.gnome.evolution.addressbook.gschema.xml.in
+index 1c27195ec6..79e67f1e05 100644
+--- a/data/org.gnome.evolution.addressbook.gschema.xml.in
++++ b/data/org.gnome.evolution.addressbook.gschema.xml.in
+@@ -30,11 +30,21 @@
+       <_summary>Contact preview pane position (horizontal)</_summary>
+       <_description>Position of the contact preview pane when oriented horizontally.</_description>
+     </key>
++    <key name="hpane-position-sub" type="i">
++      <default>200</default>
++      <_summary>Contact preview pane position (horizontal)</_summary>
++      <_description>Position of the contact preview pane when oriented horizontally.</_description>
++    </key>
+     <key name="vpane-position" type="i">
+       <default>400</default>
+       <_summary>Contact preview pane position (vertical)</_summary>
+       <_description>Position of the contact preview pane when oriented vertically.</_description>
+     </key>
++    <key name="vpane-position-sub" type="i">
++      <default>400</default>
++      <_summary>Contact preview pane position (vertical)</_summary>
++      <_description>Position of the contact preview pane when oriented vertically.</_description>
++    </key>
+     <key name="preview-show-maps" type="b">
+       <default>false</default>
+       <_summary>Show maps</_summary>
+diff --git a/data/org.gnome.evolution.calendar.gschema.xml.in b/data/org.gnome.evolution.calendar.gschema.xml.in
+index 17a110647c..34528ee452 100644
+--- a/data/org.gnome.evolution.calendar.gschema.xml.in
++++ b/data/org.gnome.evolution.calendar.gschema.xml.in
+@@ -54,6 +54,11 @@
+       <_summary>Month view vertical pane position</_summary>
+       <_description>Position of the vertical pane, between the calendar lists and the date navigator calendar</_description>
+     </key>
++    <key name="date-navigator-pane-position-sub" type="i">
++      <default>150</default>
++      <_summary>Month view vertical pane position</_summary>
++      <_description>Position of the vertical pane, between the calendar lists and the date navigator calendar</_description>
++    </key>
+     <key name="day-end-hour" type="i">
+       <default>17</default>
+       <_summary>Workday end hour</_summary>
+diff --git a/data/org.gnome.evolution.mail.gschema.xml.in b/data/org.gnome.evolution.mail.gschema.xml.in
+index 2e9ad0a477..6e8f9c50e6 100644
+--- a/data/org.gnome.evolution.mail.gschema.xml.in
++++ b/data/org.gnome.evolution.mail.gschema.xml.in
+@@ -304,6 +304,11 @@
+       <_summary>Height of the message-list pane</_summary>
+       <_description>Height of the message-list pane.</_description>
+     </key>
++    <key name="paned-size-sub" type="i">
++      <default>144</default>
++      <_summary>Height of the message-list pane</_summary>
++      <_description>Height of the message-list pane.</_description>
++    </key>
+     <key name="headers-collapsed" type="b">
+       <default>false</default>
+       <_summary>Whether message headers are collapsed in the user interface</_summary>
+@@ -313,6 +318,11 @@
+       <_summary>Width of the message-list pane</_summary>
+       <_description>Width of the message-list pane.</_description>
+     </key>
++    <key name="hpaned-size-sub" type="i">
++      <default>450</default>
++      <_summary>Width of the message-list pane</_summary>
++      <_description>Width of the message-list pane.</_description>
++    </key>
+     <key name="layout" type="i">
+       <default>0</default>
+       <_summary>Layout style</_summary>
+diff --git a/data/org.gnome.evolution.shell.gschema.xml.in b/data/org.gnome.evolution.shell.gschema.xml.in
+index af6efd7d38..e509cfce1d 100644
+--- a/data/org.gnome.evolution.shell.gschema.xml.in
++++ b/data/org.gnome.evolution.shell.gschema.xml.in
+@@ -35,6 +35,11 @@
+       <_summary>Window buttons are visible</_summary>
+       <_description>Whether the window buttons should be visible.</_description>
+     </key>
++    <key name="buttons-visible-sub" type="b">
++      <default>true</default>
++      <_summary>Window buttons are visible</_summary>
++      <_description>Whether the window buttons should be visible.</_description>
++    </key>
+     <key name="buttons-style" type="s">
+       <default>'toolbar'</default>
+       <_summary>Window button style</_summary>
+@@ -45,16 +50,31 @@
+       <_summary>Toolbar is visible</_summary>
+       <_description>Whether the toolbar should be visible.</_description>
+     </key>
++    <key name="toolbar-visible-sub" type="b">
++      <default>true</default>
++      <_summary>Toolbar is visible</_summary>
++      <_description>Whether the toolbar should be visible.</_description>
++    </key>
+     <key name="sidebar-visible" type="b">
+       <default>true</default>
+       <_summary>Sidebar is visible</_summary>
+       <_description>Whether the sidebar should be visible.</_description>
+     </key>
++    <key name="sidebar-visible-sub" type="b">
++      <default>true</default>
++      <_summary>Sidebar is visible</_summary>
++      <_description>Whether the sidebar should be visible.</_description>
++    </key>
+     <key name="statusbar-visible" type="b">
+       <default>true</default>
+       <_summary>Statusbar is visible</_summary>
+       <_description>Whether the status bar should be visible.</_description>
+     </key>
++    <key name="statusbar-visible-sub" type="b">
++      <default>true</default>
++      <_summary>Statusbar is visible</_summary>
++      <_description>Whether the status bar should be visible.</_description>
++    </key>
+     <key name="default-component-id" type="s">
+       <default>'mail'</default>
+       <_summary>ID or alias of the component to be shown by default at start-up.</_summary>
+@@ -65,6 +85,11 @@
+       <_summary>Default sidebar width</_summary>
+       <_description>The default width for the sidebar, in pixels.</_description>
+     </key>
++    <key name="folder-bar-width-sub" type="i">
++      <default>200</default>
++      <_summary>Default sidebar width</_summary>
++      <_description>The default width for the sidebar, in pixels.</_description>
++    </key>
+     <child name="window" schema="org.gnome.evolution.window"/>
+   </schema>
+ </schemalist>
+diff --git a/mail/e-mail-paned-view.c b/mail/e-mail-paned-view.c
+index 3d92ab88fd..8b6bd63ea7 100644
+--- a/mail/e-mail-paned-view.c
++++ b/mail/e-mail-paned-view.c
+@@ -225,19 +225,31 @@ mail_paned_view_restore_state_cb (EShellWindow *shell_window,
+ 
+ 	priv = E_MAIL_PANED_VIEW (view)->priv;
+ 
+-	/* Bind GObject properties to GSettings keys. */
+-
+ 	settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ 
+-	g_settings_bind (
+-		settings, "hpaned-size",
+-		priv->paned, "hposition",
+-		G_SETTINGS_BIND_DEFAULT);
++	if (e_shell_window_is_main_instance (shell_window)) {
++		g_settings_bind (
++			settings, "hpaned-size",
++			priv->paned, "hposition",
++			G_SETTINGS_BIND_DEFAULT);
+ 
+-	g_settings_bind (
+-		settings, "paned-size",
+-		priv->paned, "vposition",
+-		G_SETTINGS_BIND_DEFAULT);
++		g_settings_bind (
++			settings, "paned-size",
++			priv->paned, "vposition",
++			G_SETTINGS_BIND_DEFAULT);
++	} else {
++		g_settings_bind (
++			settings, "hpaned-size-sub",
++			priv->paned, "hposition",
++			G_SETTINGS_BIND_DEFAULT |
++			G_SETTINGS_BIND_GET_NO_CHANGES);
++
++		g_settings_bind (
++			settings, "paned-size-sub",
++			priv->paned, "vposition",
++			G_SETTINGS_BIND_DEFAULT |
++			G_SETTINGS_BIND_GET_NO_CHANGES);
++	}
+ 
+ 	g_object_unref (settings);
+ }
+diff --git a/modules/addressbook/e-book-shell-content.c b/modules/addressbook/e-book-shell-content.c
+index 706c228a1c..e4200791ce 100644
+--- a/modules/addressbook/e-book-shell-content.c
++++ b/modules/addressbook/e-book-shell-content.c
+@@ -94,15 +94,29 @@ book_shell_content_restore_state_cb (EShellWindow *shell_window,
+ 
+ 	settings = e_util_ref_settings ("org.gnome.evolution.addressbook");
+ 
+-	g_settings_bind (
+-		settings, "hpane-position",
+-		priv->paned, "hposition",
+-		G_SETTINGS_BIND_DEFAULT);
++	if (e_shell_window_is_main_instance (shell_window)) {
++		g_settings_bind (
++			settings, "hpane-position",
++			priv->paned, "hposition",
++			G_SETTINGS_BIND_DEFAULT);
+ 
+-	g_settings_bind (
+-		settings, "vpane-position",
+-		priv->paned, "vposition",
+-		G_SETTINGS_BIND_DEFAULT);
++		g_settings_bind (
++			settings, "vpane-position",
++			priv->paned, "vposition",
++			G_SETTINGS_BIND_DEFAULT);
++	} else {
++		g_settings_bind (
++			settings, "hpane-position-sub",
++			priv->paned, "hposition",
++			G_SETTINGS_BIND_DEFAULT |
++			G_SETTINGS_BIND_GET_NO_CHANGES);
++
++		g_settings_bind (
++			settings, "vpane-position-sub",
++			priv->paned, "vposition",
++			G_SETTINGS_BIND_DEFAULT |
++			G_SETTINGS_BIND_GET_NO_CHANGES);
++	}
+ 
+ 	g_object_unref (settings);
+ }
+diff --git a/modules/calendar/e-cal-base-shell-sidebar.c b/modules/calendar/e-cal-base-shell-sidebar.c
+index 03a2ba8646..e7530bdffa 100644
+--- a/modules/calendar/e-cal-base-shell-sidebar.c
++++ b/modules/calendar/e-cal-base-shell-sidebar.c
+@@ -148,10 +148,18 @@ cal_base_shell_sidebar_restore_state_cb (EShellWindow *shell_window,
+ 		(GDestroyNotify) g_object_unref);
+ 
+ 	if (priv->date_navigator) {
+-		g_settings_bind (
+-			settings, "date-navigator-pane-position",
+-			priv->paned, "vposition",
+-			G_SETTINGS_BIND_DEFAULT);
++		if (e_shell_window_is_main_instance (shell_window)) {
++			g_settings_bind (
++				settings, "date-navigator-pane-position",
++				priv->paned, "vposition",
++				G_SETTINGS_BIND_DEFAULT);
++		} else {
++			g_settings_bind (
++				settings, "date-navigator-pane-position-sub",
++				priv->paned, "vposition",
++				G_SETTINGS_BIND_DEFAULT |
++				G_SETTINGS_BIND_GET_NO_CHANGES);
++		}
+ 	}
+ 
+ 	g_object_unref (settings);
+diff --git a/shell/e-shell-window-private.c b/shell/e-shell-window-private.c
+index 76e1799168..f9e21b1bdf 100644
+--- a/shell/e-shell-window-private.c
++++ b/shell/e-shell-window-private.c
+@@ -246,6 +246,26 @@ e_shell_window_private_init (EShellWindow *shell_window)
+ 		G_CALLBACK (shell_window_connect_proxy_cb), shell_window);
+ }
+ 
++static gboolean
++shell_window_check_is_main_instance (GtkApplication *application,
++				     GtkWindow *window)
++{
++	GList *windows, *link;
++
++	g_return_val_if_fail (GTK_IS_APPLICATION (application), FALSE);
++	g_return_val_if_fail (GTK_IS_WINDOW (window), FALSE);
++
++	windows = gtk_application_get_windows (application);
++	for (link = windows; link; link = g_list_next (link)) {
++		GtkWindow *wnd = link->data;
++
++		if (E_IS_SHELL_WINDOW (wnd) && wnd != window)
++			return FALSE;
++	}
++
++	return TRUE;
++}
++
+ void
+ e_shell_window_private_constructed (EShellWindow *shell_window)
+ {
+@@ -269,6 +289,7 @@ e_shell_window_private_constructed (EShellWindow *shell_window)
+ 	window = GTK_WINDOW (shell_window);
+ 
+ 	shell = e_shell_window_get_shell (shell_window);
++	shell_window->priv->is_main_instance = shell_window_check_is_main_instance (GTK_APPLICATION (shell), window);
+ 
+ 	ui_manager = e_shell_window_get_ui_manager (shell_window);
+ 
+@@ -416,30 +437,62 @@ e_shell_window_private_constructed (EShellWindow *shell_window)
+ 		G_SETTINGS_BIND_DEFAULT |
+ 		G_SETTINGS_BIND_GET_NO_CHANGES);
+ 
+-	g_settings_bind (
+-		settings, "folder-bar-width",
+-		priv->content_pane, "position",
+-		G_SETTINGS_BIND_DEFAULT);
+-
+-	g_settings_bind (
+-		settings, "sidebar-visible",
+-		shell_window, "sidebar-visible",
+-		G_SETTINGS_BIND_DEFAULT);
+-
+-	g_settings_bind (
+-		settings, "statusbar-visible",
+-		shell_window, "taskbar-visible",
+-		G_SETTINGS_BIND_DEFAULT);
+-
+-	g_settings_bind (
+-		settings, "buttons-visible",
+-		shell_window, "switcher-visible",
+-		G_SETTINGS_BIND_DEFAULT);
+-
+-	g_settings_bind (
+-		settings, "toolbar-visible",
+-		shell_window, "toolbar-visible",
+-		G_SETTINGS_BIND_DEFAULT);
++	if (e_shell_window_is_main_instance (shell_window)) {
++		g_settings_bind (
++			settings, "folder-bar-width",
++			priv->content_pane, "position",
++			G_SETTINGS_BIND_DEFAULT);
++
++		g_settings_bind (
++			settings, "sidebar-visible",
++			shell_window, "sidebar-visible",
++			G_SETTINGS_BIND_DEFAULT);
++
++		g_settings_bind (
++			settings, "statusbar-visible",
++			shell_window, "taskbar-visible",
++			G_SETTINGS_BIND_DEFAULT);
++
++		g_settings_bind (
++			settings, "buttons-visible",
++			shell_window, "switcher-visible",
++			G_SETTINGS_BIND_DEFAULT);
++
++		g_settings_bind (
++			settings, "toolbar-visible",
++			shell_window, "toolbar-visible",
++			G_SETTINGS_BIND_DEFAULT);
++	} else {
++		g_settings_bind (
++			settings, "folder-bar-width-sub",
++			priv->content_pane, "position",
++			G_SETTINGS_BIND_DEFAULT |
++			G_SETTINGS_BIND_GET_NO_CHANGES);
++
++		g_settings_bind (
++			settings, "sidebar-visible-sub",
++			shell_window, "sidebar-visible",
++			G_SETTINGS_BIND_DEFAULT |
++			G_SETTINGS_BIND_GET_NO_CHANGES);
++
++		g_settings_bind (
++			settings, "statusbar-visible-sub",
++			shell_window, "taskbar-visible",
++			G_SETTINGS_BIND_DEFAULT |
++			G_SETTINGS_BIND_GET_NO_CHANGES);
++
++		g_settings_bind (
++			settings, "buttons-visible-sub",
++			shell_window, "switcher-visible",
++			G_SETTINGS_BIND_DEFAULT |
++			G_SETTINGS_BIND_GET_NO_CHANGES);
++
++		g_settings_bind (
++			settings, "toolbar-visible-sub",
++			shell_window, "toolbar-visible",
++			G_SETTINGS_BIND_DEFAULT |
++			G_SETTINGS_BIND_GET_NO_CHANGES);
++	}
+ 
+ 	/* Configure the initial size and position of the window by way
+ 	 * of either a user-supplied geometry string or the last recorded
+diff --git a/shell/e-shell-window-private.h b/shell/e-shell-window-private.h
+index 777957ec37..0ef85d5e34 100644
+--- a/shell/e-shell-window-private.h
++++ b/shell/e-shell-window-private.h
+@@ -94,6 +94,7 @@ struct _EShellWindowPrivate {
+ 	guint switcher_visible : 1;
+ 	guint taskbar_visible : 1;
+ 	guint toolbar_visible : 1;
++	guint is_main_instance : 1;
+ };
+ 
+ void		e_shell_window_private_init	(EShellWindow *shell_window);
+diff --git a/shell/e-shell-window.c b/shell/e-shell-window.c
+index 34be9084a6..1826a27216 100644
+--- a/shell/e-shell-window.c
++++ b/shell/e-shell-window.c
+@@ -1106,6 +1106,23 @@ e_shell_window_get_shell (EShellWindow *shell_window)
+ 	return E_SHELL (shell_window->priv->shell);
+ }
+ 
++/**
++ * e_shell_window_is_main_instance:
++ * @shell_window: an #EShellWindow
++ *
++ * Returns, whether the @shell_window is the main instance, which is
++ * the window which was created as the first @shell_window.
++ *
++ * Returns: whether the @shell_window is the main instance
++ **/
++gboolean
++e_shell_window_is_main_instance (EShellWindow *shell_window)
++{
++	g_return_val_if_fail (E_IS_SHELL_WINDOW (shell_window), FALSE);
++
++	return shell_window->priv->is_main_instance;
++}
++
+ /**
+  * e_shell_window_get_shell_view:
+  * @shell_window: an #EShellWindow
+diff --git a/shell/e-shell-window.h b/shell/e-shell-window.h
+index 49754e77bd..c67c1ea862 100644
+--- a/shell/e-shell-window.h
++++ b/shell/e-shell-window.h
+@@ -86,6 +86,7 @@ GtkWidget *	e_shell_window_new		(EShell *shell,
+ 						 gboolean safe_mode,
+ 						 const gchar *geometry);
+ EShell *	e_shell_window_get_shell	(EShellWindow *shell_window);
++gboolean	e_shell_window_is_main_instance	(EShellWindow *shell_window);
+ struct _EShellView *
+ 		e_shell_window_get_shell_view	(EShellWindow *shell_window,
+ 						 const gchar *view_name);
+-- 
+2.15.0
+

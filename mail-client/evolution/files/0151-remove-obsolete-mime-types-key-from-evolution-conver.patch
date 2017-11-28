@@ -1,0 +1,26 @@
+From 805aa51a823678bf7aa96aeaef3d96aa55402a0e Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 22 Dec 2014 14:46:58 +0100
+Subject: [PATCH 0151/1800] Remove obsolete 'mime-types' key from
+ evolution.convert
+
+Reported downstream at https://bugzilla.redhat.com/show_bug.cgi?id=1175430
+---
+ data/evolution.convert | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/data/evolution.convert b/data/evolution.convert
+index d25e6f48ea..1f72b8eb2d 100644
+--- a/data/evolution.convert
++++ b/data/evolution.convert
+@@ -157,7 +157,6 @@ magic-spacebar = /apps/evolution/mail/display/magic_spacebar
+ mark-citations = /apps/evolution/mail/display/mark_citations
+ mark-seen = /apps/evolution/mail/display/mark_seen
+ mark-seen-timeout = /apps/evolution/mail/display/mark_seen_timeout
+-mime-types = /apps/evolution/mail/display/mime_types
+ monospace-font = /apps/evolution/mail/display/fonts/monospace
+ paned-size = /apps/evolution/mail/display/paned_size
+ prompt-check-if-default-mailer = /apps/evolution/mail/prompts/checkdefault
+-- 
+2.15.0
+

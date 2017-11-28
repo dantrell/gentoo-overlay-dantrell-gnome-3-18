@@ -1,0 +1,116 @@
+From a3e2a862c6aa538b234dfe206ef0971ca311f86b Mon Sep 17 00:00:00 2001
+From: Andre Klapper <a9016009@gmx.de>
+Date: Mon, 9 Mar 2015 03:22:09 +0100
+Subject: [PATCH 0454/1800] Document Mail Composer tool bar changes
+
+Bug 739921
+---
+ help/C/mail-composer-priority.page                    | 6 +++---
+ help/C/mail-encryption-gpg-signing-encrypting.page    | 4 ++--
+ help/C/mail-encryption-s-mime-signing-encrypting.page | 7 ++++---
+ help/C/mail-read-receipts.page                        | 6 +++---
+ 4 files changed, 12 insertions(+), 11 deletions(-)
+
+diff --git a/help/C/mail-composer-priority.page b/help/C/mail-composer-priority.page
+index 3b3a64c0c4..c50b35b0c2 100644
+--- a/help/C/mail-composer-priority.page
++++ b/help/C/mail-composer-priority.page
+@@ -6,7 +6,7 @@
+ 
+     <link type="guide" xref="index#mail-composing-advanced" />
+ 
+-    <revision pkgversion="3.3.91" version="0.2" date="2012-02-19" status="draft"/>
++    <revision pkgversion="3.13.90" version="0.3" date="2015-03-09" status="draft"/>
+     <credit type="author">
+       <name its:translate="no">Andre Klapper</name>
+       <email its:translate="no">ak-47@gmx.net</email>
+@@ -22,8 +22,8 @@
+ 
+ <title>Prioritizing outgoing messages</title>
+ 
+-<p>You can prioritize a message to be sent, so that the recipient sees its relative importance. To prioritize a message, click <guiseq><gui>Options</gui><gui>Prioritize Message</gui></guiseq> in the composer window.</p>
++<p>You can prioritize a message to be sent, so that the recipient sees its relative importance. To prioritize a message, select <guiseq><gui>Options</gui><gui>Prioritize Message</gui></guiseq> in the menu of the composer window or click the corresponding toolbar icon.</p>
+ 
+ <note style="tip"><p>Evolution will ignore the message priority of incoming messages because the recipient should decide whether the message is important or not. You can set the "Important" flag for any messages.</p></note>
+-
++<!-- TODO: Nowhere is explained how to set the Important flag. -->
+ </page>
+diff --git a/help/C/mail-encryption-gpg-signing-encrypting.page b/help/C/mail-encryption-gpg-signing-encrypting.page
+index 20d1106122..4212b1b15e 100644
+--- a/help/C/mail-encryption-gpg-signing-encrypting.page
++++ b/help/C/mail-encryption-gpg-signing-encrypting.page
+@@ -6,7 +6,7 @@
+ 
+     <link type="guide" xref="mail-encryption#gpg"/>
+ 
+-    <revision pkgversion="2.32.1" version="0.3" date="2011-08-24" status="final"/>
++    <revision pkgversion="3.13.90" version="0.4" date="2015-03-09" status="final"/>
+     <credit type="author">
+       <name its:translate="no">Andre Klapper</name>
+       <email its:translate="no">ak-47@gmx.net</email>
+@@ -27,7 +27,7 @@
+      deleting this page-->
+ 
+ 
+-<p>After you have <link xref="mail-encryption-gpg-set-up">set up your GPG key</link>, you can sign or encrypt a message by clicking <guiseq><gui>Options</gui><gui>PGP Sign</gui></guiseq> or <gui>PGP Encrypt</gui> from the message composer menu.</p>
++<p>After you have <link xref="mail-encryption-gpg-set-up">set up your GPG key</link>, you can sign or encrypt a message by selecting <guiseq><gui>Options</gui><gui>PGP Sign</gui></guiseq> or <gui>PGP Encrypt</gui> from the message composer menu or clicking the corresponding toolbar icon.</p>
+ <note style="tip"><p>The Subject line of the message will not be encrypted and should not be used for sensitive information.</p></note>
+ 
+ <p>To have every message signed or encrypted:</p>
+diff --git a/help/C/mail-encryption-s-mime-signing-encrypting.page b/help/C/mail-encryption-s-mime-signing-encrypting.page
+index 9228a40e58..a20d78ffdd 100644
+--- a/help/C/mail-encryption-s-mime-signing-encrypting.page
++++ b/help/C/mail-encryption-s-mime-signing-encrypting.page
+@@ -6,7 +6,7 @@
+ 
+     <link type="guide" xref="mail-encryption#s-mime"/>
+ 
+-    <revision pkgversion="2.32.1" version="0.2" date="2011-08-24" status="draft"/>
++    <revision pkgversion="3.13.90" version="0.3" date="2015-03-09" status="draft"/>
+     <credit type="author">
+       <name its:translate="no">Andre Klapper</name>
+       <email its:translate="no">ak-47@gmx.net</email>
+@@ -22,7 +22,9 @@
+ 
+   <title>Signing or encrypting messages</title>
+ 
+-<p>After you have <link xref="mail-encryption-s-mime-manage">added your certificate</link>, you can sign or encrypt a message by clicking <guiseq><gui>Options</gui><gui>S/MIME Sign</gui></guiseq> or <gui>S/MIME Encrypt</gui> from the message composer menu.</p>
++<p>After you have <link xref="mail-encryption-s-mime-manage">added your certificate</link>, you can sign or encrypt a message by selecting <guiseq><gui>Options</gui><gui>S/MIME Sign</gui></guiseq> or <gui>S/MIME Encrypt</gui> from the message composer menu or clicking the corresponding toolbar icon.</p>
++<note style="tip"><p>The Subject line of the message will not be encrypted and should not be used for sensitive information.</p></note>
++
+ <p>To have every message signed or encrypted:</p>
+ <steps>
+ <item><p>Select <guiseq><gui>Edit</gui><gui>Preferences</gui><gui>Mail Accounts</gui></guiseq>.</p></item>
+@@ -33,5 +35,4 @@
+ <item><p>Select the appropriate options.</p></item>
+ <item><p>Click <gui style="button">OK</gui>.</p></item>
+ </steps>
+-<note style="tip"><p>The Subject line of the message will not be encrypted and should not be used for sensitive information.</p></note>
+ </page>
+diff --git a/help/C/mail-read-receipts.page b/help/C/mail-read-receipts.page
+index 295e3f4482..ab711a8ff1 100644
+--- a/help/C/mail-read-receipts.page
++++ b/help/C/mail-read-receipts.page
+@@ -14,7 +14,7 @@
+     <link type="guide" xref="mail-account-manage-unix-mbox-spool-file#defaults"/>
+     <link type="guide" xref="mail-account-manage-usenet-news#defaults"/>
+ 
+-    <revision pkgversion="2.32.1" version="0.2" date="2011-01-06" status="candidate"/>
++    <revision pkgversion="3.13.90" version="0.3" date="2015-03-09" status="final"/>
+     <credit type="author">
+       <name its:translate="no">April Gonzales</name>
+       <email its:translate="no">loonycookie@gmail.com</email>
+@@ -33,8 +33,8 @@
+ 
+ <p>Read receipts are a way for people to acknowledge that they have received your email. The recipient can normally choose whether to acknowledge the receipt or not, so they are not a completely reliable way of checking if your emails have been received by someone.</p>
+ 
+-<p>You can request read receipts by enabling this option in the email composer's menu. To do so, go to <guiseq><gui>Options</gui><gui>Request Read Receipt</gui></guiseq>.</p>
++<p>You can request read receipts by selecting <guiseq><gui>Options</gui><gui>Request Read Receipt</gui></guiseq> in the menu of the composer window or clicking the corresponding toolbar icon.</p>
+ 
+-<p>For read receipts that you receive you can define Evolution's behavior by going to <guiseq><gui>Edit</gui><gui>Preferences</gui><gui>Mail Accounts</gui><gui style="button">Edit</gui><gui>Defaults</gui><gui>Message Receipts</gui></guiseq>.</p>
++<p>For read receipts that you receive you can define Evolution's behavior under <gui>Message Receipts</gui> under the account's <link xref="mail-default-folder-locations"><gui>Defaults</gui></link>.</p>
+ 
+ </page>
+-- 
+2.15.0
+

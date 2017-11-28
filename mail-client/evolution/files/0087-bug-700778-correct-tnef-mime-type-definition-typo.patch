@@ -1,0 +1,25 @@
+From 494cf09e3c9e95dd573afa3fef2c2e1744b36edd Mon Sep 17 00:00:00 2001
+From: David Girault <david+gnome@dhgirault.fr>
+Date: Wed, 19 Nov 2014 13:58:04 +0100
+Subject: [PATCH 0087/1800] Bug 700778 - Correct TNEF mime type definition typo
+
+---
+ modules/tnef-attachment/e-mail-parser-tnef-attachment.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/modules/tnef-attachment/e-mail-parser-tnef-attachment.c b/modules/tnef-attachment/e-mail-parser-tnef-attachment.c
+index 033c83d3e0..b67f31f640 100644
+--- a/modules/tnef-attachment/e-mail-parser-tnef-attachment.c
++++ b/modules/tnef-attachment/e-mail-parser-tnef-attachment.c
+@@ -71,7 +71,7 @@ G_DEFINE_DYNAMIC_TYPE (
+ 
+ static const gchar *parser_mime_types[] = {
+ 	"application/vnd.ms-tnef",
+-	"application/ms-tnefl",
++	"application/ms-tnef",
+ 	NULL
+ };
+ 
+-- 
+2.15.0
+

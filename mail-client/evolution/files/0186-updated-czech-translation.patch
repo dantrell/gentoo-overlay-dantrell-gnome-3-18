@@ -1,0 +1,25 @@
+From 95b7c69209844685c652f481451b5006d4d76cc1 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marek=20=C4=8Cernock=C3=BD?= <marek@manet.cz>
+Date: Tue, 20 Jan 2015 19:47:57 +0100
+Subject: [PATCH 0186/1800] Updated Czech translation
+
+---
+ po/cs.po | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/po/cs.po b/po/cs.po
+index 6ac879dc10..a776ab91ca 100644
+--- a/po/cs.po
++++ b/po/cs.po
+@@ -15193,7 +15193,7 @@ msgstr "Odstranit příznak K vyřízení z vybraných zpráv"
+ 
+ #: ../mail/e-mail-reader.c:2080
+ msgid "_Flag Completed"
+-msgstr "Označit jako _dokončeno"
++msgstr "Označit jako _dokončené"
+ 
+ #: ../mail/e-mail-reader.c:2082
+ msgid "Set the follow-up flag to completed on the selected messages"
+-- 
+2.15.0
+

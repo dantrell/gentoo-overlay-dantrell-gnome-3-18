@@ -1,0 +1,6297 @@
+From 274e7e1c58914d40d7bac0c1d7a69c3ad8e89987 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 23 Mar 2015 17:45:18 +0100
+Subject: [PATCH 0570/1800] Reuse WebDAV discovery dialog in Google and CalDAV
+ calendar configs
+
+---
+ e-util/Makefile.am                                 |    2 -
+ e-util/e-cell-renderer-color.c                     |  241 ---
+ e-util/e-cell-renderer-color.h                     |   77 -
+ e-util/e-source-combo-box.c                        |   15 +-
+ e-util/e-source-selector.c                         |   13 +-
+ e-util/e-util.h                                    |    1 -
+ modules/cal-config-caldav/Makefile.am              |    6 +-
+ .../cal-config-caldav/e-caldav-chooser-dialog.c    |  560 ------
+ .../cal-config-caldav/e-caldav-chooser-dialog.h    |   67 -
+ modules/cal-config-caldav/e-caldav-chooser.c       | 1854 -------------------
+ modules/cal-config-caldav/e-caldav-chooser.h       |  109 --
+ .../evolution-cal-config-caldav.c                  |  112 +-
+ modules/cal-config-google/Makefile.am              |    4 -
+ modules/cal-config-google/e-cal-config-google.c    |    3 +-
+ .../cal-config-google/e-google-chooser-button.c    |  155 +-
+ .../cal-config-google/e-google-chooser-button.h    |    5 +-
+ .../cal-config-google/e-google-chooser-dialog.c    |  560 ------
+ .../cal-config-google/e-google-chooser-dialog.h    |   67 -
+ modules/cal-config-google/e-google-chooser.c       | 1891 --------------------
+ modules/cal-config-google/e-google-chooser.h       |  112 --
+ .../cal-config-google/module-cal-config-google.c   |    3 -
+ po/POTFILES.in                                     |    4 -
+ 22 files changed, 255 insertions(+), 5606 deletions(-)
+ delete mode 100644 e-util/e-cell-renderer-color.c
+ delete mode 100644 e-util/e-cell-renderer-color.h
+ delete mode 100644 modules/cal-config-caldav/e-caldav-chooser-dialog.c
+ delete mode 100644 modules/cal-config-caldav/e-caldav-chooser-dialog.h
+ delete mode 100644 modules/cal-config-caldav/e-caldav-chooser.c
+ delete mode 100644 modules/cal-config-caldav/e-caldav-chooser.h
+ delete mode 100644 modules/cal-config-google/e-google-chooser-dialog.c
+ delete mode 100644 modules/cal-config-google/e-google-chooser-dialog.h
+ delete mode 100644 modules/cal-config-google/e-google-chooser.c
+ delete mode 100644 modules/cal-config-google/e-google-chooser.h
+
+diff --git a/e-util/Makefile.am b/e-util/Makefile.am
+index e32058ac34..6c9de166a5 100644
+--- a/e-util/Makefile.am
++++ b/e-util/Makefile.am
+@@ -156,7 +156,6 @@ evolution_util_include_HEADERS =  \
+ 	e-cell-percent.h \
+ 	e-cell-pixbuf.h \
+ 	e-cell-popup.h \
+-	e-cell-renderer-color.h \
+ 	e-cell-size.h \
+ 	e-cell-text.h \
+ 	e-cell-toggle.h \
+@@ -425,7 +424,6 @@ libevolution_util_la_SOURCES = \
+ 	e-cell-percent.c \
+ 	e-cell-pixbuf.c \
+ 	e-cell-popup.c \
+-	e-cell-renderer-color.c \
+ 	e-cell-size.c \
+ 	e-cell-text.c \
+ 	e-cell-toggle.c \
+diff --git a/e-util/e-cell-renderer-color.c b/e-util/e-cell-renderer-color.c
+deleted file mode 100644
+index dad3992c0b..0000000000
+--- a/e-util/e-cell-renderer-color.c
++++ /dev/null
+@@ -1,241 +0,0 @@
+-/* -*- Mode: C; indent-tabs-mode: t; c-basic-offset: 8; tab-width: 8 -*- */
+-/* e-cell-renderer-color.c
+- *
+- * Copyright (C) 1999-2008 Novell, Inc. (www.novell.com)
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU Lesser General Public License as published by
+- * the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-#ifdef HAVE_CONFIG_H
+-#include <config.h>
+-#endif
+-
+-#include "e-cell-renderer-color.h"
+-
+-#include <string.h>
+-#include <glib/gi18n-lib.h>
+-
+-#define E_CELL_RENDERER_COLOR_GET_PRIVATE(obj) \
+-	(G_TYPE_INSTANCE_GET_PRIVATE \
+-	((obj), E_TYPE_CELL_RENDERER_COLOR, ECellRendererColorPrivate))
+-
+-enum {
+-	PROP_0,
+-	PROP_COLOR
+-};
+-
+-struct _ECellRendererColorPrivate {
+-	GdkColor *color;
+-};
+-
+-G_DEFINE_TYPE (
+-	ECellRendererColor,
+-	e_cell_renderer_color,
+-	GTK_TYPE_CELL_RENDERER)
+-
+-static void
+-cell_renderer_color_get_size (GtkCellRenderer *cell,
+-                              GtkWidget *widget,
+-                              const GdkRectangle *cell_area,
+-                              gint *x_offset,
+-                              gint *y_offset,
+-                              gint *width,
+-                              gint *height)
+-{
+-	gint color_width = 16;
+-	gint color_height = 16;
+-	gint calc_width;
+-	gint calc_height;
+-	gfloat xalign;
+-	gfloat yalign;
+-	guint xpad;
+-	guint ypad;
+-
+-	g_object_get (
+-		cell, "xalign", &xalign, "yalign", &yalign,
+-		"xpad", &xpad, "ypad", &ypad, NULL);
+-
+-	calc_width = (gint) xpad * 2 + color_width;
+-	calc_height = (gint) ypad * 2 + color_height;
+-
+-	if (cell_area && color_width > 0 && color_height > 0) {
+-		if (x_offset) {
+-			*x_offset = (((gtk_widget_get_direction (widget) == GTK_TEXT_DIR_RTL) ?
+-					(1.0 - xalign) : xalign) *
+-					(cell_area->width - calc_width));
+-			*x_offset = MAX (*x_offset, 0);
+-		}
+-
+-		if (y_offset) {
+-			*y_offset =(yalign *
+-				(cell_area->height - calc_height));
+-			*y_offset = MAX (*y_offset, 0);
+-		}
+-	} else {
+-		if (x_offset) *x_offset = 0;
+-		if (y_offset) *y_offset = 0;
+-	}
+-
+-	if (width)
+-		*width = calc_width;
+-
+-	if (height)
+-		*height = calc_height;
+-}
+-
+-static void
+-cell_renderer_color_render (GtkCellRenderer *cell,
+-                            cairo_t *cr,
+-                            GtkWidget *widget,
+-                            const GdkRectangle *background_area,
+-                            const GdkRectangle *cell_area,
+-                            GtkCellRendererState flags)
+-{
+-	ECellRendererColorPrivate *priv;
+-	GdkRectangle pix_rect;
+-	GdkRectangle draw_rect;
+-	GdkRGBA rgba;
+-	guint xpad;
+-	guint ypad;
+-
+-	priv = E_CELL_RENDERER_COLOR_GET_PRIVATE (cell);
+-
+-	if (priv->color == NULL)
+-		return;
+-
+-	cell_renderer_color_get_size (
+-		cell, widget, cell_area,
+-		&pix_rect.x, &pix_rect.y,
+-		&pix_rect.width, &pix_rect.height);
+-
+-	g_object_get (cell, "xpad", &xpad, "ypad", &ypad, NULL);
+-
+-	pix_rect.x += cell_area->x + xpad;
+-	pix_rect.y += cell_area->y + ypad;
+-	pix_rect.width  -= xpad * 2;
+-	pix_rect.height -= ypad * 2;
+-
+-	if (!gdk_rectangle_intersect (cell_area, &pix_rect, &draw_rect))
+-		return;
+-
+-	rgba.red = priv->color->red / 65535.0;
+-	rgba.green = priv->color->green / 65535.0;
+-	rgba.blue = priv->color->blue / 65535.0;
+-	rgba.alpha = 1.0;
+-
+-	gdk_cairo_set_source_rgba (cr, &rgba);
+-	cairo_rectangle (cr, pix_rect.x, pix_rect.y, draw_rect.width, draw_rect.height);
+-
+-	cairo_fill (cr);
+-}
+-
+-static void
+-cell_renderer_color_set_property (GObject *object,
+-                                  guint property_id,
+-                                  const GValue *value,
+-                                  GParamSpec *pspec)
+-{
+-	ECellRendererColorPrivate *priv;
+-
+-	priv = E_CELL_RENDERER_COLOR_GET_PRIVATE (object);
+-
+-	switch (property_id) {
+-		case PROP_COLOR:
+-			if (priv->color != NULL)
+-				gdk_color_free (priv->color);
+-			priv->color = g_value_dup_boxed (value);
+-			return;
+-	}
+-
+-	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+-}
+-
+-static void
+-cell_renderer_color_get_property (GObject *object,
+-                                  guint property_id,
+-                                  GValue *value,
+-                                  GParamSpec *pspec)
+-{
+-	ECellRendererColorPrivate *priv;
+-
+-	priv = E_CELL_RENDERER_COLOR_GET_PRIVATE (object);
+-
+-	switch (property_id) {
+-		case PROP_COLOR:
+-			g_value_set_boxed (value, priv->color);
+-			return;
+-	}
+-
+-	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+-}
+-
+-static void
+-cell_renderer_color_finalize (GObject *object)
+-{
+-	ECellRendererColorPrivate *priv;
+-
+-	priv = E_CELL_RENDERER_COLOR_GET_PRIVATE (object);
+-
+-	if (priv->color != NULL)
+-		gdk_color_free (priv->color);
+-
+-	/* Chain up to parent's finalize() method. */
+-	G_OBJECT_CLASS (e_cell_renderer_color_parent_class)->finalize (object);
+-}
+-
+-static void
+-e_cell_renderer_color_class_init (ECellRendererColorClass *class)
+-{
+-	GObjectClass *object_class;
+-	GtkCellRendererClass *cell_class;
+-
+-	g_type_class_add_private (class, sizeof (ECellRendererColorPrivate));
+-
+-	object_class = G_OBJECT_CLASS (class);
+-	object_class->set_property = cell_renderer_color_set_property;
+-	object_class->get_property = cell_renderer_color_get_property;
+-	object_class->finalize = cell_renderer_color_finalize;
+-
+-	cell_class = GTK_CELL_RENDERER_CLASS (class);
+-	cell_class->get_size = cell_renderer_color_get_size;
+-	cell_class->render = cell_renderer_color_render;
+-
+-	g_object_class_install_property (
+-		object_class,
+-		PROP_COLOR,
+-		g_param_spec_boxed (
+-			"color",
+-			"Color Info",
+-			"The color to render",
+-			GDK_TYPE_COLOR,
+-			G_PARAM_READWRITE));
+-}
+-
+-static void
+-e_cell_renderer_color_init (ECellRendererColor *cellcolor)
+-{
+-	cellcolor->priv = E_CELL_RENDERER_COLOR_GET_PRIVATE (cellcolor);
+-
+-	g_object_set (cellcolor, "xpad", 4, NULL);
+-}
+-
+-/**
+- * e_cell_renderer_color_new:
+- *
+- * Since: 2.22
+- **/
+-GtkCellRenderer *
+-e_cell_renderer_color_new (void)
+-{
+-	return g_object_new (E_TYPE_CELL_RENDERER_COLOR, NULL);
+-}
+diff --git a/e-util/e-cell-renderer-color.h b/e-util/e-cell-renderer-color.h
+deleted file mode 100644
+index 720be6ad80..0000000000
+--- a/e-util/e-cell-renderer-color.h
++++ /dev/null
+@@ -1,77 +0,0 @@
+-/* -*- Mode: C; indent-tabs-mode: t; c-basic-offset: 8; tab-width: 8 -*- */
+-/* e-cell-renderer-color.h
+- *
+- * Copyright (C) 1999-2008 Novell, Inc. (www.novell.com)
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU Lesser General Public License as published by
+- * the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+- */
+-
+-#if !defined (__E_UTIL_H_INSIDE__) && !defined (LIBEUTIL_COMPILATION)
+-#error "Only <e-util/e-util.h> should be included directly."
+-#endif
+-
+-#ifndef _E_CELL_RENDERER_COLOR_H_
+-#define _E_CELL_RENDERER_COLOR_H_
+-
+-#include <gtk/gtk.h>
+-
+-/* Standard GObject macros */
+-#define E_TYPE_CELL_RENDERER_COLOR \
+-	(e_cell_renderer_color_get_type ())
+-#define E_CELL_RENDERER_COLOR(obj) \
+-	(G_TYPE_CHECK_INSTANCE_CAST \
+-	((obj), E_TYPE_CELL_RENDERER_COLOR, ECellRendererColor))
+-#define E_CELL_RENDERER_COLOR_CLASS(cls) \
+-	(G_TYPE_CHECK_CLASS_CAST \
+-	((cls), E_TYPE_CELL_RENDERER_COLOR, ECellRendererColorClass))
+-#define E_IS_CELL_RENDERER_COLOR(obj) \
+-	(G_TYPE_CHECK_INSTANCE_TYPE \
+-	((obj), E_TYPE_CELL_RENDERER_COLOR))
+-#define E_IS_CELL_RENDERER_COLOR_CLASS(cls) \
+-	(G_TYPE_CHECK_CLASS_TYPE ((cls), E_TYPE_CELL_RENDERER_COLOR))
+-#define E_CELL_RENDERER_COLOR_GET_CLASS(obj) \
+-	(G_TYPE_INSTANCE_GET_CLASS \
+-	((obj), E_TYPE_CELL_RENDERER_COLOR, ECellRendererColorClass))
+-
+-G_BEGIN_DECLS
+-
+-typedef struct _ECellRendererColor ECellRendererColor;
+-typedef struct _ECellRendererColorClass ECellRendererColorClass;
+-typedef struct _ECellRendererColorPrivate ECellRendererColorPrivate;
+-
+-/**
+- * ECellRendererColor:
+- *
+- * Since: 2.22
+- **/
+-struct _ECellRendererColor {
+-	GtkCellRenderer parent;
+-	ECellRendererColorPrivate *priv;
+-};
+-
+-struct _ECellRendererColorClass {
+-	GtkCellRendererClass parent_class;
+-
+-	/* Padding for future expansion */
+-	void (*_gtk_reserved1) (void);
+-	void (*_gtk_reserved2) (void);
+-	void (*_gtk_reserved3) (void);
+-	void (*_gtk_reserved4) (void);
+-};
+-
+-GType            e_cell_renderer_color_get_type	(void) G_GNUC_CONST;
+-GtkCellRenderer *e_cell_renderer_color_new	(void);
+-
+-G_END_DECLS
+-
+-#endif /* _E_CELL_RENDERER_COLOR_H_ */
+diff --git a/e-util/e-source-combo-box.c b/e-util/e-source-combo-box.c
+index 48f53247ca..61dd7561ff 100644
+--- a/e-util/e-source-combo-box.c
++++ b/e-util/e-source-combo-box.c
+@@ -20,8 +20,9 @@
+ #include <config.h>
+ #endif
+ 
++#include <libedataserverui/libedataserverui.h>
++
+ #include "e-source-combo-box.h"
+-#include "e-cell-renderer-color.h"
+ 
+ #define E_SOURCE_COMBO_BOX_GET_PRIVATE(obj) \
+ 	(G_TYPE_INSTANCE_GET_PRIVATE \
+@@ -47,7 +48,7 @@ enum {
+ };
+ 
+ enum {
+-	COLUMN_COLOR,		/* GDK_TYPE_COLOR */
++	COLUMN_COLOR,		/* GDK_TYPE_RGBA */
+ 	COLUMN_NAME,		/* G_TYPE_STRING */
+ 	COLUMN_SENSITIVE,	/* G_TYPE_BOOLEAN */
+ 	COLUMN_UID,		/* G_TYPE_STRING */
+@@ -65,7 +66,7 @@ source_combo_box_traverse (GNode *node,
+ 	GtkTreeModel *model;
+ 	GtkTreeIter iter;
+ 	GString *indented;
+-	GdkColor color;
++	GdkRGBA rgba;
+ 	const gchar *ext_name;
+ 	const gchar *display_name;
+ 	const gchar *uid;
+@@ -104,12 +105,12 @@ source_combo_box_traverse (GNode *node,
+ 
+ 		color_spec = e_source_selectable_get_color (extension);
+ 		if (color_spec != NULL && *color_spec != '\0')
+-			use_color = gdk_color_parse (color_spec, &color);
++			use_color = gdk_rgba_parse (&rgba, color_spec);
+ 	}
+ 
+ 	gtk_list_store_set (
+ 		GTK_LIST_STORE (model), &iter,
+-		COLUMN_COLOR, use_color ? &color : NULL,
++		COLUMN_COLOR, use_color ? &rgba : NULL,
+ 		COLUMN_NAME, indented->str,
+ 		COLUMN_SENSITIVE, sensitive,
+ 		COLUMN_UID, uid,
+@@ -326,7 +327,7 @@ source_combo_box_constructed (GObject *object)
+ 
+ 	store = gtk_list_store_new (
+ 		NUM_COLUMNS,
+-		GDK_TYPE_COLOR,		/* COLUMN_COLOR */
++		GDK_TYPE_RGBA,		/* COLUMN_COLOR */
+ 		G_TYPE_STRING,		/* COLUMN_NAME */
+ 		G_TYPE_BOOLEAN,		/* COLUMN_SENSITIVE */
+ 		G_TYPE_STRING);		/* COLUMN_UID */
+@@ -343,7 +344,7 @@ source_combo_box_constructed (GObject *object)
+ 	gtk_cell_layout_pack_start (layout, renderer, FALSE);
+ 	gtk_cell_layout_set_attributes (
+ 		layout, renderer,
+-		"color", COLUMN_COLOR,
++		"rgba", COLUMN_COLOR,
+ 		"sensitive", COLUMN_SENSITIVE,
+ 		NULL);
+ 
+diff --git a/e-util/e-source-selector.c b/e-util/e-source-selector.c
+index fe2c79d31b..cb537899fe 100644
+--- a/e-util/e-source-selector.c
++++ b/e-util/e-source-selector.c
+@@ -24,7 +24,8 @@
+ 
+ #include <string.h>
+ 
+-#include "e-cell-renderer-color.h"
++#include <libedataserverui/libedataserverui.h>
++
+ #include "e-source-selector.h"
+ 
+ #define E_SOURCE_SELECTOR_GET_PRIVATE(obj) \
+@@ -1707,7 +1708,7 @@ e_source_selector_init (ESourceSelector *selector)
+ 	tree_store = gtk_tree_store_new (
+ 		NUM_COLUMNS,
+ 		G_TYPE_STRING,		/* COLUMN_NAME */
+-		GDK_TYPE_COLOR,		/* COLUMN_COLOR */
++		GDK_TYPE_RGBA,		/* COLUMN_COLOR */
+ 		G_TYPE_BOOLEAN,		/* COLUMN_ACTIVE */
+ 		G_TYPE_STRING,		/* COLUMN_ICON_NAME */
+ 		G_TYPE_BOOLEAN,		/* COLUMN_SHOW_COLOR */
+@@ -1730,7 +1731,7 @@ e_source_selector_init (ESourceSelector *selector)
+ 		GTK_CELL_RENDERER_MODE_ACTIVATABLE, NULL);
+ 	gtk_tree_view_column_pack_start (column, renderer, FALSE);
+ 	gtk_tree_view_column_add_attribute (
+-		column, renderer, "color", COLUMN_COLOR);
++		column, renderer, "rgba", COLUMN_COLOR);
+ 	gtk_tree_view_column_add_attribute (
+ 		column, renderer, "visible", COLUMN_SHOW_COLOR);
+ 
+@@ -2571,7 +2572,7 @@ e_source_selector_update_row (ESourceSelector *selector,
+ 		extension = e_source_get_extension (source, extension_name);
+ 
+ 	if (extension != NULL) {
+-		GdkColor color;
++		GdkRGBA rgba;
+ 		const gchar *color_spec = NULL;
+ 		const gchar *icon_name;
+ 		gboolean show_color;
+@@ -2587,7 +2588,7 @@ e_source_selector_update_row (ESourceSelector *selector,
+ 				E_SOURCE_SELECTABLE (extension));
+ 
+ 		if (color_spec != NULL && *color_spec != '\0')
+-			show_color = gdk_color_parse (color_spec, &color);
++			show_color = gdk_rgba_parse (&rgba, color_spec);
+ 
+ 		show_icons = e_source_selector_get_show_icons (selector);
+ 		icon_name = source_selector_get_icon_name (selector, source);
+@@ -2597,7 +2598,7 @@ e_source_selector_update_row (ESourceSelector *selector,
+ 		gtk_tree_store_set (
+ 			GTK_TREE_STORE (model), &iter,
+ 			COLUMN_NAME, display_name,
+-			COLUMN_COLOR, show_color ? &color : NULL,
++			COLUMN_COLOR, show_color ? &rgba : NULL,
+ 			COLUMN_ACTIVE, selected,
+ 			COLUMN_ICON_NAME, icon_name,
+ 			COLUMN_SHOW_COLOR, show_color,
+diff --git a/e-util/e-util.h b/e-util/e-util.h
+index be949b5ad2..eab44a7feb 100644
+--- a/e-util/e-util.h
++++ b/e-util/e-util.h
+@@ -69,7 +69,6 @@
+ #include <e-util/e-cell-percent.h>
+ #include <e-util/e-cell-pixbuf.h>
+ #include <e-util/e-cell-popup.h>
+-#include <e-util/e-cell-renderer-color.h>
+ #include <e-util/e-cell-size.h>
+ #include <e-util/e-cell-text.h>
+ #include <e-util/e-cell-toggle.h>
+diff --git a/modules/cal-config-caldav/Makefile.am b/modules/cal-config-caldav/Makefile.am
+index 95ffc2a1b9..3b3ed835d0 100644
+--- a/modules/cal-config-caldav/Makefile.am
++++ b/modules/cal-config-caldav/Makefile.am
+@@ -11,11 +11,7 @@ module_cal_config_caldav_la_CPPFLAGS = \
+ 	$(NULL)
+ 
+ module_cal_config_caldav_la_SOURCES = \
+-	evolution-cal-config-caldav.c				\
+-	e-caldav-chooser.c					\
+-	e-caldav-chooser.h					\
+-	e-caldav-chooser-dialog.c				\
+-	e-caldav-chooser-dialog.h
++	evolution-cal-config-caldav.c
+ 
+ module_cal_config_caldav_la_LIBADD = \
+ 	$(top_builddir)/e-util/libevolution-util.la		\
+diff --git a/modules/cal-config-caldav/e-caldav-chooser-dialog.c b/modules/cal-config-caldav/e-caldav-chooser-dialog.c
+deleted file mode 100644
+index fce3f714ae..0000000000
+--- a/modules/cal-config-caldav/e-caldav-chooser-dialog.c
++++ /dev/null
+@@ -1,560 +0,0 @@
+-/*
+- * e-caldav-chooser-dialog.c
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU Lesser General Public License as published by
+- * the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+- *
+- */
+-
+-#include "e-caldav-chooser-dialog.h"
+-
+-#include <config.h>
+-#include <glib/gi18n-lib.h>
+-
+-#define E_CALDAV_CHOOSER_DIALOG_GET_PRIVATE(obj) \
+-	(G_TYPE_INSTANCE_GET_PRIVATE \
+-	((obj), E_TYPE_CALDAV_CHOOSER_DIALOG, ECaldavChooserDialogPrivate))
+-
+-struct _ECaldavChooserDialogPrivate {
+-	ECaldavChooser *chooser;
+-	GCancellable *cancellable;
+-
+-	GtkWidget *info_bar;		/* not referenced */
+-	GtkWidget *info_bar_label;	/* not referenced */
+-};
+-
+-enum {
+-	PROP_0,
+-	PROP_CHOOSER
+-};
+-
+-/* Forward Declarations */
+-static void	caldav_chooser_dialog_populated_cb
+-						(GObject *source_object,
+-						 GAsyncResult *result,
+-						 gpointer user_data);
+-static void	caldav_chooser_dialog_credentials_prompt_cb
+-						(GObject *source_object,
+-						 GAsyncResult *result,
+-						 gpointer user_data);
+-
+-G_DEFINE_DYNAMIC_TYPE (
+-	ECaldavChooserDialog,
+-	e_caldav_chooser_dialog,
+-	GTK_TYPE_DIALOG)
+-
+-static void
+-caldav_chooser_dialog_done (ECaldavChooserDialog *dialog,
+-                            const GError *error)
+-{
+-	GdkWindow *window;
+-
+-	/* Reset the mouse cursor to normal. */
+-	window = gtk_widget_get_window (GTK_WIDGET (dialog));
+-	gdk_window_set_cursor (window, NULL);
+-
+-	if (error != NULL) {
+-		GtkLabel *label;
+-
+-		label = GTK_LABEL (dialog->priv->info_bar_label);
+-		gtk_label_set_text (label, error->message);
+-		gtk_widget_show (dialog->priv->info_bar);
+-	}
+-}
+-
+-/* It's a little weird to have the callback called on the #ESource,
+-   but it's simpler than writing a proxy around the e-trust-prompt
+-   async call, which would be unnecessary anyway. */
+-static void
+-caldav_chooser_dialog_trust_prompt_done_cb (GObject *source_object,
+-					    GAsyncResult *result,
+-					    gpointer user_data)
+-{
+-	ECaldavChooserDialog *dialog;
+-	ECaldavChooser *chooser;
+-	ETrustPromptResponse response = E_TRUST_PROMPT_RESPONSE_UNKNOWN;
+-	GError *error = NULL;
+-
+-	g_return_if_fail (E_IS_SOURCE (source_object));
+-	g_return_if_fail (E_IS_CALDAV_CHOOSER_DIALOG (user_data));
+-
+-	dialog = E_CALDAV_CHOOSER_DIALOG (user_data);
+-	chooser = e_caldav_chooser_dialog_get_chooser (dialog);
+-
+-	if (!e_trust_prompt_run_for_source_finish (E_SOURCE (source_object), result, &response, &error)) {
+-		if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+-			/* close also the dialog */
+-			gtk_dialog_response (GTK_DIALOG (dialog), GTK_RESPONSE_CANCEL);
+-		} else {
+-			caldav_chooser_dialog_done (dialog, error);
+-		}
+-	} else if (response == E_TRUST_PROMPT_RESPONSE_ACCEPT ||
+-		   response == E_TRUST_PROMPT_RESPONSE_ACCEPT_TEMPORARILY) {
+-		e_caldav_chooser_populate (
+-			chooser, dialog->priv->cancellable,
+-			caldav_chooser_dialog_populated_cb,
+-			g_object_ref (dialog));
+-	} else {
+-		g_warn_if_fail (error == NULL);
+-
+-		error = e_caldav_chooser_new_ssl_trust_error (chooser);
+-
+-		caldav_chooser_dialog_done (dialog, error);
+-	}
+-
+-	g_clear_error (&error);
+-	g_object_unref (dialog);
+-}
+-
+-static void
+-caldav_chooser_dialog_authenticate_cb (GObject *source_object,
+-				       GAsyncResult *result,
+-				       gpointer user_data)
+-{
+-	ECaldavChooserDialog *dialog = user_data;
+-	ECaldavChooser *chooser;
+-	GError *error = NULL;
+-
+-	g_return_if_fail (E_IS_CALDAV_CHOOSER (source_object));
+-
+-	chooser = E_CALDAV_CHOOSER (source_object);
+-
+-	if (!e_caldav_chooser_authenticate_finish (chooser, result, &error)) {
+-		if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+-			/* close also the dialog */
+-			gtk_dialog_response (GTK_DIALOG (dialog), GTK_RESPONSE_CANCEL);
+-		} else if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED)) {
+-			e_caldav_chooser_run_credentials_prompt (
+-				chooser,
+-				caldav_chooser_dialog_credentials_prompt_cb,
+-				g_object_ref (dialog));
+-
+-		} else if (g_error_matches (error, SOUP_HTTP_ERROR, SOUP_STATUS_SSL_FAILED)) {
+-			e_caldav_chooser_run_trust_prompt (chooser, GTK_WINDOW (dialog),
+-				dialog->priv->cancellable,
+-				caldav_chooser_dialog_trust_prompt_done_cb,
+-				g_object_ref (dialog));
+-
+-		/* We were either successful or got an unexpected error. */
+-		} else {
+-			caldav_chooser_dialog_done (dialog, error);
+-		}
+-	} else {
+-		g_warn_if_fail (error == NULL);
+-
+-		e_caldav_chooser_populate (
+-			chooser, dialog->priv->cancellable,
+-			caldav_chooser_dialog_populated_cb,
+-			g_object_ref (dialog));
+-	}
+-
+-	g_clear_error (&error);
+-	g_object_unref (dialog);
+-}
+-
+-static void
+-caldav_chooser_dialog_credentials_prompt_cb (GObject *source_object,
+-					     GAsyncResult *result,
+-					     gpointer user_data)
+-{
+-	ECaldavChooser *chooser;
+-	ECaldavChooserDialog *dialog = user_data;
+-	ENamedParameters *credentials = NULL;
+-	GError *error = NULL;
+-
+-	g_return_if_fail (E_IS_CREDENTIALS_PROMPTER (source_object));
+-
+-	chooser = e_caldav_chooser_dialog_get_chooser (dialog);
+-	g_return_if_fail (chooser != NULL);
+-
+-	if (!e_caldav_chooser_run_credentials_prompt_finish (chooser, result, &credentials, &error)) {
+-		if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+-			/* close also the dialog */
+-			gtk_dialog_response (GTK_DIALOG (dialog), GTK_RESPONSE_CANCEL);
+-		} else {
+-			caldav_chooser_dialog_done (dialog, error);
+-		}
+-	} else {
+-		e_caldav_chooser_authenticate (chooser, credentials, dialog->priv->cancellable,
+-			caldav_chooser_dialog_authenticate_cb, g_object_ref (dialog));
+-	}
+-
+-	e_named_parameters_free (credentials);
+-	g_clear_error (&error);
+-	g_object_unref (dialog);
+-}
+-
+-static void
+-caldav_chooser_dialog_populated_cb (GObject *source_object,
+-                                    GAsyncResult *result,
+-                                    gpointer user_data)
+-{
+-	ECaldavChooserDialog *dialog;
+-	ECaldavChooser *chooser;
+-	GError *error = NULL;
+-
+-	chooser = E_CALDAV_CHOOSER (source_object);
+-	dialog = E_CALDAV_CHOOSER_DIALOG (user_data);
+-
+-	e_caldav_chooser_populate_finish (chooser, result, &error);
+-
+-	/* Ignore cancellations, and leave the mouse cursor alone
+-	 * since the GdkWindow may have already been destroyed. */
+-	if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+-		/* do nothing */
+-
+-	/* We will likely get this error on the first try, since WebDAV
+-	 * servers generally require authentication.  It means we waste a
+-	 * round-trip to the server, but we don't want to risk prompting
+-	 * for authentication unnecessarily. */
+-	} else if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED)) {
+-		e_caldav_chooser_run_credentials_prompt (
+-			chooser,
+-			caldav_chooser_dialog_credentials_prompt_cb,
+-			g_object_ref (dialog));
+-
+-	} else if (g_error_matches (error, SOUP_HTTP_ERROR, SOUP_STATUS_SSL_FAILED)) {
+-		e_caldav_chooser_run_trust_prompt (chooser, GTK_WINDOW (dialog),
+-			dialog->priv->cancellable,
+-			caldav_chooser_dialog_trust_prompt_done_cb,
+-			g_object_ref (dialog));
+-
+-	/* We were either successful or got an unexpected error. */
+-	} else {
+-		caldav_chooser_dialog_done (dialog, error);
+-	}
+-
+-	g_clear_error (&error);
+-	g_object_unref (dialog);
+-}
+-
+-static void
+-caldav_chooser_dialog_row_activated_cb (GtkTreeView *tree_view,
+-                                        GtkTreePath *path,
+-                                        GtkTreeViewColumn *column,
+-                                        GtkDialog *dialog)
+-{
+-	gtk_dialog_response (dialog, GTK_RESPONSE_APPLY);
+-}
+-
+-static void
+-caldav_chooser_dialog_selection_changed_cb (GtkTreeSelection *selection,
+-                                            GtkDialog *dialog)
+-{
+-	gboolean sensitive;
+-
+-	sensitive = (gtk_tree_selection_count_selected_rows (selection) > 0);
+-
+-	gtk_dialog_set_response_sensitive (
+-		dialog, GTK_RESPONSE_APPLY, sensitive);
+-}
+-
+-static void
+-caldav_chooser_dialog_set_chooser (ECaldavChooserDialog *dialog,
+-                                   ECaldavChooser *chooser)
+-{
+-	g_return_if_fail (E_IS_CALDAV_CHOOSER (chooser));
+-	g_return_if_fail (dialog->priv->chooser == NULL);
+-
+-	dialog->priv->chooser = g_object_ref_sink (chooser);
+-}
+-
+-static void
+-caldav_chooser_dialog_set_property (GObject *object,
+-                                    guint property_id,
+-                                    const GValue *value,
+-                                    GParamSpec *pspec)
+-{
+-	switch (property_id) {
+-		case PROP_CHOOSER:
+-			caldav_chooser_dialog_set_chooser (
+-				E_CALDAV_CHOOSER_DIALOG (object),
+-				g_value_get_object (value));
+-			return;
+-	}
+-
+-	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+-}
+-
+-static void
+-caldav_chooser_dialog_get_property (GObject *object,
+-                                    guint property_id,
+-                                    GValue *value,
+-                                    GParamSpec *pspec)
+-{
+-	switch (property_id) {
+-		case PROP_CHOOSER:
+-			g_value_set_object (
+-				value,
+-				e_caldav_chooser_dialog_get_chooser (
+-				E_CALDAV_CHOOSER_DIALOG (object)));
+-			return;
+-	}
+-
+-	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+-}
+-
+-static void
+-caldav_chooser_dialog_dispose (GObject *object)
+-{
+-	ECaldavChooserDialogPrivate *priv;
+-
+-	priv = E_CALDAV_CHOOSER_DIALOG_GET_PRIVATE (object);
+-
+-	if (priv->chooser != NULL) {
+-		g_signal_handlers_disconnect_by_func (
+-			priv->chooser, caldav_chooser_dialog_row_activated_cb,
+-			object);
+-		g_object_unref (priv->chooser);
+-		priv->chooser = NULL;
+-	}
+-
+-	if (priv->cancellable != NULL) {
+-		g_cancellable_cancel (priv->cancellable);
+-		g_object_unref (priv->cancellable);
+-		priv->cancellable = NULL;
+-	}
+-
+-	/* Chain up to parent's dispose() method. */
+-	G_OBJECT_CLASS (e_caldav_chooser_dialog_parent_class)->dispose (object);
+-}
+-
+-static void
+-caldav_chooser_dialog_constructed (GObject *object)
+-{
+-	ECaldavChooserDialog *dialog;
+-	GtkTreeSelection *selection;
+-	GtkWidget *container;
+-	GtkWidget *widget;
+-	GtkWidget *vbox;
+-	const gchar *title;
+-
+-	dialog = E_CALDAV_CHOOSER_DIALOG (object);
+-
+-	/* Chain up to parent's constructed() method. */
+-	G_OBJECT_CLASS (e_caldav_chooser_dialog_parent_class)->constructed (object);
+-
+-	switch (e_caldav_chooser_get_source_type (dialog->priv->chooser)) {
+-		case E_CAL_CLIENT_SOURCE_TYPE_EVENTS:
+-			title = _("Choose a Calendar");
+-			break;
+-		case E_CAL_CLIENT_SOURCE_TYPE_MEMOS:
+-			title = _("Choose a Memo List");
+-			break;
+-		case E_CAL_CLIENT_SOURCE_TYPE_TASKS:
+-			title = _("Choose a Task List");
+-			break;
+-		default:
+-			g_warn_if_reached ();
+-			title = "";
+-	}
+-
+-	gtk_dialog_add_button (
+-		GTK_DIALOG (dialog),
+-		_("_Cancel"), GTK_RESPONSE_CANCEL);
+-
+-	gtk_dialog_add_button (
+-		GTK_DIALOG (dialog),
+-		_("_Apply"), GTK_RESPONSE_APPLY);
+-
+-	gtk_dialog_set_default_response (
+-		GTK_DIALOG (dialog), GTK_RESPONSE_APPLY);
+-	gtk_dialog_set_response_sensitive (
+-		GTK_DIALOG (dialog), GTK_RESPONSE_APPLY, FALSE);
+-
+-	gtk_window_set_title (GTK_WINDOW (dialog), title);
+-	gtk_window_set_default_size (GTK_WINDOW (dialog), 400, 400);
+-	gtk_container_set_border_width (GTK_CONTAINER (dialog), 5);
+-
+-	container = gtk_dialog_get_content_area (GTK_DIALOG (dialog));
+-
+-	widget = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6);
+-	gtk_container_set_border_width (GTK_CONTAINER (widget), 5);
+-	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+-	gtk_widget_show (widget);
+-
+-	container = vbox = widget;
+-
+-	widget = gtk_scrolled_window_new (NULL, NULL);
+-	gtk_scrolled_window_set_policy (
+-		GTK_SCROLLED_WINDOW (widget),
+-		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+-	gtk_scrolled_window_set_shadow_type (
+-		GTK_SCROLLED_WINDOW (widget), GTK_SHADOW_IN);
+-	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+-	gtk_widget_show (widget);
+-
+-	container = widget;
+-
+-	widget = GTK_WIDGET (dialog->priv->chooser);
+-	gtk_container_add (GTK_CONTAINER (container), widget);
+-	gtk_widget_show (widget);
+-
+-	g_signal_connect (
+-		widget, "row-activated",
+-		G_CALLBACK (caldav_chooser_dialog_row_activated_cb), dialog);
+-
+-	/* Build the info bar, but hide it initially. */
+-
+-	container = vbox;
+-
+-	widget = gtk_info_bar_new ();
+-	gtk_info_bar_set_message_type (
+-		GTK_INFO_BAR (widget), GTK_MESSAGE_WARNING);
+-	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+-	dialog->priv->info_bar = widget;  /* do not reference */
+-	gtk_widget_hide (widget);
+-
+-	container = gtk_info_bar_get_content_area (GTK_INFO_BAR (widget));
+-
+-	widget = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
+-	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+-	gtk_widget_show (widget);
+-
+-	container = widget;
+-
+-	widget = gtk_image_new_from_icon_name ("dialog-warning", GTK_ICON_SIZE_MENU);
+-	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+-	gtk_widget_show (widget);
+-
+-	widget = gtk_label_new ("");
+-	gtk_misc_set_alignment (GTK_MISC (widget), 0.0, 0.5);
+-	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+-	dialog->priv->info_bar_label = widget;  /* do not reference */
+-	gtk_widget_show (widget);
+-
+-	/* Listen for tree view selection changes. */
+-
+-	selection = gtk_tree_view_get_selection (
+-		GTK_TREE_VIEW (dialog->priv->chooser));
+-
+-	g_signal_connect (
+-		selection, "changed",
+-		G_CALLBACK (caldav_chooser_dialog_selection_changed_cb),
+-		dialog);
+-}
+-
+-static void
+-caldav_chooser_dialog_realize (GtkWidget *widget)
+-{
+-	ECaldavChooserDialogPrivate *priv;
+-	GdkCursor *cursor;
+-	GdkWindow *window;
+-	GdkDisplay *display;
+-
+-	priv = E_CALDAV_CHOOSER_DIALOG_GET_PRIVATE (widget);
+-
+-	/* Chain up to parent's realize() method. */
+-	GTK_WIDGET_CLASS (e_caldav_chooser_dialog_parent_class)->
+-		realize (widget);
+-
+-	g_return_if_fail (priv->cancellable == NULL);
+-	priv->cancellable = g_cancellable_new ();
+-
+-	/* Show a busy mouse cursor while populating. */
+-	window = gtk_widget_get_window (widget);
+-	display = gtk_widget_get_display (widget);
+-	cursor = gdk_cursor_new_for_display (display, GDK_WATCH);
+-	gdk_window_set_cursor (window, cursor);
+-	g_object_unref (cursor);
+-
+-	e_caldav_chooser_populate (
+-		priv->chooser, priv->cancellable,
+-		caldav_chooser_dialog_populated_cb,
+-		g_object_ref (widget));
+-}
+-
+-static void
+-caldav_chooser_dialog_response (GtkDialog *dialog,
+-                                gint response_id)
+-{
+-	ECaldavChooserDialogPrivate *priv;
+-
+-	priv = E_CALDAV_CHOOSER_DIALOG_GET_PRIVATE (dialog);
+-
+-	if (response_id == GTK_RESPONSE_APPLY)
+-		e_caldav_chooser_apply_selected (priv->chooser);
+-}
+-
+-static void
+-e_caldav_chooser_dialog_class_init (ECaldavChooserDialogClass *class)
+-{
+-	GObjectClass *object_class;
+-	GtkWidgetClass *widget_class;
+-	GtkDialogClass *dialog_class;
+-
+-	g_type_class_add_private (class, sizeof (ECaldavChooserDialogPrivate));
+-
+-	object_class = G_OBJECT_CLASS (class);
+-	object_class->set_property = caldav_chooser_dialog_set_property;
+-	object_class->get_property = caldav_chooser_dialog_get_property;
+-	object_class->dispose = caldav_chooser_dialog_dispose;
+-	object_class->constructed = caldav_chooser_dialog_constructed;
+-
+-	widget_class = GTK_WIDGET_CLASS (class);
+-	widget_class->realize = caldav_chooser_dialog_realize;
+-
+-	dialog_class = GTK_DIALOG_CLASS (class);
+-	dialog_class->response = caldav_chooser_dialog_response;
+-
+-	g_object_class_install_property (
+-		object_class,
+-		PROP_CHOOSER,
+-		g_param_spec_object (
+-			"chooser",
+-			NULL,
+-			NULL,
+-			E_TYPE_CALDAV_CHOOSER,
+-			G_PARAM_READWRITE |
+-			G_PARAM_CONSTRUCT_ONLY));
+-}
+-
+-static void
+-e_caldav_chooser_dialog_class_finalize (ECaldavChooserDialogClass *class)
+-{
+-}
+-
+-static void
+-e_caldav_chooser_dialog_init (ECaldavChooserDialog *dialog)
+-{
+-	dialog->priv = E_CALDAV_CHOOSER_DIALOG_GET_PRIVATE (dialog);
+-}
+-
+-void
+-e_caldav_chooser_dialog_type_register (GTypeModule *type_module)
+-{
+-	/* XXX G_DEFINE_DYNAMIC_TYPE declares a static type registration
+-	 *     function, so we have to wrap it with a public function in
+-	 *     order to register types from a separate compilation unit. */
+-	e_caldav_chooser_dialog_register_type (type_module);
+-}
+-
+-GtkWidget *
+-e_caldav_chooser_dialog_new (ECaldavChooser *chooser,
+-                             GtkWindow *parent)
+-{
+-	g_return_val_if_fail (E_IS_CALDAV_CHOOSER (chooser), NULL);
+-	g_return_val_if_fail (parent == NULL || GTK_IS_WINDOW (parent), NULL);
+-
+-	return g_object_new (
+-		E_TYPE_CALDAV_CHOOSER_DIALOG,
+-		"chooser", chooser, "transient-for", parent, NULL);
+-}
+-
+-ECaldavChooser *
+-e_caldav_chooser_dialog_get_chooser (ECaldavChooserDialog *dialog)
+-{
+-	g_return_val_if_fail (E_IS_CALDAV_CHOOSER_DIALOG (dialog), NULL);
+-
+-	return dialog->priv->chooser;
+-}
+-
+diff --git a/modules/cal-config-caldav/e-caldav-chooser-dialog.h b/modules/cal-config-caldav/e-caldav-chooser-dialog.h
+deleted file mode 100644
+index 63b5cb22cc..0000000000
+--- a/modules/cal-config-caldav/e-caldav-chooser-dialog.h
++++ /dev/null
+@@ -1,67 +0,0 @@
+-/*
+- * e-caldav-chooser-dialog.h
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU Lesser General Public License as published by
+- * the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+- *
+- */
+-
+-#ifndef E_CALDAV_CHOOSER_DIALOG_H
+-#define E_CALDAV_CHOOSER_DIALOG_H
+-
+-#include "e-caldav-chooser.h"
+-
+-/* Standard GObject macros */
+-#define E_TYPE_CALDAV_CHOOSER_DIALOG \
+-	(e_caldav_chooser_dialog_get_type ())
+-#define E_CALDAV_CHOOSER_DIALOG(obj) \
+-	(G_TYPE_CHECK_INSTANCE_CAST \
+-	((obj), E_TYPE_CALDAV_CHOOSER_DIALOG, ECaldavChooserDialog))
+-#define E_CALDAV_CHOOSER_DIALOG_CLASS(cls) \
+-	(G_TYPE_CHECK_CLASS_CAST \
+-	((cls), E_TYPE_CALDAV_CHOOSER_DIALOG, ECaldavChooserDialogClass))
+-#define E_IS_CALDAV_CHOOSER_DIALOG(obj) \
+-	(G_TYPE_CHECK_INSTANCE_TYPE \
+-	((obj), E_TYPE_CALDAV_CHOOSER_DIALOG))
+-#define E_IS_CALDAV_CHOOSER_DIALOG_CLASS(cls) \
+-	(G_TYPE_CHECK_CLASS_TYPE \
+-	((cls), E_TYPE_CALDAV_CHOOSER_DIALOG))
+-#define E_CALDAV_CHOOSER_DIALOG_GET_CLASS(obj) \
+-	(G_TYPE_INSTANCE_GET_CLASS \
+-	((obj), E_TYPE_CALDAV_CHOOSER_DIALOG, ECaldavChooserDialogClass))
+-
+-G_BEGIN_DECLS
+-
+-typedef struct _ECaldavChooserDialog ECaldavChooserDialog;
+-typedef struct _ECaldavChooserDialogClass ECaldavChooserDialogClass;
+-typedef struct _ECaldavChooserDialogPrivate ECaldavChooserDialogPrivate;
+-
+-struct _ECaldavChooserDialog {
+-	GtkDialog parent;
+-	ECaldavChooserDialogPrivate *priv;
+-};
+-
+-struct _ECaldavChooserDialogClass {
+-	GtkDialogClass parent_class;
+-};
+-
+-GType		e_caldav_chooser_dialog_get_type (void);
+-void		e_caldav_chooser_dialog_type_register
+-						(GTypeModule *type_module);
+-GtkWidget *	e_caldav_chooser_dialog_new	(ECaldavChooser *chooser,
+-						 GtkWindow *parent);
+-ECaldavChooser *e_caldav_chooser_dialog_get_chooser
+-						(ECaldavChooserDialog *dialog);
+-
+-G_END_DECLS
+-
+-#endif /* E_CALDAV_CHOOSER_DIALOG_H */
+diff --git a/modules/cal-config-caldav/e-caldav-chooser.c b/modules/cal-config-caldav/e-caldav-chooser.c
+deleted file mode 100644
+index 9cfe5104ba..0000000000
+--- a/modules/cal-config-caldav/e-caldav-chooser.c
++++ /dev/null
+@@ -1,1854 +0,0 @@
+-/*
+- * e-caldav-chooser.c
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU Lesser General Public License as published by
+- * the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+- *
+- */
+-
+-#include "e-caldav-chooser.h"
+-
+-#include <config.h>
+-#include <glib/gi18n-lib.h>
+-
+-#include <libsoup/soup.h>
+-
+-#include <libxml/tree.h>
+-#include <libxml/xpath.h>
+-#include <libxml/xpathInternals.h>
+-
+-#include <e-util/e-util.h>
+-#include <libedataserverui/libedataserverui.h>
+-
+-#define E_CALDAV_CHOOSER_GET_PRIVATE(obj) \
+-	(G_TYPE_INSTANCE_GET_PRIVATE \
+-	((obj), E_TYPE_CALDAV_CHOOSER, ECaldavChooserPrivate))
+-
+-#define XC(string) ((xmlChar *) string)
+-
+-/* Standard Namespaces */
+-#define NS_WEBDAV  "DAV:"
+-#define NS_CALDAV  "urn:ietf:params:xml:ns:caldav"
+-
+-/* Application-Specific Namespaces */
+-#define NS_CALSRV  "http://calendarserver.org/ns/"
+-#define NS_ICAL    "http://apple.com/ns/ical/"
+-
+-typedef struct _Context Context;
+-
+-struct _ECaldavChooserPrivate {
+-	ESourceRegistry *registry;
+-	ECredentialsPrompter *prompter;
+-	ESource *source;
+-	ECalClientSourceType source_type;
+-	SoupSession *session;
+-	GList *user_address_set;
+-	gchar *username;
+-	gchar *password;
+-	gchar *certificate_pem;
+-	GTlsCertificateFlags certificate_errors;
+-	gchar *error_text;
+-	gboolean first_auth_request;
+-};
+-
+-struct _Context {
+-	SoupSession *session;
+-	ESourceRegistry *registry;
+-	ESource *source;
+-
+-	GCancellable *cancellable;
+-	gulong cancelled_handler_id;
+-
+-	GList *user_address_set;
+-};
+-
+-enum {
+-	PROP_0,
+-	PROP_REGISTRY,
+-	PROP_SOURCE,
+-	PROP_SOURCE_TYPE
+-};
+-
+-/* Mainly for readability. */
+-enum {
+-	DEPTH_0,
+-	DEPTH_1
+-};
+-
+-typedef enum {
+-	SUPPORTS_VEVENT = 1 << 0,
+-	SUPPORTS_VTODO = 1 << 1,
+-	SUPPORTS_VJOURNAL = 1 << 2,
+-	SUPPORTS_ALL = 0x7
+-} SupportedComponentSet;
+-
+-enum {
+-	COLUMN_DISPLAY_NAME,		/* G_TYPE_STRING */
+-	COLUMN_PATH_ENCODED,		/* G_TYPE_STRING */
+-	COLUMN_PATH_DECODED,		/* G_TYPE_STRING */
+-	COLUMN_COLOR,			/* GDK_TYPE_COLOR */
+-	COLUMN_HAS_COLOR,		/* G_TYPE_BOOLEAN */
+-	NUM_COLUMNS
+-};
+-
+-/* Forward Declarations */
+-static void	caldav_chooser_get_collection_details
+-				(SoupSession *session,
+-				 SoupMessage *message,
+-				 const gchar *path_or_uri,
+-				 GSimpleAsyncResult *simple,
+-				 Context *context);
+-
+-G_DEFINE_DYNAMIC_TYPE (ECaldavChooser, e_caldav_chooser, GTK_TYPE_TREE_VIEW)
+-
+-static gconstpointer
+-compat_libxml_output_buffer_get_content (xmlOutputBufferPtr buf,
+-                                         gsize *out_len)
+-{
+-#ifdef LIBXML2_NEW_BUFFER
+-	*out_len = xmlOutputBufferGetSize (buf);
+-	return xmlOutputBufferGetContent (buf);
+-#else
+-	*out_len = buf->buffer->use;
+-	return buf->buffer->content;
+-#endif
+-}
+-
+-static void
+-context_cancel_message (GCancellable *cancellable,
+-                        Context *context)
+-{
+-	soup_session_abort (context->session);
+-}
+-
+-static Context *
+-context_new (ECaldavChooser *chooser,
+-             GCancellable *cancellable)
+-{
+-	Context *context;
+-
+-	context = g_slice_new0 (Context);
+-	context->session = g_object_ref (chooser->priv->session);
+-	context->registry = g_object_ref (chooser->priv->registry);
+-	context->source = g_object_ref (chooser->priv->source);
+-
+-	if (cancellable != NULL) {
+-		context->cancellable = g_object_ref (cancellable);
+-		context->cancelled_handler_id = g_cancellable_connect (
+-			context->cancellable,
+-			G_CALLBACK (context_cancel_message),
+-			context, (GDestroyNotify) NULL);
+-	}
+-
+-	return context;
+-}
+-
+-static void
+-context_free (Context *context)
+-{
+-	if (context->session != NULL)
+-		g_object_unref (context->session);
+-
+-	if (context->registry != NULL)
+-		g_object_unref (context->registry);
+-
+-	if (context->source != NULL)
+-		g_object_unref (context->source);
+-
+-	if (context->cancellable != NULL) {
+-		g_cancellable_disconnect (
+-			context->cancellable,
+-			context->cancelled_handler_id);
+-		g_object_unref (context->cancellable);
+-	}
+-
+-	g_list_free_full (
+-		context->user_address_set,
+-		(GDestroyNotify) g_free);
+-
+-	g_slice_free (Context, context);
+-}
+-
+-static void
+-caldav_chooser_redirect (SoupMessage *message,
+-                         SoupSession *session)
+-{
+-	SoupURI *soup_uri;
+-	const gchar *location;
+-
+-	if (!SOUP_STATUS_IS_REDIRECTION (message->status_code))
+-		return;
+-
+-	location = soup_message_headers_get_list (
+-		message->response_headers, "Location");
+-
+-	if (location == NULL)
+-		return;
+-
+-	soup_uri = soup_uri_new_with_base (
+-		soup_message_get_uri (message), location);
+-
+-	if (soup_uri == NULL) {
+-		soup_message_set_status_full (
+-			message, SOUP_STATUS_MALFORMED,
+-			"Invalid Redirect URL");
+-		return;
+-	}
+-
+-	soup_message_set_uri (message, soup_uri);
+-	soup_session_requeue_message (session, message);
+-
+-	soup_uri_free (soup_uri);
+-}
+-
+-static G_GNUC_NULL_TERMINATED SoupMessage *
+-caldav_chooser_new_propfind (SoupSession *session,
+-                             SoupURI *soup_uri,
+-                             gint depth,
+-                             ...)
+-{
+-	GHashTable *namespaces;
+-	SoupMessage *message;
+-	xmlDocPtr doc;
+-	xmlNodePtr root;
+-	xmlNodePtr node;
+-	xmlNsPtr ns;
+-	xmlOutputBufferPtr output;
+-	gconstpointer content;
+-	gsize length;
+-	gpointer key;
+-	va_list va;
+-
+-	/* Construct the XML content. */
+-
+-	doc = xmlNewDoc (XC ("1.0"));
+-	node = xmlNewDocNode (doc, NULL, XC ("propfind"), NULL);
+-
+-	/* Build a hash table of namespace URIs to xmlNs structs. */
+-	namespaces = g_hash_table_new (NULL, NULL);
+-
+-	ns = xmlNewNs (node, XC (NS_CALDAV), XC ("C"));
+-	g_hash_table_insert (namespaces, (gpointer) NS_CALDAV, ns);
+-
+-	ns = xmlNewNs (node, XC (NS_CALSRV), XC ("CS"));
+-	g_hash_table_insert (namespaces, (gpointer) NS_CALSRV, ns);
+-
+-	ns = xmlNewNs (node, XC (NS_ICAL), XC ("IC"));
+-	g_hash_table_insert (namespaces, (gpointer) NS_ICAL, ns);
+-
+-	/* Add WebDAV last since we use it below. */
+-	ns = xmlNewNs (node, XC (NS_WEBDAV), XC ("D"));
+-	g_hash_table_insert (namespaces, (gpointer) NS_WEBDAV, ns);
+-
+-	xmlSetNs (node, ns);
+-	xmlDocSetRootElement (doc, node);
+-
+-	node = xmlNewTextChild (node, ns, XC ("prop"), NULL);
+-
+-	va_start (va, depth);
+-	while ((key = va_arg (va, gpointer)) != NULL) {
+-		xmlChar *name;
+-
+-		ns = g_hash_table_lookup (namespaces, key);
+-		name = va_arg (va, xmlChar *);
+-
+-		if (ns != NULL && name != NULL)
+-			xmlNewTextChild (node, ns, name, NULL);
+-		else
+-			g_warn_if_reached ();
+-	}
+-	va_end (va);
+-
+-	g_hash_table_destroy (namespaces);
+-
+-	/* Construct the SoupMessage. */
+-
+-	message = soup_message_new_from_uri (SOUP_METHOD_PROPFIND, soup_uri);
+-
+-	soup_message_set_flags (message, SOUP_MESSAGE_NO_REDIRECT);
+-
+-	soup_message_headers_append (
+-		message->request_headers,
+-		"User-Agent", "Evolution/" VERSION);
+-
+-	soup_message_headers_append (
+-		message->request_headers,
+-		"Depth", (depth == 0) ? "0" : "1");
+-
+-	output = xmlAllocOutputBuffer (NULL);
+-
+-	root = xmlDocGetRootElement (doc);
+-	xmlNodeDumpOutput (output, doc, root, 0, 1, NULL);
+-	xmlOutputBufferFlush (output);
+-
+-	content = compat_libxml_output_buffer_get_content (output, &length);
+-
+-	soup_message_set_request (
+-		message, "application/xml", SOUP_MEMORY_COPY,
+-		content, length);
+-
+-	xmlOutputBufferClose (output);
+-
+-	soup_message_add_header_handler (
+-		message, "got-body", "Location",
+-		G_CALLBACK (caldav_chooser_redirect), session);
+-
+-	return message;
+-}
+-
+-static void
+-caldav_chooser_authenticate_cb (SoupSession *session,
+-                                SoupMessage *message,
+-                                SoupAuth *auth,
+-                                gboolean retrying,
+-                                ECaldavChooser *chooser)
+-{
+-	ESource *source;
+-	ESourceAuthentication *extension;
+-
+-	source = e_caldav_chooser_get_source (chooser);
+-	extension = e_source_get_extension (source, E_SOURCE_EXTENSION_AUTHENTICATION);
+-
+-	/* If our password was rejected, let the operation fail. */
+-	if (retrying)
+-		return;
+-
+-	if (!chooser->priv->username)
+-		chooser->priv->username = e_source_authentication_dup_user (extension);
+-
+-	/* If we don't have a username, let the operation fail. */
+-	if (chooser->priv->username == NULL || *chooser->priv->username == '\0')
+-		return;
+-
+-	/* If we don't have a password, let the operation fail. */
+-	if (chooser->priv->password == NULL || *chooser->priv->password == '\0')
+-		return;
+-
+-	soup_auth_authenticate (auth, chooser->priv->username, chooser->priv->password);
+-}
+-
+-static void
+-caldav_chooser_configure_session (ECaldavChooser *chooser,
+-                                  SoupSession *session)
+-{
+-	if (g_getenv ("CALDAV_DEBUG") != NULL) {
+-		SoupLogger *logger;
+-
+-		logger = soup_logger_new (
+-			SOUP_LOGGER_LOG_BODY, 100 * 1024 * 1024);
+-		soup_session_add_feature (
+-			session, SOUP_SESSION_FEATURE (logger));
+-		g_object_unref (logger);
+-	}
+-
+-	g_object_set (
+-		session,
+-		SOUP_SESSION_TIMEOUT, 90,
+-		SOUP_SESSION_SSL_USE_SYSTEM_CA_FILE, TRUE,
+-		SOUP_SESSION_SSL_STRICT, TRUE,
+-		NULL);
+-
+-	g_signal_connect (
+-		session, "authenticate",
+-		G_CALLBACK (caldav_chooser_authenticate_cb), chooser);
+-}
+-
+-static gboolean
+-caldav_chooser_check_successful (ECaldavChooser *chooser,
+-				 SoupMessage *message,
+-                                 GError **error)
+-{
+-	GIOErrorEnum error_code;
+-	GTlsCertificate *certificate = NULL;
+-
+-	g_return_val_if_fail (E_IS_CALDAV_CHOOSER (chooser), FALSE);
+-
+-	/* Loosely copied from the GVFS DAV backend. */
+-
+-	if (SOUP_STATUS_IS_SUCCESSFUL (message->status_code))
+-		return TRUE;
+-
+-	switch (message->status_code) {
+-		case SOUP_STATUS_CANCELLED:
+-			error_code = G_IO_ERROR_CANCELLED;
+-			break;
+-		case SOUP_STATUS_NOT_FOUND:
+-			error_code = G_IO_ERROR_NOT_FOUND;
+-			break;
+-		case SOUP_STATUS_UNAUTHORIZED:
+-		case SOUP_STATUS_PAYMENT_REQUIRED:
+-		case SOUP_STATUS_FORBIDDEN:
+-			error_code = G_IO_ERROR_PERMISSION_DENIED;
+-			break;
+-		case SOUP_STATUS_REQUEST_TIMEOUT:
+-			error_code = G_IO_ERROR_TIMED_OUT;
+-			break;
+-		case SOUP_STATUS_CANT_RESOLVE:
+-			error_code = G_IO_ERROR_HOST_NOT_FOUND;
+-			break;
+-		case SOUP_STATUS_NOT_IMPLEMENTED:
+-			error_code = G_IO_ERROR_NOT_SUPPORTED;
+-			break;
+-		case SOUP_STATUS_INSUFFICIENT_STORAGE:
+-			error_code = G_IO_ERROR_NO_SPACE;
+-			break;
+-		case SOUP_STATUS_SSL_FAILED:
+-			g_free (chooser->priv->certificate_pem);
+-			chooser->priv->certificate_pem = NULL;
+-
+-			g_object_get (G_OBJECT (message),
+-				"tls-certificate", &certificate,
+-				"tls-errors", &chooser->priv->certificate_errors,
+-				NULL);
+-			if (certificate) {
+-				g_object_get (certificate, "certificate-pem", &chooser->priv->certificate_pem, NULL);
+-				g_object_unref (certificate);
+-			}
+-
+-			g_free (chooser->priv->error_text);
+-			chooser->priv->error_text = g_strdup (message->reason_phrase);
+-
+-			g_set_error (
+-				error, SOUP_HTTP_ERROR, message->status_code,
+-				_("HTTP Error: %s"), message->reason_phrase);
+-			return FALSE;
+-		default:
+-			error_code = G_IO_ERROR_FAILED;
+-			break;
+-	}
+-
+-	g_set_error (
+-		error, G_IO_ERROR, error_code,
+-		_("HTTP Error: %s"), message->reason_phrase);
+-
+-	return FALSE;
+-}
+-
+-static xmlDocPtr
+-caldav_chooser_parse_xml (ECaldavChooser *chooser,
+-			  SoupMessage *message,
+-                          const gchar *expected_name,
+-                          GError **error)
+-{
+-	xmlDocPtr doc;
+-	xmlNodePtr root;
+-
+-	if (!caldav_chooser_check_successful (chooser, message, error))
+-		return NULL;
+-
+-	doc = xmlReadMemory (
+-		message->response_body->data,
+-		message->response_body->length,
+-		"response.xml", NULL,
+-		XML_PARSE_NONET |
+-		XML_PARSE_NOWARNING |
+-		XML_PARSE_NOCDATA |
+-		XML_PARSE_COMPACT);
+-
+-	if (doc == NULL) {
+-		g_set_error_literal (
+-			error, G_IO_ERROR, G_IO_ERROR_FAILED,
+-			_("Could not parse response"));
+-		return NULL;
+-	}
+-
+-	root = xmlDocGetRootElement (doc);
+-
+-	if (root == NULL || root->children == NULL) {
+-		g_set_error_literal (
+-			error, G_IO_ERROR, G_IO_ERROR_FAILED,
+-			_("Empty response"));
+-		xmlFreeDoc (doc);
+-		return NULL;
+-	}
+-
+-	if (g_strcmp0 ((gchar *) root->name, expected_name) != 0) {
+-		g_set_error_literal (
+-			error, G_IO_ERROR, G_IO_ERROR_FAILED,
+-			_("Unexpected reply from server"));
+-		xmlFreeDoc (doc);
+-		return NULL;
+-	}
+-
+-	return doc;
+-}
+-
+-static xmlXPathObjectPtr
+-caldav_chooser_get_xpath (xmlXPathContextPtr xp_ctx,
+-                          const gchar *path_format,
+-                          ...)
+-{
+-	xmlXPathObjectPtr xp_obj;
+-	va_list va;
+-	gchar *path;
+-
+-	va_start (va, path_format);
+-	path = g_strdup_vprintf (path_format, va);
+-	va_end (va);
+-
+-	xp_obj = xmlXPathEvalExpression (XC (path), xp_ctx);
+-
+-	g_free (path);
+-
+-	if (xp_obj == NULL)
+-		return NULL;
+-
+-	if (xp_obj->type != XPATH_NODESET) {
+-		xmlXPathFreeObject (xp_obj);
+-		return NULL;
+-	}
+-
+-	if (xmlXPathNodeSetGetLength (xp_obj->nodesetval) == 0) {
+-		xmlXPathFreeObject (xp_obj);
+-		return NULL;
+-	}
+-
+-	return xp_obj;
+-}
+-
+-static gchar *
+-caldav_chooser_get_xpath_string (xmlXPathContextPtr xp_ctx,
+-                                 const gchar *path_format,
+-                                 ...)
+-{
+-	xmlXPathObjectPtr xp_obj;
+-	va_list va;
+-	gchar *path;
+-	gchar *expression;
+-	gchar *string = NULL;
+-
+-	va_start (va, path_format);
+-	path = g_strdup_vprintf (path_format, va);
+-	va_end (va);
+-
+-	expression = g_strdup_printf ("string(%s)", path);
+-	xp_obj = xmlXPathEvalExpression (XC (expression), xp_ctx);
+-	g_free (expression);
+-
+-	g_free (path);
+-
+-	if (xp_obj == NULL)
+-		return NULL;
+-
+-	if (xp_obj->type == XPATH_STRING)
+-		string = g_strdup ((gchar *) xp_obj->stringval);
+-
+-	/* If the string is empty, return NULL. */
+-	if (string != NULL && *string == '\0') {
+-		g_free (string);
+-		string = NULL;
+-	}
+-
+-	xmlXPathFreeObject (xp_obj);
+-
+-	return string;
+-}
+-
+-static void
+-caldav_chooser_process_user_address_set (xmlXPathContextPtr xp_ctx,
+-                                         Context *context)
+-{
+-	xmlXPathObjectPtr xp_obj;
+-	gint ii, length;
+-
+-	/* XXX Is response[1] safe to assume? */
+-	xp_obj = caldav_chooser_get_xpath (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/C:calendar-user-address-set");
+-
+-	if (xp_obj == NULL)
+-		return;
+-
+-	length = xmlXPathNodeSetGetLength (xp_obj->nodesetval);
+-
+-	for (ii = 0; ii < length; ii++) {
+-		GList *duplicate;
+-		const gchar *address;
+-		gchar *href;
+-
+-		href = caldav_chooser_get_xpath_string (
+-			xp_ctx,
+-			"/D:multistatus"
+-			"/D:response"
+-			"/D:propstat"
+-			"/D:prop"
+-			"/C:calendar-user-address-set"
+-			"/D:href[%d]", ii + 1);
+-
+-		if (href == NULL)
+-			continue;
+-
+-		if (!g_str_has_prefix (href, "mailto:")) {
+-			g_free (href);
+-			continue;
+-		}
+-
+-		/* strlen("mailto:") == 7 */
+-		address = href + 7;
+-
+-		/* Avoid duplicates. */
+-		duplicate = g_list_find_custom (
+-			context->user_address_set,
+-			address, (GCompareFunc) strdup);
+-
+-		if (duplicate != NULL) {
+-			g_free (href);
+-			continue;
+-		}
+-
+-		context->user_address_set = g_list_append (
+-			context->user_address_set, g_strdup (address));
+-
+-		g_free (href);
+-	}
+-
+-	xmlXPathFreeObject (xp_obj);
+-}
+-
+-static SupportedComponentSet
+-caldav_chooser_get_supported_component_set (xmlXPathContextPtr xp_ctx,
+-                                            gint index)
+-{
+-	xmlXPathObjectPtr xp_obj;
+-	SupportedComponentSet set = 0;
+-	gint ii, length;
+-
+-	xp_obj = caldav_chooser_get_xpath (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response[%d]"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/C:supported-calendar-component-set"
+-		"/C:comp", index);
+-
+-	/* If the property is not present, assume all component
+-	 * types are supported.  (RFC 4791, Section 5.2.3) */
+-	if (xp_obj == NULL)
+-		return SUPPORTS_ALL;
+-
+-	length = xmlXPathNodeSetGetLength (xp_obj->nodesetval);
+-
+-	for (ii = 0; ii < length; ii++) {
+-		gchar *name;
+-
+-		name = caldav_chooser_get_xpath_string (
+-			xp_ctx,
+-			"/D:multistatus"
+-			"/D:response[%d]"
+-			"/D:propstat"
+-			"/D:prop"
+-			"/C:supported-calendar-component-set"
+-			"/C:comp[%d]"
+-			"/@name", index, ii + 1);
+-
+-		if (name == NULL)
+-			continue;
+-
+-		if (g_ascii_strcasecmp (name, "VEVENT") == 0)
+-			set |= SUPPORTS_VEVENT;
+-		else if (g_ascii_strcasecmp (name, "VTODO") == 0)
+-			set |= SUPPORTS_VTODO;
+-		else if (g_ascii_strcasecmp (name, "VJOURNAL") == 0)
+-			set |= SUPPORTS_VJOURNAL;
+-
+-		g_free (name);
+-	}
+-
+-	xmlXPathFreeObject (xp_obj);
+-
+-	return set;
+-}
+-
+-static void
+-caldav_chooser_process_response (SoupSession *session,
+-                                 SoupMessage *message,
+-                                 GSimpleAsyncResult *simple,
+-                                 xmlXPathContextPtr xp_ctx,
+-                                 gint index)
+-{
+-	GObject *object;
+-	xmlXPathObjectPtr xp_obj;
+-	SupportedComponentSet comp_set;
+-	ECaldavChooser *chooser;
+-	GtkTreeModel *tree_model;
+-	GtkTreeIter iter;
+-	GdkColor color;
+-	gchar *color_spec;
+-	gchar *display_name;
+-	gchar *href_decoded;
+-	gchar *href_encoded;
+-	gchar *status_line;
+-	guint status;
+-	gboolean has_color;
+-	gboolean success;
+-
+-	/* This returns a new reference, for reasons passing understanding. */
+-	object = g_async_result_get_source_object (G_ASYNC_RESULT (simple));
+-
+-	chooser = E_CALDAV_CHOOSER (object);
+-	tree_model = gtk_tree_view_get_model (GTK_TREE_VIEW (object));
+-
+-	g_object_unref (object);
+-
+-	status_line = caldav_chooser_get_xpath_string (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response[%d]"
+-		"/D:propstat"
+-		"/D:status",
+-		index);
+-
+-	if (status_line == NULL)
+-		return;
+-
+-	success = soup_headers_parse_status_line (
+-		status_line, NULL, &status, NULL);
+-
+-	g_free (status_line);
+-
+-	if (!success || status != SOUP_STATUS_OK)
+-		return;
+-
+-	href_encoded = caldav_chooser_get_xpath_string (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response[%d]"
+-		"/D:href",
+-		index);
+-
+-	if (href_encoded == NULL)
+-		return;
+-
+-	href_decoded = soup_uri_decode (href_encoded);
+-
+-	/* Get the display name or fall back to the href. */
+-
+-	display_name = caldav_chooser_get_xpath_string (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response[%d]"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/D:displayname",
+-		index);
+-
+-	if (display_name == NULL) {
+-		gchar *href_copy, *cp;
+-
+-		href_copy = g_strdup (href_decoded);
+-
+-		/* Use the last non-empty path segment. */
+-		while ((cp = strrchr (href_copy, '/')) != NULL) {
+-			if (*(cp + 1) == '\0')
+-				*cp = '\0';
+-			else {
+-				display_name = g_strdup (cp + 1);
+-				break;
+-			}
+-		}
+-
+-		g_free (href_copy);
+-	}
+-
+-	/* Make sure the resource is a calendar. */
+-
+-	xp_obj = caldav_chooser_get_xpath (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response[%d]"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/D:resourcetype"
+-		"/C:calendar",
+-		index);
+-
+-	if (xp_obj == NULL)
+-		goto exit;
+-
+-	xmlXPathFreeObject (xp_obj);
+-
+-	/* Get the color specification string. */
+-
+-	color_spec = caldav_chooser_get_xpath_string (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response[%d]"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/IC:calendar-color",
+-		index);
+-
+-	if (color_spec != NULL) {
+-		has_color = gdk_color_parse (color_spec, &color);
+-		if (!has_color && strlen (color_spec) == 9) {
+-			/* It can parse only #rrggbb, but servers like Google can return #rrggbbaa,
+-			   thus strip the alpha channel and try again */
+-			color_spec[7] = '\0';
+-			has_color = gdk_color_parse (color_spec, &color);
+-		}
+-	} else
+-		has_color = FALSE;
+-
+-	g_free (color_spec);
+-
+-	/* Which calendar component types are supported? */
+-
+-	comp_set = caldav_chooser_get_supported_component_set (xp_ctx, index);
+-
+-	switch (e_caldav_chooser_get_source_type (chooser)) {
+-		case E_CAL_CLIENT_SOURCE_TYPE_EVENTS:
+-			if ((comp_set & SUPPORTS_VEVENT) == 0)
+-				goto exit;
+-			break;
+-		case E_CAL_CLIENT_SOURCE_TYPE_MEMOS:
+-			if ((comp_set & SUPPORTS_VJOURNAL) == 0)
+-				goto exit;
+-			break;
+-		case E_CAL_CLIENT_SOURCE_TYPE_TASKS:
+-			if ((comp_set & SUPPORTS_VTODO) == 0)
+-				goto exit;
+-			break;
+-		default:
+-			goto exit;
+-	}
+-
+-	/* Append a new tree model row. */
+-
+-	gtk_list_store_append (GTK_LIST_STORE (tree_model), &iter);
+-
+-	gtk_list_store_set (
+-		GTK_LIST_STORE (tree_model), &iter,
+-		COLUMN_DISPLAY_NAME, display_name,
+-		COLUMN_PATH_ENCODED, href_encoded,
+-		COLUMN_PATH_DECODED, href_decoded,
+-		COLUMN_COLOR, has_color ? &color : NULL,
+-		COLUMN_HAS_COLOR, has_color,
+-		-1);
+-
+-exit:
+-	g_free (display_name);
+-	g_free (href_decoded);
+-	g_free (href_encoded);
+-}
+-
+-static void
+-caldav_chooser_collection_details_cb (SoupSession *session,
+-                                      SoupMessage *message,
+-                                      GSimpleAsyncResult *simple)
+-{
+-	xmlDocPtr doc;
+-	xmlXPathContextPtr xp_ctx;
+-	xmlXPathObjectPtr xp_obj;
+-	GObject *chooser_obj;
+-	GError *error = NULL;
+-
+-	chooser_obj = g_async_result_get_source_object (G_ASYNC_RESULT (simple));
+-
+-	doc = caldav_chooser_parse_xml (E_CALDAV_CHOOSER (chooser_obj), message, "multistatus", &error);
+-
+-	g_clear_object (&chooser_obj);
+-
+-	if (error != NULL) {
+-		g_warn_if_fail (doc == NULL);
+-		g_simple_async_result_set_from_error (simple, error);
+-		g_error_free (error);
+-		goto exit;
+-	}
+-
+-	xp_ctx = xmlXPathNewContext (doc);
+-	xmlXPathRegisterNs (xp_ctx, XC ("D"), XC (NS_WEBDAV));
+-	xmlXPathRegisterNs (xp_ctx, XC ("C"), XC (NS_CALDAV));
+-	xmlXPathRegisterNs (xp_ctx, XC ("CS"), XC (NS_CALSRV));
+-	xmlXPathRegisterNs (xp_ctx, XC ("IC"), XC (NS_ICAL));
+-
+-	xp_obj = caldav_chooser_get_xpath (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response");
+-
+-	if (xp_obj != NULL) {
+-		gint length, ii;
+-
+-		length = xmlXPathNodeSetGetLength (xp_obj->nodesetval);
+-
+-		for (ii = 0; ii < length; ii++)
+-			caldav_chooser_process_response (
+-				session, message, simple, xp_ctx, ii + 1);
+-
+-		xmlXPathFreeObject (xp_obj);
+-	}
+-
+-	xmlXPathFreeContext (xp_ctx);
+-	xmlFreeDoc (doc);
+-
+-exit:
+-	/* If we were cancelled then we're in a GCancellable::cancelled
+-	 * signal handler right now and GCancellable has its mutex locked,
+-	 * which means calling g_cancellable_disconnect() now will deadlock
+-	 * when it too tries to acquire the mutex.  So defer the GAsyncResult
+-	 * completion to an idle callback to avoid this deadlock. */
+-	g_simple_async_result_complete_in_idle (simple);
+-	g_object_unref (simple);
+-}
+-
+-static void
+-caldav_chooser_get_collection_details (SoupSession *session,
+-                                       SoupMessage *message,
+-                                       const gchar *path_or_uri,
+-                                       GSimpleAsyncResult *simple,
+-                                       Context *context)
+-{
+-	SoupURI *soup_uri;
+-
+-	soup_uri = soup_uri_new (path_or_uri);
+-	if (!soup_uri ||
+-	    !soup_uri_get_scheme (soup_uri) ||
+-	    !soup_uri_get_host (soup_uri) ||
+-	    !soup_uri_get_path (soup_uri) ||
+-	    !*soup_uri_get_scheme (soup_uri) ||
+-	    !*soup_uri_get_host (soup_uri) ||
+-	    !*soup_uri_get_path (soup_uri)) {
+-		/* it's a path only, not full uri */
+-		if (soup_uri)
+-			soup_uri_free (soup_uri);
+-		soup_uri = soup_uri_copy (soup_message_get_uri (message));
+-		soup_uri_set_path (soup_uri, path_or_uri);
+-	}
+-
+-	message = caldav_chooser_new_propfind (
+-		session, soup_uri, DEPTH_1,
+-		NS_WEBDAV, XC ("displayname"),
+-		NS_WEBDAV, XC ("resourcetype"),
+-		NS_CALDAV, XC ("calendar-description"),
+-		NS_CALDAV, XC ("supported-calendar-component-set"),
+-		NS_CALDAV, XC ("calendar-user-address-set"),
+-		NS_CALSRV, XC ("getctag"),
+-		NS_ICAL,   XC ("calendar-color"),
+-		NULL);
+-
+-	e_soup_ssl_trust_connect (message, context->source);
+-
+-	/* This takes ownership of the message. */
+-	soup_session_queue_message (
+-		session, message, (SoupSessionCallback)
+-		caldav_chooser_collection_details_cb, simple);
+-
+-	soup_uri_free (soup_uri);
+-}
+-
+-static void
+-caldav_chooser_calendar_home_set_cb (SoupSession *session,
+-                                     SoupMessage *message,
+-                                     GSimpleAsyncResult *simple)
+-{
+-	Context *context;
+-	SoupURI *soup_uri;
+-	xmlDocPtr doc;
+-	xmlXPathContextPtr xp_ctx;
+-	xmlXPathObjectPtr xp_obj;
+-	gchar *calendar_home_set;
+-	GObject *chooser_obj;
+-	GError *error = NULL;
+-
+-	context = g_simple_async_result_get_op_res_gpointer (simple);
+-	chooser_obj = g_async_result_get_source_object (G_ASYNC_RESULT (simple));
+-
+-	doc = caldav_chooser_parse_xml (E_CALDAV_CHOOSER (chooser_obj), message, "multistatus", &error);
+-
+-	g_clear_object (&chooser_obj);
+-
+-	/* If we were cancelled then we're in a GCancellable::cancelled
+-	 * signal handler right now and GCancellable has its mutex locked,
+-	 * which means calling g_cancellable_disconnect() now will deadlock
+-	 * when it too tries to acquire the mutex.  So defer the GAsyncResult
+-	 * completion to an idle callback to avoid this deadlock. */
+-	if (error != NULL) {
+-		g_simple_async_result_set_from_error (simple, error);
+-		g_simple_async_result_complete_in_idle (simple);
+-		g_object_unref (simple);
+-		g_error_free (error);
+-		return;
+-	}
+-
+-	g_return_if_fail (doc != NULL);
+-
+-	xp_ctx = xmlXPathNewContext (doc);
+-	xmlXPathRegisterNs (xp_ctx, XC ("D"), XC (NS_WEBDAV));
+-	xmlXPathRegisterNs (xp_ctx, XC ("C"), XC (NS_CALDAV));
+-
+-	/* Record any "C:calendar-user-address-set" properties. */
+-	caldav_chooser_process_user_address_set (xp_ctx, context);
+-
+-	/* Try to find the calendar home URL using the
+-	 * following properties in order of preference:
+-	 *
+-	 *   "C:calendar-home-set"
+-	 *   "D:current-user-principal"
+-	 *   "D:principal-URL"
+-	 *
+-	 * If the second or third URL preference is used, rerun
+-	 * the PROPFIND method on that URL at Depth=1 in hopes
+-	 * of getting a proper "C:calendar-home-set" property.
+-	 */
+-
+-	/* FIXME There can be multiple "D:href" elements for a
+-	 *       "C:calendar-home-set".  We're only processing
+-	 *       the first one.  Need to iterate over them. */
+-
+-	calendar_home_set = caldav_chooser_get_xpath_string (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/C:calendar-home-set"
+-		"/D:href");
+-
+-	if (calendar_home_set != NULL)
+-		goto get_collection_details;
+-
+-	g_free (calendar_home_set);
+-
+-	calendar_home_set = caldav_chooser_get_xpath_string (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/D:current-user-principal"
+-		"/D:href");
+-
+-	if (calendar_home_set != NULL)
+-		goto retry_propfind;
+-
+-	g_free (calendar_home_set);
+-
+-	calendar_home_set = caldav_chooser_get_xpath_string (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/D:principal-URL"
+-		"/D:href");
+-
+-	if (calendar_home_set != NULL)
+-		goto retry_propfind;
+-
+-	g_free (calendar_home_set);
+-	calendar_home_set = NULL;
+-
+-	/* None of the aforementioned properties are present.  If the
+-	 * user-supplied CalDAV URL is a calendar resource, use that. */
+-
+-	xp_obj = caldav_chooser_get_xpath (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/D:resourcetype"
+-		"/C:calendar");
+-
+-	if (xp_obj != NULL) {
+-		soup_uri = soup_message_get_uri (message);
+-
+-		if (soup_uri->path != NULL && *soup_uri->path != '\0') {
+-			gchar *slash;
+-
+-			soup_uri = soup_uri_copy (soup_uri);
+-
+-			slash = strrchr (soup_uri->path, '/');
+-			while (slash != NULL && slash != soup_uri->path) {
+-
+-				if (slash[1] != '\0') {
+-					slash[1] = '\0';
+-					calendar_home_set =
+-						g_strdup (soup_uri->path);
+-					break;
+-				}
+-
+-				slash[0] = '\0';
+-				slash = strrchr (soup_uri->path, '/');
+-			}
+-
+-			soup_uri_free (soup_uri);
+-		}
+-
+-		xmlXPathFreeObject (xp_obj);
+-	}
+-
+-	if (calendar_home_set == NULL || *calendar_home_set == '\0') {
+-		g_free (calendar_home_set);
+-		g_simple_async_result_set_error (
+-			simple, G_IO_ERROR, G_IO_ERROR_FAILED,
+-			_("Could not locate user's calendars"));
+-		g_simple_async_result_complete (simple);
+-		g_object_unref (simple);
+-		return;
+-	}
+-
+-get_collection_details:
+-
+-	xmlXPathFreeContext (xp_ctx);
+-	xmlFreeDoc (doc);
+-
+-	caldav_chooser_get_collection_details (
+-		session, message, calendar_home_set, simple, context);
+-
+-	g_free (calendar_home_set);
+-
+-	return;
+-
+-retry_propfind:
+-
+-	xmlXPathFreeContext (xp_ctx);
+-	xmlFreeDoc (doc);
+-
+-	soup_uri = soup_uri_copy (soup_message_get_uri (message));
+-	soup_uri_set_path (soup_uri, calendar_home_set);
+-
+-	/* Note that we omit "D:resourcetype", "D:current-user-principal"
+-	 * and "D:principal-URL" in order to short-circuit the recursion. */
+-	message = caldav_chooser_new_propfind (
+-		session, soup_uri, DEPTH_1,
+-		NS_CALDAV, XC ("calendar-home-set"),
+-		NS_CALDAV, XC ("calendar-user-address-set"),
+-		NULL);
+-
+-	e_soup_ssl_trust_connect (message, context->source);
+-
+-	/* This takes ownership of the message. */
+-	soup_session_queue_message (
+-		session, message, (SoupSessionCallback)
+-		caldav_chooser_calendar_home_set_cb, simple);
+-
+-	soup_uri_free (soup_uri);
+-
+-	g_free (calendar_home_set);
+-}
+-
+-static void
+-caldav_chooser_set_registry (ECaldavChooser *chooser,
+-                             ESourceRegistry *registry)
+-{
+-	g_return_if_fail (E_IS_SOURCE_REGISTRY (registry));
+-	g_return_if_fail (chooser->priv->registry == NULL);
+-
+-	chooser->priv->registry = g_object_ref (registry);
+-}
+-
+-static void
+-caldav_chooser_set_source (ECaldavChooser *chooser,
+-                           ESource *source)
+-{
+-	g_return_if_fail (E_IS_SOURCE (source));
+-	g_return_if_fail (chooser->priv->source == NULL);
+-
+-	chooser->priv->source = g_object_ref (source);
+-}
+-
+-static void
+-caldav_chooser_set_source_type (ECaldavChooser *chooser,
+-                                ECalClientSourceType source_type)
+-{
+-	chooser->priv->source_type = source_type;
+-}
+-
+-static void
+-caldav_chooser_set_property (GObject *object,
+-                             guint property_id,
+-                             const GValue *value,
+-                             GParamSpec *pspec)
+-{
+-	switch (property_id) {
+-		case PROP_REGISTRY:
+-			caldav_chooser_set_registry (
+-				E_CALDAV_CHOOSER (object),
+-				g_value_get_object (value));
+-			return;
+-
+-		case PROP_SOURCE:
+-			caldav_chooser_set_source (
+-				E_CALDAV_CHOOSER (object),
+-				g_value_get_object (value));
+-			return;
+-
+-		case PROP_SOURCE_TYPE:
+-			caldav_chooser_set_source_type (
+-				E_CALDAV_CHOOSER (object),
+-				g_value_get_enum (value));
+-			return;
+-	}
+-
+-	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+-}
+-
+-static void
+-caldav_chooser_get_property (GObject *object,
+-                             guint property_id,
+-                             GValue *value,
+-                             GParamSpec *pspec)
+-{
+-	switch (property_id) {
+-		case PROP_REGISTRY:
+-			g_value_set_object (
+-				value, e_caldav_chooser_get_registry (
+-				E_CALDAV_CHOOSER (object)));
+-			return;
+-
+-		case PROP_SOURCE:
+-			g_value_set_object (
+-				value, e_caldav_chooser_get_source (
+-				E_CALDAV_CHOOSER (object)));
+-			return;
+-
+-		case PROP_SOURCE_TYPE:
+-			g_value_set_enum (
+-				value, e_caldav_chooser_get_source_type (
+-				E_CALDAV_CHOOSER (object)));
+-			return;
+-	}
+-
+-	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+-}
+-
+-static void
+-caldav_chooser_dispose (GObject *object)
+-{
+-	ECaldavChooserPrivate *priv;
+-
+-	priv = E_CALDAV_CHOOSER_GET_PRIVATE (object);
+-
+-	g_clear_object (&priv->registry);
+-	g_clear_object (&priv->prompter);
+-	g_clear_object (&priv->source);
+-	g_clear_object (&priv->session);
+-
+-	/* Chain up to parent's dispose() method. */
+-	G_OBJECT_CLASS (e_caldav_chooser_parent_class)->dispose (object);
+-}
+-
+-static void
+-caldav_chooser_finalize (GObject *object)
+-{
+-	ECaldavChooserPrivate *priv;
+-
+-	priv = E_CALDAV_CHOOSER_GET_PRIVATE (object);
+-
+-	g_list_free_full (
+-		priv->user_address_set,
+-		(GDestroyNotify) g_free);
+-
+-	g_free (priv->username);
+-	g_free (priv->password);
+-	g_free (priv->certificate_pem);
+-	g_free (priv->error_text);
+-
+-	/* Chain up to parent's finalize() method. */
+-	G_OBJECT_CLASS (e_caldav_chooser_parent_class)->finalize (object);
+-}
+-
+-static void
+-caldav_chooser_constructed (GObject *object)
+-{
+-	ECaldavChooser *chooser;
+-	GtkTreeView *tree_view;
+-	GtkListStore *list_store;
+-	GtkCellRenderer *renderer;
+-	GtkTreeViewColumn *column;
+-	SoupSession *session;
+-
+-	/* Chain up to parent's constructed() method. */
+-	G_OBJECT_CLASS (e_caldav_chooser_parent_class)->constructed (object);
+-
+-	chooser = E_CALDAV_CHOOSER (object);
+-	session = soup_session_new ();
+-	caldav_chooser_configure_session (chooser, session);
+-	chooser->priv->session = session;
+-
+-	chooser->priv->prompter = e_credentials_prompter_new (chooser->priv->registry);
+-	e_credentials_prompter_set_auto_prompt (chooser->priv->prompter, FALSE);
+-
+-	tree_view = GTK_TREE_VIEW (object);
+-
+-	list_store = gtk_list_store_new (
+-		NUM_COLUMNS,
+-		G_TYPE_STRING,		/* COLUMN_DISPLAY_NAME */
+-		G_TYPE_STRING,		/* COLUMN_PATH_ENCODED */
+-		G_TYPE_STRING,		/* COLUMN_PATH_DECODED */
+-		GDK_TYPE_COLOR,		/* COLUMN_COLOR */
+-		G_TYPE_BOOLEAN);	/* COLUMN_HAS_COLOR */
+-
+-	gtk_tree_view_set_model (tree_view, GTK_TREE_MODEL (list_store));
+-
+-	column = gtk_tree_view_column_new ();
+-	gtk_tree_view_column_set_expand (column, TRUE);
+-	gtk_tree_view_column_set_title (column, _("Name"));
+-	gtk_tree_view_insert_column (tree_view, column, -1);
+-
+-	renderer = e_cell_renderer_color_new ();
+-	gtk_tree_view_column_pack_start (column, renderer, FALSE);
+-	gtk_tree_view_column_set_attributes (
+-		column, renderer,
+-		"color", COLUMN_COLOR,
+-		"visible", COLUMN_HAS_COLOR,
+-		NULL);
+-
+-	renderer = gtk_cell_renderer_text_new ();
+-	gtk_tree_view_column_pack_start (column, renderer, TRUE);
+-	gtk_tree_view_column_set_attributes (
+-		column, renderer,
+-		"text", COLUMN_DISPLAY_NAME,
+-		NULL);
+-
+-	column = gtk_tree_view_column_new ();
+-	gtk_tree_view_column_set_expand (column, FALSE);
+-	gtk_tree_view_column_set_title (column, _("Path"));
+-	gtk_tree_view_insert_column (tree_view, column, -1);
+-
+-	renderer = gtk_cell_renderer_text_new ();
+-	gtk_tree_view_column_pack_start (column, renderer, TRUE);
+-	gtk_tree_view_column_set_attributes (
+-		column, renderer,
+-		"text", COLUMN_PATH_DECODED,
+-		NULL);
+-}
+-
+-/* Helper for caldav_chooser_try_password_sync() */
+-static void
+-caldav_chooser_try_password_cancelled_cb (GCancellable *cancellable,
+-                                          SoupSession *session)
+-{
+-	soup_session_abort (session);
+-}
+-
+-static ESourceAuthenticationResult
+-caldav_chooser_try_password_sync (ECaldavChooser *chooser,
+-                                  const ENamedParameters *credentials,
+-                                  GCancellable *cancellable,
+-                                  GError **error)
+-{
+-	ESourceAuthenticationResult result;
+-	SoupMessage *message;
+-	SoupSession *session;
+-	SoupURI *soup_uri;
+-	ESource *source;
+-	ESourceWebdav *extension;
+-	const gchar *extension_name;
+-	gulong cancel_id = 0;
+-	GError *local_error = NULL;
+-
+-	g_return_val_if_fail (E_IS_CALDAV_CHOOSER (chooser), E_SOURCE_AUTHENTICATION_ERROR);
+-	g_return_val_if_fail (credentials != NULL, E_SOURCE_AUTHENTICATION_ERROR);
+-
+-	source = e_caldav_chooser_get_source (chooser);
+-	extension_name = E_SOURCE_EXTENSION_WEBDAV_BACKEND;
+-	extension = e_source_get_extension (source, extension_name);
+-
+-	/* Cache the password for later use in our
+-	 * SoupSession::authenticate signal handler. */
+-	g_free (chooser->priv->username);
+-	chooser->priv->username = g_strdup (e_named_parameters_get (credentials, E_SOURCE_CREDENTIAL_USERNAME));
+-
+-	g_free (chooser->priv->password);
+-	chooser->priv->password = g_strdup (e_named_parameters_get (credentials, E_SOURCE_CREDENTIAL_PASSWORD));
+-
+-	if (e_named_parameters_get (credentials, E_SOURCE_CREDENTIAL_SSL_TRUST))
+-		e_source_webdav_set_ssl_trust (extension, e_named_parameters_get (credentials, E_SOURCE_CREDENTIAL_SSL_TRUST));
+-
+-	g_free (chooser->priv->certificate_pem);
+-	chooser->priv->certificate_pem = NULL;
+-	chooser->priv->certificate_errors = 0;
+-	g_free (chooser->priv->error_text);
+-	chooser->priv->error_text = NULL;
+-
+-	/* Create our own SoupSession so we
+-	 * can try the password synchronously. */
+-	session = soup_session_new ();
+-	caldav_chooser_configure_session (chooser, session);
+-
+-	soup_uri = e_source_webdav_dup_soup_uri (extension);
+-	g_return_val_if_fail (soup_uri != NULL, E_SOURCE_AUTHENTICATION_ERROR);
+-
+-	/* Try some simple PROPFIND query.  We don't care about the query
+-	 * result, only whether the CalDAV server will accept our password. */
+-	message = caldav_chooser_new_propfind (
+-		session, soup_uri, DEPTH_0,
+-		NS_WEBDAV, XC ("resourcetype"),
+-		NULL);
+-
+-	if (G_IS_CANCELLABLE (cancellable))
+-		cancel_id = g_cancellable_connect (
+-			cancellable,
+-			G_CALLBACK (caldav_chooser_try_password_cancelled_cb),
+-			g_object_ref (session),
+-			(GDestroyNotify) g_object_unref);
+-
+-	e_soup_ssl_trust_connect (message, source);
+-
+-	soup_session_send_message (session, message);
+-
+-	if (cancel_id > 0)
+-		g_cancellable_disconnect (cancellable, cancel_id);
+-
+-	if (caldav_chooser_check_successful (chooser, message, &local_error)) {
+-		result = E_SOURCE_AUTHENTICATION_ACCEPTED;
+-
+-	} else if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED)) {
+-		result = E_SOURCE_AUTHENTICATION_REJECTED;
+-		/* Return also the error here. */
+-
+-	} else if (g_error_matches (local_error, SOUP_HTTP_ERROR, SOUP_STATUS_SSL_FAILED)) {
+-		result = E_SOURCE_AUTHENTICATION_ERROR_SSL_FAILED;
+-
+-	} else {
+-		result = E_SOURCE_AUTHENTICATION_ERROR;
+-	}
+-
+-	if (local_error != NULL)
+-		g_propagate_error (error, local_error);
+-
+-	g_object_unref (message);
+-	g_object_unref (session);
+-
+-	soup_uri_free (soup_uri);
+-
+-	return result;
+-}
+-
+-static void
+-e_caldav_chooser_class_init (ECaldavChooserClass *class)
+-{
+-	GObjectClass *object_class;
+-
+-	g_type_class_add_private (class, sizeof (ECaldavChooserPrivate));
+-
+-	object_class = G_OBJECT_CLASS (class);
+-	object_class->set_property = caldav_chooser_set_property;
+-	object_class->get_property = caldav_chooser_get_property;
+-	object_class->dispose = caldav_chooser_dispose;
+-	object_class->finalize = caldav_chooser_finalize;
+-	object_class->constructed = caldav_chooser_constructed;
+-
+-	g_object_class_install_property (
+-		object_class,
+-		PROP_REGISTRY,
+-		g_param_spec_object (
+-			"registry",
+-			"Registry",
+-			"Data source registry",
+-			E_TYPE_SOURCE_REGISTRY,
+-			G_PARAM_READWRITE |
+-			G_PARAM_CONSTRUCT_ONLY));
+-
+-	g_object_class_install_property (
+-		object_class,
+-		PROP_SOURCE,
+-		g_param_spec_object (
+-			"source",
+-			"Source",
+-			"CalDAV data source",
+-			E_TYPE_SOURCE,
+-			G_PARAM_READWRITE |
+-			G_PARAM_CONSTRUCT_ONLY));
+-
+-	g_object_class_install_property (
+-		object_class,
+-		PROP_SOURCE_TYPE,
+-		g_param_spec_enum (
+-			"source-type",
+-			"Source Type",
+-			"The iCalendar object type",
+-			E_TYPE_CAL_CLIENT_SOURCE_TYPE,
+-			E_CAL_CLIENT_SOURCE_TYPE_EVENTS,
+-			G_PARAM_READWRITE |
+-			G_PARAM_CONSTRUCT_ONLY));
+-}
+-
+-static void
+-e_caldav_chooser_class_finalize (ECaldavChooserClass *class)
+-{
+-}
+-
+-static void
+-e_caldav_chooser_init (ECaldavChooser *chooser)
+-{
+-	chooser->priv = E_CALDAV_CHOOSER_GET_PRIVATE (chooser);
+-	chooser->priv->first_auth_request = TRUE;
+-}
+-
+-void
+-e_caldav_chooser_type_register (GTypeModule *type_module)
+-{
+-	/* XXX G_DEFINE_DYNAMIC_TYPE declares a static type registration
+-	 *     function, so we have to wrap it with a public function in
+-	 *     order to register types from a separate compilation unit. */
+-	e_caldav_chooser_register_type (type_module);
+-}
+-
+-GtkWidget *
+-e_caldav_chooser_new (ESourceRegistry *registry,
+-                      ESource *source,
+-                      ECalClientSourceType source_type)
+-{
+-	g_return_val_if_fail (E_IS_SOURCE_REGISTRY (registry), NULL);
+-	g_return_val_if_fail (E_IS_SOURCE (source), NULL);
+-
+-	return g_object_new (
+-		E_TYPE_CALDAV_CHOOSER,
+-		"registry", registry,
+-		"source", source,
+-		"source-type", source_type, NULL);
+-}
+-
+-ESourceRegistry *
+-e_caldav_chooser_get_registry (ECaldavChooser *chooser)
+-{
+-	g_return_val_if_fail (E_IS_CALDAV_CHOOSER (chooser), NULL);
+-
+-	return chooser->priv->registry;
+-}
+-
+-ECredentialsPrompter *
+-e_caldav_chooser_get_prompter (ECaldavChooser *chooser)
+-{
+-	g_return_val_if_fail (E_IS_CALDAV_CHOOSER (chooser), NULL);
+-
+-	return chooser->priv->prompter;
+-}
+-
+-ESource *
+-e_caldav_chooser_get_source (ECaldavChooser *chooser)
+-{
+-	g_return_val_if_fail (E_IS_CALDAV_CHOOSER (chooser), NULL);
+-
+-	return chooser->priv->source;
+-}
+-
+-ECalClientSourceType
+-e_caldav_chooser_get_source_type (ECaldavChooser *chooser)
+-{
+-	g_return_val_if_fail (E_IS_CALDAV_CHOOSER (chooser), 0);
+-
+-	return chooser->priv->source_type;
+-}
+-
+-void
+-e_caldav_chooser_populate (ECaldavChooser *chooser,
+-                           GCancellable *cancellable,
+-                           GAsyncReadyCallback callback,
+-                           gpointer user_data)
+-{
+-	Context *context;
+-	ESource *source;
+-	SoupURI *soup_uri;
+-	SoupMessage *message;
+-	ESourceWebdav *extension;
+-	GtkTreeModel *tree_model;
+-	GSimpleAsyncResult *simple;
+-	const gchar *extension_name;
+-
+-	g_return_if_fail (E_IS_CALDAV_CHOOSER (chooser));
+-
+-	tree_model = gtk_tree_view_get_model (GTK_TREE_VIEW (chooser));
+-	gtk_list_store_clear (GTK_LIST_STORE (tree_model));
+-	soup_session_abort (chooser->priv->session);
+-
+-	source = e_caldav_chooser_get_source (chooser);
+-	extension_name = E_SOURCE_EXTENSION_WEBDAV_BACKEND;
+-	extension = e_source_get_extension (source, extension_name);
+-
+-	soup_uri = e_source_webdav_dup_soup_uri (extension);
+-	g_return_if_fail (soup_uri != NULL);
+-
+-	context = context_new (chooser, cancellable);
+-
+-	simple = g_simple_async_result_new (
+-		G_OBJECT (chooser), callback,
+-		user_data, e_caldav_chooser_populate);
+-
+-	g_simple_async_result_set_op_res_gpointer (
+-		simple, context, (GDestroyNotify) context_free);
+-
+-	message = caldav_chooser_new_propfind (
+-		context->session, soup_uri, DEPTH_0,
+-		NS_WEBDAV, XC ("resourcetype"),
+-		NS_CALDAV, XC ("calendar-home-set"),
+-		NS_CALDAV, XC ("calendar-user-address-set"),
+-		NS_WEBDAV, XC ("current-user-principal"),
+-		NS_WEBDAV, XC ("principal-URL"),
+-		NULL);
+-
+-	e_soup_ssl_trust_connect (message, source);
+-
+-	/* This takes ownership of the message. */
+-	soup_session_queue_message (
+-		context->session, message, (SoupSessionCallback)
+-		caldav_chooser_calendar_home_set_cb, simple);
+-
+-	soup_uri_free (soup_uri);
+-}
+-
+-gboolean
+-e_caldav_chooser_populate_finish (ECaldavChooser *chooser,
+-                                  GAsyncResult *result,
+-                                  GError **error)
+-{
+-	GSimpleAsyncResult *simple;
+-	Context *context;
+-
+-	g_return_val_if_fail (
+-		g_simple_async_result_is_valid (
+-		result, G_OBJECT (chooser),
+-		e_caldav_chooser_populate), FALSE);
+-
+-	simple = G_SIMPLE_ASYNC_RESULT (result);
+-	context = g_simple_async_result_get_op_res_gpointer (simple);
+-
+-	if (g_simple_async_result_propagate_error (simple, error))
+-		return FALSE;
+-
+-	/* Transfer user addresses to the private struct. */
+-
+-	g_list_free_full (
+-		chooser->priv->user_address_set,
+-		(GDestroyNotify) g_free);
+-
+-	chooser->priv->user_address_set = context->user_address_set;
+-	context->user_address_set = NULL;
+-
+-	return TRUE;
+-}
+-
+-gboolean
+-e_caldav_chooser_apply_selected (ECaldavChooser *chooser)
+-{
+-	ESourceWebdav *webdav_extension;
+-	GtkTreeSelection *selection;
+-	GtkTreeModel *model;
+-	GtkTreeIter iter;
+-	ESource *source;
+-	GdkColor *color;
+-	gboolean has_color;
+-	gchar *display_name;
+-	gchar *path_encoded;
+-
+-	g_return_val_if_fail (E_IS_CALDAV_CHOOSER (chooser), FALSE);
+-
+-	source = e_caldav_chooser_get_source (chooser);
+-	selection = gtk_tree_view_get_selection (GTK_TREE_VIEW (chooser));
+-
+-	if (!gtk_tree_selection_get_selected (selection, &model, &iter))
+-		return FALSE;
+-
+-	gtk_tree_model_get (
+-		model, &iter,
+-		COLUMN_DISPLAY_NAME, &display_name,
+-		COLUMN_PATH_ENCODED, &path_encoded,
+-		COLUMN_HAS_COLOR, &has_color,
+-		COLUMN_COLOR, &color,
+-		-1);
+-
+-	/* Sanity check. */
+-	g_warn_if_fail (
+-		(has_color && color != NULL) ||
+-		(!has_color && color == NULL));
+-
+-	webdav_extension = e_source_get_extension (
+-		source, E_SOURCE_EXTENSION_WEBDAV_BACKEND);
+-
+-	e_source_set_display_name (source, display_name);
+-
+-	e_source_webdav_set_display_name (webdav_extension, display_name);
+-	e_source_webdav_set_resource_path (webdav_extension, path_encoded);
+-
+-	/* XXX For now just pick the first user address in the list.
+-	 *     Might be better to compare the list against our own mail
+-	 *     accounts and give preference to matches (especially if an
+-	 *     address matches the default mail account), but I'm not sure
+-	 *     if multiple user addresses are common enough to justify the
+-	 *     extra effort. */
+-	if (chooser->priv->user_address_set != NULL)
+-		e_source_webdav_set_email_address (
+-			webdav_extension,
+-			chooser->priv->user_address_set->data);
+-
+-	if (has_color) {
+-		ESourceSelectable *selectable_extension;
+-		const gchar *extension_name;
+-		gchar *color_spec;
+-
+-		switch (e_caldav_chooser_get_source_type (chooser)) {
+-			case E_CAL_CLIENT_SOURCE_TYPE_EVENTS:
+-				extension_name = E_SOURCE_EXTENSION_CALENDAR;
+-				break;
+-			case E_CAL_CLIENT_SOURCE_TYPE_MEMOS:
+-				extension_name = E_SOURCE_EXTENSION_MEMO_LIST;
+-				break;
+-			case E_CAL_CLIENT_SOURCE_TYPE_TASKS:
+-				extension_name = E_SOURCE_EXTENSION_TASK_LIST;
+-				break;
+-			default:
+-				g_return_val_if_reached (TRUE);
+-		}
+-
+-		selectable_extension =
+-			e_source_get_extension (source, extension_name);
+-
+-		color_spec = gdk_color_to_string (color);
+-		e_source_selectable_set_color (
+-			selectable_extension, color_spec);
+-		g_free (color_spec);
+-
+-		gdk_color_free (color);
+-	}
+-
+-	g_free (display_name);
+-	g_free (path_encoded);
+-
+-	return TRUE;
+-}
+-
+-void
+-e_caldav_chooser_run_trust_prompt (ECaldavChooser *chooser,
+-				   GtkWindow *parent,
+-				   GCancellable *cancellable,
+-				   GAsyncReadyCallback callback,
+-				   gpointer user_data)
+-{
+-	g_return_if_fail (E_IS_CALDAV_CHOOSER (chooser));
+-
+-	e_trust_prompt_run_for_source (parent,
+-		chooser->priv->source,
+-		chooser->priv->certificate_pem,
+-		chooser->priv->certificate_errors,
+-		chooser->priv->error_text,
+-		FALSE,
+-		cancellable,
+-		callback,
+-		user_data);
+-}
+-
+-/* Free returned pointer with g_error_free() or g_clear_error() */
+-GError *
+-e_caldav_chooser_new_ssl_trust_error (ECaldavChooser *chooser)
+-{
+-	g_return_val_if_fail (E_IS_CALDAV_CHOOSER (chooser), NULL);
+-	g_return_val_if_fail (chooser->priv->error_text != NULL, NULL);
+-
+-	return g_error_new_literal (SOUP_HTTP_ERROR, SOUP_STATUS_SSL_FAILED, chooser->priv->error_text);
+-}
+-
+-/* The callback has an ECredentialsPrompter as the source_object. */
+-void
+-e_caldav_chooser_run_credentials_prompt (ECaldavChooser *chooser,
+-					 GAsyncReadyCallback callback,
+-					 gpointer user_data)
+-{
+-	g_return_if_fail (E_IS_CALDAV_CHOOSER (chooser));
+-	g_return_if_fail (callback != NULL);
+-
+-	e_credentials_prompter_prompt (chooser->priv->prompter, chooser->priv->source, chooser->priv->error_text,
+-		chooser->priv->first_auth_request ? E_CREDENTIALS_PROMPTER_PROMPT_FLAG_ALLOW_STORED_CREDENTIALS : 0,
+-		callback, user_data);
+-
+-	chooser->priv->first_auth_request = FALSE;
+-}
+-
+-gboolean
+-e_caldav_chooser_run_credentials_prompt_finish (ECaldavChooser *chooser,
+-						GAsyncResult *result,
+-						ENamedParameters **out_credentials,
+-						GError **error)
+-{
+-	ESource *source = NULL;
+-
+-	g_return_val_if_fail (E_IS_CALDAV_CHOOSER (chooser), FALSE);
+-	g_return_val_if_fail (out_credentials != NULL, FALSE);
+-
+-	if (!e_credentials_prompter_prompt_finish (chooser->priv->prompter, result,
+-		&source, out_credentials, error))
+-		return FALSE;
+-
+-	g_return_val_if_fail (source == chooser->priv->source, FALSE);
+-
+-	return TRUE;
+-}
+-
+-static void
+-e_caldav_chooser_authenticate_thread (GTask *task,
+-				      gpointer source_object,
+-				      gpointer task_data,
+-				      GCancellable *cancellable)
+-{
+-	ECaldavChooser *chooser = source_object;
+-	const ENamedParameters *credentials = task_data;
+-	gboolean success;
+-	GError *local_error = NULL;
+-
+-	if (caldav_chooser_try_password_sync (chooser, credentials, cancellable, &local_error)
+-	    != E_SOURCE_AUTHENTICATION_ACCEPTED && !local_error) {
+-		local_error = g_error_new_literal (G_IO_ERROR, G_IO_ERROR_FAILED, _("Unknown error"));
+-	}
+-
+-	if (local_error != NULL) {
+-		g_task_return_error (task, local_error);
+-	} else {
+-		g_task_return_boolean (task, success);
+-	}
+-}
+-
+-void
+-e_caldav_chooser_authenticate (ECaldavChooser *chooser,
+-			       const ENamedParameters *credentials,
+-			       GCancellable *cancellable,
+-			       GAsyncReadyCallback callback,
+-			       gpointer user_data)
+-{
+-	ENamedParameters *credentials_copy;
+-	GTask *task;
+-
+-	g_return_if_fail (E_IS_CALDAV_CHOOSER (chooser));
+-	g_return_if_fail (credentials != NULL);
+-	g_return_if_fail (callback != NULL);
+-
+-	credentials_copy = e_named_parameters_new_clone (credentials);
+-
+-	task = g_task_new (chooser, cancellable, callback, user_data);
+-	g_task_set_source_tag (task, e_caldav_chooser_authenticate);
+-	g_task_set_task_data (task, credentials_copy, (GDestroyNotify) e_named_parameters_free);
+-
+-	g_task_run_in_thread (task, e_caldav_chooser_authenticate_thread);
+-
+-	g_object_unref (task);
+-}
+-
+-gboolean
+-e_caldav_chooser_authenticate_finish (ECaldavChooser *chooser,
+-				      GAsyncResult *result,
+-				      GError **error)
+-{
+-	g_return_val_if_fail (E_IS_CALDAV_CHOOSER (chooser), FALSE);
+-	g_return_val_if_fail (g_task_is_valid (result, chooser), FALSE);
+-
+-	g_return_val_if_fail (
+-		g_async_result_is_tagged (
+-		result, e_caldav_chooser_authenticate), FALSE);
+-
+-	return g_task_propagate_boolean (G_TASK (result), error);
+-}
+diff --git a/modules/cal-config-caldav/e-caldav-chooser.h b/modules/cal-config-caldav/e-caldav-chooser.h
+deleted file mode 100644
+index 246b25abfb..0000000000
+--- a/modules/cal-config-caldav/e-caldav-chooser.h
++++ /dev/null
+@@ -1,109 +0,0 @@
+-/*
+- * e-caldav-chooser.h
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU Lesser General Public License as published by
+- * the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+- *
+- */
+-
+-#ifndef E_CALDAV_CHOOSER_H
+-#define E_CALDAV_CHOOSER_H
+-
+-#include <gtk/gtk.h>
+-#include <libecal/libecal.h>
+-#include <libedataserverui/libedataserverui.h>
+-
+-/* Standard GObject macros */
+-#define E_TYPE_CALDAV_CHOOSER \
+-	(e_caldav_chooser_get_type ())
+-#define E_CALDAV_CHOOSER(obj) \
+-	(G_TYPE_CHECK_INSTANCE_CAST \
+-	((obj), E_TYPE_CALDAV_CHOOSER, ECaldavChooser))
+-#define E_CALDAV_CHOOSER_CLASS(cls) \
+-	(G_TYPE_CHECK_CLASS_CAST \
+-	((cls), E_TYPE_CALDAV_CHOOSER, ECaldavChooserClass))
+-#define E_IS_CALDAV_CHOOSER(obj) \
+-	(G_TYPE_CHECK_INSTANCE_TYPE \
+-	((obj), E_TYPE_CALDAV_CHOOSER))
+-#define E_IS_CALDAV_CHOOSER_CLASS(cls) \
+-	(G_TYPE_CHECK_CLASS_TYPE \
+-	((cls), E_TYPE_CALDAV_CHOOSER))
+-#define E_CALDAV_CHOOSER_GET_CLASS(obj) \
+-	(G_TYPE_INSTANCE_GET_CLASS \
+-	((obj), E_TYPE_CALDAV_CHOOSER, ECaldavChooserClass))
+-
+-G_BEGIN_DECLS
+-
+-typedef struct _ECaldavChooser ECaldavChooser;
+-typedef struct _ECaldavChooserClass ECaldavChooserClass;
+-typedef struct _ECaldavChooserPrivate ECaldavChooserPrivate;
+-
+-struct _ECaldavChooser {
+-	GtkTreeView parent;
+-	ECaldavChooserPrivate *priv;
+-};
+-
+-struct _ECaldavChooserClass {
+-	GtkTreeViewClass parent_class;
+-};
+-
+-GType		e_caldav_chooser_get_type	(void);
+-void		e_caldav_chooser_type_register	(GTypeModule *type_module);
+-GtkWidget *	e_caldav_chooser_new		(ESourceRegistry *registry,
+-						 ESource *source,
+-						 ECalClientSourceType source_type);
+-ESourceRegistry *
+-		e_caldav_chooser_get_registry	(ECaldavChooser *chooser);
+-ECredentialsPrompter *
+-		e_caldav_chooser_get_prompter	(ECaldavChooser *chooser);
+-ESource *	e_caldav_chooser_get_source	(ECaldavChooser *chooser);
+-ECalClientSourceType
+-		e_caldav_chooser_get_source_type
+-						(ECaldavChooser *chooser);
+-void		e_caldav_chooser_populate	(ECaldavChooser *chooser,
+-						 GCancellable *cancellable,
+-						 GAsyncReadyCallback callback,
+-						 gpointer user_data);
+-gboolean	e_caldav_chooser_populate_finish
+-						(ECaldavChooser *chooser,
+-						 GAsyncResult *result,
+-						 GError **error);
+-gboolean	e_caldav_chooser_apply_selected	(ECaldavChooser *chooser);
+-
+-void		e_caldav_chooser_run_trust_prompt
+-						(ECaldavChooser *chooser,
+-						 GtkWindow *parent,
+-						 GCancellable *cancellable,
+-						 GAsyncReadyCallback callback,
+-						 gpointer user_data);
+-GError *	e_caldav_chooser_new_ssl_trust_error
+-						(ECaldavChooser *chooser);
+-void		e_caldav_chooser_run_credentials_prompt
+-						(ECaldavChooser *chooser,
+-						 GAsyncReadyCallback callback,
+-						 gpointer user_data);
+-gboolean	e_caldav_chooser_run_credentials_prompt_finish
+-						(ECaldavChooser *chooser,
+-						 GAsyncResult *result,
+-						 ENamedParameters **out_credentials,
+-						 GError **error);
+-void		e_caldav_chooser_authenticate	(ECaldavChooser *chooser,
+-						 const ENamedParameters *credentials,
+-						 GCancellable *cancellable,
+-						 GAsyncReadyCallback callback,
+-						 gpointer user_data);
+-gboolean	e_caldav_chooser_authenticate_finish
+-						(ECaldavChooser *chooser,
+-						 GAsyncResult *result,
+-						 GError **error);
+-
+-#endif /* E_CALDAV_CHOOSER_H */
+diff --git a/modules/cal-config-caldav/evolution-cal-config-caldav.c b/modules/cal-config-caldav/evolution-cal-config-caldav.c
+index 652ab9e762..75f5355996 100644
+--- a/modules/cal-config-caldav/evolution-cal-config-caldav.c
++++ b/modules/cal-config-caldav/evolution-cal-config-caldav.c
+@@ -19,12 +19,10 @@
+ #include <glib/gi18n-lib.h>
+ 
+ #include <libebackend/libebackend.h>
++#include <libedataserverui/libedataserverui.h>
+ 
+ #include <e-util/e-util.h>
+ 
+-#include "e-caldav-chooser.h"
+-#include "e-caldav-chooser-dialog.h"
+-
+ #define HTTP_PORT 80
+ #define HTTPS_PORT 443
+ 
+@@ -92,12 +90,15 @@ cal_config_caldav_run_dialog (GtkButton *button,
+ {
+ 	ESourceConfig *config;
+ 	ESourceRegistry *registry;
+-	ECalClientSourceType source_type;
++	ESourceWebdav *webdav_extension;
+ 	ECredentialsPrompter *prompter;
+-	GtkWidget *dialog;
+-	GtkWidget *widget;
++	SoupURI *uri;
++	gchar *base_url;
++	GtkDialog *dialog;
+ 	gpointer parent;
+ 	gulong handler_id;
++	guint supports_filter = 0;
++	const gchar *title = NULL;
+ 
+ 	config = e_source_config_backend_get_config (context->backend);
+ 	registry = e_source_config_get_registry (config);
+@@ -105,14 +106,32 @@ cal_config_caldav_run_dialog (GtkButton *button,
+ 	parent = gtk_widget_get_toplevel (GTK_WIDGET (config));
+ 	parent = gtk_widget_is_toplevel (parent) ? parent : NULL;
+ 
+-	source_type = e_cal_source_config_get_source_type (
+-		E_CAL_SOURCE_CONFIG (config));
++	switch (e_cal_source_config_get_source_type (E_CAL_SOURCE_CONFIG (config))) {
++	case E_CAL_CLIENT_SOURCE_TYPE_EVENTS:
++		supports_filter = E_WEBDAV_DISCOVER_SUPPORTS_EVENTS;
++		title = _("Choose a Calendar");
++		break;
++	case E_CAL_CLIENT_SOURCE_TYPE_MEMOS:
++		supports_filter = E_WEBDAV_DISCOVER_SUPPORTS_MEMOS;
++		title = _("Choose a Memo List");
++		break;
++	case E_CAL_CLIENT_SOURCE_TYPE_TASKS:
++		supports_filter = E_WEBDAV_DISCOVER_SUPPORTS_TASKS;
++		title = _("Choose a Task List");
++		break;
++	default:
++		g_return_if_reached ();
++	}
+ 
+-	widget = e_caldav_chooser_new (
+-		registry, context->scratch_source, source_type);
++	webdav_extension = e_source_get_extension (context->scratch_source, E_SOURCE_EXTENSION_WEBDAV_BACKEND);
+ 
+-	dialog = e_caldav_chooser_dialog_new (
+-		E_CALDAV_CHOOSER (widget), parent);
++	uri = e_source_webdav_dup_soup_uri (webdav_extension);
++
++	prompter = e_credentials_prompter_new (registry);
++	e_credentials_prompter_set_auto_prompt (prompter, FALSE);
++	base_url = soup_uri_to_string (uri, FALSE);
++
++	dialog = e_webdav_discover_dialog_new (parent, title, prompter, context->scratch_source, base_url, supports_filter);
+ 
+ 	if (parent != NULL)
+ 		e_binding_bind_property (
+@@ -120,16 +139,75 @@ cal_config_caldav_run_dialog (GtkButton *button,
+ 			dialog, "icon-name",
+ 			G_BINDING_SYNC_CREATE);
+ 
+-	prompter = e_caldav_chooser_get_prompter (E_CALDAV_CHOOSER (widget));
+-
+ 	handler_id = g_signal_connect (prompter, "get-dialog-parent",
+ 		G_CALLBACK (caldav_config_get_dialog_parent_cb), dialog);
+ 
+-	gtk_dialog_run (GTK_DIALOG (dialog));
++	e_webdav_discover_dialog_refresh (dialog);
++
++	if (gtk_dialog_run (dialog) == GTK_RESPONSE_ACCEPT) {
++		gchar *href = NULL, *display_name = NULL, *color = NULL, *email;
++		guint supports = 0;
++		GtkWidget *content;
++
++		content = e_webdav_discover_dialog_get_content (dialog);
++
++		if (e_webdav_discover_content_get_selected (content, 0, &href, &supports, &display_name, &color)) {
++			soup_uri_free (uri);
++			uri = soup_uri_new (href);
++
++			if (uri) {
++				e_source_set_display_name (context->scratch_source, display_name);
++
++				e_source_webdav_set_display_name (webdav_extension, display_name);
++				e_source_webdav_set_soup_uri (webdav_extension, uri);
++
++				if (color && *color) {
++					ESourceSelectable *selectable_extension;
++					const gchar *extension_name;
++
++					switch (e_cal_source_config_get_source_type (E_CAL_SOURCE_CONFIG (config))) {
++						case E_CAL_CLIENT_SOURCE_TYPE_EVENTS:
++							extension_name = E_SOURCE_EXTENSION_CALENDAR;
++							break;
++						case E_CAL_CLIENT_SOURCE_TYPE_MEMOS:
++							extension_name = E_SOURCE_EXTENSION_MEMO_LIST;
++							break;
++						case E_CAL_CLIENT_SOURCE_TYPE_TASKS:
++							extension_name = E_SOURCE_EXTENSION_TASK_LIST;
++							break;
++						default:
++							g_return_if_reached ();
++					}
++
++					selectable_extension = e_source_get_extension (context->scratch_source, extension_name);
++
++					e_source_selectable_set_color (selectable_extension, color);
++				}
++			}
++
++			g_free (href);
++			g_free (display_name);
++			g_free (color);
++
++			href = NULL;
++			display_name = NULL;
++			color = NULL;
++		}
++
++		email = e_webdav_discover_content_get_user_address (content);
++		if (email && *email)
++			e_source_webdav_set_email_address (webdav_extension, email);
++		g_free (email);
++	}
+ 
+ 	g_signal_handler_disconnect (prompter, handler_id);
+ 
+-	gtk_widget_destroy (dialog);
++	gtk_widget_destroy (GTK_WIDGET (dialog));
++
++	g_object_unref (prompter);
++	if (uri)
++		soup_uri_free (uri);
++	g_free (base_url);
+ }
+ 
+ static gboolean
+@@ -363,8 +441,6 @@ e_cal_config_caldav_init (ESourceConfigBackend *backend)
+ G_MODULE_EXPORT void
+ e_module_load (GTypeModule *type_module)
+ {
+-	e_caldav_chooser_type_register (type_module);
+-	e_caldav_chooser_dialog_type_register (type_module);
+ 	e_cal_config_caldav_register_type (type_module);
+ }
+ 
+diff --git a/modules/cal-config-google/Makefile.am b/modules/cal-config-google/Makefile.am
+index bb83eb620c..bee9e4abb1 100644
+--- a/modules/cal-config-google/Makefile.am
++++ b/modules/cal-config-google/Makefile.am
+@@ -15,10 +15,6 @@ module_cal_config_google_la_SOURCES = \
+ 	e-cal-config-gtasks.c					\
+ 	e-google-chooser-button.c				\
+ 	e-google-chooser-button.h				\
+-	e-google-chooser-dialog.c				\
+-	e-google-chooser-dialog.h				\
+-	e-google-chooser.c					\
+-	e-google-chooser.h					\
+ 	module-cal-config-google.c				\
+ 	module-cal-config-google.h
+ 
+diff --git a/modules/cal-config-google/e-cal-config-google.c b/modules/cal-config-google/e-cal-config-google.c
+index 85c45a81ee..97fe87fa64 100644
+--- a/modules/cal-config-google/e-cal-config-google.c
++++ b/modules/cal-config-google/e-cal-config-google.c
+@@ -23,7 +23,6 @@
+ #include <e-util/e-util.h>
+ 
+ #include "e-google-chooser-button.h"
+-#include "e-google-chooser-dialog.h"
+ #include "module-cal-config-google.h"
+ 
+ typedef ESourceConfigBackend ECalConfigGoogle;
+@@ -123,7 +122,7 @@ cal_config_google_commit_changes (ESourceConfigBackend *backend,
+ 		ESourceAuthentication *authentication_extension
+ 			= e_source_get_extension (scratch_source, E_SOURCE_EXTENSION_AUTHENTICATION);
+ 
+-		e_google_chooser_construct_default_uri (
++		e_google_chooser_button_construct_default_uri (
+ 			soup_uri,
+ 			e_source_authentication_get_user (authentication_extension));
+ 	}
+diff --git a/modules/cal-config-google/e-google-chooser-button.c b/modules/cal-config-google/e-google-chooser-button.c
+index d173f96d2b..f56612addc 100644
+--- a/modules/cal-config-google/e-google-chooser-button.c
++++ b/modules/cal-config-google/e-google-chooser-button.c
+@@ -20,7 +20,9 @@
+ #include <config.h>
+ #include <glib/gi18n-lib.h>
+ 
+-#include "e-google-chooser-dialog.h"
++#include <libedataserverui/libedataserverui.h>
++
++#define CALDAV_EVENTS_PATH_FORMAT "/calendar/dav/%s/events"
+ 
+ #define E_GOOGLE_CHOOSER_BUTTON_GET_PRIVATE(obj) \
+ 	(G_TYPE_INSTANCE_GET_PRIVATE \
+@@ -173,14 +175,15 @@ google_chooser_button_clicked (GtkButton *button)
+ 	EGoogleChooserButtonPrivate *priv;
+ 	gpointer parent;
+ 	ESourceRegistry *registry;
+-	ECalClientSourceType source_type;
+ 	ECredentialsPrompter *prompter;
+ 	ESourceWebdav *webdav_extension;
+ 	ESourceAuthentication *authentication_extension;
+ 	SoupURI *uri;
+-	GtkWidget *dialog;
+-	GtkWidget *widget;
++	gchar *base_url;
++	GtkDialog *dialog;
+ 	gulong handler_id;
++	guint supports_filter = 0;
++	const gchar *title = NULL;
+ 
+ 	priv = E_GOOGLE_CHOOSER_BUTTON_GET_PRIVATE (button);
+ 
+@@ -189,14 +192,12 @@ google_chooser_button_clicked (GtkButton *button)
+ 
+ 	registry = e_source_config_get_registry (priv->config);
+ 
+-	source_type = e_cal_source_config_get_source_type (E_CAL_SOURCE_CONFIG (priv->config));
+-
+ 	authentication_extension = e_source_get_extension (priv->source, E_SOURCE_EXTENSION_AUTHENTICATION);
+ 	webdav_extension = e_source_get_extension (priv->source, E_SOURCE_EXTENSION_WEBDAV_BACKEND);
+ 
+ 	uri = e_source_webdav_dup_soup_uri (webdav_extension);
+ 
+-	e_google_chooser_construct_default_uri (uri, e_source_authentication_get_user (authentication_extension));
++	e_google_chooser_button_construct_default_uri (uri, e_source_authentication_get_user (authentication_extension));
+ 
+ 	/* The host name is fixed, obviously. */
+ 	soup_uri_set_host (uri, "www.google.com");
+@@ -206,9 +207,31 @@ google_chooser_button_clicked (GtkButton *button)
+ 
+ 	e_source_webdav_set_soup_uri (webdav_extension, uri);
+ 
+-	widget = e_google_chooser_new (registry, priv->source, source_type);
++	switch (e_cal_source_config_get_source_type (E_CAL_SOURCE_CONFIG (priv->config))) {
++	case E_CAL_CLIENT_SOURCE_TYPE_EVENTS:
++		supports_filter = E_WEBDAV_DISCOVER_SUPPORTS_EVENTS;
++		title = _("Choose a Calendar");
++		break;
++	case E_CAL_CLIENT_SOURCE_TYPE_MEMOS:
++		supports_filter = E_WEBDAV_DISCOVER_SUPPORTS_MEMOS;
++		title = _("Choose a Memo List");
++		break;
++	case E_CAL_CLIENT_SOURCE_TYPE_TASKS:
++		supports_filter = E_WEBDAV_DISCOVER_SUPPORTS_TASKS;
++		title = _("Choose a Task List");
++		break;
++	default:
++		g_return_if_reached ();
++	}
+ 
+-	dialog = e_google_chooser_dialog_new (E_GOOGLE_CHOOSER (widget), parent);
++	prompter = e_credentials_prompter_new (registry);
++	e_credentials_prompter_set_auto_prompt (prompter, FALSE);
++
++	/* To find also calendar email, not only calendars */
++	soup_uri_set_path (uri, "/calendar/dav/");
++	base_url = soup_uri_to_string (uri, FALSE);
++
++	dialog = e_webdav_discover_dialog_new (parent, title, prompter, priv->source, base_url, supports_filter);
+ 
+ 	if (parent != NULL)
+ 		e_binding_bind_property (
+@@ -216,18 +239,75 @@ google_chooser_button_clicked (GtkButton *button)
+ 			dialog, "icon-name",
+ 			G_BINDING_SYNC_CREATE);
+ 
+-	prompter = e_google_chooser_get_prompter (E_GOOGLE_CHOOSER (widget));
+-
+ 	handler_id = g_signal_connect (prompter, "get-dialog-parent",
+ 		G_CALLBACK (google_config_get_dialog_parent_cb), dialog);
+ 
+-	gtk_dialog_run (GTK_DIALOG (dialog));
++	e_webdav_discover_dialog_refresh (dialog);
++
++	if (gtk_dialog_run (dialog) == GTK_RESPONSE_ACCEPT) {
++		gchar *href = NULL, *display_name = NULL, *color = NULL, *email;
++		guint supports = 0;
++		GtkWidget *content;
++
++		content = e_webdav_discover_dialog_get_content (dialog);
++
++		if (e_webdav_discover_content_get_selected (content, 0, &href, &supports, &display_name, &color)) {
++			soup_uri_free (uri);
++			uri = soup_uri_new (href);
++
++			if (uri) {
++				e_source_set_display_name (priv->source, display_name);
++
++				e_source_webdav_set_display_name (webdav_extension, display_name);
++				e_source_webdav_set_soup_uri (webdav_extension, uri);
++
++				if (color && *color) {
++					ESourceSelectable *selectable_extension;
++					const gchar *extension_name;
++
++					switch (e_cal_source_config_get_source_type (E_CAL_SOURCE_CONFIG (priv->config))) {
++						case E_CAL_CLIENT_SOURCE_TYPE_EVENTS:
++							extension_name = E_SOURCE_EXTENSION_CALENDAR;
++							break;
++						case E_CAL_CLIENT_SOURCE_TYPE_MEMOS:
++							extension_name = E_SOURCE_EXTENSION_MEMO_LIST;
++							break;
++						case E_CAL_CLIENT_SOURCE_TYPE_TASKS:
++							extension_name = E_SOURCE_EXTENSION_TASK_LIST;
++							break;
++						default:
++							g_return_if_reached ();
++					}
++
++					selectable_extension = e_source_get_extension (priv->source, extension_name);
++
++					e_source_selectable_set_color (selectable_extension, color);
++				}
++			}
++
++			g_free (href);
++			g_free (display_name);
++			g_free (color);
++
++			href = NULL;
++			display_name = NULL;
++			color = NULL;
++		}
++
++		email = e_webdav_discover_content_get_user_address (content);
++		if (email && *email)
++			e_source_webdav_set_email_address (webdav_extension, email);
++		g_free (email);
++	}
+ 
+ 	g_signal_handler_disconnect (prompter, handler_id);
+ 
+-	gtk_widget_destroy (dialog);
++	gtk_widget_destroy (GTK_WIDGET (dialog));
+ 
+-	soup_uri_free (uri);
++	g_object_unref (prompter);
++	if (uri)
++		soup_uri_free (uri);
++	g_free (base_url);
+ }
+ 
+ static void
+@@ -317,3 +397,50 @@ e_google_chooser_button_get_config (EGoogleChooserButton *button)
+ 
+ 	return button->priv->config;
+ }
++
++static gchar *
++google_chooser_decode_user (const gchar *user)
++{
++	gchar *decoded_user;
++
++	if (user == NULL || *user == '\0')
++		return NULL;
++
++	/* Decode any encoded 'at' symbols ('%40' -> '@'). */
++	if (strstr (user, "%40") != NULL) {
++		gchar **segments;
++
++		segments = g_strsplit (user, "%40", 0);
++		decoded_user = g_strjoinv ("@", segments);
++		g_strfreev (segments);
++
++	/* If no domain is given, append "@gmail.com". */
++	} else if (strstr (user, "@") == NULL) {
++		decoded_user = g_strconcat (user, "@gmail.com", NULL);
++
++	/* Otherwise the user name should be fine as is. */
++	} else {
++		decoded_user = g_strdup (user);
++	}
++
++	return decoded_user;
++}
++
++void
++e_google_chooser_button_construct_default_uri (SoupURI *soup_uri,
++					       const gchar *username)
++{
++	gchar *decoded_user, *path;
++
++	decoded_user = google_chooser_decode_user (username);
++	if (!decoded_user)
++		return;
++
++	path = g_strdup_printf (CALDAV_EVENTS_PATH_FORMAT, decoded_user);
++
++	soup_uri_set_user (soup_uri, decoded_user);
++	soup_uri_set_path (soup_uri, path);
++
++	g_free (decoded_user);
++	g_free (path);
++}
+diff --git a/modules/cal-config-google/e-google-chooser-button.h b/modules/cal-config-google/e-google-chooser-button.h
+index ea04fc9f03..eccdf6d8ba 100644
+--- a/modules/cal-config-google/e-google-chooser-button.h
++++ b/modules/cal-config-google/e-google-chooser-button.h
+@@ -20,8 +20,6 @@
+ 
+ #include <e-util/e-util.h>
+ 
+-#include "e-google-chooser.h"
+-
+ /* Standard GObject macros */
+ #define E_TYPE_GOOGLE_CHOOSER_BUTTON \
+ 	(e_google_chooser_button_get_type ())
+@@ -65,6 +63,9 @@ ESource *	e_google_chooser_button_get_source
+ 						(EGoogleChooserButton *button);
+ ESourceConfig *	e_google_chooser_button_get_config
+ 						(EGoogleChooserButton *button);
++void		e_google_chooser_button_construct_default_uri
++						(SoupURI *soup_uri,
++						 const gchar *username);
+ 
+ G_END_DECLS
+ 
+diff --git a/modules/cal-config-google/e-google-chooser-dialog.c b/modules/cal-config-google/e-google-chooser-dialog.c
+deleted file mode 100644
+index d01dcc52f7..0000000000
+--- a/modules/cal-config-google/e-google-chooser-dialog.c
++++ /dev/null
+@@ -1,560 +0,0 @@
+-/*
+- * e-google-chooser-dialog.c
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU Lesser General Public License as published by
+- * the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+- *
+- */
+-
+-#include "e-google-chooser-dialog.h"
+-
+-#include <config.h>
+-#include <glib/gi18n-lib.h>
+-
+-#define E_GOOGLE_CHOOSER_DIALOG_GET_PRIVATE(obj) \
+-	(G_TYPE_INSTANCE_GET_PRIVATE \
+-	((obj), E_TYPE_GOOGLE_CHOOSER_DIALOG, EGoogleChooserDialogPrivate))
+-
+-struct _EGoogleChooserDialogPrivate {
+-	EGoogleChooser *chooser;
+-	GCancellable *cancellable;
+-
+-	GtkWidget *info_bar;		/* not referenced */
+-	GtkWidget *info_bar_label;	/* not referenced */
+-};
+-
+-enum {
+-	PROP_0,
+-	PROP_CHOOSER
+-};
+-
+-/* Forward Declarations */
+-static void	google_chooser_dialog_populated_cb
+-						(GObject *source_object,
+-						 GAsyncResult *result,
+-						 gpointer user_data);
+-static void	google_chooser_dialog_credentials_prompt_cb
+-						(GObject *source_object,
+-						 GAsyncResult *result,
+-						 gpointer user_data);
+-
+-G_DEFINE_DYNAMIC_TYPE (
+-	EGoogleChooserDialog,
+-	e_google_chooser_dialog,
+-	GTK_TYPE_DIALOG)
+-
+-static void
+-google_chooser_dialog_done (EGoogleChooserDialog *dialog,
+-                            const GError *error)
+-{
+-	GdkWindow *window;
+-
+-	/* Reset the mouse cursor to normal. */
+-	window = gtk_widget_get_window (GTK_WIDGET (dialog));
+-	gdk_window_set_cursor (window, NULL);
+-
+-	if (error != NULL) {
+-		GtkLabel *label;
+-
+-		label = GTK_LABEL (dialog->priv->info_bar_label);
+-		gtk_label_set_text (label, error->message);
+-		gtk_widget_show (dialog->priv->info_bar);
+-	}
+-}
+-
+-/* It's a little weird to have the callback called on the #ESource,
+-   but it's simpler than writing a proxy around the e-trust-prompt
+-   async call, which would be unnecessary anyway. */
+-static void
+-google_chooser_dialog_trust_prompt_done_cb (GObject *source_object,
+-					    GAsyncResult *result,
+-					    gpointer user_data)
+-{
+-	EGoogleChooserDialog *dialog;
+-	EGoogleChooser *chooser;
+-	ETrustPromptResponse response = E_TRUST_PROMPT_RESPONSE_UNKNOWN;
+-	GError *error = NULL;
+-
+-	g_return_if_fail (E_IS_SOURCE (source_object));
+-	g_return_if_fail (E_IS_GOOGLE_CHOOSER_DIALOG (user_data));
+-
+-	dialog = E_GOOGLE_CHOOSER_DIALOG (user_data);
+-	chooser = e_google_chooser_dialog_get_chooser (dialog);
+-
+-	if (!e_trust_prompt_run_for_source_finish (E_SOURCE (source_object), result, &response, &error)) {
+-		if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+-			/* close also the dialog */
+-			gtk_dialog_response (GTK_DIALOG (dialog), GTK_RESPONSE_CANCEL);
+-		} else {
+-			google_chooser_dialog_done (dialog, error);
+-		}
+-	} else if (response == E_TRUST_PROMPT_RESPONSE_ACCEPT ||
+-		   response == E_TRUST_PROMPT_RESPONSE_ACCEPT_TEMPORARILY) {
+-		e_google_chooser_populate (
+-			chooser, dialog->priv->cancellable,
+-			google_chooser_dialog_populated_cb,
+-			g_object_ref (dialog));
+-	} else {
+-		g_warn_if_fail (error == NULL);
+-
+-		error = e_google_chooser_new_ssl_trust_error (chooser);
+-
+-		google_chooser_dialog_done (dialog, error);
+-	}
+-
+-	g_clear_error (&error);
+-	g_object_unref (dialog);
+-}
+-
+-static void
+-google_chooser_dialog_authenticate_cb (GObject *source_object,
+-				       GAsyncResult *result,
+-				       gpointer user_data)
+-{
+-	EGoogleChooserDialog *dialog = user_data;
+-	EGoogleChooser *chooser;
+-	GError *error = NULL;
+-
+-	g_return_if_fail (E_IS_GOOGLE_CHOOSER (source_object));
+-
+-	chooser = E_GOOGLE_CHOOSER (source_object);
+-
+-	if (!e_google_chooser_authenticate_finish (chooser, result, &error)) {
+-		if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+-			/* close also the dialog */
+-			gtk_dialog_response (GTK_DIALOG (dialog), GTK_RESPONSE_CANCEL);
+-		} else if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED)) {
+-			e_google_chooser_run_credentials_prompt (
+-				chooser,
+-				google_chooser_dialog_credentials_prompt_cb,
+-				g_object_ref (dialog));
+-
+-		} else if (g_error_matches (error, SOUP_HTTP_ERROR, SOUP_STATUS_SSL_FAILED)) {
+-			e_google_chooser_run_trust_prompt (chooser, GTK_WINDOW (dialog),
+-				dialog->priv->cancellable,
+-				google_chooser_dialog_trust_prompt_done_cb,
+-				g_object_ref (dialog));
+-
+-		/* We were either successful or got an unexpected error. */
+-		} else {
+-			google_chooser_dialog_done (dialog, error);
+-		}
+-	} else {
+-		g_warn_if_fail (error == NULL);
+-
+-		e_google_chooser_populate (
+-			chooser, dialog->priv->cancellable,
+-			google_chooser_dialog_populated_cb,
+-			g_object_ref (dialog));
+-	}
+-
+-	g_clear_error (&error);
+-	g_object_unref (dialog);
+-}
+-
+-static void
+-google_chooser_dialog_credentials_prompt_cb (GObject *source_object,
+-					     GAsyncResult *result,
+-					     gpointer user_data)
+-{
+-	EGoogleChooser *chooser;
+-	EGoogleChooserDialog *dialog = user_data;
+-	ENamedParameters *credentials = NULL;
+-	GError *error = NULL;
+-
+-	g_return_if_fail (E_IS_CREDENTIALS_PROMPTER (source_object));
+-
+-	chooser = e_google_chooser_dialog_get_chooser (dialog);
+-	g_return_if_fail (chooser != NULL);
+-
+-	if (!e_google_chooser_run_credentials_prompt_finish (chooser, result, &credentials, &error)) {
+-		if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+-			/* close also the dialog */
+-			gtk_dialog_response (GTK_DIALOG (dialog), GTK_RESPONSE_CANCEL);
+-		} else {
+-			google_chooser_dialog_done (dialog, error);
+-		}
+-	} else {
+-		e_google_chooser_authenticate (chooser, credentials, dialog->priv->cancellable,
+-			google_chooser_dialog_authenticate_cb, g_object_ref (dialog));
+-	}
+-
+-	e_named_parameters_free (credentials);
+-	g_clear_error (&error);
+-	g_object_unref (dialog);
+-}
+-
+-static void
+-google_chooser_dialog_populated_cb (GObject *source_object,
+-                                    GAsyncResult *result,
+-                                    gpointer user_data)
+-{
+-	EGoogleChooserDialog *dialog;
+-	EGoogleChooser *chooser;
+-	GError *error = NULL;
+-
+-	chooser = E_GOOGLE_CHOOSER (source_object);
+-	dialog = E_GOOGLE_CHOOSER_DIALOG (user_data);
+-
+-	e_google_chooser_populate_finish (chooser, result, &error);
+-
+-	/* Ignore cancellations, and leave the mouse cursor alone
+-	 * since the GdkWindow may have already been destroyed. */
+-	if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+-		/* do nothing */
+-
+-	/* We will likely get this error on the first try, since WebDAV
+-	 * servers generally require authentication.  It means we waste a
+-	 * round-trip to the server, but we don't want to risk prompting
+-	 * for authentication unnecessarily. */
+-	} else if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED)) {
+-		e_google_chooser_run_credentials_prompt (
+-			chooser,
+-			google_chooser_dialog_credentials_prompt_cb,
+-			g_object_ref (dialog));
+-
+-	} else if (g_error_matches (error, SOUP_HTTP_ERROR, SOUP_STATUS_SSL_FAILED)) {
+-		e_google_chooser_run_trust_prompt (chooser, GTK_WINDOW (dialog),
+-			dialog->priv->cancellable,
+-			google_chooser_dialog_trust_prompt_done_cb,
+-			g_object_ref (dialog));
+-
+-	/* We were either successful or got an unexpected error. */
+-	} else {
+-		google_chooser_dialog_done (dialog, error);
+-	}
+-
+-	g_clear_error (&error);
+-	g_object_unref (dialog);
+-}
+-
+-static void
+-google_chooser_dialog_row_activated_cb (GtkTreeView *tree_view,
+-                                        GtkTreePath *path,
+-                                        GtkTreeViewColumn *column,
+-                                        GtkDialog *dialog)
+-{
+-	gtk_dialog_response (dialog, GTK_RESPONSE_APPLY);
+-}
+-
+-static void
+-google_chooser_dialog_selection_changed_cb (GtkTreeSelection *selection,
+-                                            GtkDialog *dialog)
+-{
+-	gboolean sensitive;
+-
+-	sensitive = (gtk_tree_selection_count_selected_rows (selection) > 0);
+-
+-	gtk_dialog_set_response_sensitive (
+-		dialog, GTK_RESPONSE_APPLY, sensitive);
+-}
+-
+-static void
+-google_chooser_dialog_set_chooser (EGoogleChooserDialog *dialog,
+-                                   EGoogleChooser *chooser)
+-{
+-	g_return_if_fail (E_IS_GOOGLE_CHOOSER (chooser));
+-	g_return_if_fail (dialog->priv->chooser == NULL);
+-
+-	dialog->priv->chooser = g_object_ref_sink (chooser);
+-}
+-
+-static void
+-google_chooser_dialog_set_property (GObject *object,
+-                                    guint property_id,
+-                                    const GValue *value,
+-                                    GParamSpec *pspec)
+-{
+-	switch (property_id) {
+-		case PROP_CHOOSER:
+-			google_chooser_dialog_set_chooser (
+-				E_GOOGLE_CHOOSER_DIALOG (object),
+-				g_value_get_object (value));
+-			return;
+-	}
+-
+-	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+-}
+-
+-static void
+-google_chooser_dialog_get_property (GObject *object,
+-                                    guint property_id,
+-                                    GValue *value,
+-                                    GParamSpec *pspec)
+-{
+-	switch (property_id) {
+-		case PROP_CHOOSER:
+-			g_value_set_object (
+-				value,
+-				e_google_chooser_dialog_get_chooser (
+-				E_GOOGLE_CHOOSER_DIALOG (object)));
+-			return;
+-	}
+-
+-	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+-}
+-
+-static void
+-google_chooser_dialog_dispose (GObject *object)
+-{
+-	EGoogleChooserDialogPrivate *priv;
+-
+-	priv = E_GOOGLE_CHOOSER_DIALOG_GET_PRIVATE (object);
+-
+-	if (priv->chooser != NULL) {
+-		g_signal_handlers_disconnect_by_func (
+-			priv->chooser, google_chooser_dialog_row_activated_cb,
+-			object);
+-		g_object_unref (priv->chooser);
+-		priv->chooser = NULL;
+-	}
+-
+-	if (priv->cancellable != NULL) {
+-		g_cancellable_cancel (priv->cancellable);
+-		g_object_unref (priv->cancellable);
+-		priv->cancellable = NULL;
+-	}
+-
+-	/* Chain up to parent's dispose() method. */
+-	G_OBJECT_CLASS (e_google_chooser_dialog_parent_class)->dispose (object);
+-}
+-
+-static void
+-google_chooser_dialog_constructed (GObject *object)
+-{
+-	EGoogleChooserDialog *dialog;
+-	GtkTreeSelection *selection;
+-	GtkWidget *container;
+-	GtkWidget *widget;
+-	GtkWidget *vbox;
+-	const gchar *title;
+-
+-	dialog = E_GOOGLE_CHOOSER_DIALOG (object);
+-
+-	/* Chain up to parent's constructed() method. */
+-	G_OBJECT_CLASS (e_google_chooser_dialog_parent_class)->constructed (object);
+-
+-	switch (e_google_chooser_get_source_type (dialog->priv->chooser)) {
+-		case E_CAL_CLIENT_SOURCE_TYPE_EVENTS:
+-			title = _("Choose a Calendar");
+-			break;
+-		case E_CAL_CLIENT_SOURCE_TYPE_MEMOS:
+-			title = _("Choose a Memo List");
+-			break;
+-		case E_CAL_CLIENT_SOURCE_TYPE_TASKS:
+-			title = _("Choose a Task List");
+-			break;
+-		default:
+-			g_warn_if_reached ();
+-			title = "";
+-	}
+-
+-	gtk_dialog_add_button (
+-		GTK_DIALOG (dialog),
+-		_("_Cancel"), GTK_RESPONSE_CANCEL);
+-
+-	gtk_dialog_add_button (
+-		GTK_DIALOG (dialog),
+-		_("_Apply"), GTK_RESPONSE_APPLY);
+-
+-	gtk_dialog_set_default_response (
+-		GTK_DIALOG (dialog), GTK_RESPONSE_APPLY);
+-	gtk_dialog_set_response_sensitive (
+-		GTK_DIALOG (dialog), GTK_RESPONSE_APPLY, FALSE);
+-
+-	gtk_window_set_title (GTK_WINDOW (dialog), title);
+-	gtk_window_set_default_size (GTK_WINDOW (dialog), 400, 400);
+-	gtk_container_set_border_width (GTK_CONTAINER (dialog), 5);
+-
+-	container = gtk_dialog_get_content_area (GTK_DIALOG (dialog));
+-
+-	widget = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6);
+-	gtk_container_set_border_width (GTK_CONTAINER (widget), 5);
+-	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+-	gtk_widget_show (widget);
+-
+-	container = vbox = widget;
+-
+-	widget = gtk_scrolled_window_new (NULL, NULL);
+-	gtk_scrolled_window_set_policy (
+-		GTK_SCROLLED_WINDOW (widget),
+-		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+-	gtk_scrolled_window_set_shadow_type (
+-		GTK_SCROLLED_WINDOW (widget), GTK_SHADOW_IN);
+-	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+-	gtk_widget_show (widget);
+-
+-	container = widget;
+-
+-	widget = GTK_WIDGET (dialog->priv->chooser);
+-	gtk_container_add (GTK_CONTAINER (container), widget);
+-	gtk_widget_show (widget);
+-
+-	g_signal_connect (
+-		widget, "row-activated",
+-		G_CALLBACK (google_chooser_dialog_row_activated_cb), dialog);
+-
+-	/* Build the info bar, but hide it initially. */
+-
+-	container = vbox;
+-
+-	widget = gtk_info_bar_new ();
+-	gtk_info_bar_set_message_type (
+-		GTK_INFO_BAR (widget), GTK_MESSAGE_WARNING);
+-	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+-	dialog->priv->info_bar = widget;  /* do not reference */
+-	gtk_widget_hide (widget);
+-
+-	container = gtk_info_bar_get_content_area (GTK_INFO_BAR (widget));
+-
+-	widget = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
+-	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+-	gtk_widget_show (widget);
+-
+-	container = widget;
+-
+-	widget = gtk_image_new_from_icon_name ("dialog-warning", GTK_ICON_SIZE_MENU);
+-	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+-	gtk_widget_show (widget);
+-
+-	widget = gtk_label_new ("");
+-	gtk_misc_set_alignment (GTK_MISC (widget), 0.0, 0.5);
+-	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+-	dialog->priv->info_bar_label = widget;  /* do not reference */
+-	gtk_widget_show (widget);
+-
+-	/* Listen for tree view selection changes. */
+-
+-	selection = gtk_tree_view_get_selection (
+-		GTK_TREE_VIEW (dialog->priv->chooser));
+-
+-	g_signal_connect (
+-		selection, "changed",
+-		G_CALLBACK (google_chooser_dialog_selection_changed_cb),
+-		dialog);
+-}
+-
+-static void
+-google_chooser_dialog_realize (GtkWidget *widget)
+-{
+-	EGoogleChooserDialogPrivate *priv;
+-	GdkCursor *cursor;
+-	GdkWindow *window;
+-	GdkDisplay *display;
+-
+-	priv = E_GOOGLE_CHOOSER_DIALOG_GET_PRIVATE (widget);
+-
+-	/* Chain up to parent's realize() method. */
+-	GTK_WIDGET_CLASS (e_google_chooser_dialog_parent_class)->
+-		realize (widget);
+-
+-	g_return_if_fail (priv->cancellable == NULL);
+-	priv->cancellable = g_cancellable_new ();
+-
+-	/* Show a busy mouse cursor while populating. */
+-	window = gtk_widget_get_window (widget);
+-	display = gtk_widget_get_display (widget);
+-	cursor = gdk_cursor_new_for_display (display, GDK_WATCH);
+-	gdk_window_set_cursor (window, cursor);
+-	g_object_unref (cursor);
+-
+-	e_google_chooser_populate (
+-		priv->chooser, priv->cancellable,
+-		google_chooser_dialog_populated_cb,
+-		g_object_ref (widget));
+-}
+-
+-static void
+-google_chooser_dialog_response (GtkDialog *dialog,
+-                                gint response_id)
+-{
+-	EGoogleChooserDialogPrivate *priv;
+-
+-	priv = E_GOOGLE_CHOOSER_DIALOG_GET_PRIVATE (dialog);
+-
+-	if (response_id == GTK_RESPONSE_APPLY)
+-		e_google_chooser_apply_selected (priv->chooser);
+-}
+-
+-static void
+-e_google_chooser_dialog_class_init (EGoogleChooserDialogClass *class)
+-{
+-	GObjectClass *object_class;
+-	GtkWidgetClass *widget_class;
+-	GtkDialogClass *dialog_class;
+-
+-	g_type_class_add_private (class, sizeof (EGoogleChooserDialogPrivate));
+-
+-	object_class = G_OBJECT_CLASS (class);
+-	object_class->set_property = google_chooser_dialog_set_property;
+-	object_class->get_property = google_chooser_dialog_get_property;
+-	object_class->dispose = google_chooser_dialog_dispose;
+-	object_class->constructed = google_chooser_dialog_constructed;
+-
+-	widget_class = GTK_WIDGET_CLASS (class);
+-	widget_class->realize = google_chooser_dialog_realize;
+-
+-	dialog_class = GTK_DIALOG_CLASS (class);
+-	dialog_class->response = google_chooser_dialog_response;
+-
+-	g_object_class_install_property (
+-		object_class,
+-		PROP_CHOOSER,
+-		g_param_spec_object (
+-			"chooser",
+-			NULL,
+-			NULL,
+-			E_TYPE_GOOGLE_CHOOSER,
+-			G_PARAM_READWRITE |
+-			G_PARAM_CONSTRUCT_ONLY));
+-}
+-
+-static void
+-e_google_chooser_dialog_class_finalize (EGoogleChooserDialogClass *class)
+-{
+-}
+-
+-static void
+-e_google_chooser_dialog_init (EGoogleChooserDialog *dialog)
+-{
+-	dialog->priv = E_GOOGLE_CHOOSER_DIALOG_GET_PRIVATE (dialog);
+-}
+-
+-void
+-e_google_chooser_dialog_type_register (GTypeModule *type_module)
+-{
+-	/* XXX G_DEFINE_DYNAMIC_TYPE declares a static type registration
+-	 *     function, so we have to wrap it with a public function in
+-	 *     order to register types from a separate compilation unit. */
+-	e_google_chooser_dialog_register_type (type_module);
+-}
+-
+-GtkWidget *
+-e_google_chooser_dialog_new (EGoogleChooser *chooser,
+-                             GtkWindow *parent)
+-{
+-	g_return_val_if_fail (E_IS_GOOGLE_CHOOSER (chooser), NULL);
+-	g_return_val_if_fail (parent == NULL || GTK_IS_WINDOW (parent), NULL);
+-
+-	return g_object_new (
+-		E_TYPE_GOOGLE_CHOOSER_DIALOG,
+-		"chooser", chooser, "transient-for", parent, NULL);
+-}
+-
+-EGoogleChooser *
+-e_google_chooser_dialog_get_chooser (EGoogleChooserDialog *dialog)
+-{
+-	g_return_val_if_fail (E_IS_GOOGLE_CHOOSER_DIALOG (dialog), NULL);
+-
+-	return dialog->priv->chooser;
+-}
+-
+diff --git a/modules/cal-config-google/e-google-chooser-dialog.h b/modules/cal-config-google/e-google-chooser-dialog.h
+deleted file mode 100644
+index 1248d50257..0000000000
+--- a/modules/cal-config-google/e-google-chooser-dialog.h
++++ /dev/null
+@@ -1,67 +0,0 @@
+-/*
+- * e-google-chooser-dialog.h
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU Lesser General Public License as published by
+- * the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+- *
+- */
+-
+-#ifndef E_GOOGLE_CHOOSER_DIALOG_H
+-#define E_GOOGLE_CHOOSER_DIALOG_H
+-
+-#include "e-google-chooser.h"
+-
+-/* Standard GObject macros */
+-#define E_TYPE_GOOGLE_CHOOSER_DIALOG \
+-	(e_google_chooser_dialog_get_type ())
+-#define E_GOOGLE_CHOOSER_DIALOG(obj) \
+-	(G_TYPE_CHECK_INSTANCE_CAST \
+-	((obj), E_TYPE_GOOGLE_CHOOSER_DIALOG, EGoogleChooserDialog))
+-#define E_GOOGLE_CHOOSER_DIALOG_CLASS(cls) \
+-	(G_TYPE_CHECK_CLASS_CAST \
+-	((cls), E_TYPE_GOOGLE_CHOOSER_DIALOG, EGoogleChooserDialogClass))
+-#define E_IS_GOOGLE_CHOOSER_DIALOG(obj) \
+-	(G_TYPE_CHECK_INSTANCE_TYPE \
+-	((obj), E_TYPE_GOOGLE_CHOOSER_DIALOG))
+-#define E_IS_GOOGLE_CHOOSER_DIALOG_CLASS(cls) \
+-	(G_TYPE_CHECK_CLASS_TYPE \
+-	((cls), E_TYPE_GOOGLE_CHOOSER_DIALOG))
+-#define E_GOOGLE_CHOOSER_DIALOG_GET_CLASS(obj) \
+-	(G_TYPE_INSTANCE_GET_CLASS \
+-	((obj), E_TYPE_GOOGLE_CHOOSER_DIALOG, EGoogleChooserDialogClass))
+-
+-G_BEGIN_DECLS
+-
+-typedef struct _EGoogleChooserDialog EGoogleChooserDialog;
+-typedef struct _EGoogleChooserDialogClass EGoogleChooserDialogClass;
+-typedef struct _EGoogleChooserDialogPrivate EGoogleChooserDialogPrivate;
+-
+-struct _EGoogleChooserDialog {
+-	GtkDialog parent;
+-	EGoogleChooserDialogPrivate *priv;
+-};
+-
+-struct _EGoogleChooserDialogClass {
+-	GtkDialogClass parent_class;
+-};
+-
+-GType		e_google_chooser_dialog_get_type (void);
+-void		e_google_chooser_dialog_type_register
+-						(GTypeModule *type_module);
+-GtkWidget *	e_google_chooser_dialog_new	(EGoogleChooser *chooser,
+-						 GtkWindow *parent);
+-EGoogleChooser *e_google_chooser_dialog_get_chooser
+-						(EGoogleChooserDialog *dialog);
+-
+-G_END_DECLS
+-
+-#endif /* E_GOOGLE_CHOOSER_DIALOG_H */
+diff --git a/modules/cal-config-google/e-google-chooser.c b/modules/cal-config-google/e-google-chooser.c
+deleted file mode 100644
+index c4d9e010cc..0000000000
+--- a/modules/cal-config-google/e-google-chooser.c
++++ /dev/null
+@@ -1,1891 +0,0 @@
+-/*
+- * e-google-chooser.c
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU Lesser General Public License as published by
+- * the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+- *
+- */
+-
+-#include "e-google-chooser.h"
+-
+-#include <config.h>
+-#include <glib/gi18n-lib.h>
+-
+-#include <libsoup/soup.h>
+-
+-#include <libxml/tree.h>
+-#include <libxml/xpath.h>
+-#include <libxml/xpathInternals.h>
+-
+-#include <e-util/e-util.h>
+-#include <libedataserverui/libedataserverui.h>
+-
+-#define E_GOOGLE_CHOOSER_GET_PRIVATE(obj) \
+-	(G_TYPE_INSTANCE_GET_PRIVATE \
+-	((obj), E_TYPE_GOOGLE_CHOOSER, EGoogleChooserPrivate))
+-
+-#define XC(string) ((xmlChar *) string)
+-
+-#define CALDAV_EVENTS_PATH_FORMAT "/calendar/dav/%s/events"
+-
+-/* Standard Namespaces */
+-#define NS_WEBDAV  "DAV:"
+-#define NS_GOOGLE  "urn:ietf:params:xml:ns:caldav"
+-
+-/* Application-Specific Namespaces */
+-#define NS_CALSRV  "http://calendarserver.org/ns/"
+-#define NS_ICAL    "http://apple.com/ns/ical/"
+-
+-typedef struct _Context Context;
+-
+-struct _EGoogleChooserPrivate {
+-	ESourceRegistry *registry;
+-	ECredentialsPrompter *prompter;
+-	ESource *source;
+-	ECalClientSourceType source_type;
+-	SoupSession *session;
+-	GList *user_address_set;
+-	gchar *username;
+-	gchar *password;
+-	gchar *certificate_pem;
+-	GTlsCertificateFlags certificate_errors;
+-	gchar *error_text;
+-	gboolean first_auth_request;
+-};
+-
+-struct _Context {
+-	SoupSession *session;
+-	ESourceRegistry *registry;
+-	ESource *source;
+-
+-	GCancellable *cancellable;
+-	gulong cancelled_handler_id;
+-
+-	GList *user_address_set;
+-};
+-
+-enum {
+-	PROP_0,
+-	PROP_REGISTRY,
+-	PROP_SOURCE,
+-	PROP_SOURCE_TYPE
+-};
+-
+-/* Mainly for readability. */
+-enum {
+-	DEPTH_0,
+-	DEPTH_1
+-};
+-
+-typedef enum {
+-	SUPPORTS_VEVENT = 1 << 0,
+-	SUPPORTS_VTODO = 1 << 1,
+-	SUPPORTS_VJOURNAL = 1 << 2,
+-	SUPPORTS_ALL = 0x7
+-} SupportedComponentSet;
+-
+-enum {
+-	COLUMN_DISPLAY_NAME,		/* G_TYPE_STRING */
+-	COLUMN_PATH_ENCODED,		/* G_TYPE_STRING */
+-	COLUMN_PATH_DECODED,		/* G_TYPE_STRING */
+-	COLUMN_COLOR,			/* GDK_TYPE_COLOR */
+-	COLUMN_HAS_COLOR,		/* G_TYPE_BOOLEAN */
+-	NUM_COLUMNS
+-};
+-
+-/* Forward Declarations */
+-static void	google_chooser_get_collection_details
+-				(SoupSession *session,
+-				 SoupMessage *message,
+-				 const gchar *path_or_uri,
+-				 GSimpleAsyncResult *simple,
+-				 Context *context);
+-
+-G_DEFINE_DYNAMIC_TYPE (EGoogleChooser, e_google_chooser, GTK_TYPE_TREE_VIEW)
+-
+-static gconstpointer
+-compat_libxml_output_buffer_get_content (xmlOutputBufferPtr buf,
+-                                         gsize *out_len)
+-{
+-#ifdef LIBXML2_NEW_BUFFER
+-	*out_len = xmlOutputBufferGetSize (buf);
+-	return xmlOutputBufferGetContent (buf);
+-#else
+-	*out_len = buf->buffer->use;
+-	return buf->buffer->content;
+-#endif
+-}
+-
+-static void
+-context_cancel_message (GCancellable *cancellable,
+-                        Context *context)
+-{
+-	soup_session_abort (context->session);
+-}
+-
+-static Context *
+-context_new (EGoogleChooser *chooser,
+-             GCancellable *cancellable)
+-{
+-	Context *context;
+-
+-	context = g_slice_new0 (Context);
+-	context->session = g_object_ref (chooser->priv->session);
+-	context->registry = g_object_ref (chooser->priv->registry);
+-	context->source = g_object_ref (chooser->priv->source);
+-
+-	if (cancellable != NULL) {
+-		context->cancellable = g_object_ref (cancellable);
+-		context->cancelled_handler_id = g_cancellable_connect (
+-			context->cancellable,
+-			G_CALLBACK (context_cancel_message),
+-			context, (GDestroyNotify) NULL);
+-	}
+-
+-	return context;
+-}
+-
+-static void
+-context_free (Context *context)
+-{
+-	if (context->session != NULL)
+-		g_object_unref (context->session);
+-
+-	if (context->registry != NULL)
+-		g_object_unref (context->registry);
+-
+-	if (context->source != NULL)
+-		g_object_unref (context->source);
+-
+-	if (context->cancellable != NULL) {
+-		g_cancellable_disconnect (
+-			context->cancellable,
+-			context->cancelled_handler_id);
+-		g_object_unref (context->cancellable);
+-	}
+-
+-	g_list_free_full (
+-		context->user_address_set,
+-		(GDestroyNotify) g_free);
+-
+-	g_slice_free (Context, context);
+-}
+-
+-static void
+-google_chooser_redirect (SoupMessage *message,
+-                         SoupSession *session)
+-{
+-	SoupURI *soup_uri;
+-	const gchar *location;
+-
+-	if (!SOUP_STATUS_IS_REDIRECTION (message->status_code))
+-		return;
+-
+-	location = soup_message_headers_get_list (
+-		message->response_headers, "Location");
+-
+-	if (location == NULL)
+-		return;
+-
+-	soup_uri = soup_uri_new_with_base (
+-		soup_message_get_uri (message), location);
+-
+-	if (soup_uri == NULL) {
+-		soup_message_set_status_full (
+-			message, SOUP_STATUS_MALFORMED,
+-			"Invalid Redirect URL");
+-		return;
+-	}
+-
+-	soup_message_set_uri (message, soup_uri);
+-	soup_session_requeue_message (session, message);
+-
+-	soup_uri_free (soup_uri);
+-}
+-
+-static G_GNUC_NULL_TERMINATED SoupMessage *
+-google_chooser_new_propfind (SoupSession *session,
+-                             SoupURI *soup_uri,
+-                             gint depth,
+-                             ...)
+-{
+-	GHashTable *namespaces;
+-	SoupMessage *message;
+-	xmlDocPtr doc;
+-	xmlNodePtr root;
+-	xmlNodePtr node;
+-	xmlNsPtr ns;
+-	xmlOutputBufferPtr output;
+-	gconstpointer content;
+-	gsize length;
+-	gpointer key;
+-	va_list va;
+-
+-	/* Construct the XML content. */
+-
+-	doc = xmlNewDoc (XC ("1.0"));
+-	node = xmlNewDocNode (doc, NULL, XC ("propfind"), NULL);
+-
+-	/* Build a hash table of namespace URIs to xmlNs structs. */
+-	namespaces = g_hash_table_new (NULL, NULL);
+-
+-	ns = xmlNewNs (node, XC (NS_GOOGLE), XC ("C"));
+-	g_hash_table_insert (namespaces, (gpointer) NS_GOOGLE, ns);
+-
+-	ns = xmlNewNs (node, XC (NS_CALSRV), XC ("CS"));
+-	g_hash_table_insert (namespaces, (gpointer) NS_CALSRV, ns);
+-
+-	ns = xmlNewNs (node, XC (NS_ICAL), XC ("IC"));
+-	g_hash_table_insert (namespaces, (gpointer) NS_ICAL, ns);
+-
+-	/* Add WebDAV last since we use it below. */
+-	ns = xmlNewNs (node, XC (NS_WEBDAV), XC ("D"));
+-	g_hash_table_insert (namespaces, (gpointer) NS_WEBDAV, ns);
+-
+-	xmlSetNs (node, ns);
+-	xmlDocSetRootElement (doc, node);
+-
+-	node = xmlNewTextChild (node, ns, XC ("prop"), NULL);
+-
+-	va_start (va, depth);
+-	while ((key = va_arg (va, gpointer)) != NULL) {
+-		xmlChar *name;
+-
+-		ns = g_hash_table_lookup (namespaces, key);
+-		name = va_arg (va, xmlChar *);
+-
+-		if (ns != NULL && name != NULL)
+-			xmlNewTextChild (node, ns, name, NULL);
+-		else
+-			g_warn_if_reached ();
+-	}
+-	va_end (va);
+-
+-	g_hash_table_destroy (namespaces);
+-
+-	/* Construct the SoupMessage. */
+-
+-	message = soup_message_new_from_uri (SOUP_METHOD_PROPFIND, soup_uri);
+-
+-	soup_message_set_flags (message, SOUP_MESSAGE_NO_REDIRECT);
+-
+-	soup_message_headers_append (
+-		message->request_headers,
+-		"User-Agent", "Evolution/" VERSION);
+-
+-	soup_message_headers_append (
+-		message->request_headers,
+-		"Depth", (depth == 0) ? "0" : "1");
+-
+-	output = xmlAllocOutputBuffer (NULL);
+-
+-	root = xmlDocGetRootElement (doc);
+-	xmlNodeDumpOutput (output, doc, root, 0, 1, NULL);
+-	xmlOutputBufferFlush (output);
+-
+-	content = compat_libxml_output_buffer_get_content (output, &length);
+-
+-	soup_message_set_request (
+-		message, "application/xml", SOUP_MEMORY_COPY,
+-		content, length);
+-
+-	xmlOutputBufferClose (output);
+-
+-	soup_message_add_header_handler (
+-		message, "got-body", "Location",
+-		G_CALLBACK (google_chooser_redirect), session);
+-
+-	return message;
+-}
+-
+-static void
+-google_chooser_authenticate_cb (SoupSession *session,
+-                                SoupMessage *message,
+-                                SoupAuth *auth,
+-                                gboolean retrying,
+-                                EGoogleChooser *chooser)
+-{
+-	ESource *source;
+-	ESourceAuthentication *extension;
+-
+-	source = e_google_chooser_get_source (chooser);
+-	extension = e_source_get_extension (source, E_SOURCE_EXTENSION_AUTHENTICATION);
+-
+-	/* If our password was rejected, let the operation fail. */
+-	if (retrying)
+-		return;
+-
+-	if (!chooser->priv->username)
+-		chooser->priv->username = e_source_authentication_dup_user (extension);
+-
+-	/* If we don't have a username, let the operation fail. */
+-	if (chooser->priv->username == NULL || *chooser->priv->username == '\0')
+-		return;
+-
+-	/* If we don't have a password, let the operation fail. */
+-	if (chooser->priv->password == NULL || *chooser->priv->password == '\0')
+-		return;
+-
+-	soup_auth_authenticate (auth, chooser->priv->username, chooser->priv->password);
+-}
+-
+-static void
+-google_chooser_configure_session (EGoogleChooser *chooser,
+-                                  SoupSession *session)
+-{
+-	if (g_getenv ("GOOGLE_DEBUG") != NULL) {
+-		SoupLogger *logger;
+-
+-		logger = soup_logger_new (
+-			SOUP_LOGGER_LOG_BODY, 100 * 1024 * 1024);
+-		soup_session_add_feature (
+-			session, SOUP_SESSION_FEATURE (logger));
+-		g_object_unref (logger);
+-	}
+-
+-	g_object_set (
+-		session,
+-		SOUP_SESSION_TIMEOUT, 90,
+-		SOUP_SESSION_SSL_USE_SYSTEM_CA_FILE, TRUE,
+-		SOUP_SESSION_SSL_STRICT, TRUE,
+-		NULL);
+-
+-	g_signal_connect (
+-		session, "authenticate",
+-		G_CALLBACK (google_chooser_authenticate_cb), chooser);
+-}
+-
+-static gboolean
+-google_chooser_check_successful (EGoogleChooser *chooser,
+-				 SoupMessage *message,
+-                                 GError **error)
+-{
+-	GIOErrorEnum error_code;
+-	GTlsCertificate *certificate = NULL;
+-
+-	g_return_val_if_fail (E_IS_GOOGLE_CHOOSER (chooser), FALSE);
+-
+-	/* Loosely copied from the GVFS DAV backend. */
+-
+-	if (SOUP_STATUS_IS_SUCCESSFUL (message->status_code))
+-		return TRUE;
+-
+-	switch (message->status_code) {
+-		case SOUP_STATUS_CANCELLED:
+-			error_code = G_IO_ERROR_CANCELLED;
+-			break;
+-		case SOUP_STATUS_NOT_FOUND:
+-			error_code = G_IO_ERROR_NOT_FOUND;
+-			break;
+-		case SOUP_STATUS_UNAUTHORIZED:
+-		case SOUP_STATUS_PAYMENT_REQUIRED:
+-		case SOUP_STATUS_FORBIDDEN:
+-			error_code = G_IO_ERROR_PERMISSION_DENIED;
+-			break;
+-		case SOUP_STATUS_REQUEST_TIMEOUT:
+-			error_code = G_IO_ERROR_TIMED_OUT;
+-			break;
+-		case SOUP_STATUS_CANT_RESOLVE:
+-			error_code = G_IO_ERROR_HOST_NOT_FOUND;
+-			break;
+-		case SOUP_STATUS_NOT_IMPLEMENTED:
+-			error_code = G_IO_ERROR_NOT_SUPPORTED;
+-			break;
+-		case SOUP_STATUS_INSUFFICIENT_STORAGE:
+-			error_code = G_IO_ERROR_NO_SPACE;
+-			break;
+-		case SOUP_STATUS_SSL_FAILED:
+-			g_free (chooser->priv->certificate_pem);
+-			chooser->priv->certificate_pem = NULL;
+-
+-			g_object_get (G_OBJECT (message),
+-				"tls-certificate", &certificate,
+-				"tls-errors", &chooser->priv->certificate_errors,
+-				NULL);
+-			if (certificate) {
+-				g_object_get (certificate, "certificate-pem", &chooser->priv->certificate_pem, NULL);
+-				g_object_unref (certificate);
+-			}
+-
+-			g_free (chooser->priv->error_text);
+-			chooser->priv->error_text = g_strdup (message->reason_phrase);
+-
+-			g_set_error (
+-				error, SOUP_HTTP_ERROR, message->status_code,
+-				_("HTTP Error: %s"), message->reason_phrase);
+-			return FALSE;
+-		default:
+-			error_code = G_IO_ERROR_FAILED;
+-			break;
+-	}
+-
+-	g_set_error (
+-		error, G_IO_ERROR, error_code,
+-		_("HTTP Error: %s"), message->reason_phrase);
+-
+-	return FALSE;
+-}
+-
+-static xmlDocPtr
+-google_chooser_parse_xml (EGoogleChooser *chooser,
+-			  SoupMessage *message,
+-                          const gchar *expected_name,
+-                          GError **error)
+-{
+-	xmlDocPtr doc;
+-	xmlNodePtr root;
+-
+-	if (!google_chooser_check_successful (chooser, message, error))
+-		return NULL;
+-
+-	doc = xmlReadMemory (
+-		message->response_body->data,
+-		message->response_body->length,
+-		"response.xml", NULL,
+-		XML_PARSE_NONET |
+-		XML_PARSE_NOWARNING |
+-		XML_PARSE_NOCDATA |
+-		XML_PARSE_COMPACT);
+-
+-	if (doc == NULL) {
+-		g_set_error_literal (
+-			error, G_IO_ERROR, G_IO_ERROR_FAILED,
+-			_("Could not parse response"));
+-		return NULL;
+-	}
+-
+-	root = xmlDocGetRootElement (doc);
+-
+-	if (root == NULL || root->children == NULL) {
+-		g_set_error_literal (
+-			error, G_IO_ERROR, G_IO_ERROR_FAILED,
+-			_("Empty response"));
+-		xmlFreeDoc (doc);
+-		return NULL;
+-	}
+-
+-	if (g_strcmp0 ((gchar *) root->name, expected_name) != 0) {
+-		g_set_error_literal (
+-			error, G_IO_ERROR, G_IO_ERROR_FAILED,
+-			_("Unexpected reply from server"));
+-		xmlFreeDoc (doc);
+-		return NULL;
+-	}
+-
+-	return doc;
+-}
+-
+-static xmlXPathObjectPtr
+-google_chooser_get_xpath (xmlXPathContextPtr xp_ctx,
+-                          const gchar *path_format,
+-                          ...)
+-{
+-	xmlXPathObjectPtr xp_obj;
+-	va_list va;
+-	gchar *path;
+-
+-	va_start (va, path_format);
+-	path = g_strdup_vprintf (path_format, va);
+-	va_end (va);
+-
+-	xp_obj = xmlXPathEvalExpression (XC (path), xp_ctx);
+-
+-	g_free (path);
+-
+-	if (xp_obj == NULL)
+-		return NULL;
+-
+-	if (xp_obj->type != XPATH_NODESET) {
+-		xmlXPathFreeObject (xp_obj);
+-		return NULL;
+-	}
+-
+-	if (xmlXPathNodeSetGetLength (xp_obj->nodesetval) == 0) {
+-		xmlXPathFreeObject (xp_obj);
+-		return NULL;
+-	}
+-
+-	return xp_obj;
+-}
+-
+-static gchar *
+-google_chooser_get_xpath_string (xmlXPathContextPtr xp_ctx,
+-                                 const gchar *path_format,
+-                                 ...)
+-{
+-	xmlXPathObjectPtr xp_obj;
+-	va_list va;
+-	gchar *path;
+-	gchar *expression;
+-	gchar *string = NULL;
+-
+-	va_start (va, path_format);
+-	path = g_strdup_vprintf (path_format, va);
+-	va_end (va);
+-
+-	expression = g_strdup_printf ("string(%s)", path);
+-	xp_obj = xmlXPathEvalExpression (XC (expression), xp_ctx);
+-	g_free (expression);
+-
+-	g_free (path);
+-
+-	if (xp_obj == NULL)
+-		return NULL;
+-
+-	if (xp_obj->type == XPATH_STRING)
+-		string = g_strdup ((gchar *) xp_obj->stringval);
+-
+-	/* If the string is empty, return NULL. */
+-	if (string != NULL && *string == '\0') {
+-		g_free (string);
+-		string = NULL;
+-	}
+-
+-	xmlXPathFreeObject (xp_obj);
+-
+-	return string;
+-}
+-
+-static void
+-google_chooser_process_user_address_set (xmlXPathContextPtr xp_ctx,
+-                                         Context *context)
+-{
+-	xmlXPathObjectPtr xp_obj;
+-	gint ii, length;
+-
+-	/* XXX Is response[1] safe to assume? */
+-	xp_obj = google_chooser_get_xpath (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/C:calendar-user-address-set");
+-
+-	if (xp_obj == NULL)
+-		return;
+-
+-	length = xmlXPathNodeSetGetLength (xp_obj->nodesetval);
+-
+-	for (ii = 0; ii < length; ii++) {
+-		GList *duplicate;
+-		const gchar *address;
+-		gchar *href;
+-
+-		href = google_chooser_get_xpath_string (
+-			xp_ctx,
+-			"/D:multistatus"
+-			"/D:response"
+-			"/D:propstat"
+-			"/D:prop"
+-			"/C:calendar-user-address-set"
+-			"/D:href[%d]", ii + 1);
+-
+-		if (href == NULL)
+-			continue;
+-
+-		if (!g_str_has_prefix (href, "mailto:")) {
+-			g_free (href);
+-			continue;
+-		}
+-
+-		/* strlen("mailto:") == 7 */
+-		address = href + 7;
+-
+-		/* Avoid duplicates. */
+-		duplicate = g_list_find_custom (
+-			context->user_address_set,
+-			address, (GCompareFunc) strdup);
+-
+-		if (duplicate != NULL) {
+-			g_free (href);
+-			continue;
+-		}
+-
+-		context->user_address_set = g_list_append (
+-			context->user_address_set, g_strdup (address));
+-
+-		g_free (href);
+-	}
+-
+-	xmlXPathFreeObject (xp_obj);
+-}
+-
+-static SupportedComponentSet
+-google_chooser_get_supported_component_set (xmlXPathContextPtr xp_ctx,
+-                                            gint index)
+-{
+-	xmlXPathObjectPtr xp_obj;
+-	SupportedComponentSet set = 0;
+-	gint ii, length;
+-
+-	xp_obj = google_chooser_get_xpath (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response[%d]"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/C:supported-calendar-component-set"
+-		"/C:comp", index);
+-
+-	/* If the property is not present, assume all component
+-	 * types are supported.  (RFC 4791, Section 5.2.3) */
+-	if (xp_obj == NULL)
+-		return SUPPORTS_ALL;
+-
+-	length = xmlXPathNodeSetGetLength (xp_obj->nodesetval);
+-
+-	for (ii = 0; ii < length; ii++) {
+-		gchar *name;
+-
+-		name = google_chooser_get_xpath_string (
+-			xp_ctx,
+-			"/D:multistatus"
+-			"/D:response[%d]"
+-			"/D:propstat"
+-			"/D:prop"
+-			"/C:supported-calendar-component-set"
+-			"/C:comp[%d]"
+-			"/@name", index, ii + 1);
+-
+-		if (name == NULL)
+-			continue;
+-
+-		if (g_ascii_strcasecmp (name, "VEVENT") == 0)
+-			set |= SUPPORTS_VEVENT;
+-		else if (g_ascii_strcasecmp (name, "VTODO") == 0)
+-			set |= SUPPORTS_VTODO;
+-		else if (g_ascii_strcasecmp (name, "VJOURNAL") == 0)
+-			set |= SUPPORTS_VJOURNAL;
+-
+-		g_free (name);
+-	}
+-
+-	xmlXPathFreeObject (xp_obj);
+-
+-	return set;
+-}
+-
+-static void
+-google_chooser_process_response (SoupSession *session,
+-                                 SoupMessage *message,
+-                                 GSimpleAsyncResult *simple,
+-                                 xmlXPathContextPtr xp_ctx,
+-                                 gint index)
+-{
+-	GObject *object;
+-	xmlXPathObjectPtr xp_obj;
+-	SupportedComponentSet comp_set;
+-	EGoogleChooser *chooser;
+-	GtkTreeModel *tree_model;
+-	GtkTreeIter iter;
+-	GdkColor color;
+-	gchar *color_spec;
+-	gchar *display_name;
+-	gchar *href_decoded;
+-	gchar *href_encoded;
+-	gchar *status_line;
+-	guint status;
+-	gboolean has_color;
+-	gboolean success;
+-
+-	/* This returns a new reference, for reasons passing understanding. */
+-	object = g_async_result_get_source_object (G_ASYNC_RESULT (simple));
+-
+-	chooser = E_GOOGLE_CHOOSER (object);
+-	tree_model = gtk_tree_view_get_model (GTK_TREE_VIEW (object));
+-
+-	g_object_unref (object);
+-
+-	status_line = google_chooser_get_xpath_string (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response[%d]"
+-		"/D:propstat"
+-		"/D:status",
+-		index);
+-
+-	if (status_line == NULL)
+-		return;
+-
+-	success = soup_headers_parse_status_line (
+-		status_line, NULL, &status, NULL);
+-
+-	g_free (status_line);
+-
+-	if (!success || status != SOUP_STATUS_OK)
+-		return;
+-
+-	href_encoded = google_chooser_get_xpath_string (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response[%d]"
+-		"/D:href",
+-		index);
+-
+-	if (href_encoded == NULL)
+-		return;
+-
+-	href_decoded = soup_uri_decode (href_encoded);
+-
+-	/* Get the display name or fall back to the href. */
+-
+-	display_name = google_chooser_get_xpath_string (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response[%d]"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/D:displayname",
+-		index);
+-
+-	if (display_name == NULL) {
+-		gchar *href_copy, *cp;
+-
+-		href_copy = g_strdup (href_decoded);
+-
+-		/* Use the last non-empty path segment. */
+-		while ((cp = strrchr (href_copy, '/')) != NULL) {
+-			if (*(cp + 1) == '\0')
+-				*cp = '\0';
+-			else {
+-				display_name = g_strdup (cp + 1);
+-				break;
+-			}
+-		}
+-
+-		g_free (href_copy);
+-	}
+-
+-	/* Make sure the resource is a calendar. */
+-
+-	xp_obj = google_chooser_get_xpath (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response[%d]"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/D:resourcetype"
+-		"/C:calendar",
+-		index);
+-
+-	if (xp_obj == NULL)
+-		goto exit;
+-
+-	xmlXPathFreeObject (xp_obj);
+-
+-	/* Get the color specification string. */
+-
+-	color_spec = google_chooser_get_xpath_string (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response[%d]"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/IC:calendar-color",
+-		index);
+-
+-	if (color_spec != NULL) {
+-		has_color = gdk_color_parse (color_spec, &color);
+-		if (!has_color && strlen (color_spec) == 9) {
+-			/* It can parse only #rrggbb, but servers like Google can return #rrggbbaa,
+-			   thus strip the alpha channel and try again */
+-			color_spec[7] = '\0';
+-			has_color = gdk_color_parse (color_spec, &color);
+-		}
+-	} else
+-		has_color = FALSE;
+-
+-	g_free (color_spec);
+-
+-	/* Which calendar component types are supported? */
+-
+-	comp_set = google_chooser_get_supported_component_set (xp_ctx, index);
+-
+-	switch (e_google_chooser_get_source_type (chooser)) {
+-		case E_CAL_CLIENT_SOURCE_TYPE_EVENTS:
+-			if ((comp_set & SUPPORTS_VEVENT) == 0)
+-				goto exit;
+-			break;
+-		case E_CAL_CLIENT_SOURCE_TYPE_MEMOS:
+-			if ((comp_set & SUPPORTS_VJOURNAL) == 0)
+-				goto exit;
+-			break;
+-		case E_CAL_CLIENT_SOURCE_TYPE_TASKS:
+-			if ((comp_set & SUPPORTS_VTODO) == 0)
+-				goto exit;
+-			break;
+-		default:
+-			goto exit;
+-	}
+-
+-	/* Append a new tree model row. */
+-
+-	gtk_list_store_append (GTK_LIST_STORE (tree_model), &iter);
+-
+-	gtk_list_store_set (
+-		GTK_LIST_STORE (tree_model), &iter,
+-		COLUMN_DISPLAY_NAME, display_name,
+-		COLUMN_PATH_ENCODED, href_encoded,
+-		COLUMN_PATH_DECODED, href_decoded,
+-		COLUMN_COLOR, has_color ? &color : NULL,
+-		COLUMN_HAS_COLOR, has_color,
+-		-1);
+-
+-exit:
+-	g_free (display_name);
+-	g_free (href_decoded);
+-	g_free (href_encoded);
+-}
+-
+-static void
+-google_chooser_collection_details_cb (SoupSession *session,
+-                                      SoupMessage *message,
+-                                      GSimpleAsyncResult *simple)
+-{
+-	xmlDocPtr doc;
+-	xmlXPathContextPtr xp_ctx;
+-	xmlXPathObjectPtr xp_obj;
+-	GObject *chooser_obj;
+-	GError *error = NULL;
+-
+-	chooser_obj = g_async_result_get_source_object (G_ASYNC_RESULT (simple));
+-
+-	doc = google_chooser_parse_xml (E_GOOGLE_CHOOSER (chooser_obj), message, "multistatus", &error);
+-
+-	g_clear_object (&chooser_obj);
+-
+-	if (error != NULL) {
+-		g_warn_if_fail (doc == NULL);
+-		g_simple_async_result_set_from_error (simple, error);
+-		g_error_free (error);
+-		goto exit;
+-	}
+-
+-	xp_ctx = xmlXPathNewContext (doc);
+-	xmlXPathRegisterNs (xp_ctx, XC ("D"), XC (NS_WEBDAV));
+-	xmlXPathRegisterNs (xp_ctx, XC ("C"), XC (NS_GOOGLE));
+-	xmlXPathRegisterNs (xp_ctx, XC ("CS"), XC (NS_CALSRV));
+-	xmlXPathRegisterNs (xp_ctx, XC ("IC"), XC (NS_ICAL));
+-
+-	xp_obj = google_chooser_get_xpath (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response");
+-
+-	if (xp_obj != NULL) {
+-		gint length, ii;
+-
+-		length = xmlXPathNodeSetGetLength (xp_obj->nodesetval);
+-
+-		for (ii = 0; ii < length; ii++)
+-			google_chooser_process_response (
+-				session, message, simple, xp_ctx, ii + 1);
+-
+-		xmlXPathFreeObject (xp_obj);
+-	}
+-
+-	xmlXPathFreeContext (xp_ctx);
+-	xmlFreeDoc (doc);
+-
+-exit:
+-	/* If we were cancelled then we're in a GCancellable::cancelled
+-	 * signal handler right now and GCancellable has its mutex locked,
+-	 * which means calling g_cancellable_disconnect() now will deadlock
+-	 * when it too tries to acquire the mutex.  So defer the GAsyncResult
+-	 * completion to an idle callback to avoid this deadlock. */
+-	g_simple_async_result_complete_in_idle (simple);
+-	g_object_unref (simple);
+-}
+-
+-static void
+-google_chooser_get_collection_details (SoupSession *session,
+-                                       SoupMessage *message,
+-                                       const gchar *path_or_uri,
+-                                       GSimpleAsyncResult *simple,
+-                                       Context *context)
+-{
+-	SoupURI *soup_uri;
+-
+-	soup_uri = soup_uri_new (path_or_uri);
+-	if (!soup_uri ||
+-	    !soup_uri_get_scheme (soup_uri) ||
+-	    !soup_uri_get_host (soup_uri) ||
+-	    !soup_uri_get_path (soup_uri) ||
+-	    !*soup_uri_get_scheme (soup_uri) ||
+-	    !*soup_uri_get_host (soup_uri) ||
+-	    !*soup_uri_get_path (soup_uri)) {
+-		/* it's a path only, not full uri */
+-		if (soup_uri)
+-			soup_uri_free (soup_uri);
+-		soup_uri = soup_uri_copy (soup_message_get_uri (message));
+-		soup_uri_set_path (soup_uri, path_or_uri);
+-	}
+-
+-	message = google_chooser_new_propfind (
+-		session, soup_uri, DEPTH_1,
+-		NS_WEBDAV, XC ("displayname"),
+-		NS_WEBDAV, XC ("resourcetype"),
+-		NS_GOOGLE, XC ("calendar-description"),
+-		NS_GOOGLE, XC ("supported-calendar-component-set"),
+-		NS_GOOGLE, XC ("calendar-user-address-set"),
+-		NS_CALSRV, XC ("getctag"),
+-		NS_ICAL,   XC ("calendar-color"),
+-		NULL);
+-
+-	e_soup_ssl_trust_connect (message, context->source);
+-
+-	/* This takes ownership of the message. */
+-	soup_session_queue_message (
+-		session, message, (SoupSessionCallback)
+-		google_chooser_collection_details_cb, simple);
+-
+-	soup_uri_free (soup_uri);
+-}
+-
+-static void
+-google_chooser_calendar_home_set_cb (SoupSession *session,
+-                                     SoupMessage *message,
+-                                     GSimpleAsyncResult *simple)
+-{
+-	Context *context;
+-	SoupURI *soup_uri;
+-	xmlDocPtr doc;
+-	xmlXPathContextPtr xp_ctx;
+-	xmlXPathObjectPtr xp_obj;
+-	gchar *calendar_home_set;
+-	GObject *chooser_obj;
+-	GError *error = NULL;
+-
+-	context = g_simple_async_result_get_op_res_gpointer (simple);
+-	chooser_obj = g_async_result_get_source_object (G_ASYNC_RESULT (simple));
+-
+-	doc = google_chooser_parse_xml (E_GOOGLE_CHOOSER (chooser_obj), message, "multistatus", &error);
+-
+-	g_clear_object (&chooser_obj);
+-
+-	/* If we were cancelled then we're in a GCancellable::cancelled
+-	 * signal handler right now and GCancellable has its mutex locked,
+-	 * which means calling g_cancellable_disconnect() now will deadlock
+-	 * when it too tries to acquire the mutex.  So defer the GAsyncResult
+-	 * completion to an idle callback to avoid this deadlock. */
+-	if (error != NULL) {
+-		g_simple_async_result_set_from_error (simple, error);
+-		g_simple_async_result_complete_in_idle (simple);
+-		g_object_unref (simple);
+-		g_error_free (error);
+-		return;
+-	}
+-
+-	g_return_if_fail (doc != NULL);
+-
+-	xp_ctx = xmlXPathNewContext (doc);
+-	xmlXPathRegisterNs (xp_ctx, XC ("D"), XC (NS_WEBDAV));
+-	xmlXPathRegisterNs (xp_ctx, XC ("C"), XC (NS_GOOGLE));
+-
+-	/* Record any "C:calendar-user-address-set" properties. */
+-	google_chooser_process_user_address_set (xp_ctx, context);
+-
+-	/* Try to find the calendar home URL using the
+-	 * following properties in order of preference:
+-	 *
+-	 *   "C:calendar-home-set"
+-	 *   "D:current-user-principal"
+-	 *   "D:principal-URL"
+-	 *
+-	 * If the second or third URL preference is used, rerun
+-	 * the PROPFIND method on that URL at Depth=1 in hopes
+-	 * of getting a proper "C:calendar-home-set" property.
+-	 */
+-
+-	/* FIXME There can be multiple "D:href" elements for a
+-	 *       "C:calendar-home-set".  We're only processing
+-	 *       the first one.  Need to iterate over them. */
+-
+-	calendar_home_set = google_chooser_get_xpath_string (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/C:calendar-home-set"
+-		"/D:href");
+-
+-	if (calendar_home_set != NULL)
+-		goto get_collection_details;
+-
+-	g_free (calendar_home_set);
+-
+-	calendar_home_set = google_chooser_get_xpath_string (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/D:current-user-principal"
+-		"/D:href");
+-
+-	if (calendar_home_set != NULL)
+-		goto retry_propfind;
+-
+-	g_free (calendar_home_set);
+-
+-	calendar_home_set = google_chooser_get_xpath_string (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/D:principal-URL"
+-		"/D:href");
+-
+-	if (calendar_home_set != NULL)
+-		goto retry_propfind;
+-
+-	g_free (calendar_home_set);
+-	calendar_home_set = NULL;
+-
+-	/* None of the aforementioned properties are present.  If the
+-	 * user-supplied CalDAV URL is a calendar resource, use that. */
+-
+-	xp_obj = google_chooser_get_xpath (
+-		xp_ctx,
+-		"/D:multistatus"
+-		"/D:response"
+-		"/D:propstat"
+-		"/D:prop"
+-		"/D:resourcetype"
+-		"/C:calendar");
+-
+-	if (xp_obj != NULL) {
+-		soup_uri = soup_message_get_uri (message);
+-
+-		if (soup_uri->path != NULL && *soup_uri->path != '\0') {
+-			gchar *slash;
+-
+-			soup_uri = soup_uri_copy (soup_uri);
+-
+-			slash = strrchr (soup_uri->path, '/');
+-			while (slash != NULL && slash != soup_uri->path) {
+-
+-				if (slash[1] != '\0') {
+-					slash[1] = '\0';
+-					calendar_home_set =
+-						g_strdup (soup_uri->path);
+-					break;
+-				}
+-
+-				slash[0] = '\0';
+-				slash = strrchr (soup_uri->path, '/');
+-			}
+-
+-			soup_uri_free (soup_uri);
+-		}
+-
+-		xmlXPathFreeObject (xp_obj);
+-	}
+-
+-	if (calendar_home_set == NULL || *calendar_home_set == '\0') {
+-		g_free (calendar_home_set);
+-		g_simple_async_result_set_error (
+-			simple, G_IO_ERROR, G_IO_ERROR_FAILED,
+-			_("Could not locate user's calendars"));
+-		g_simple_async_result_complete (simple);
+-		g_object_unref (simple);
+-		return;
+-	}
+-
+-get_collection_details:
+-
+-	xmlXPathFreeContext (xp_ctx);
+-	xmlFreeDoc (doc);
+-
+-	google_chooser_get_collection_details (
+-		session, message, calendar_home_set, simple, context);
+-
+-	g_free (calendar_home_set);
+-
+-	return;
+-
+-retry_propfind:
+-
+-	xmlXPathFreeContext (xp_ctx);
+-	xmlFreeDoc (doc);
+-
+-	soup_uri = soup_uri_copy (soup_message_get_uri (message));
+-	soup_uri_set_path (soup_uri, calendar_home_set);
+-
+-	/* Note that we omit "D:resourcetype", "D:current-user-principal"
+-	 * and "D:principal-URL" in order to short-circuit the recursion. */
+-	message = google_chooser_new_propfind (
+-		session, soup_uri, DEPTH_1,
+-		NS_GOOGLE, XC ("calendar-home-set"),
+-		NS_GOOGLE, XC ("calendar-user-address-set"),
+-		NULL);
+-
+-	e_soup_ssl_trust_connect (message, context->source);
+-
+-	/* This takes ownership of the message. */
+-	soup_session_queue_message (
+-		session, message, (SoupSessionCallback)
+-		google_chooser_calendar_home_set_cb, simple);
+-
+-	soup_uri_free (soup_uri);
+-
+-	g_free (calendar_home_set);
+-}
+-
+-static void
+-google_chooser_set_registry (EGoogleChooser *chooser,
+-                             ESourceRegistry *registry)
+-{
+-	g_return_if_fail (E_IS_SOURCE_REGISTRY (registry));
+-	g_return_if_fail (chooser->priv->registry == NULL);
+-
+-	chooser->priv->registry = g_object_ref (registry);
+-}
+-
+-static void
+-google_chooser_set_source (EGoogleChooser *chooser,
+-                           ESource *source)
+-{
+-	g_return_if_fail (E_IS_SOURCE (source));
+-	g_return_if_fail (chooser->priv->source == NULL);
+-
+-	chooser->priv->source = g_object_ref (source);
+-}
+-
+-static void
+-google_chooser_set_source_type (EGoogleChooser *chooser,
+-                                ECalClientSourceType source_type)
+-{
+-	chooser->priv->source_type = source_type;
+-}
+-
+-static void
+-google_chooser_set_property (GObject *object,
+-                             guint property_id,
+-                             const GValue *value,
+-                             GParamSpec *pspec)
+-{
+-	switch (property_id) {
+-		case PROP_REGISTRY:
+-			google_chooser_set_registry (
+-				E_GOOGLE_CHOOSER (object),
+-				g_value_get_object (value));
+-			return;
+-
+-		case PROP_SOURCE:
+-			google_chooser_set_source (
+-				E_GOOGLE_CHOOSER (object),
+-				g_value_get_object (value));
+-			return;
+-
+-		case PROP_SOURCE_TYPE:
+-			google_chooser_set_source_type (
+-				E_GOOGLE_CHOOSER (object),
+-				g_value_get_enum (value));
+-			return;
+-	}
+-
+-	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+-}
+-
+-static void
+-google_chooser_get_property (GObject *object,
+-                             guint property_id,
+-                             GValue *value,
+-                             GParamSpec *pspec)
+-{
+-	switch (property_id) {
+-		case PROP_REGISTRY:
+-			g_value_set_object (
+-				value, e_google_chooser_get_registry (
+-				E_GOOGLE_CHOOSER (object)));
+-			return;
+-
+-		case PROP_SOURCE:
+-			g_value_set_object (
+-				value, e_google_chooser_get_source (
+-				E_GOOGLE_CHOOSER (object)));
+-			return;
+-
+-		case PROP_SOURCE_TYPE:
+-			g_value_set_enum (
+-				value, e_google_chooser_get_source_type (
+-				E_GOOGLE_CHOOSER (object)));
+-			return;
+-	}
+-
+-	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+-}
+-
+-static void
+-google_chooser_dispose (GObject *object)
+-{
+-	EGoogleChooserPrivate *priv;
+-
+-	priv = E_GOOGLE_CHOOSER_GET_PRIVATE (object);
+-
+-	g_clear_object (&priv->registry);
+-	g_clear_object (&priv->prompter);
+-	g_clear_object (&priv->source);
+-	g_clear_object (&priv->session);
+-
+-	/* Chain up to parent's dispose() method. */
+-	G_OBJECT_CLASS (e_google_chooser_parent_class)->dispose (object);
+-}
+-
+-static void
+-google_chooser_finalize (GObject *object)
+-{
+-	EGoogleChooserPrivate *priv;
+-
+-	priv = E_GOOGLE_CHOOSER_GET_PRIVATE (object);
+-
+-	g_list_free_full (
+-		priv->user_address_set,
+-		(GDestroyNotify) g_free);
+-
+-	g_free (priv->username);
+-	g_free (priv->password);
+-	g_free (priv->certificate_pem);
+-	g_free (priv->error_text);
+-
+-	/* Chain up to parent's finalize() method. */
+-	G_OBJECT_CLASS (e_google_chooser_parent_class)->finalize (object);
+-}
+-
+-static void
+-google_chooser_constructed (GObject *object)
+-{
+-	EGoogleChooser *chooser;
+-	GtkTreeView *tree_view;
+-	GtkListStore *list_store;
+-	GtkCellRenderer *renderer;
+-	GtkTreeViewColumn *column;
+-	SoupSession *session;
+-
+-	/* Chain up to parent's constructed() method. */
+-	G_OBJECT_CLASS (e_google_chooser_parent_class)->constructed (object);
+-
+-	chooser = E_GOOGLE_CHOOSER (object);
+-	session = soup_session_new ();
+-	google_chooser_configure_session (chooser, session);
+-	chooser->priv->session = session;
+-
+-	chooser->priv->prompter = e_credentials_prompter_new (chooser->priv->registry);
+-	e_credentials_prompter_set_auto_prompt (chooser->priv->prompter, FALSE);
+-
+-	tree_view = GTK_TREE_VIEW (object);
+-
+-	list_store = gtk_list_store_new (
+-		NUM_COLUMNS,
+-		G_TYPE_STRING,		/* COLUMN_DISPLAY_NAME */
+-		G_TYPE_STRING,		/* COLUMN_PATH_ENCODED */
+-		G_TYPE_STRING,		/* COLUMN_PATH_DECODED */
+-		GDK_TYPE_COLOR,		/* COLUMN_COLOR */
+-		G_TYPE_BOOLEAN);	/* COLUMN_HAS_COLOR */
+-
+-	gtk_tree_view_set_model (tree_view, GTK_TREE_MODEL (list_store));
+-
+-	column = gtk_tree_view_column_new ();
+-	gtk_tree_view_column_set_expand (column, TRUE);
+-	gtk_tree_view_column_set_title (column, _("Name"));
+-	gtk_tree_view_insert_column (tree_view, column, -1);
+-
+-	renderer = e_cell_renderer_color_new ();
+-	gtk_tree_view_column_pack_start (column, renderer, FALSE);
+-	gtk_tree_view_column_set_attributes (
+-		column, renderer,
+-		"color", COLUMN_COLOR,
+-		"visible", COLUMN_HAS_COLOR,
+-		NULL);
+-
+-	renderer = gtk_cell_renderer_text_new ();
+-	gtk_tree_view_column_pack_start (column, renderer, TRUE);
+-	gtk_tree_view_column_set_attributes (
+-		column, renderer,
+-		"text", COLUMN_DISPLAY_NAME,
+-		NULL);
+-}
+-
+-/* Helper for google_chooser_try_password_sync() */
+-static void
+-google_chooser_try_password_cancelled_cb (GCancellable *cancellable,
+-                                          SoupSession *session)
+-{
+-	soup_session_abort (session);
+-}
+-
+-static ESourceAuthenticationResult
+-google_chooser_try_password_sync (EGoogleChooser *chooser,
+-                                  const ENamedParameters *credentials,
+-                                  GCancellable *cancellable,
+-                                  GError **error)
+-{
+-	ESourceAuthenticationResult result;
+-	SoupMessage *message;
+-	SoupSession *session;
+-	SoupURI *soup_uri;
+-	ESource *source;
+-	ESourceWebdav *extension;
+-	const gchar *extension_name;
+-	gulong cancel_id = 0;
+-	GError *local_error = NULL;
+-
+-	g_return_val_if_fail (E_IS_GOOGLE_CHOOSER (chooser), E_SOURCE_AUTHENTICATION_ERROR);
+-	g_return_val_if_fail (credentials != NULL, E_SOURCE_AUTHENTICATION_ERROR);
+-
+-	source = e_google_chooser_get_source (chooser);
+-	extension_name = E_SOURCE_EXTENSION_WEBDAV_BACKEND;
+-	extension = e_source_get_extension (source, extension_name);
+-
+-	/* Cache the password for later use in our
+-	 * SoupSession::authenticate signal handler. */
+-	g_free (chooser->priv->username);
+-	chooser->priv->username = g_strdup (e_named_parameters_get (credentials, E_SOURCE_CREDENTIAL_USERNAME));
+-
+-	g_free (chooser->priv->password);
+-	chooser->priv->password = g_strdup (e_named_parameters_get (credentials, E_SOURCE_CREDENTIAL_PASSWORD));
+-
+-	if (e_named_parameters_get (credentials, E_SOURCE_CREDENTIAL_SSL_TRUST))
+-		e_source_webdav_set_ssl_trust (extension, e_named_parameters_get (credentials, E_SOURCE_CREDENTIAL_SSL_TRUST));
+-
+-	g_free (chooser->priv->certificate_pem);
+-	chooser->priv->certificate_pem = NULL;
+-	chooser->priv->certificate_errors = 0;
+-	g_free (chooser->priv->error_text);
+-	chooser->priv->error_text = NULL;
+-
+-	/* Create our own SoupSession so we
+-	 * can try the password synchronously. */
+-	session = soup_session_new ();
+-	google_chooser_configure_session (chooser, session);
+-
+-	soup_uri = e_source_webdav_dup_soup_uri (extension);
+-	g_return_val_if_fail (soup_uri != NULL, E_SOURCE_AUTHENTICATION_ERROR);
+-
+-	/* Try some simple PROPFIND query.  We don't care about the query
+-	 * result, only whether the CalDAV server will accept our password. */
+-	message = google_chooser_new_propfind (
+-		session, soup_uri, DEPTH_0,
+-		NS_WEBDAV, XC ("resourcetype"),
+-		NULL);
+-
+-	if (G_IS_CANCELLABLE (cancellable))
+-		cancel_id = g_cancellable_connect (
+-			cancellable,
+-			G_CALLBACK (google_chooser_try_password_cancelled_cb),
+-			g_object_ref (session),
+-			(GDestroyNotify) g_object_unref);
+-
+-	e_soup_ssl_trust_connect (message, source);
+-
+-	soup_session_send_message (session, message);
+-
+-	if (cancel_id > 0)
+-		g_cancellable_disconnect (cancellable, cancel_id);
+-
+-	if (google_chooser_check_successful (chooser, message, &local_error)) {
+-		result = E_SOURCE_AUTHENTICATION_ACCEPTED;
+-
+-	} else if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED)) {
+-		result = E_SOURCE_AUTHENTICATION_REJECTED;
+-		/* Return also the error here. */
+-
+-	} else if (g_error_matches (local_error, SOUP_HTTP_ERROR, SOUP_STATUS_SSL_FAILED)) {
+-		result = E_SOURCE_AUTHENTICATION_ERROR_SSL_FAILED;
+-
+-	} else {
+-		result = E_SOURCE_AUTHENTICATION_ERROR;
+-	}
+-
+-	if (local_error != NULL)
+-		g_propagate_error (error, local_error);
+-
+-	g_object_unref (message);
+-	g_object_unref (session);
+-
+-	soup_uri_free (soup_uri);
+-
+-	return result;
+-}
+-
+-static void
+-e_google_chooser_class_init (EGoogleChooserClass *class)
+-{
+-	GObjectClass *object_class;
+-
+-	g_type_class_add_private (class, sizeof (EGoogleChooserPrivate));
+-
+-	object_class = G_OBJECT_CLASS (class);
+-	object_class->set_property = google_chooser_set_property;
+-	object_class->get_property = google_chooser_get_property;
+-	object_class->dispose = google_chooser_dispose;
+-	object_class->finalize = google_chooser_finalize;
+-	object_class->constructed = google_chooser_constructed;
+-
+-	g_object_class_install_property (
+-		object_class,
+-		PROP_REGISTRY,
+-		g_param_spec_object (
+-			"registry",
+-			"Registry",
+-			"Data source registry",
+-			E_TYPE_SOURCE_REGISTRY,
+-			G_PARAM_READWRITE |
+-			G_PARAM_CONSTRUCT_ONLY));
+-
+-	g_object_class_install_property (
+-		object_class,
+-		PROP_SOURCE,
+-		g_param_spec_object (
+-			"source",
+-			"Source",
+-			"CalDAV data source",
+-			E_TYPE_SOURCE,
+-			G_PARAM_READWRITE |
+-			G_PARAM_CONSTRUCT_ONLY));
+-
+-	g_object_class_install_property (
+-		object_class,
+-		PROP_SOURCE_TYPE,
+-		g_param_spec_enum (
+-			"source-type",
+-			"Source Type",
+-			"The iCalendar object type",
+-			E_TYPE_CAL_CLIENT_SOURCE_TYPE,
+-			E_CAL_CLIENT_SOURCE_TYPE_EVENTS,
+-			G_PARAM_READWRITE |
+-			G_PARAM_CONSTRUCT_ONLY));
+-}
+-
+-static void
+-e_google_chooser_class_finalize (EGoogleChooserClass *class)
+-{
+-}
+-
+-static void
+-e_google_chooser_init (EGoogleChooser *chooser)
+-{
+-	chooser->priv = E_GOOGLE_CHOOSER_GET_PRIVATE (chooser);
+-	chooser->priv->first_auth_request = TRUE;
+-}
+-
+-void
+-e_google_chooser_type_register (GTypeModule *type_module)
+-{
+-	/* XXX G_DEFINE_DYNAMIC_TYPE declares a static type registration
+-	 *     function, so we have to wrap it with a public function in
+-	 *     order to register types from a separate compilation unit. */
+-	e_google_chooser_register_type (type_module);
+-}
+-
+-GtkWidget *
+-e_google_chooser_new (ESourceRegistry *registry,
+-                      ESource *source,
+-                      ECalClientSourceType source_type)
+-{
+-	g_return_val_if_fail (E_IS_SOURCE_REGISTRY (registry), NULL);
+-	g_return_val_if_fail (E_IS_SOURCE (source), NULL);
+-
+-	return g_object_new (
+-		E_TYPE_GOOGLE_CHOOSER,
+-		"registry", registry,
+-		"source", source,
+-		"source-type", source_type, NULL);
+-}
+-
+-ESourceRegistry *
+-e_google_chooser_get_registry (EGoogleChooser *chooser)
+-{
+-	g_return_val_if_fail (E_IS_GOOGLE_CHOOSER (chooser), NULL);
+-
+-	return chooser->priv->registry;
+-}
+-
+-ECredentialsPrompter *
+-e_google_chooser_get_prompter (EGoogleChooser *chooser)
+-{
+-	g_return_val_if_fail (E_IS_GOOGLE_CHOOSER (chooser), NULL);
+-
+-	return chooser->priv->prompter;
+-}
+-
+-ESource *
+-e_google_chooser_get_source (EGoogleChooser *chooser)
+-{
+-	g_return_val_if_fail (E_IS_GOOGLE_CHOOSER (chooser), NULL);
+-
+-	return chooser->priv->source;
+-}
+-
+-ECalClientSourceType
+-e_google_chooser_get_source_type (EGoogleChooser *chooser)
+-{
+-	g_return_val_if_fail (E_IS_GOOGLE_CHOOSER (chooser), 0);
+-
+-	return chooser->priv->source_type;
+-}
+-
+-void
+-e_google_chooser_populate (EGoogleChooser *chooser,
+-                           GCancellable *cancellable,
+-                           GAsyncReadyCallback callback,
+-                           gpointer user_data)
+-{
+-	Context *context;
+-	ESource *source;
+-	SoupURI *soup_uri;
+-	SoupMessage *message;
+-	ESourceWebdav *extension;
+-	GtkTreeModel *tree_model;
+-	GSimpleAsyncResult *simple;
+-	const gchar *extension_name;
+-
+-	g_return_if_fail (E_IS_GOOGLE_CHOOSER (chooser));
+-
+-	tree_model = gtk_tree_view_get_model (GTK_TREE_VIEW (chooser));
+-	gtk_list_store_clear (GTK_LIST_STORE (tree_model));
+-	soup_session_abort (chooser->priv->session);
+-
+-	source = e_google_chooser_get_source (chooser);
+-	extension_name = E_SOURCE_EXTENSION_WEBDAV_BACKEND;
+-	extension = e_source_get_extension (source, extension_name);
+-
+-	soup_uri = e_source_webdav_dup_soup_uri (extension);
+-	g_return_if_fail (soup_uri != NULL);
+-
+-	context = context_new (chooser, cancellable);
+-
+-	simple = g_simple_async_result_new (
+-		G_OBJECT (chooser), callback,
+-		user_data, e_google_chooser_populate);
+-
+-	g_simple_async_result_set_op_res_gpointer (
+-		simple, context, (GDestroyNotify) context_free);
+-
+-	message = google_chooser_new_propfind (
+-		context->session, soup_uri, DEPTH_0,
+-		NS_WEBDAV, XC ("resourcetype"),
+-		NS_GOOGLE, XC ("calendar-home-set"),
+-		NS_GOOGLE, XC ("calendar-user-address-set"),
+-		NS_WEBDAV, XC ("current-user-principal"),
+-		NS_WEBDAV, XC ("principal-URL"),
+-		NULL);
+-
+-	e_soup_ssl_trust_connect (message, source);
+-
+-	/* This takes ownership of the message. */
+-	soup_session_queue_message (
+-		context->session, message, (SoupSessionCallback)
+-		google_chooser_calendar_home_set_cb, simple);
+-
+-	soup_uri_free (soup_uri);
+-}
+-
+-gboolean
+-e_google_chooser_populate_finish (EGoogleChooser *chooser,
+-                                  GAsyncResult *result,
+-                                  GError **error)
+-{
+-	GSimpleAsyncResult *simple;
+-	Context *context;
+-
+-	g_return_val_if_fail (
+-		g_simple_async_result_is_valid (
+-		result, G_OBJECT (chooser),
+-		e_google_chooser_populate), FALSE);
+-
+-	simple = G_SIMPLE_ASYNC_RESULT (result);
+-	context = g_simple_async_result_get_op_res_gpointer (simple);
+-
+-	if (g_simple_async_result_propagate_error (simple, error))
+-		return FALSE;
+-
+-	/* Transfer user addresses to the private struct. */
+-
+-	g_list_free_full (
+-		chooser->priv->user_address_set,
+-		(GDestroyNotify) g_free);
+-
+-	chooser->priv->user_address_set = context->user_address_set;
+-	context->user_address_set = NULL;
+-
+-	return TRUE;
+-}
+-
+-gboolean
+-e_google_chooser_apply_selected (EGoogleChooser *chooser)
+-{
+-	ESourceWebdav *webdav_extension;
+-	GtkTreeSelection *selection;
+-	GtkTreeModel *model;
+-	GtkTreeIter iter;
+-	ESource *source;
+-	GdkColor *color;
+-	gboolean has_color;
+-	gchar *display_name;
+-	gchar *path_encoded;
+-
+-	g_return_val_if_fail (E_IS_GOOGLE_CHOOSER (chooser), FALSE);
+-
+-	source = e_google_chooser_get_source (chooser);
+-	selection = gtk_tree_view_get_selection (GTK_TREE_VIEW (chooser));
+-
+-	if (!gtk_tree_selection_get_selected (selection, &model, &iter))
+-		return FALSE;
+-
+-	gtk_tree_model_get (
+-		model, &iter,
+-		COLUMN_DISPLAY_NAME, &display_name,
+-		COLUMN_PATH_ENCODED, &path_encoded,
+-		COLUMN_HAS_COLOR, &has_color,
+-		COLUMN_COLOR, &color,
+-		-1);
+-
+-	/* Sanity check. */
+-	g_warn_if_fail (
+-		(has_color && color != NULL) ||
+-		(!has_color && color == NULL));
+-
+-	webdav_extension = e_source_get_extension (
+-		source, E_SOURCE_EXTENSION_WEBDAV_BACKEND);
+-
+-	e_source_set_display_name (source, display_name);
+-
+-	e_source_webdav_set_display_name (webdav_extension, display_name);
+-	e_source_webdav_set_resource_path (webdav_extension, path_encoded);
+-
+-	/* XXX For now just pick the first user address in the list.
+-	 *     Might be better to compare the list against our own mail
+-	 *     accounts and give preference to matches (especially if an
+-	 *     address matches the default mail account), but I'm not sure
+-	 *     if multiple user addresses are common enough to justify the
+-	 *     extra effort. */
+-	if (chooser->priv->user_address_set != NULL)
+-		e_source_webdav_set_email_address (
+-			webdav_extension,
+-			chooser->priv->user_address_set->data);
+-
+-	if (has_color) {
+-		ESourceSelectable *selectable_extension;
+-		const gchar *extension_name;
+-		gchar *color_spec;
+-
+-		switch (e_google_chooser_get_source_type (chooser)) {
+-			case E_CAL_CLIENT_SOURCE_TYPE_EVENTS:
+-				extension_name = E_SOURCE_EXTENSION_CALENDAR;
+-				break;
+-			case E_CAL_CLIENT_SOURCE_TYPE_MEMOS:
+-				extension_name = E_SOURCE_EXTENSION_MEMO_LIST;
+-				break;
+-			case E_CAL_CLIENT_SOURCE_TYPE_TASKS:
+-				extension_name = E_SOURCE_EXTENSION_TASK_LIST;
+-				break;
+-			default:
+-				g_return_val_if_reached (TRUE);
+-		}
+-
+-		selectable_extension =
+-			e_source_get_extension (source, extension_name);
+-
+-		color_spec = gdk_color_to_string (color);
+-		e_source_selectable_set_color (
+-			selectable_extension, color_spec);
+-		g_free (color_spec);
+-
+-		gdk_color_free (color);
+-	}
+-
+-	g_free (display_name);
+-	g_free (path_encoded);
+-
+-	return TRUE;
+-}
+-
+-static gchar *
+-google_chooser_decode_user (const gchar *user)
+-{
+-	gchar *decoded_user;
+-
+-	if (user == NULL || *user == '\0')
+-		return NULL;
+-
+-	/* Decode any encoded 'at' symbols ('%40' -> '@'). */
+-	if (strstr (user, "%40") != NULL) {
+-		gchar **segments;
+-
+-		segments = g_strsplit (user, "%40", 0);
+-		decoded_user = g_strjoinv ("@", segments);
+-		g_strfreev (segments);
+-
+-	/* If no domain is given, append "@gmail.com". */
+-	} else if (strstr (user, "@") == NULL) {
+-		decoded_user = g_strconcat (user, "@gmail.com", NULL);
+-
+-	/* Otherwise the user name should be fine as is. */
+-	} else {
+-		decoded_user = g_strdup (user);
+-	}
+-
+-	return decoded_user;
+-}
+-
+-void
+-e_google_chooser_construct_default_uri (SoupURI *soup_uri,
+-                                        const gchar *username)
+-{
+-	gchar *decoded_user, *path;
+-
+-	decoded_user = google_chooser_decode_user (username);
+-	if (!decoded_user)
+-		return;
+-
+-	path = g_strdup_printf (CALDAV_EVENTS_PATH_FORMAT, decoded_user);
+-
+-	soup_uri_set_user (soup_uri, decoded_user);
+-	soup_uri_set_path (soup_uri, path);
+-
+-	g_free (decoded_user);
+-	g_free (path);
+-}
+-
+-void
+-e_google_chooser_run_trust_prompt (EGoogleChooser *chooser,
+-				   GtkWindow *parent,
+-				   GCancellable *cancellable,
+-				   GAsyncReadyCallback callback,
+-				   gpointer user_data)
+-{
+-	g_return_if_fail (E_IS_GOOGLE_CHOOSER (chooser));
+-
+-	e_trust_prompt_run_for_source (parent,
+-		chooser->priv->source,
+-		chooser->priv->certificate_pem,
+-		chooser->priv->certificate_errors,
+-		chooser->priv->error_text,
+-		FALSE,
+-		cancellable,
+-		callback,
+-		user_data);
+-}
+-
+-/* Free returned pointer with g_error_free() or g_clear_error() */
+-GError *
+-e_google_chooser_new_ssl_trust_error (EGoogleChooser *chooser)
+-{
+-	g_return_val_if_fail (E_IS_GOOGLE_CHOOSER (chooser), NULL);
+-	g_return_val_if_fail (chooser->priv->error_text != NULL, NULL);
+-
+-	return g_error_new_literal (SOUP_HTTP_ERROR, SOUP_STATUS_SSL_FAILED, chooser->priv->error_text);
+-}
+-
+-/* The callback has an ECredentialsPrompter as the source_object. */
+-void
+-e_google_chooser_run_credentials_prompt (EGoogleChooser *chooser,
+-					 GAsyncReadyCallback callback,
+-					 gpointer user_data)
+-{
+-	g_return_if_fail (E_IS_GOOGLE_CHOOSER (chooser));
+-	g_return_if_fail (callback != NULL);
+-
+-	e_credentials_prompter_prompt (chooser->priv->prompter, chooser->priv->source, chooser->priv->error_text,
+-		chooser->priv->first_auth_request ? E_CREDENTIALS_PROMPTER_PROMPT_FLAG_ALLOW_STORED_CREDENTIALS : 0,
+-		callback, user_data);
+-
+-	chooser->priv->first_auth_request = FALSE;
+-}
+-
+-gboolean
+-e_google_chooser_run_credentials_prompt_finish (EGoogleChooser *chooser,
+-						GAsyncResult *result,
+-						ENamedParameters **out_credentials,
+-						GError **error)
+-{
+-	ESource *source = NULL;
+-
+-	g_return_val_if_fail (E_IS_GOOGLE_CHOOSER (chooser), FALSE);
+-	g_return_val_if_fail (out_credentials != NULL, FALSE);
+-
+-	if (!e_credentials_prompter_prompt_finish (chooser->priv->prompter, result,
+-		&source, out_credentials, error))
+-		return FALSE;
+-
+-	g_return_val_if_fail (source == chooser->priv->source, FALSE);
+-
+-	return TRUE;
+-}
+-
+-static void
+-e_google_chooser_authenticate_thread (GTask *task,
+-				      gpointer source_object,
+-				      gpointer task_data,
+-				      GCancellable *cancellable)
+-{
+-	EGoogleChooser *chooser = source_object;
+-	const ENamedParameters *credentials = task_data;
+-	gboolean success;
+-	GError *local_error = NULL;
+-
+-	if (google_chooser_try_password_sync (chooser, credentials, cancellable, &local_error)
+-	    != E_SOURCE_AUTHENTICATION_ACCEPTED && !local_error) {
+-		local_error = g_error_new_literal (G_IO_ERROR, G_IO_ERROR_FAILED, _("Unknown error"));
+-	}
+-
+-	if (local_error != NULL) {
+-		g_task_return_error (task, local_error);
+-	} else {
+-		g_task_return_boolean (task, success);
+-	}
+-}
+-
+-void
+-e_google_chooser_authenticate (EGoogleChooser *chooser,
+-			       const ENamedParameters *credentials,
+-			       GCancellable *cancellable,
+-			       GAsyncReadyCallback callback,
+-			       gpointer user_data)
+-{
+-	ENamedParameters *credentials_copy;
+-	GTask *task;
+-
+-	g_return_if_fail (E_IS_GOOGLE_CHOOSER (chooser));
+-	g_return_if_fail (credentials != NULL);
+-	g_return_if_fail (callback != NULL);
+-
+-	credentials_copy = e_named_parameters_new_clone (credentials);
+-
+-	task = g_task_new (chooser, cancellable, callback, user_data);
+-	g_task_set_source_tag (task, e_google_chooser_authenticate);
+-	g_task_set_task_data (task, credentials_copy, (GDestroyNotify) e_named_parameters_free);
+-
+-	g_task_run_in_thread (task, e_google_chooser_authenticate_thread);
+-
+-	g_object_unref (task);
+-}
+-
+-gboolean
+-e_google_chooser_authenticate_finish (EGoogleChooser *chooser,
+-				      GAsyncResult *result,
+-				      GError **error)
+-{
+-	g_return_val_if_fail (E_IS_GOOGLE_CHOOSER (chooser), FALSE);
+-	g_return_val_if_fail (g_task_is_valid (result, chooser), FALSE);
+-
+-	g_return_val_if_fail (
+-		g_async_result_is_tagged (
+-		result, e_google_chooser_authenticate), FALSE);
+-
+-	return g_task_propagate_boolean (G_TASK (result), error);
+-}
+diff --git a/modules/cal-config-google/e-google-chooser.h b/modules/cal-config-google/e-google-chooser.h
+deleted file mode 100644
+index c2736979e6..0000000000
+--- a/modules/cal-config-google/e-google-chooser.h
++++ /dev/null
+@@ -1,112 +0,0 @@
+-/*
+- * e-google-chooser.h
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU Lesser General Public License as published by
+- * the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+- *
+- */
+-
+-#ifndef E_GOOGLE_CHOOSER_H
+-#define E_GOOGLE_CHOOSER_H
+-
+-#include <gtk/gtk.h>
+-#include <libecal/libecal.h>
+-#include <libedataserverui/libedataserverui.h>
+-
+-/* Standard GObject macros */
+-#define E_TYPE_GOOGLE_CHOOSER \
+-	(e_google_chooser_get_type ())
+-#define E_GOOGLE_CHOOSER(obj) \
+-	(G_TYPE_CHECK_INSTANCE_CAST \
+-	((obj), E_TYPE_GOOGLE_CHOOSER, EGoogleChooser))
+-#define E_GOOGLE_CHOOSER_CLASS(cls) \
+-	(G_TYPE_CHECK_CLASS_CAST \
+-	((cls), E_TYPE_GOOGLE_CHOOSER, EGoogleChooserClass))
+-#define E_IS_GOOGLE_CHOOSER(obj) \
+-	(G_TYPE_CHECK_INSTANCE_TYPE \
+-	((obj), E_TYPE_GOOGLE_CHOOSER))
+-#define E_IS_GOOGLE_CHOOSER_CLASS(cls) \
+-	(G_TYPE_CHECK_CLASS_TYPE \
+-	((cls), E_TYPE_GOOGLE_CHOOSER))
+-#define E_GOOGLE_CHOOSER_GET_CLASS(obj) \
+-	(G_TYPE_INSTANCE_GET_CLASS \
+-	((obj), E_TYPE_GOOGLE_CHOOSER, EGoogleChooserClass))
+-
+-G_BEGIN_DECLS
+-
+-typedef struct _EGoogleChooser EGoogleChooser;
+-typedef struct _EGoogleChooserClass EGoogleChooserClass;
+-typedef struct _EGoogleChooserPrivate EGoogleChooserPrivate;
+-
+-struct _EGoogleChooser {
+-	GtkTreeView parent;
+-	EGoogleChooserPrivate *priv;
+-};
+-
+-struct _EGoogleChooserClass {
+-	GtkTreeViewClass parent_class;
+-};
+-
+-GType		e_google_chooser_get_type	(void);
+-void		e_google_chooser_type_register	(GTypeModule *type_module);
+-GtkWidget *	e_google_chooser_new		(ESourceRegistry *registry,
+-						 ESource *source,
+-						 ECalClientSourceType source_type);
+-ESourceRegistry *
+-		e_google_chooser_get_registry	(EGoogleChooser *chooser);
+-ECredentialsPrompter *
+-		e_google_chooser_get_prompter	(EGoogleChooser *chooser);
+-ESource *	e_google_chooser_get_source	(EGoogleChooser *chooser);
+-ECalClientSourceType
+-		e_google_chooser_get_source_type
+-						(EGoogleChooser *chooser);
+-void		e_google_chooser_populate	(EGoogleChooser *chooser,
+-						 GCancellable *cancellable,
+-						 GAsyncReadyCallback callback,
+-						 gpointer user_data);
+-gboolean	e_google_chooser_populate_finish
+-						(EGoogleChooser *chooser,
+-						 GAsyncResult *result,
+-						 GError **error);
+-gboolean	e_google_chooser_apply_selected	(EGoogleChooser *chooser);
+-void		e_google_chooser_construct_default_uri
+-						(SoupURI *soup_uri,
+-						 const gchar *username);
+-
+-void		e_google_chooser_run_trust_prompt
+-						(EGoogleChooser *chooser,
+-						 GtkWindow *parent,
+-						 GCancellable *cancellable,
+-						 GAsyncReadyCallback callback,
+-						 gpointer user_data);
+-GError *	e_google_chooser_new_ssl_trust_error
+-						(EGoogleChooser *chooser);
+-void		e_google_chooser_run_credentials_prompt
+-						(EGoogleChooser *chooser,
+-						 GAsyncReadyCallback callback,
+-						 gpointer user_data);
+-gboolean	e_google_chooser_run_credentials_prompt_finish
+-						(EGoogleChooser *chooser,
+-						 GAsyncResult *result,
+-						 ENamedParameters **out_credentials,
+-						 GError **error);
+-void		e_google_chooser_authenticate	(EGoogleChooser *chooser,
+-						 const ENamedParameters *credentials,
+-						 GCancellable *cancellable,
+-						 GAsyncReadyCallback callback,
+-						 gpointer user_data);
+-gboolean	e_google_chooser_authenticate_finish
+-						(EGoogleChooser *chooser,
+-						 GAsyncResult *result,
+-						 GError **error);
+-
+-#endif /* E_GOOGLE_CHOOSER_H */
+diff --git a/modules/cal-config-google/module-cal-config-google.c b/modules/cal-config-google/module-cal-config-google.c
+index 94dc549653..10b33ae929 100644
+--- a/modules/cal-config-google/module-cal-config-google.c
++++ b/modules/cal-config-google/module-cal-config-google.c
+@@ -20,7 +20,6 @@
+ #include <libebackend/libebackend.h>
+ 
+ #include "e-google-chooser-button.h"
+-#include "e-google-chooser-dialog.h"
+ #include "module-cal-config-google.h"
+ 
+ /* Module Entry Points */
+@@ -30,9 +29,7 @@ void e_module_unload (GTypeModule *type_module);
+ G_MODULE_EXPORT void
+ e_module_load (GTypeModule *type_module)
+ {
+-	e_google_chooser_type_register (type_module);
+ 	e_google_chooser_button_type_register (type_module);
+-	e_google_chooser_dialog_type_register (type_module);
+ 	e_cal_config_google_type_register (type_module);
+ #ifdef HAVE_GDATA_0_15_1
+ 	e_cal_config_gtasks_type_register (type_module);
+diff --git a/po/POTFILES.in b/po/POTFILES.in
+index 291f38bd32..32f342e1f1 100644
+--- a/po/POTFILES.in
++++ b/po/POTFILES.in
+@@ -410,14 +410,10 @@ modules/bogofilter/evolution-bogofilter.metainfo.xml.in
+ modules/book-config-google/evolution-book-config-google.c
+ modules/book-config-ldap/evolution-book-config-ldap.c
+ modules/book-config-webdav/evolution-book-config-webdav.c
+-modules/cal-config-caldav/e-caldav-chooser.c
+-modules/cal-config-caldav/e-caldav-chooser-dialog.c
+ modules/cal-config-caldav/evolution-cal-config-caldav.c
+ modules/cal-config-contacts/evolution-cal-config-contacts.c
+ modules/cal-config-google/e-cal-config-google.c
+ modules/cal-config-google/e-google-chooser-button.c
+-modules/cal-config-google/e-google-chooser.c
+-modules/cal-config-google/e-google-chooser-dialog.c
+ modules/cal-config-local/evolution-cal-config-local.c
+ modules/cal-config-weather/evolution-cal-config-weather.c
+ modules/cal-config-webcal/evolution-cal-config-webcal.c
+-- 
+2.15.0
+

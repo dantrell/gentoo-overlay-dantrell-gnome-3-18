@@ -1,0 +1,32 @@
+From 935e392c7e416b67b3b9936c97574e96b3c115c8 Mon Sep 17 00:00:00 2001
+From: Jakub Steiner <jimmac@gmail.com>
+Date: Thu, 2 Apr 2015 18:37:10 +0200
+Subject: [PATCH 0626/1800] Bug 747018 - Move scalable -symbolic app icon into
+ 'symbolic' folder
+
+---
+ data/icons/Makefile.am                                                  | 2 +-
+ ...lution-symbolic.svg => hicolor_apps_symbolic_evolution-symbolic.svg} | 0
+ 2 files changed, 1 insertion(+), 1 deletion(-)
+ rename data/icons/{hicolor_apps_scalable_evolution-symbolic.svg => hicolor_apps_symbolic_evolution-symbolic.svg} (100%)
+
+diff --git a/data/icons/Makefile.am b/data/icons/Makefile.am
+index a3d66ddaec..68feb8aef9 100644
+--- a/data/icons/Makefile.am
++++ b/data/icons/Makefile.am
+@@ -22,7 +22,7 @@ public_icons = \
+ 	hicolor_apps_48x48_evolution-memos.png \
+ 	hicolor_apps_48x48_evolution-tasks.png \
+ 	hicolor_apps_256x256_evolution.png \
+-	hicolor_apps_scalable_evolution-symbolic.svg \
++	hicolor_apps_symbolic_evolution-symbolic.svg \
+ 	$(NULL)
+ 
+ # hicolor_status_16x16_wrapped.png was copied from Firefox
+diff --git a/data/icons/hicolor_apps_scalable_evolution-symbolic.svg b/data/icons/hicolor_apps_symbolic_evolution-symbolic.svg
+similarity index 100%
+rename from data/icons/hicolor_apps_scalable_evolution-symbolic.svg
+rename to data/icons/hicolor_apps_symbolic_evolution-symbolic.svg
+-- 
+2.15.0
+

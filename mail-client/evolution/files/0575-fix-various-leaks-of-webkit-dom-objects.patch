@@ -1,0 +1,2277 @@
+From 3d7ff88e35f779fb8764adb4bf093af47904693e Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 12 May 2015 16:54:42 +0200
+Subject: [PATCH 0575/1800] Fix various leaks of WebKit DOM objects
+
+Specifically WebKitDOMDOMWindow, WebKitDOMDOMSelection, WebKitDOMRange and
+WebKitDOMCSSStyleDeclaration objects
+---
+ web-extensions/e-dom-utils.c                       |  17 +-
+ .../e-html-editor-actions-dom-functions.c          |  12 +-
+ .../e-html-editor-link-dialog-dom-functions.c      |  21 +-
+ .../e-html-editor-selection-dom-functions.c        | 364 ++++++++++++++-------
+ ...-html-editor-spell-check-dialog-dom-functions.c |  96 +++---
+ .../e-html-editor-table-dialog-dom-functions.c     |  16 +-
+ web-extensions/e-html-editor-undo-redo-manager.c   |  65 +++-
+ web-extensions/e-html-editor-view-dom-functions.c  | 168 +++++++---
+ 8 files changed, 525 insertions(+), 234 deletions(-)
+
+diff --git a/web-extensions/e-dom-utils.c b/web-extensions/e-dom-utils.c
+index 6f36827ff1..e96aa00be4 100644
+--- a/web-extensions/e-dom-utils.c
++++ b/web-extensions/e-dom-utils.c
+@@ -152,8 +152,8 @@ static gchar *
+ get_frame_selection_html (WebKitDOMElement *iframe)
+ {
+ 	WebKitDOMDocument *content_document;
+-	WebKitDOMDOMWindow *window;
+-	WebKitDOMDOMSelection *selection;
++	WebKitDOMDOMWindow *dom_window;
++	WebKitDOMDOMSelection *dom_selection;
+ 	WebKitDOMNodeList *frames;
+ 	gulong ii, length;
+ 
+@@ -163,14 +163,15 @@ get_frame_selection_html (WebKitDOMElement *iframe)
+ 	if (!content_document)
+ 		return NULL;
+ 
+-	window = webkit_dom_document_get_default_view (content_document);
+-	selection = webkit_dom_dom_window_get_selection (window);
+-	if (selection && (webkit_dom_dom_selection_get_range_count (selection) > 0)) {
++	dom_window = webkit_dom_document_get_default_view (content_document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	g_object_unref (dom_window);
++	if (dom_selection && (webkit_dom_dom_selection_get_range_count (dom_selection) > 0)) {
+ 		WebKitDOMRange *range;
+ 		WebKitDOMElement *element;
+ 		WebKitDOMDocumentFragment *fragment;
+ 
+-		range = webkit_dom_dom_selection_get_range_at (selection, 0, NULL);
++		range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 		if (range != NULL) {
+ 			gchar *inner_html;
+ 			WebKitDOMNode *node;
+@@ -193,10 +194,14 @@ get_frame_selection_html (WebKitDOMElement *iframe)
+ 				g_free (tmp);
+ 			}
+ 
++			g_object_unref (range);
++			g_object_unref (dom_selection);
+ 			return inner_html;
+ 		}
+ 	}
+ 
++	g_object_unref (dom_selection);
++
+ 	frames = webkit_dom_document_get_elements_by_tag_name (
+ 		content_document, "IFRAME");
+ 	length = webkit_dom_node_list_get_length (frames);
+diff --git a/web-extensions/e-html-editor-actions-dom-functions.c b/web-extensions/e-html-editor-actions-dom-functions.c
+index 03b4641e40..8ecbe4f558 100644
+--- a/web-extensions/e-html-editor-actions-dom-functions.c
++++ b/web-extensions/e-html-editor-actions-dom-functions.c
+@@ -373,13 +373,19 @@ dom_save_history_for_cut (WebKitDOMDocument *document,
+ 
+ 	dom_window = webkit_dom_document_get_default_view (document);
+ 	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	g_object_unref (dom_window);
+ 
+-	if (!webkit_dom_dom_selection_get_range_count (dom_selection))
++	if (!webkit_dom_dom_selection_get_range_count (dom_selection)) {
++		g_object_unref (dom_selection);
+ 		return;
++	}
+ 
+ 	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+-	if (webkit_dom_range_get_collapsed (range, NULL))
++	if (webkit_dom_range_get_collapsed (range, NULL)) {
++		g_object_unref (range);
++		g_object_unref (dom_selection);
+ 		return;
++	}
+ 
+ 	ev = g_new0 (EHTMLEditorHistoryEvent, 1);
+ 	ev->type = HISTORY_DELETE;
+@@ -400,6 +406,8 @@ dom_save_history_for_cut (WebKitDOMDocument *document,
+ 
+ 	/* Save the fragment. */
+ 	fragment = webkit_dom_range_clone_contents (range, NULL);
++	g_object_unref (range);
++	g_object_unref (dom_selection);
+ 	ev->data.fragment = g_object_ref (fragment);
+ 
+ 	manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
+diff --git a/web-extensions/e-html-editor-link-dialog-dom-functions.c b/web-extensions/e-html-editor-link-dialog-dom-functions.c
+index 1570731924..213642dae6 100644
+--- a/web-extensions/e-html-editor-link-dialog-dom-functions.c
++++ b/web-extensions/e-html-editor-link-dialog-dom-functions.c
+@@ -34,16 +34,18 @@ e_html_editor_link_dialog_ok (WebKitDOMDocument *document,
+                               const gchar *url,
+                               const gchar *inner_text)
+ {
+-	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMDOMSelection *dom_selection;
+ 	WebKitDOMRange *range;
+ 	WebKitDOMElement *link;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-	dom_selection = webkit_dom_dom_window_get_selection (window);
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	g_object_unref (dom_window);
+ 
+ 	if (!dom_selection ||
+ 	    (webkit_dom_dom_selection_get_range_count (dom_selection) == 0)) {
++		g_object_unref (dom_selection);
+ 		return;
+ 	}
+ 
+@@ -105,19 +107,23 @@ e_html_editor_link_dialog_ok (WebKitDOMDocument *document,
+ 
+ 		g_free (text);
+ 	}
++
++	g_object_unref (range);
++	g_object_unref (dom_selection);
+ }
+ 
+ GVariant *
+ e_html_editor_link_dialog_show (WebKitDOMDocument *document)
+ {
+ 	GVariant *result = NULL;
+-	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMDOMSelection *dom_selection;
+ 	WebKitDOMRange *range;
+ 	WebKitDOMElement *link;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-	dom_selection = webkit_dom_dom_window_get_selection (window);
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	g_object_unref (dom_window);
+ 
+ 	/* No selection at all */
+ 	if (!dom_selection ||
+@@ -174,5 +180,8 @@ e_html_editor_link_dialog_show (WebKitDOMDocument *document)
+ 		g_free (text);
+ 	}
+ 
++	g_object_unref (range);
++	g_object_unref (dom_selection);
++
+ 	return result;
+ }
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index 739b9b31ca..41884b1d4b 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -63,23 +63,26 @@ dom_replace_base64_image_src (WebKitDOMDocument *document,
+ WebKitDOMRange *
+ dom_get_current_range (WebKitDOMDocument *document)
+ {
+-	WebKitDOMDOMWindow *window;
+-	WebKitDOMDOMSelection *selection_dom;
++	WebKitDOMDOMWindow *dom_window;
++	WebKitDOMDOMSelection *dom_selection;
+ 	WebKitDOMRange *range = NULL;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-	if (!window)
+-		return NULL;
++	dom_window = webkit_dom_document_get_default_view (document);
++	if (!dom_window)
++		goto exit;
+ 
+-	selection_dom = webkit_dom_dom_window_get_selection (window);
+-	if (!WEBKIT_DOM_IS_DOM_SELECTION (selection_dom))
+-		return NULL;
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	if (!WEBKIT_DOM_IS_DOM_SELECTION (dom_selection))
++		goto exit;
+ 
+-	if (webkit_dom_dom_selection_get_range_count (selection_dom) < 1)
+-		return NULL;
++	if (webkit_dom_dom_selection_get_range_count (dom_selection) < 1)
++		goto exit;
+ 
+-	range = webkit_dom_dom_selection_get_range_at (selection_dom, 0, NULL);
++	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 
++ exit:
++	g_object_unref (dom_selection);
++	g_object_unref (dom_window);
+ 	return range;
+ }
+ 
+@@ -96,13 +99,17 @@ gchar *
+ dom_selection_get_string (WebKitDOMDocument *document,
+                           EHTMLEditorWebExtension *extension)
+ {
++	gchar *text;
+ 	WebKitDOMRange *range;
+ 
+ 	range = dom_get_current_range (document);
+ 	if (!range)
+ 		return NULL;
+ 
+-	return webkit_dom_range_get_text (range);
++	text = webkit_dom_range_get_text (range);
++	g_object_unref (range);
++
++	return text;
+ }
+ 
+ void
+@@ -110,22 +117,26 @@ dom_move_caret_into_element (WebKitDOMDocument *document,
+                              WebKitDOMElement *element,
+                              gboolean to_start)
+ {
+-	WebKitDOMDOMWindow *window;
+-	WebKitDOMDOMSelection *window_selection;
+-	WebKitDOMRange *new_range;
++	WebKitDOMDOMWindow *dom_window;
++	WebKitDOMDOMSelection *dom_selection;
++	WebKitDOMRange *range;
+ 
+ 	if (!element)
+ 		return;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-	window_selection = webkit_dom_dom_window_get_selection (window);
+-	new_range = webkit_dom_document_create_range (document);
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	range = webkit_dom_document_create_range (document);
+ 
+ 	webkit_dom_range_select_node_contents (
+-		new_range, WEBKIT_DOM_NODE (element), NULL);
+-	webkit_dom_range_collapse (new_range, to_start, NULL);
+-	webkit_dom_dom_selection_remove_all_ranges (window_selection);
+-	webkit_dom_dom_selection_add_range (window_selection, new_range);
++		range, WEBKIT_DOM_NODE (element), NULL);
++	webkit_dom_range_collapse (range, to_start, NULL);
++	webkit_dom_dom_selection_remove_all_ranges (dom_selection);
++	webkit_dom_dom_selection_add_range (dom_selection, range);
++
++	g_object_unref (range);
++	g_object_unref (dom_selection);
++	g_object_unref (dom_window);
+ }
+ 
+ void
+@@ -241,18 +252,21 @@ dom_selection_unlink (WebKitDOMDocument *document,
+ {
+ 	EHTMLEditorUndoRedoManager *manager;
+ 	gchar *text;
+-	WebKitDOMDOMWindow *window;
+-	WebKitDOMDOMSelection *selection_dom;
++	WebKitDOMDOMWindow *dom_window;
++	WebKitDOMDOMSelection *dom_selection;
+ 	WebKitDOMRange *range;
+ 	WebKitDOMElement *link;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-	selection_dom = webkit_dom_dom_window_get_selection (window);
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+ 
+-	range = webkit_dom_dom_selection_get_range_at (selection_dom, 0, NULL);
++	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 	link = dom_node_find_parent_element (
+ 		webkit_dom_range_get_start_container (range, NULL), "A");
+ 
++	g_object_unref (dom_selection);
++	g_object_unref (dom_window);
++
+ 	if (!link) {
+ 		WebKitDOMNode *node;
+ 
+@@ -260,14 +274,18 @@ dom_selection_unlink (WebKitDOMDocument *document,
+ 		node = webkit_dom_range_get_common_ancestor_container (range, NULL);
+ 		if (node && !WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (node)) {
+ 			link = dom_node_find_parent_element (node, "A");
+-			if (link && !WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (link))
++			if (link && !WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (link)) {
++				g_object_unref (range);
+ 				return;
+ 			} else
+ 				link = WEBKIT_DOM_ELEMENT (node);
++		}
+ 	} else {
+ 		dom_exec_command (document, extension, E_HTML_EDITOR_VIEW_COMMAND_UNLINK, NULL);
+ 	}
+ 
++	g_object_unref (range);
++
+ 	if (!link)
+ 		return;
+ 
+@@ -432,17 +450,17 @@ dom_get_alignment (WebKitDOMDocument *document)
+ 	EHTMLEditorSelectionAlignment alignment;
+ 	gchar *value;
+ 	WebKitDOMCSSStyleDeclaration *style;
+-	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMElement *element;
+ 	WebKitDOMNode *node;
+ 	WebKitDOMRange *range;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+ 	range = dom_get_current_range (document);
+ 	if (!range)
+ 		return E_HTML_EDITOR_SELECTION_ALIGNMENT_LEFT;
+ 
+ 	node = webkit_dom_range_get_start_container (range, NULL);
++	g_object_unref (range);
+ 	if (!node)
+ 		return E_HTML_EDITOR_SELECTION_ALIGNMENT_LEFT;
+ 
+@@ -451,7 +469,8 @@ dom_get_alignment (WebKitDOMDocument *document)
+ 	else
+ 		element = webkit_dom_node_get_parent_element (node);
+ 
+-	style = webkit_dom_dom_window_get_computed_style (window, element, NULL);
++	dom_window = webkit_dom_document_get_default_view (document);
++	style = webkit_dom_dom_window_get_computed_style (dom_window, element, NULL);
+ 	value = webkit_dom_css_style_declaration_get_property_value (style, "text-align");
+ 
+ 	if (!value || !*value ||
+@@ -465,6 +484,8 @@ dom_get_alignment (WebKitDOMDocument *document)
+ 		alignment = E_HTML_EDITOR_SELECTION_ALIGNMENT_LEFT;
+ 	}
+ 
++	g_object_unref (dom_window);
++	g_object_unref (style);
+ 	g_free (value);
+ 
+ 	return alignment;
+@@ -747,13 +768,13 @@ dom_get_alignment_from_node (WebKitDOMNode *node)
+ 	gchar *value;
+ 	WebKitDOMCSSStyleDeclaration *style;
+ 	WebKitDOMDocument *document;
+-	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMWindow *dom_window;
+ 
+ 	document = webkit_dom_node_get_owner_document (node);
+-	window = webkit_dom_document_get_default_view (document);
++	dom_window = webkit_dom_document_get_default_view (document);
+ 
+ 	style = webkit_dom_dom_window_get_computed_style (
+-		window, WEBKIT_DOM_ELEMENT (node), NULL);
++		dom_window, WEBKIT_DOM_ELEMENT (node), NULL);
+ 	value = webkit_dom_css_style_declaration_get_property_value (style, "text-align");
+ 
+ 	if (!value || !*value ||
+@@ -767,6 +788,8 @@ dom_get_alignment_from_node (WebKitDOMNode *node)
+ 		alignment = E_HTML_EDITOR_SELECTION_ALIGNMENT_LEFT;
+ 	}
+ 
++	g_object_unref (dom_window);
++	g_object_unref (style);
+ 	g_free (value);
+ 
+ 	return alignment;
+@@ -1394,12 +1417,18 @@ dom_selection_save (WebKitDOMDocument *document)
+ 	dom_window = webkit_dom_document_get_default_view (document);
+ 	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+ 
+-	if (webkit_dom_dom_selection_get_range_count (dom_selection) < 1)
++	if (webkit_dom_dom_selection_get_range_count (dom_selection) < 1) {
++		g_object_unref (dom_selection);
++		g_object_unref (dom_window);
+ 		return;
++	}
+ 
+ 	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+-	if (!range)
++	if (!range) {
++		g_object_unref (dom_selection);
++		g_object_unref (dom_window);
+ 		return;
++	}
+ 
+ 	anchor = webkit_dom_dom_selection_get_anchor_node (dom_selection);
+ 	anchor_offset = webkit_dom_dom_selection_get_anchor_offset (dom_selection);
+@@ -1526,8 +1555,12 @@ dom_selection_save (WebKitDOMDocument *document)
+ 	}
+ 
+ 	/* Don't save selection straight into body */
+-	if (WEBKIT_DOM_IS_HTML_BODY_ELEMENT (split_node))
++	if (WEBKIT_DOM_IS_HTML_BODY_ELEMENT (split_node)) {
++		g_object_unref (range);
++		g_object_unref (dom_selection);
++		g_object_unref (dom_window);
+ 		return;
++	}
+ 
+ 	if (!split_node) {
+ 		marker_node = webkit_dom_node_insert_before (
+@@ -1681,18 +1714,16 @@ dom_selection_save (WebKitDOMDocument *document)
+ 	}
+  out:
+ 	if (!collapsed) {
+-		WebKitDOMDOMSelection *dom_selection;
+-		WebKitDOMDOMWindow *window;
+-
+ 		webkit_dom_range_set_start_after (range, WEBKIT_DOM_NODE (start_marker), NULL);
+ 		webkit_dom_range_set_end_before (range, WEBKIT_DOM_NODE (end_marker), NULL);
+ 
+-		window = webkit_dom_document_get_default_view (document);
+-		dom_selection = webkit_dom_dom_window_get_selection (window);
+-
+ 		webkit_dom_dom_selection_remove_all_ranges (dom_selection);
+ 		webkit_dom_dom_selection_add_range (dom_selection, range);
+ 	}
++
++	g_object_unref (range);
++	g_object_unref (dom_selection);
++	g_object_unref (dom_window);
+ }
+ 
+ static gboolean
+@@ -1729,12 +1760,14 @@ dom_selection_restore (WebKitDOMDocument *document)
+ 	WebKitDOMNode *parent_start, *parent_end, *anchor;
+ 	WebKitDOMRange *range;
+ 	WebKitDOMDOMSelection *dom_selection;
+-	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMWindow *dom_window;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-	dom_selection = webkit_dom_dom_window_get_selection (window);
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+ 	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
++	g_object_unref (dom_window);
+ 	if (!range) {
++		g_object_unref (dom_selection);
+ 		remove_selection_markers (document);
+ 		return;
+ 	}
+@@ -1761,15 +1794,20 @@ dom_selection_restore (WebKitDOMDocument *document)
+ 					remove_node (selection_end_marker);
+ 
+ 					webkit_dom_node_normalize (parent_start);
++					g_object_unref (range);
++					g_object_unref (dom_selection);
+ 					return;
+ 				}
+ 			}
+ 		}
+ 	}
+ 
++	g_object_unref (range);
+ 	range = webkit_dom_document_create_range (document);
+-	if (!range)
++	if (!range) {
++		g_object_unref (dom_selection);
+ 		return;
++	}
+ 
+ 	marker = webkit_dom_document_get_element_by_id (
+ 		document, "-x-evo-selection-start-marker");
+@@ -1778,6 +1816,8 @@ dom_selection_restore (WebKitDOMDocument *document)
+ 			document, "-x-evo-selection-end-marker");
+ 		if (marker)
+ 			remove_node (WEBKIT_DOM_NODE (marker));
++		g_object_unref (dom_selection);
++		g_object_unref (range);
+ 		return;
+ 	}
+ 
+@@ -1794,6 +1834,8 @@ dom_selection_restore (WebKitDOMDocument *document)
+ 			document, "-x-evo-selection-start-marker");
+ 		if (marker)
+ 			remove_node (WEBKIT_DOM_NODE (marker));
++		g_object_unref (dom_selection);
++		g_object_unref (range);
+ 		return;
+ 	}
+ 
+@@ -1823,6 +1865,9 @@ dom_selection_restore (WebKitDOMDocument *document)
+ 	}
+ 	webkit_dom_dom_selection_add_range (dom_selection, range);
+ 	webkit_dom_dom_selection_extend (dom_selection, anchor, offset, NULL);
++
++	g_object_unref (dom_selection);
++	g_object_unref (range);
+ }
+ 
+ static gint
+@@ -1923,13 +1968,17 @@ find_where_to_break_line (WebKitDOMNode *node,
+ gboolean
+ dom_selection_is_collapsed (WebKitDOMDocument *document)
+ {
++	gboolean collapsed;
+ 	WebKitDOMRange *range;
+ 
+ 	range = dom_get_current_range (document);
+ 	if (!range)
+ 		return TRUE;
+ 
+-	return webkit_dom_range_get_collapsed (range, NULL);
++	collapsed = webkit_dom_range_get_collapsed (range, NULL);
++	g_object_unref (range);
++
++	return collapsed;
+ }
+ 
+ void
+@@ -1937,7 +1986,7 @@ dom_scroll_to_caret (WebKitDOMDocument *document)
+ {
+ 	glong element_top, element_left;
+ 	glong window_top, window_left, window_right, window_bottom;
+-	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMElement *selection_start_marker;
+ 
+ 	dom_selection_save (document);
+@@ -1947,12 +1996,12 @@ dom_scroll_to_caret (WebKitDOMDocument *document)
+ 	if (!selection_start_marker)
+ 		return;
+ 
+-	window = webkit_dom_document_get_default_view (document);
++	dom_window = webkit_dom_document_get_default_view (document);
+ 
+-	window_top = webkit_dom_dom_window_get_scroll_y (window);
+-	window_left = webkit_dom_dom_window_get_scroll_x (window);
+-	window_bottom = window_top + webkit_dom_dom_window_get_inner_height (window);
+-	window_right = window_left + webkit_dom_dom_window_get_inner_width (window);
++	window_top = webkit_dom_dom_window_get_scroll_y (dom_window);
++	window_left = webkit_dom_dom_window_get_scroll_x (dom_window);
++	window_bottom = window_top + webkit_dom_dom_window_get_inner_height (dom_window);
++	window_right = window_left + webkit_dom_dom_window_get_inner_width (dom_window);
+ 
+ 	element_left = webkit_dom_element_get_offset_left (selection_start_marker);
+ 	element_top = webkit_dom_element_get_offset_top (selection_start_marker);
+@@ -1964,6 +2013,8 @@ dom_scroll_to_caret (WebKitDOMDocument *document)
+ 	}
+ 
+ 	dom_selection_restore (document);
++
++	g_object_unref (dom_window);
+ }
+ 
+ static WebKitDOMElement *
+@@ -1988,12 +2039,14 @@ wrap_lines (WebKitDOMDocument *document,
+ 	if (has_selection) {
+ 		const gchar *selection_content;
+ 		WebKitDOMNodeList *wrap_br;
++		WebKitDOMRange *range;
+ 
+ 		selection_content = e_html_editor_web_extension_get_selection_text (extension);
+ 		paragraph_char_count = g_utf8_strlen (selection_content, -1);
+ 
+-		fragment = webkit_dom_range_clone_contents (
+-			dom_get_current_range (document), NULL);
++		range = dom_get_current_range (document);
++		fragment = webkit_dom_range_clone_contents (range, NULL);
++		g_object_unref (range);
+ 
+ 		/* Select all BR elements or just ours that are used for wrapping.
+ 		 * We are not removing user BR elements when this function is activated
+@@ -2487,6 +2540,8 @@ dom_put_node_into_paragraph (WebKitDOMDocument *document,
+ 	if (with_input)
+ 		dom_add_selection_markers_into_element_end (document, container, NULL, NULL);
+ 
++	g_object_unref (range);
++
+ 	return container;
+ }
+ 
+@@ -2704,12 +2759,12 @@ html_editor_selection_modify (WebKitDOMDocument *document,
+                               gboolean forward,
+                               EHTMLEditorSelectionGranularity granularity)
+ {
+-	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMDOMSelection *dom_selection;
+ 	const gchar *granularity_str;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-	dom_selection = webkit_dom_dom_window_get_selection (window);
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+ 
+ 	switch (granularity) {
+ 		case E_HTML_EDITOR_SELECTION_GRANULARITY_CHARACTER:
+@@ -2724,6 +2779,9 @@ html_editor_selection_modify (WebKitDOMDocument *document,
+ 		dom_selection, alter,
+ 		forward ? "forward" : "backward",
+ 		granularity_str);
++
++	g_object_unref (dom_selection);
++	g_object_unref (dom_window);
+ }
+ 
+ static gboolean
+@@ -2745,6 +2803,7 @@ get_has_style (WebKitDOMDocument *document,
+ 		element = WEBKIT_DOM_ELEMENT (node);
+ 	else
+ 		element = webkit_dom_node_get_parent_element (node);
++	g_object_unref (range);
+ 
+ 	tag_len = strlen (style_tag);
+ 	result = FALSE;
+@@ -2809,18 +2868,17 @@ dom_selection_is_underline (WebKitDOMDocument *document,
+ 	gboolean ret_val;
+ 	gchar *value, *text_content;
+ 	WebKitDOMCSSStyleDeclaration *style;
+-	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMNode *node;
+ 	WebKitDOMElement *element;
+ 	WebKitDOMRange *range;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-
+ 	range = dom_get_current_range (document);
+ 	if (!range)
+ 		return FALSE;
+ 
+ 	node = webkit_dom_range_get_common_ancestor_container (range, NULL);
++	g_object_unref (range);
+ 	/* If we are changing the format of block we have to re-set underline property,
+ 	 * otherwise it will be turned off because of no text in composer */
+ 	text_content = webkit_dom_node_get_text_content (node);
+@@ -2838,7 +2896,8 @@ dom_selection_is_underline (WebKitDOMDocument *document,
+ 	if (WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (element))
+ 		return FALSE;
+ 
+-	style = webkit_dom_dom_window_get_computed_style (window, element, NULL);
++	dom_window = webkit_dom_document_get_default_view (document);
++	style = webkit_dom_dom_window_get_computed_style (dom_window, element, NULL);
+ 	value = webkit_dom_css_style_declaration_get_property_value (style, "text-decoration");
+ 
+ 	if (g_strstr_len (value, -1, "underline"))
+@@ -2846,7 +2905,10 @@ dom_selection_is_underline (WebKitDOMDocument *document,
+ 	else
+ 		ret_val = get_has_style (document, "u");
+ 
++	g_object_unref (style);
++	g_object_unref (dom_window);
+ 	g_free (value);
++
+ 	return ret_val;
+ }
+ 
+@@ -3024,6 +3086,7 @@ dom_selection_is_subscript (WebKitDOMDocument *document,
+ 
+ 	range = dom_get_current_range (document);
+ 	node = webkit_dom_range_get_common_ancestor_container (range, NULL);
++	g_object_unref (range);
+ 
+ 	while (node) {
+ 		if (element_has_tag (WEBKIT_DOM_ELEMENT (node), "sub"))
+@@ -3076,6 +3139,7 @@ dom_selection_is_superscript (WebKitDOMDocument *document,
+ 
+ 	range = dom_get_current_range (document);
+ 	node = webkit_dom_range_get_common_ancestor_container (range, NULL);
++	g_object_unref (range);
+ 
+ 	while (node) {
+ 		if (element_has_tag (WEBKIT_DOM_ELEMENT (node), "sup"))
+@@ -3126,17 +3190,17 @@ dom_selection_is_strikethrough (WebKitDOMDocument *document,
+ 	gboolean ret_val;
+ 	gchar *value, *text_content;
+ 	WebKitDOMCSSStyleDeclaration *style;
+-	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMNode *node;
+ 	WebKitDOMElement *element;
+ 	WebKitDOMRange *range;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+ 	range = dom_get_current_range (document);
+ 	if (!range)
+ 		return FALSE;
+ 
+ 	node = webkit_dom_range_get_common_ancestor_container (range, NULL);
++	g_object_unref (range);
+ 	/* If we are changing the format of block we have to re-set strikethrough property,
+ 	 * otherwise it will be turned off because of no text in composer */
+ 	text_content = webkit_dom_node_get_text_content (node);
+@@ -3151,7 +3215,8 @@ dom_selection_is_strikethrough (WebKitDOMDocument *document,
+ 	else
+ 		element = webkit_dom_node_get_parent_element (node);
+ 
+-	style = webkit_dom_dom_window_get_computed_style (window, element, NULL);
++	dom_window = webkit_dom_document_get_default_view (document);
++	style = webkit_dom_dom_window_get_computed_style (dom_window, element, NULL);
+ 	value = webkit_dom_css_style_declaration_get_property_value (style, "text-decoration");
+ 
+ 	if (g_strstr_len (value, -1, "line-through"))
+@@ -3159,7 +3224,10 @@ dom_selection_is_strikethrough (WebKitDOMDocument *document,
+ 	else
+ 		ret_val = get_has_style (document, "strike");
+ 
++	g_object_unref (style);
++	g_object_unref (dom_window);
+ 	g_free (value);
++
+ 	return ret_val;
+ }
+ 
+@@ -3226,18 +3294,17 @@ dom_selection_is_monospaced (WebKitDOMDocument *document,
+ 	gboolean ret_val;
+ 	gchar *value, *text_content;
+ 	WebKitDOMCSSStyleDeclaration *style;
+-	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMNode *node;
+ 	WebKitDOMElement *element;
+ 	WebKitDOMRange *range;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-
+ 	range = dom_get_current_range (document);
+ 	if (!range)
+ 		return FALSE;
+ 
+ 	node = webkit_dom_range_get_common_ancestor_container (range, NULL);
++	g_object_unref (range);
+ 	/* If we are changing the format of block we have to re-set italic property,
+ 	 * otherwise it will be turned off because of no text in composer */
+ 	text_content = webkit_dom_node_get_text_content (node);
+@@ -3253,7 +3320,8 @@ dom_selection_is_monospaced (WebKitDOMDocument *document,
+ 	else
+ 		element = webkit_dom_node_get_parent_element (node);
+ 
+-	style = webkit_dom_dom_window_get_computed_style (window, element, NULL);
++	dom_window = webkit_dom_document_get_default_view (document);
++	style = webkit_dom_dom_window_get_computed_style (dom_window, element, NULL);
+ 	value = webkit_dom_css_style_declaration_get_property_value (style, "font-family");
+ 
+ 	if (g_strstr_len (value, -1, "monospace"))
+@@ -3261,7 +3329,10 @@ dom_selection_is_monospaced (WebKitDOMDocument *document,
+ 	else
+ 		ret_val = FALSE;
+ 
++	g_object_unref (style);
++	g_object_unref (dom_window);
+ 	g_free (value);
++
+ 	return ret_val;
+ }
+ 
+@@ -3282,8 +3353,8 @@ dom_selection_set_monospaced (WebKitDOMDocument *document,
+ 	EHTMLEditorUndoRedoManager *manager;
+ 	guint font_size = 0;
+ 	WebKitDOMRange *range;
+-	WebKitDOMDOMWindow *window;
+-	WebKitDOMDOMSelection *window_selection;
++	WebKitDOMDOMWindow *dom_window;
++	WebKitDOMDOMSelection *dom_selection;
+ 
+ 	if (dom_selection_is_monospaced (document, extension) == monospaced)
+ 		return;
+@@ -3314,8 +3385,8 @@ dom_selection_set_monospaced (WebKitDOMDocument *document,
+ 	if (font_size == 0)
+ 		font_size = E_HTML_EDITOR_SELECTION_FONT_SIZE_NORMAL;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-	window_selection = webkit_dom_dom_window_get_selection (window);
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+ 
+ 	if (monospaced) {
+ 		WebKitDOMElement *monospace;
+@@ -3333,7 +3404,7 @@ dom_selection_set_monospaced (WebKitDOMDocument *document,
+ 			g_free (font_size_str);
+ 		}
+ 
+-		if (!dom_selection_is_collapsed (document)) {
++		if (!webkit_dom_range_get_collapsed (range, NULL)) {
+ 			webkit_dom_range_surround_contents (
+ 				range, WEBKIT_DOM_NODE (monospace), NULL);
+ 
+@@ -3374,8 +3445,12 @@ dom_selection_set_monospaced (WebKitDOMDocument *document,
+ 		} else {
+ 			tt_element = dom_node_find_parent_element (node, "FONT");
+ 
+-			if (!is_monospaced_element (tt_element))
++			if (!is_monospaced_element (tt_element)) {
++				g_object_unref (range);
++				g_object_unref (dom_selection);
++				g_object_unref (dom_window);
+ 				return;
++			}
+ 		}
+ 
+ 		/* Save current formatting */
+@@ -3473,13 +3548,12 @@ dom_selection_set_monospaced (WebKitDOMDocument *document,
+ 			webkit_dom_range_set_end_after (
+ 				new_range, WEBKIT_DOM_NODE (tt_element), NULL);
+ 
+-			webkit_dom_dom_selection_remove_all_ranges (
+-				window_selection);
+-			webkit_dom_dom_selection_add_range (
+-				window_selection, new_range);
++			webkit_dom_dom_selection_remove_all_ranges (dom_selection);
++			webkit_dom_dom_selection_add_range (dom_selection, new_range);
+ 
+ 			webkit_dom_dom_selection_modify (
+-				window_selection, "move", "right", "character");
++				dom_selection, "move", "right", "character");
++			g_object_unref (new_range);
+ 		}
+ 
+ 		/* Re-set formatting */
+@@ -3508,6 +3582,9 @@ dom_selection_set_monospaced (WebKitDOMDocument *document,
+ 
+ 	dom_force_spell_check_for_current_paragraph (document, extension);
+ 
++	g_object_unref (range);
++	g_object_unref (dom_selection);
++	g_object_unref (dom_window);
+ /* FIXME WK2
+ 	g_object_notify (G_OBJECT (selection), "monospaced");*/
+ }
+@@ -3528,18 +3605,17 @@ dom_selection_is_bold (WebKitDOMDocument *document,
+ 	gboolean ret_val;
+ 	gchar *value, *text_content;
+ 	WebKitDOMCSSStyleDeclaration *style;
+-	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMNode *node;
+ 	WebKitDOMElement *element;
+ 	WebKitDOMRange *range;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-
+ 	range = dom_get_current_range (document);
+ 	if (!range)
+ 		return FALSE;
+ 
+ 	node = webkit_dom_range_get_common_ancestor_container (range, NULL);
++	g_object_unref (range);
+ 	/* If we are changing the format of block we have to re-set bold property,
+ 	 * otherwise it will be turned off because of no text in composer */
+ 	text_content = webkit_dom_node_get_text_content (node);
+@@ -3554,7 +3630,8 @@ dom_selection_is_bold (WebKitDOMDocument *document,
+ 	else
+ 		element = webkit_dom_node_get_parent_element (node);
+ 
+-	style = webkit_dom_dom_window_get_computed_style (window, element, NULL);
++	dom_window = webkit_dom_document_get_default_view (document);
++	style = webkit_dom_dom_window_get_computed_style (dom_window, element, NULL);
+ 	value = webkit_dom_css_style_declaration_get_property_value (style, "font-weight");
+ 
+ 	if (g_strstr_len (value, -1, "normal"))
+@@ -3562,6 +3639,9 @@ dom_selection_is_bold (WebKitDOMDocument *document,
+ 	else
+ 		ret_val = TRUE;
+ 
++	g_object_unref (style);
++	g_object_unref (dom_window);
++
+ 	g_free (value);
+ 	return ret_val;
+ }
+@@ -3608,18 +3688,17 @@ dom_selection_is_italic (WebKitDOMDocument *document,
+ 	gboolean ret_val;
+ 	gchar *value, *text_content;
+ 	WebKitDOMCSSStyleDeclaration *style;
+-	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMNode *node;
+ 	WebKitDOMElement *element;
+ 	WebKitDOMRange *range;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-
+ 	range = dom_get_current_range (document);
+ 	if (!range)
+ 		return FALSE;
+ 
+ 	node = webkit_dom_range_get_common_ancestor_container (range, NULL);
++	g_object_unref (range);
+ 	/* If we are changing the format of block we have to re-set italic property,
+ 	 * otherwise it will be turned off because of no text in composer */
+ 	text_content = webkit_dom_node_get_text_content (node);
+@@ -3634,7 +3713,8 @@ dom_selection_is_italic (WebKitDOMDocument *document,
+ 	else
+ 		element = webkit_dom_node_get_parent_element (node);
+ 
+-	style = webkit_dom_dom_window_get_computed_style (window, element, NULL);
++	dom_window = webkit_dom_document_get_default_view (document);
++	style = webkit_dom_dom_window_get_computed_style (dom_window, element, NULL);
+ 	value = webkit_dom_css_style_declaration_get_property_value (style, "font-style");
+ 
+ 	if (g_strstr_len (value, -1, "italic"))
+@@ -3642,7 +3722,10 @@ dom_selection_is_italic (WebKitDOMDocument *document,
+ 	else
+ 		ret_val = FALSE;
+ 
++	g_object_unref (style);
++	g_object_unref (dom_window);
+ 	g_free (value);
++
+ 	return ret_val;
+ }
+ 
+@@ -3690,8 +3773,9 @@ dom_selection_is_indented (WebKitDOMDocument *document)
+ 	if (!range)
+ 		return FALSE;
+ 
+-	if (dom_selection_is_collapsed (document)) {
++	if (webkit_dom_range_get_collapsed (range, NULL)) {
+ 		element = get_element_for_inspection (range);
++		g_object_unref (range);
+ 		return element_has_class (element, "-x-evo-indented");
+ 	} else {
+ 		WebKitDOMNode *node;
+@@ -3700,24 +3784,29 @@ dom_selection_is_indented (WebKitDOMDocument *document)
+ 		node = webkit_dom_range_get_end_container (range, NULL);
+ 		/* No selection or whole body selected */
+ 		if (WEBKIT_DOM_IS_HTML_BODY_ELEMENT (node))
+-			return FALSE;
++			goto out;
+ 
+ 		element = WEBKIT_DOM_ELEMENT (get_parent_indented_block (node));
+ 		ret_val = element_has_class (element, "-x-evo-indented");
+ 		if (!ret_val)
+-			return FALSE;
++			goto out;
+ 
+ 		node = webkit_dom_range_get_start_container (range, NULL);
+ 		/* No selection or whole body selected */
+ 		if (WEBKIT_DOM_IS_HTML_BODY_ELEMENT (node))
+-			return FALSE;
++			goto out;
+ 
+ 		element = WEBKIT_DOM_ELEMENT (get_parent_indented_block (node));
+ 		ret_val = element_has_class (element, "-x-evo-indented");
+ 
++		g_object_unref (range);
++
+ 		return ret_val;
+ 	}
+ 
++ out:
++	g_object_unref (range);
++
+ 	return FALSE;
+ }
+ 
+@@ -3742,6 +3831,7 @@ dom_selection_is_citation (WebKitDOMDocument *document)
+ 		return FALSE;
+ 
+ 	node = webkit_dom_range_get_common_ancestor_container (range, NULL);
++	g_object_unref (range);
+ 
+ 	if (WEBKIT_DOM_IS_TEXT (node))
+ 		return get_has_style (document, "citation");
+@@ -3781,6 +3871,7 @@ get_font_property (WebKitDOMDocument *document,
+ 		return NULL;
+ 
+ 	node = webkit_dom_range_get_common_ancestor_container (range, NULL);
++	g_object_unref (range);
+ 	element = dom_node_find_parent_element (node, "FONT");
+ 	if (!element)
+ 		return NULL;
+@@ -3942,12 +4033,14 @@ gchar *
+ dom_selection_get_font_name (WebKitDOMDocument *document,
+                              EHTMLEditorWebExtension *extension)
+ {
++	gchar *value;
+ 	WebKitDOMNode *node;
+ 	WebKitDOMRange *range;
+ 	WebKitDOMCSSStyleDeclaration *css;
+ 
+ 	range = dom_get_current_range (document);
+ 	node = webkit_dom_range_get_common_ancestor_container (range, NULL);
++	g_object_unref (range);
+ /* FIXME WK2
+ 	g_free (selection->priv->font_family);
+ */
+@@ -3956,7 +4049,10 @@ dom_selection_get_font_name (WebKitDOMDocument *document,
+ 	selection->priv->font_family =
+ 		webkit_dom_css_style_declaration_get_property_value (css, "fontFamily");
+ */
+-	return webkit_dom_css_style_declaration_get_property_value (css, "fontFamily");
++	value = webkit_dom_css_style_declaration_get_property_value (css, "fontFamily");
++	g_object_unref (css);
++
++	return value;
+ }
+ 
+ /**
+@@ -4115,6 +4211,8 @@ dom_selection_get_block_format (WebKitDOMDocument *document,
+ 		result = E_HTML_EDITOR_SELECTION_BLOCK_FORMAT_PARAGRAPH;
+ 	}
+ 
++	g_object_unref (range);
++
+ 	return result;
+ }
+ 
+@@ -4322,9 +4420,7 @@ format_change_block_to_list (WebKitDOMDocument *document,
+                              EHTMLEditorSelectionBlockFormat format)
+ {
+ 	gboolean after_selection_end = FALSE, in_quote = FALSE;
+-	/* FIXME WK2
+-	gboolean html_mode = e_html_editor_view_get_html_mode (view);*/
+-	gboolean html_mode = FALSE;
++	gboolean html_mode = e_html_editor_web_extension_get_html_mode (extension);
+ 	WebKitDOMElement *selection_start_marker, *selection_end_marker, *item, *list;
+ 	WebKitDOMNode *block, *next_block;
+ 
+@@ -4356,14 +4452,14 @@ format_change_block_to_list (WebKitDOMDocument *document,
+ 	if (webkit_dom_element_query_selector (
+ 		WEBKIT_DOM_ELEMENT (block), "span.-x-evo-quoted", NULL)) {
+ 		WebKitDOMElement *element;
+-		WebKitDOMDOMWindow *window;
++		WebKitDOMDOMWindow *dom_window;
+ 		WebKitDOMDOMSelection *dom_selection;
+ 		WebKitDOMRange *range;
+ 
+ 		in_quote = TRUE;
+ 
+-		window = webkit_dom_document_get_default_view (document);
+-		dom_selection = webkit_dom_dom_window_get_selection (window);
++		dom_window = webkit_dom_document_get_default_view (document);
++		dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+ 		range = webkit_dom_document_create_range (document);
+ 
+ 		webkit_dom_range_select_node (range, block, NULL);
+@@ -4371,6 +4467,10 @@ format_change_block_to_list (WebKitDOMDocument *document,
+ 		webkit_dom_dom_selection_remove_all_ranges (dom_selection);
+ 		webkit_dom_dom_selection_add_range (dom_selection, range);
+ 
++		g_object_unref (range);
++		g_object_unref (dom_selection);
++		g_object_unref (dom_window);
++
+ 		dom_exec_command (
+ 			document, extension, E_HTML_EDITOR_VIEW_COMMAND_INSERT_NEW_LINE_IN_QUOTED_CONTENT, NULL);
+ 
+@@ -4834,6 +4934,8 @@ dom_selection_set_block_format (WebKitDOMDocument *document,
+ 		}
+ 	 }
+ 
++	g_object_unref (range);
++
+ 	if (from_list && to_list)
+ 		format_change_list_to_list (document, extension, format, html_mode);
+ 
+@@ -4888,14 +4990,13 @@ gchar *
+ dom_selection_get_background_color (WebKitDOMDocument *document,
+                                     EHTMLEditorWebExtension *extension)
+ {
++	gchar *value;
+ 	WebKitDOMNode *ancestor;
+ 	WebKitDOMRange *range;
+ 	WebKitDOMCSSStyleDeclaration *css;
+ 
+ 	range = dom_get_current_range (document);
+-
+ 	ancestor = webkit_dom_range_get_common_ancestor_container (range, NULL);
+-
+ 	css = webkit_dom_element_get_style (WEBKIT_DOM_ELEMENT (ancestor));
+ /* FIXME WK2
+ 	g_free (selection->priv->background_color);
+@@ -4903,7 +5004,12 @@ dom_selection_get_background_color (WebKitDOMDocument *document,
+ 		webkit_dom_css_style_declaration_get_property_value (
+ 			css, "background-color");*/
+ 
+-	return webkit_dom_css_style_declaration_get_property_value (css, "background-color");
++	value = webkit_dom_css_style_declaration_get_property_value (css, "background-color");
++
++	g_object_unref (css);
++	g_object_unref (range);
++
++	return value;
+ }
+ 
+ /**
+@@ -4939,17 +5045,17 @@ dom_selection_get_alignment (WebKitDOMDocument *document,
+ 	EHTMLEditorSelectionAlignment alignment;
+ 	gchar *value;
+ 	WebKitDOMCSSStyleDeclaration *style;
+-	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMElement *element;
+ 	WebKitDOMNode *node;
+ 	WebKitDOMRange *range;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+ 	range = dom_get_current_range (document);
+ 	if (!range)
+ 		return E_HTML_EDITOR_SELECTION_ALIGNMENT_LEFT;
+ 
+ 	node = webkit_dom_range_get_start_container (range, NULL);
++	g_object_unref (range);
+ 	if (!node)
+ 		return E_HTML_EDITOR_SELECTION_ALIGNMENT_LEFT;
+ 
+@@ -4958,7 +5064,8 @@ dom_selection_get_alignment (WebKitDOMDocument *document,
+ 	else
+ 		element = webkit_dom_node_get_parent_element (node);
+ 
+-	style = webkit_dom_dom_window_get_computed_style (window, element, NULL);
++	dom_window = webkit_dom_document_get_default_view (document);
++	style = webkit_dom_dom_window_get_computed_style (dom_window, element, NULL);
+ 	value = webkit_dom_css_style_declaration_get_property_value (style, "text-align");
+ 
+ 	if (!value || !*value ||
+@@ -4972,6 +5079,8 @@ dom_selection_get_alignment (WebKitDOMDocument *document,
+ 		alignment = E_HTML_EDITOR_SELECTION_ALIGNMENT_LEFT;
+ 	}
+ 
++	g_object_unref (style);
++	g_object_unref (dom_window);
+ 	g_free (value);
+ 
+ 	return alignment;
+@@ -5159,7 +5268,7 @@ dom_selection_replace (WebKitDOMDocument *document,
+ 	manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
+ 
+ 	if (!e_html_editor_undo_redo_manager_is_operation_in_progress (manager)) {
+-		WebKitDOMDOMWindow *window;
++		WebKitDOMDOMWindow *dom_window;
+ 		WebKitDOMDOMSelection *dom_selection;
+ 		WebKitDOMRange *range;
+ 
+@@ -5173,12 +5282,16 @@ dom_selection_replace (WebKitDOMDocument *document,
+ 			&ev->before.end.x,
+ 			&ev->before.end.y);
+ 
+-		window = webkit_dom_document_get_default_view (document);
+-		dom_selection = webkit_dom_dom_window_get_selection (window);
++		dom_window = webkit_dom_document_get_default_view (document);
++		dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+ 
+ 		range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 		ev->data.string.from = webkit_dom_range_get_text (range);
+ 		ev->data.string.to = g_strdup (replacement);
++
++		g_object_unref (range);
++		g_object_unref (dom_selection);
++		g_object_unref (dom_window);
+ 	}
+ 
+ 	dom_exec_command (document, extension, E_HTML_EDITOR_VIEW_COMMAND_INSERT_TEXT, replacement);
+@@ -5211,17 +5324,20 @@ dom_replace_caret_word (WebKitDOMDocument *document,
+                         EHTMLEditorWebExtension *extension,
+                         const gchar *replacement)
+ {
+-	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMDOMSelection *dom_selection;
+ 	WebKitDOMRange *range;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-	dom_selection = webkit_dom_dom_window_get_selection (window);
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+ 
+ 	e_html_editor_web_extension_set_content_changed (extension);
+ 	range = dom_get_current_range (document);
+ 	webkit_dom_range_expand (range, "word", NULL);
+ 	webkit_dom_dom_selection_add_range (dom_selection, range);
++	g_object_unref (range);
++	g_object_unref (dom_selection);
++	g_object_unref (dom_window);
+ 
+ 	dom_exec_command (document, extension, E_HTML_EDITOR_VIEW_COMMAND_INSERT_HTML, replacement);
+ 	dom_force_spell_check_for_current_paragraph (document, extension);
+@@ -5239,6 +5355,7 @@ dom_replace_caret_word (WebKitDOMDocument *document,
+ gchar *
+ dom_get_caret_word (WebKitDOMDocument *document)
+ {
++	gchar *word;
+ 	WebKitDOMRange *range;
+ 
+ 	range = dom_get_current_range (document);
+@@ -5246,8 +5363,11 @@ dom_get_caret_word (WebKitDOMDocument *document)
+ 	/* Don't operate on the visible selection */
+ 	range = webkit_dom_range_clone_range (range, NULL);
+ 	webkit_dom_range_expand (range, "word", NULL);
++	word = webkit_dom_range_to_string (range, NULL);
+ 
+-	return webkit_dom_range_to_string (range, NULL);
++	g_object_unref (range);
++
++	return word;
+ }
+ 
+ /**
+@@ -5267,17 +5387,23 @@ dom_selection_has_text (WebKitDOMDocument *document)
+ 	range = dom_get_current_range (document);
+ 
+ 	node = webkit_dom_range_get_start_container (range, NULL);
+-	if (WEBKIT_DOM_IS_TEXT (node))
++	if (WEBKIT_DOM_IS_TEXT (node)) {
++		g_object_unref (range);
+ 		return TRUE;
++	}
+ 
+ 	node = webkit_dom_range_get_end_container (range, NULL);
+-	if (WEBKIT_DOM_IS_TEXT (node))
++	if (WEBKIT_DOM_IS_TEXT (node)) {
++		g_object_unref (range);
+ 		return TRUE;
++	}
+ 
+ 	node = WEBKIT_DOM_NODE (webkit_dom_range_clone_contents (range, NULL));
+ 	while (node) {
+-		if (WEBKIT_DOM_IS_TEXT (node))
++		if (WEBKIT_DOM_IS_TEXT (node)) {
++			g_object_unref (range);
+ 			return TRUE;
++		}
+ 
+ 		if (webkit_dom_node_has_child_nodes (node)) {
+ 			node = webkit_dom_node_get_first_child (node);
+@@ -5294,6 +5420,8 @@ dom_selection_has_text (WebKitDOMDocument *document)
+ 	if (node)
+ 		g_object_unref (node);
+ 
++	g_object_unref (range);
++
+ 	return FALSE;
+ }
+ 
+@@ -5354,6 +5482,10 @@ dom_selection_set_on_point (WebKitDOMDocument *document,
+ 	range = webkit_dom_document_caret_range_from_point (document, x, y);
+ 	webkit_dom_dom_selection_remove_all_ranges (dom_selection);
+ 	webkit_dom_dom_selection_add_range (dom_selection, range);
++
++	g_object_unref (range);
++	g_object_unref (dom_selection);
++	g_object_unref (dom_window);
+ }
+ 
+ void
+diff --git a/web-extensions/e-html-editor-spell-check-dialog-dom-functions.c b/web-extensions/e-html-editor-spell-check-dialog-dom-functions.c
+index 1d023a4317..bf97ee4b0c 100644
+--- a/web-extensions/e-html-editor-spell-check-dialog-dom-functions.c
++++ b/web-extensions/e-html-editor-spell-check-dialog-dom-functions.c
+@@ -25,30 +25,30 @@
+ #include <webkitdom/WebKitDOMDOMWindowUnstable.h>
+ 
+ static gboolean
+-select_next_word (WebKitDOMDOMSelection *selection)
++select_next_word (WebKitDOMDOMSelection *dom_selection)
+ {
+ 	gulong anchor_offset, focus_offset;
+ 	WebKitDOMNode *anchor, *focus;
+ 
+-	anchor = webkit_dom_dom_selection_get_anchor_node (selection);
+-	anchor_offset = webkit_dom_dom_selection_get_anchor_offset (selection);
++	anchor = webkit_dom_dom_selection_get_anchor_node (dom_selection);
++	anchor_offset = webkit_dom_dom_selection_get_anchor_offset (dom_selection);
+ 
+-	focus = webkit_dom_dom_selection_get_focus_node (selection);
+-	focus_offset = webkit_dom_dom_selection_get_focus_offset (selection);
++	focus = webkit_dom_dom_selection_get_focus_node (dom_selection);
++	focus_offset = webkit_dom_dom_selection_get_focus_offset (dom_selection);
+ 
+ 	/* Jump _behind_ next word */
+-	webkit_dom_dom_selection_modify (selection, "move", "forward", "word");
++	webkit_dom_dom_selection_modify (dom_selection, "move", "forward", "word");
+ 	/* Jump before the word */
+-	webkit_dom_dom_selection_modify (selection, "move", "backward", "word");
++	webkit_dom_dom_selection_modify (dom_selection, "move", "backward", "word");
+ 	/* Select it */
+-	webkit_dom_dom_selection_modify (selection, "extend", "forward", "word");
++	webkit_dom_dom_selection_modify (dom_selection, "extend", "forward", "word");
+ 
+ 	/* If the selection didn't change, then we have most probably
+ 	 * reached the end of document - return FALSE */
+-	return !((anchor == webkit_dom_dom_selection_get_anchor_node (selection)) &&
+-		 (anchor_offset == webkit_dom_dom_selection_get_anchor_offset (selection)) &&
+-		 (focus == webkit_dom_dom_selection_get_focus_node (selection)) &&
+-		 (focus_offset == webkit_dom_dom_selection_get_focus_offset (selection)));
++	return !((anchor == webkit_dom_dom_selection_get_anchor_node (dom_selection)) &&
++		 (anchor_offset == webkit_dom_dom_selection_get_anchor_offset (dom_selection)) &&
++		 (focus == webkit_dom_dom_selection_get_focus_node (dom_selection)) &&
++		 (focus_offset == webkit_dom_dom_selection_get_focus_offset (dom_selection)));
+ }
+ 
+ gchar *
+@@ -56,33 +56,35 @@ e_html_editor_spell_check_dialog_next (WebKitDOMDocument *document,
+                                        const gchar *word)
+ {
+ 	gulong start_offset, end_offset;
+-	WebKitDOMDOMSelection *selection;
+-	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMSelection *dom_selection;
++	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMNode *start = NULL, *end = NULL;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-	selection = webkit_dom_dom_window_get_selection (window);
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	g_object_unref (dom_window);
+ 
+ 	if (!word) {
+ 		webkit_dom_dom_selection_modify (
+-			selection, "move", "left", "documentboundary");
++			dom_selection, "move", "left", "documentboundary");
+ 	} else {
+ 		/* Remember last selected word */
+-		start = webkit_dom_dom_selection_get_anchor_node (selection);
+-		end = webkit_dom_dom_selection_get_focus_node (selection);
+-		start_offset = webkit_dom_dom_selection_get_anchor_offset (selection);
+-		end_offset = webkit_dom_dom_selection_get_focus_offset (selection);
++		start = webkit_dom_dom_selection_get_anchor_node (dom_selection);
++		end = webkit_dom_dom_selection_get_focus_node (dom_selection);
++		start_offset = webkit_dom_dom_selection_get_anchor_offset (dom_selection);
++		end_offset = webkit_dom_dom_selection_get_focus_offset (dom_selection);
+ 	}
+ 
+ #if 0 /* FIXME WK2 */
+-	while (select_next_word (selection)) {
++	while (select_next_word (dom_selection)) {
+ 		WebKitDOMRange *range;
+ 		WebKitSpellChecker *checker;
+ 		gint loc, len;
+ 		gchar *word;
+ 
+-		range = webkit_dom_dom_selection_get_range_at (selection, 0, NULL);
++		range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 		word = webkit_dom_range_get_text (range);
++		g_object_unref (range);
+ 
+ 		checker = WEBKIT_SPELL_CHECKER (webkit_get_text_checker ());
+ 		webkit_spell_checker_check_spelling_of_string (
+@@ -99,34 +101,36 @@ e_html_editor_spell_check_dialog_next (WebKitDOMDocument *document,
+ 	 * reached only when we reach the end of the document */
+ 	if (start && end)
+ 		webkit_dom_dom_selection_set_base_and_extent (
+-			selection, start, start_offset, end, end_offset, NULL);
++			dom_selection, start, start_offset, end, end_offset, NULL);
++
++	g_object_unref (dom_selection);
+ 
+ 	return FALSE;
+ }
+ 
+ static gboolean
+-select_previous_word (WebKitDOMDOMSelection *selection)
++select_previous_word (WebKitDOMDOMSelection *dom_selection)
+ {
+ 	WebKitDOMNode *old_anchor_node;
+ 	WebKitDOMNode *new_anchor_node;
+ 	gulong old_anchor_offset;
+ 	gulong new_anchor_offset;
+ 
+-	old_anchor_node = webkit_dom_dom_selection_get_anchor_node (selection);
+-	old_anchor_offset = webkit_dom_dom_selection_get_anchor_offset (selection);
++	old_anchor_node = webkit_dom_dom_selection_get_anchor_node (dom_selection);
++	old_anchor_offset = webkit_dom_dom_selection_get_anchor_offset (dom_selection);
+ 
+ 	/* Jump on the beginning of current word */
+-	webkit_dom_dom_selection_modify (selection, "move", "backward", "word");
++	webkit_dom_dom_selection_modify (dom_selection, "move", "backward", "word");
+ 	/* Jump before previous word */
+-	webkit_dom_dom_selection_modify (selection, "move", "backward", "word");
++	webkit_dom_dom_selection_modify (dom_selection, "move", "backward", "word");
+ 	/* Select it */
+-	webkit_dom_dom_selection_modify (selection, "extend", "forward", "word");
++	webkit_dom_dom_selection_modify (dom_selection, "extend", "forward", "word");
+ 
+ 	/* If the selection start didn't change, then we have most probably
+ 	 * reached the beginnig of document. Return FALSE */
+ 
+-	new_anchor_node = webkit_dom_dom_selection_get_anchor_node (selection);
+-	new_anchor_offset = webkit_dom_dom_selection_get_anchor_offset (selection);
++	new_anchor_node = webkit_dom_dom_selection_get_anchor_node (dom_selection);
++	new_anchor_offset = webkit_dom_dom_selection_get_anchor_offset (dom_selection);
+ 
+ 	return (new_anchor_node != old_anchor_node) ||
+ 		(new_anchor_offset != old_anchor_offset);
+@@ -137,34 +141,36 @@ e_html_editor_spell_check_dialog_prev (WebKitDOMDocument *document,
+                                        const gchar *word)
+ {
+ 	gulong start_offset, end_offset;
+-	WebKitDOMDOMSelection *selection;
+-	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMSelection *dom_selection;
++	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMNode *start = NULL, *end = NULL;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-	selection = webkit_dom_dom_window_get_selection (window);
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	g_object_unref (dom_window);
+ 
+ 	if (!word) {
+ 		webkit_dom_dom_selection_modify (
+-			selection, "move", "right", "documentboundary");
++			dom_selection, "move", "right", "documentboundary");
+ 		webkit_dom_dom_selection_modify (
+-			selection, "extend", "backward", "word");
++			dom_selection, "extend", "backward", "word");
+ 	} else {
+ 		/* Remember last selected word */
+-		start = webkit_dom_dom_selection_get_anchor_node (selection);
+-		end = webkit_dom_dom_selection_get_focus_node (selection);
+-		start_offset = webkit_dom_dom_selection_get_anchor_offset (selection);
+-		end_offset = webkit_dom_dom_selection_get_focus_offset (selection);
++		start = webkit_dom_dom_selection_get_anchor_node (dom_selection);
++		end = webkit_dom_dom_selection_get_focus_node (dom_selection);
++		start_offset = webkit_dom_dom_selection_get_anchor_offset (dom_selection);
++		end_offset = webkit_dom_dom_selection_get_focus_offset (dom_selection);
+ 	}
+ #if 0 /* FIXME WK2 */
+-	while (select_previous_word (selection)) {
++	while (select_previous_word (dom_selection)) {
+ 		WebKitDOMRange *range;
+ 		WebKitSpellChecker *checker;
+ 		gint loc, len;
+ 		gchar *word;
+ 
+-		range = webkit_dom_dom_selection_get_range_at (selection, 0, NULL);
++		range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 		word = webkit_dom_range_get_text (range);
++		g_object_unref (range);
+ 
+ 		checker = WEBKIT_SPELL_CHECKER (webkit_get_text_checker ());
+ 		webkit_spell_checker_check_spelling_of_string (
+@@ -184,7 +190,7 @@ e_html_editor_spell_check_dialog_prev (WebKitDOMDocument *document,
+ 	 * reached only when we reach the beginning of the document */
+ 	if (start && end)
+ 		webkit_dom_dom_selection_set_base_and_extent (
+-			selection, start, start_offset, end, end_offset, NULL);
++			dom_selection, start, start_offset, end, end_offset, NULL);
+ 
+ 	return FALSE;
+ }
+diff --git a/web-extensions/e-html-editor-table-dialog-dom-functions.c b/web-extensions/e-html-editor-table-dialog-dom-functions.c
+index e2706db991..60f2f04e5d 100644
+--- a/web-extensions/e-html-editor-table-dialog-dom-functions.c
++++ b/web-extensions/e-html-editor-table-dialog-dom-functions.c
+@@ -236,18 +236,20 @@ e_html_editor_table_dialog_show (WebKitDOMDocument *document,
+ {
+ 	EHTMLEditorUndoRedoManager *manager;
+ 	gboolean created = FALSE;
+-	WebKitDOMDOMWindow *window;
+-	WebKitDOMDOMSelection *selection;
++	WebKitDOMDOMWindow *dom_window;
++	WebKitDOMDOMSelection *dom_selection;
+ 	WebKitDOMElement *table = NULL;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-	selection = webkit_dom_dom_window_get_selection (window);
+-	if (selection && (webkit_dom_dom_selection_get_range_count (selection) > 0)) {
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	g_object_unref (dom_window);
++	if (dom_selection && (webkit_dom_dom_selection_get_range_count (dom_selection) > 0)) {
+ 		WebKitDOMRange *range;
+ 
+-		range = webkit_dom_dom_selection_get_range_at (selection, 0, NULL);
++		range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 		table = dom_node_find_parent_element (
+ 			webkit_dom_range_get_start_container (range, NULL), "TABLE");
++		g_object_unref (range);
+ 
+ 		if (table) {
+ 			webkit_dom_element_set_id (table, "-x-evo-current-table");
+@@ -275,6 +277,8 @@ e_html_editor_table_dialog_show (WebKitDOMDocument *document,
+ 		e_html_editor_undo_redo_manager_insert_history_event (manager, ev);
+ 	}
+ 
++	g_object_unref (dom_selection);
++
+ 	return created;
+ }
+ 
+diff --git a/web-extensions/e-html-editor-undo-redo-manager.c b/web-extensions/e-html-editor-undo-redo-manager.c
+index a63a96edb5..935a719ec2 100644
+--- a/web-extensions/e-html-editor-undo-redo-manager.c
++++ b/web-extensions/e-html-editor-undo-redo-manager.c
+@@ -102,15 +102,17 @@ get_range_for_point (WebKitDOMDocument *document,
+ 
+ 	/* The point is outside the viewport, scroll to it. */
+ 	if (!range) {
+-		WebKitDOMDOMWindow *window;
++		WebKitDOMDOMWindow *dom_window;
+ 
+-		window = webkit_dom_document_get_default_view (document);
+-		webkit_dom_dom_window_scroll_to (window, point.x, point.y);
++		dom_window = webkit_dom_document_get_default_view (document);
++		webkit_dom_dom_window_scroll_to (dom_window, point.x, point.y);
+ 
+ 		scroll_left = webkit_dom_element_get_scroll_left (WEBKIT_DOM_ELEMENT (body));
+ 		scroll_top = webkit_dom_element_get_scroll_top (WEBKIT_DOM_ELEMENT (body));
++		g_object_unref (range);
+ 		range = webkit_dom_document_caret_range_from_point (
+ 			document, point.x - scroll_left, point.y - scroll_top);
++		g_object_unref (dom_window);
+ 	}
+ 
+ 	return range;
+@@ -128,16 +130,20 @@ restore_selection_to_history_event_state (WebKitDOMDocument *document,
+ 
+ 	dom_window = webkit_dom_document_get_default_view (document);
+ 	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	g_object_unref (dom_window);
+ 
+ 	/* Restore the selection how it was before the event occured. */
+ 	range = get_range_for_point (document, selection_state.start);
+ 	webkit_dom_dom_selection_remove_all_ranges (dom_selection);
+ 	webkit_dom_dom_selection_add_range (dom_selection, range);
++	g_object_unref (range);
+ 
+ 	was_collapsed = selection_state.start.x == selection_state.end.x;
+ 	was_collapsed = was_collapsed && selection_state.start.y == selection_state.end.y;
+-	if (was_collapsed)
++	if (was_collapsed) {
++		g_object_unref (dom_selection);
+ 		return;
++	}
+ 
+ 	dom_selection_save (document);
+ 
+@@ -154,6 +160,7 @@ restore_selection_to_history_event_state (WebKitDOMDocument *document,
+ 	range = get_range_for_point (document, selection_state.end);
+ 	webkit_dom_dom_selection_remove_all_ranges (dom_selection);
+ 	webkit_dom_dom_selection_add_range (dom_selection, range);
++	g_object_unref (range);
+ 
+ 	dom_selection_save (document);
+ 
+@@ -166,6 +173,8 @@ restore_selection_to_history_event_state (WebKitDOMDocument *document,
+ 		element, "-x-evo-selection-start-marker");
+ 
+ 	dom_selection_restore (document);
++
++	g_object_unref (dom_selection);
+ }
+ 
+ #if d(1)+0
+@@ -322,6 +331,7 @@ undo_delete (WebKitDOMDocument *document,
+ 
+ 	dom_window = webkit_dom_document_get_default_view (document);
+ 	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	g_object_unref (dom_window);
+ 
+ 	fragment = webkit_dom_node_clone_node (WEBKIT_DOM_NODE (event->data.fragment),  TRUE);
+ 	first_child = webkit_dom_node_get_first_child (fragment);
+@@ -349,8 +359,10 @@ undo_delete (WebKitDOMDocument *document,
+ 		range = get_range_for_point (document, event->before.start);
+ 		webkit_dom_dom_selection_remove_all_ranges (dom_selection);
+ 		webkit_dom_dom_selection_add_range (dom_selection, range);
++		g_object_unref (dom_selection);
+ 
+ 		node = webkit_dom_range_get_start_container (range, NULL);
++		g_object_unref (range);
+ 		if (!node)
+ 			return;
+ 
+@@ -377,6 +389,7 @@ undo_delete (WebKitDOMDocument *document,
+ 		range = get_range_for_point (document, event->before.start);
+ 		webkit_dom_dom_selection_remove_all_ranges (dom_selection);
+ 		webkit_dom_dom_selection_add_range (dom_selection, range);
++		g_object_unref (range);
+ 		dom_selection_save (document);
+ 
+ 		element = webkit_dom_document_get_element_by_id (
+@@ -450,6 +463,7 @@ undo_delete (WebKitDOMDocument *document,
+ 		webkit_dom_range_surround_contents (range, WEBKIT_DOM_NODE (element), NULL);
+ 		webkit_dom_dom_selection_remove_all_ranges (dom_selection);
+ 		webkit_dom_dom_selection_add_range (dom_selection, range);
++		g_object_unref (range);
+ 
+ 		nd = webkit_dom_node_get_previous_sibling (WEBKIT_DOM_NODE (element));
+ 		if (nd && WEBKIT_DOM_IS_TEXT (nd)) {
+@@ -492,6 +506,8 @@ undo_delete (WebKitDOMDocument *document,
+ 			dom_check_magic_links (document, extension, FALSE);
+ 		dom_force_spell_check_for_current_paragraph (document, extension);
+ 	}
++
++	g_object_unref (dom_selection);
+ }
+ 
+ static void
+@@ -499,20 +515,21 @@ redo_delete (WebKitDOMDocument *document,
+              EHTMLEditorWebExtension *extension,
+              EHTMLEditorHistoryEvent *event)
+ {
+-	WebKitDOMDOMWindow *dom_window;
+-	WebKitDOMDOMSelection *dom_selection;
+ 	WebKitDOMDocumentFragment *fragment = event->data.fragment;
+ 	WebKitDOMNode *first_child;
+ 
+-	dom_window = webkit_dom_document_get_default_view (document);
+-	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+-
+ 	first_child = webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (fragment));
+ 
+ 	restore_selection_to_history_event_state (document, event->before);
+ 
+ 	if (webkit_dom_document_fragment_query_selector (fragment, "span#-x-evo-selection-start-marker", NULL)) {
+ 		gboolean delete = FALSE;
++		WebKitDOMDOMWindow *dom_window;
++		WebKitDOMDOMSelection *dom_selection;
++
++		dom_window = webkit_dom_document_get_default_view (document);
++		g_object_unref (dom_window);
++		dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+ 
+ 		/* Check if the event was delete or backspace press. */
+ 		delete = WEBKIT_DOM_IS_ELEMENT (first_child);
+@@ -521,6 +538,8 @@ redo_delete (WebKitDOMDocument *document,
+ 			webkit_dom_dom_selection_modify (dom_selection, "extend", "right", "character");
+ 		else
+ 			webkit_dom_dom_selection_modify (dom_selection, "extend", "left", "character");
++
++		g_object_unref (dom_selection);
+ 	}
+ 
+ 	dom_exec_command (document, extension, E_HTML_EDITOR_VIEW_COMMAND_DELETE, NULL);
+@@ -630,6 +649,7 @@ undo_redo_wrap (WebKitDOMDocument *document,
+ 
+ 		range = dom_get_current_range (document);
+ 		node = webkit_dom_range_get_common_ancestor_container (range, NULL);
++		g_object_unref (range);
+ 		element = get_parent_block_element (WEBKIT_DOM_NODE (node));
+ 		dom_remove_wrapping_from_element (WEBKIT_DOM_ELEMENT (element));
+ 
+@@ -923,10 +943,14 @@ undo_redo_table_input (WebKitDOMDocument *document,
+ 
+ 	dom_window = webkit_dom_document_get_default_view (document);
+ 	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	g_object_unref (dom_window);
+ 
+-	if (!webkit_dom_dom_selection_get_range_count (dom_selection))
++	if (!webkit_dom_dom_selection_get_range_count (dom_selection)) {
++		g_object_unref (dom_selection);
+ 		return;
++	}
+ 	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
++	g_object_unref (dom_selection);
+ 
+ 	/* Find if writing into table. */
+ 	node = webkit_dom_range_get_start_container (range, NULL);
+@@ -935,6 +959,8 @@ undo_redo_table_input (WebKitDOMDocument *document,
+ 	else
+ 		element = get_parent_block_element (node);
+ 
++	g_object_unref (range);
++
+ 	/* If writing to table we have to create different history event. */
+ 	if (!WEBKIT_DOM_IS_HTML_TABLE_CELL_ELEMENT (element))
+ 		return;
+@@ -993,11 +1019,13 @@ undo_redo_paste (WebKitDOMDocument *document,
+ 
+ 			dom_window = webkit_dom_document_get_default_view (document);
+ 			dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++			g_object_unref (dom_window);
+ 
+ 			/* Restore the selection how it was before the event occured. */
+ 			range = get_range_for_point (document, event->before.start);
+ 			webkit_dom_dom_selection_remove_all_ranges (dom_selection);
+ 			webkit_dom_dom_selection_add_range (dom_selection, range);
++			g_object_unref (range);
+ 
+ 			dom_selection_save (document);
+ 
+@@ -1014,6 +1042,8 @@ undo_redo_paste (WebKitDOMDocument *document,
+ 			range = get_range_for_point (document, event->after.start);
+ 			webkit_dom_dom_selection_remove_all_ranges (dom_selection);
+ 			webkit_dom_dom_selection_add_range (dom_selection, range);
++			g_object_unref (range);
++			g_object_unref (dom_selection);
+ 
+ 			dom_selection_save (document);
+ 
+@@ -1058,6 +1088,7 @@ undo_redo_image (WebKitDOMDocument *document,
+ 
+ 	dom_window = webkit_dom_document_get_default_view (document);
+ 	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	g_object_unref (dom_window);
+ 
+ 	if (undo) {
+ 		WebKitDOMElement *element;
+@@ -1066,6 +1097,7 @@ undo_redo_image (WebKitDOMDocument *document,
+ 		range = get_range_for_point (document, event->before.start);
+ 		webkit_dom_dom_selection_remove_all_ranges (dom_selection);
+ 		webkit_dom_dom_selection_add_range (dom_selection, range);
++		g_object_unref (range);
+ 
+ 		dom_selection_save (document);
+ 		element = webkit_dom_document_get_element_by_id (
+@@ -1085,6 +1117,7 @@ undo_redo_image (WebKitDOMDocument *document,
+ 		/* Create temporary node on the selection where the delete occured. */
+ 		webkit_dom_dom_selection_remove_all_ranges (dom_selection);
+ 		webkit_dom_dom_selection_add_range (dom_selection, range);
++		g_object_unref (range);
+ 
+ 		dom_selection_save (document);
+ 		element = webkit_dom_document_get_element_by_id (
+@@ -1100,6 +1133,8 @@ undo_redo_image (WebKitDOMDocument *document,
+ 		dom_selection_restore (document);
+ 		dom_force_spell_check_for_current_paragraph (document, extension);
+ 	}
++
++	g_object_unref (dom_selection);
+ }
+ 
+ static void
+@@ -1116,8 +1151,10 @@ undo_redo_replace (WebKitDOMDocument *document,
+ 
+ 		dom_window = webkit_dom_document_get_default_view (document);
+ 		dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++		g_object_unref (dom_window);
+ 
+ 		webkit_dom_dom_selection_modify (dom_selection, "extend", "left", "word");
++		g_object_unref (dom_selection);
+ 	}
+ 
+ 	dom_exec_command (
+@@ -1172,6 +1209,8 @@ undo_redo_replace_all (EHTMLEditorUndoRedoManager *manager,
+ 			dom_window = webkit_dom_document_get_default_view (document);
+ 			dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+ 			webkit_dom_dom_selection_collapse_to_end (dom_selection, NULL);
++			g_object_unref (dom_window);
++			g_object_unref (dom_selection);
+ 		}
+ 	} else {
+ 		/* Find if this history item is part of HISTORY_REPLACE_ALL. */
+@@ -1236,12 +1275,15 @@ undo_redo_remove_link (WebKitDOMDocument *document,
+ 		range = dom_get_current_range (document);
+ 		element = webkit_dom_document_create_element (document, "SPAN", NULL);
+ 		webkit_dom_range_surround_contents (range, WEBKIT_DOM_NODE (element), NULL);
++		g_object_unref (range);
+ 		webkit_dom_node_insert_before (
+ 			webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (element)),
+ 			webkit_dom_node_clone_node (WEBKIT_DOM_NODE (event->data.fragment), TRUE),
+ 			WEBKIT_DOM_NODE (element),
+ 			NULL);
+ 		remove_node (WEBKIT_DOM_NODE (element));
++		g_object_unref (dom_window);
++		g_object_unref (dom_selection);
+ 	} else
+ 		dom_selection_unlink (document, extension);
+ 
+@@ -1270,6 +1312,9 @@ undo_input (EHTMLEditorUndoRedoManager *manager,
+ 		e_html_editor_web_extension_set_dont_save_history_in_body_input (extension, TRUE);
+ 	}
+ 	dom_exec_command (document, extension, E_HTML_EDITOR_VIEW_COMMAND_DELETE, NULL);
++
++	g_object_unref (dom_window);
++	g_object_unref (dom_selection);
+ }
+ 
+ static void
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index caca0da8c3..47ab168680 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -156,11 +156,13 @@ perform_spell_check (WebKitDOMDOMSelection *dom_selection,
+ 	 * http://www.w3.org/html/wg/drafts/html/master/editing.html#dom-forcespellcheck */
+ 	/* We are moving forward word by word until we hit the text on the end. */
+ 	while (actual && webkit_dom_range_compare_boundary_points (end_range, 2, actual, NULL) != 0) {
++		g_object_unref (actual);
+ 		webkit_dom_dom_selection_modify (
+ 			dom_selection, "move", "forward", "word");
+ 		actual = webkit_dom_dom_selection_get_range_at (
+ 			dom_selection, 0, NULL);
+ 	}
++	g_object_unref (actual);
+ }
+ 
+ void
+@@ -177,9 +179,6 @@ dom_force_spell_check_for_current_paragraph (WebKitDOMDocument *document,
+ 	if (!e_html_editor_web_extension_get_inline_spelling_enabled (extension))
+ 		return;
+ 
+-	dom_window = webkit_dom_document_get_default_view (document);
+-	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+-
+ 	element = webkit_dom_document_query_selector (
+ 		document, "body[spellcheck=true]", NULL);
+ 
+@@ -222,6 +221,9 @@ dom_force_spell_check_for_current_paragraph (WebKitDOMDocument *document,
+ 	webkit_dom_range_collapse (end_range, FALSE, NULL);
+ 
+ 	/* Move on the beginning of the paragraph */
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++
+ 	actual = webkit_dom_document_create_range (document);
+ 	webkit_dom_range_select_node_contents (
+ 		actual, WEBKIT_DOM_NODE (parent), NULL);
+@@ -232,6 +234,10 @@ dom_force_spell_check_for_current_paragraph (WebKitDOMDocument *document,
+ 	actual = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 	perform_spell_check (dom_selection, actual, end_range);
+ 
++	g_object_unref (dom_selection);
++	g_object_unref (dom_window);
++	g_object_unref (end_range);
++
+ 	/* Remove the text that we inserted on the end of the paragraph */
+ 	remove_node (WEBKIT_DOM_NODE (text));
+ 
+@@ -253,8 +259,6 @@ refresh_spell_check (WebKitDOMDocument *document,
+ 	WebKitDOMRange *end_range, *actual;
+ 	WebKitDOMText *text;
+ 
+-	dom_window = webkit_dom_document_get_default_view (document);
+-	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+ 	body = webkit_dom_document_get_body (document);
+ 
+ 	if (!webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (body)))
+@@ -306,6 +310,9 @@ refresh_spell_check (WebKitDOMDocument *document,
+ 		end_range, WEBKIT_DOM_NODE (text), NULL);
+ 	webkit_dom_range_collapse (end_range, FALSE, NULL);
+ 
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++
+ 	/* Move on the beginning of the document */
+ 	webkit_dom_dom_selection_modify (
+ 		dom_selection, "move", "backward", "documentboundary");
+@@ -313,6 +320,10 @@ refresh_spell_check (WebKitDOMDocument *document,
+ 	actual = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 	perform_spell_check (dom_selection, actual, end_range);
+ 
++	g_object_unref (dom_selection);
++	g_object_unref (dom_window);
++	g_object_unref (end_range);
++
+ 	/* Remove the text that we inserted on the end of the body */
+ 	remove_node (WEBKIT_DOM_NODE (text));
+ 
+@@ -344,8 +355,6 @@ dom_force_spell_check_in_viewport (WebKitDOMDocument *document,
+ 	if (!e_html_editor_web_extension_get_inline_spelling_enabled (extension))
+ 		return;
+ 
+-	dom_window = webkit_dom_document_get_default_view (document);
+-	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+ 	body = WEBKIT_DOM_HTML_ELEMENT (webkit_dom_document_query_selector (
+ 		document, "body[spellcheck=true]", NULL));
+ 
+@@ -371,6 +380,9 @@ dom_force_spell_check_in_viewport (WebKitDOMDocument *document,
+ 	/* Append some text on the end of the body */
+ 	text = webkit_dom_document_create_text_node (document, "-x-evo-end");
+ 
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++
+ 	/* We have to add 10 px offset as otherwise just the HTML element will be returned */
+ 	viewport_height = webkit_dom_dom_window_get_inner_height (dom_window);
+ 	last_element = webkit_dom_document_element_from_point (document, 10, viewport_height - 10);
+@@ -394,6 +406,10 @@ dom_force_spell_check_in_viewport (WebKitDOMDocument *document,
+ 	webkit_dom_dom_selection_add_range (dom_selection, actual);
+ 	perform_spell_check (dom_selection, actual, end_range);
+ 
++	g_object_unref (dom_selection);
++	g_object_unref (dom_window);
++	g_object_unref (end_range);
++
+ 	/* Remove the text that we inserted on the end of the body */
+ 	remove_node (WEBKIT_DOM_NODE (text));
+ 
+@@ -534,11 +550,18 @@ return_pressed_in_empty_line (WebKitDOMDocument *document)
+ 			WebKitDOMNode *prev_sibling;
+ 
+ 			prev_sibling = webkit_dom_node_get_previous_sibling (node);
+-			if (!prev_sibling)
+-				return webkit_dom_range_get_collapsed (range, NULL);
++			if (!prev_sibling) {
++				gboolean collapsed;
++
++				collapsed = webkit_dom_range_get_collapsed (range, NULL);
++				g_object_unref (range);
++				return collapsed;
++			}
+ 		}
+ 	}
+ 
++	g_object_unref (range);
++
+ 	return FALSE;
+ }
+ 
+@@ -851,6 +874,7 @@ dom_check_magic_links (WebKitDOMDocument *document,
+ 
+ 	range = dom_get_current_range (document);
+ 	node = webkit_dom_range_get_end_container (range, NULL);
++	g_object_unref (range);
+ 
+ 	if (return_key_pressed)
+ 		node = webkit_dom_node_get_previous_sibling (node);
+@@ -1310,6 +1334,7 @@ emoticon_insert_span (EEmoticon *emoticon,
+ 
+ 	range = dom_get_current_range (document);
+ 	node = webkit_dom_range_get_end_container (range, NULL);
++	g_object_unref (range);
+ 	if (WEBKIT_DOM_IS_TEXT (node))
+ 		node_text = webkit_dom_text_get_whole_text (WEBKIT_DOM_TEXT (node));
+ 
+@@ -1823,10 +1848,14 @@ body_keypress_event_cb (WebKitDOMElement *element,
+ 	document = webkit_dom_node_get_owner_document (WEBKIT_DOM_NODE (element));
+ 	dom_window = webkit_dom_document_get_default_view (document);
+ 	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	g_object_unref (dom_window);
+ 	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 
+-	if (save_history_before_event_in_table (document, extension, range))
++	if (save_history_before_event_in_table (document, extension, range)) {
++		g_object_unref (range);
++		g_object_unref (dom_selection);
+ 		return;
++	}
+ 
+ 	if (!webkit_dom_range_get_collapsed (range, NULL)) {
+ 		EHTMLEditorHistoryEvent *ev;
+@@ -1848,6 +1877,9 @@ body_keypress_event_cb (WebKitDOMElement *element,
+ 			&ev->after.end.y);
+ 		e_html_editor_undo_redo_manager_insert_history_event (manager, ev);
+ 	}
++
++	g_object_unref (range);
++	g_object_unref (dom_selection);
+ }
+ 
+ static gboolean
+@@ -1865,8 +1897,10 @@ save_history_after_event_in_table (WebKitDOMDocument *document,
+ 	dom_window = webkit_dom_document_get_default_view (document);
+ 	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+ 
+-	if (!webkit_dom_dom_selection_get_range_count (dom_selection))
++	if (!webkit_dom_dom_selection_get_range_count (dom_selection)) {
++		g_object_unref (dom_selection);
+ 		return FALSE;
++	}
+ 	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 
+ 	/* Find if writing into table. */
+@@ -1876,6 +1910,9 @@ save_history_after_event_in_table (WebKitDOMDocument *document,
+ 	else
+ 		element = get_parent_block_element (node);
+ 
++	g_object_unref (dom_selection);
++	g_object_unref (range);
++
+ 	manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
+ 	/* If writing to table we have to create different history event. */
+ 	if (WEBKIT_DOM_IS_HTML_TABLE_CELL_ELEMENT (element)) {
+@@ -1916,9 +1953,12 @@ save_history_for_input (WebKitDOMDocument *document,
+ 
+ 	dom_window = webkit_dom_document_get_default_view (document);
+ 	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	g_object_unref (dom_window);
+ 
+-	if (!webkit_dom_dom_selection_get_range_count (dom_selection))
++	if (!webkit_dom_dom_selection_get_range_count (dom_selection)) {
++		g_object_unref (dom_selection);
+ 		return;
++	}
+ 
+ 	ev = g_new0 (EHTMLEditorHistoryEvent, 1);
+ 	ev->type = HISTORY_INPUT;
+@@ -1951,6 +1991,7 @@ save_history_for_input (WebKitDOMDocument *document,
+ 		element_start = webkit_dom_document_create_element (document, "span", NULL);
+ 		webkit_dom_range_surround_contents (range, WEBKIT_DOM_NODE (element_start), NULL);
+ 		webkit_dom_dom_selection_modify (dom_selection, "move", "left", "character");
++		g_object_unref (range);
+ 		range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 		element_end = webkit_dom_document_create_element (document, "span", NULL);
+ 		webkit_dom_range_surround_contents (range, WEBKIT_DOM_NODE (element_end), NULL);
+@@ -2017,6 +2058,10 @@ save_history_for_input (WebKitDOMDocument *document,
+ 			NULL);
+ 	}
+ 
++	g_object_unref (dom_selection);
++	g_object_unref (range);
++	g_object_unref (range_clone);
++
+ 	unblock_selection_changed_callbacks (extension);
+ 
+ 	ev->data.fragment = fragment;
+@@ -2101,7 +2146,7 @@ body_input_event_cb (WebKitDOMElement *element,
+ 		e_html_editor_undo_redo_manager_set_operation_in_progress (manager, FALSE);
+ 		e_html_editor_web_extension_set_dont_save_history_in_body_input (extension, FALSE);
+ 		dom_force_spell_check_for_current_paragraph (document, extension);
+-		return;
++		goto out;
+ 	}
+ 
+ 	if (!save_history_after_event_in_table (document, extension)) {
+@@ -2264,19 +2309,17 @@ body_input_event_cb (WebKitDOMElement *element,
+ 		gint citation_level;
+ 		WebKitDOMElement *selection_start_marker, *selection_end_marker;
+ 		WebKitDOMNode *node, *parent;
+-		WebKitDOMRange *range;
+ 
+-		range = dom_get_current_range (document);
+ 		node = webkit_dom_range_get_end_container (range, NULL);
+ 
+ 		citation_level = get_citation_level (node, FALSE);
+ 		if (citation_level == 0)
+-			return;
++			goto out;
+ 
+ 		selection_start_marker = webkit_dom_document_query_selector (
+ 			document, "span#-x-evo-selection-start-marker", NULL);
+ 		if (selection_start_marker)
+-			return;
++			goto out;
+ 
+ 		dom_selection_save (document);
+ 
+@@ -2304,7 +2347,7 @@ body_input_event_cb (WebKitDOMElement *element,
+ 			WEBKIT_DOM_NODE (selection_start_marker)));
+ 		if (WEBKIT_DOM_IS_HTML_PRE_ELEMENT (parent)) {
+ 			dom_selection_restore (document);
+-			return;
++			goto out;
+ 		}
+ 
+ 		if (selection_start_marker) {
+@@ -2366,11 +2409,13 @@ body_input_event_cb (WebKitDOMElement *element,
+ 
+ 				dom_selection_restore (document);
+ 				dom_force_spell_check_for_current_paragraph (document, extension);
+-				return;
++				goto out;
+ 			}
+ 		}
+ 		dom_selection_restore (document);
+ 	}
++ out:
++	g_object_unref (range);
+ }
+ 
+ void
+@@ -4502,6 +4547,8 @@ dom_convert_content (WebKitDOMDocument *document,
+ 		FALSE,
+ 		extension);
+ 
++	g_object_unref (dom_window);
++
+ 	register_html_events_handlers (body, extension);
+ 
+ 	g_free (inner_html);
+@@ -6599,7 +6646,6 @@ dom_process_content_after_load (WebKitDOMDocument *document,
+ 		document, extension, E_HTML_EDITOR_VIEW_COMMAND_STYLE_WITH_CSS, "false");
+ 
+ 	body = webkit_dom_document_get_body (document);
+-	dom_window = webkit_dom_document_get_default_view (document);
+ 
+ 	webkit_dom_element_remove_attribute (WEBKIT_DOM_ELEMENT (body), "style");
+ 	webkit_dom_element_set_attribute (
+@@ -6656,6 +6702,7 @@ dom_process_content_after_load (WebKitDOMDocument *document,
+ 	else
+ 		dom_turn_spell_check_off (document, extension);
+ 
++	dom_window = webkit_dom_document_get_default_view (document);
+ 
+ 	webkit_dom_event_target_add_event_listener (
+ 		WEBKIT_DOM_EVENT_TARGET (dom_window),
+@@ -6663,6 +6710,8 @@ dom_process_content_after_load (WebKitDOMDocument *document,
+ 		G_CALLBACK (body_scroll_event_cb),
+ 		FALSE,
+ 		extension);
++
++	g_object_unref (dom_window);
+ }
+ 
+ GVariant *
+@@ -6954,20 +7003,27 @@ save_history_for_delete_or_backspace (WebKitDOMDocument *document,
+ 
+ 	dom_window = webkit_dom_document_get_default_view (document);
+ 	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	g_object_unref (dom_window);
+ 
+-	if (!webkit_dom_dom_selection_get_range_count (dom_selection))
++	if (!webkit_dom_dom_selection_get_range_count (dom_selection)) {
++		g_object_unref (dom_selection);
+ 		return;
++	}
+ 
+ 	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 
+-	if (save_history_before_event_in_table (document, extension, range))
++	if (save_history_before_event_in_table (document, extension, range)) {
++		g_object_unref (range);
++		g_object_unref (dom_selection);
+ 		return;
++	}
+ 
+ 	ev = g_new0 (EHTMLEditorHistoryEvent, 1);
+ 	ev->type = HISTORY_DELETE;
+ 
+ 	dom_selection_get_coordinates (
+ 		document, &ev->before.start.x, &ev->before.start.y, &ev->before.end.x, &ev->before.end.y);
++	g_object_unref (range);
+ 	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 
+ 	if (webkit_dom_range_get_collapsed (range, NULL)) {
+@@ -6992,9 +7048,12 @@ save_history_for_delete_or_backspace (WebKitDOMDocument *document,
+ 		}
+ 
+ 		fragment = webkit_dom_range_clone_contents (range_clone, NULL);
++		g_object_unref (range_clone);
+ 		if (!webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (fragment))) {
+ 			g_free (ev);
+ 			unblock_selection_changed_callbacks (extension);
++			g_object_unref (range);
++			g_object_unref (dom_selection);
+ 			return;
+ 		}
+ 
+@@ -7049,6 +7108,9 @@ save_history_for_delete_or_backspace (WebKitDOMDocument *document,
+ 		fragment = webkit_dom_range_clone_contents (range, NULL);
+ 	}
+ 
++	g_object_unref (range);
++	g_object_unref (dom_selection);
++
+ 	ev->data.fragment = fragment;
+ 
+ 	manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
+@@ -7077,13 +7139,19 @@ split_citation (WebKitDOMDocument *document,
+ 
+ 		dom_window = webkit_dom_document_get_default_view (document);
+ 		dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++		g_object_unref (dom_window);
+ 
+-		if (!webkit_dom_dom_selection_get_range_count (dom_selection))
++		if (!webkit_dom_dom_selection_get_range_count (dom_selection)) {
++			g_object_unref (dom_selection);
+ 			return FALSE;
++		}
+ 
+ 		range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 		fragment = webkit_dom_range_clone_contents (range, NULL);
+ 
++		g_object_unref (range);
++		g_object_unref (dom_selection);
++
+ 		ev->data.fragment = fragment;
+ 	} else
+ 		ev->data.fragment = NULL;
+@@ -7104,13 +7172,14 @@ selection_is_in_table (WebKitDOMDocument *document,
+                        gboolean *first_cell,
+                        WebKitDOMNode **table_node)
+ {
+-	WebKitDOMDOMWindow *window;
+-	WebKitDOMDOMSelection *selection;
++	WebKitDOMDOMWindow *dom_window;
++	WebKitDOMDOMSelection *dom_selection;
+ 	WebKitDOMNode *node, *parent;
+ 	WebKitDOMRange *range;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-	selection = webkit_dom_dom_window_get_selection (window);
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	g_object_unref (dom_window);
+ 
+ 	if (first_cell != NULL)
+ 		*first_cell = FALSE;
+@@ -7118,11 +7187,15 @@ selection_is_in_table (WebKitDOMDocument *document,
+ 	if (table_node != NULL)
+ 		*table_node = NULL;
+ 
+-	if (webkit_dom_dom_selection_get_range_count (selection) < 1)
++	if (webkit_dom_dom_selection_get_range_count (dom_selection) < 1) {
++		g_object_unref (dom_selection);
+ 		return FALSE;
++	}
+ 
+-	range = webkit_dom_dom_selection_get_range_at (selection, 0, NULL);
++	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 	node = webkit_dom_range_get_start_container (range, NULL);
++	g_object_unref (range);
++	g_object_unref (dom_selection);
+ 
+ 	parent = node;
+ 	while (parent && !WEBKIT_DOM_IS_HTML_BODY_ELEMENT (parent)) {
+@@ -7167,17 +7240,18 @@ static gboolean
+ jump_to_next_table_cell (WebKitDOMDocument *document,
+                          gboolean jump_back)
+ {
+-	WebKitDOMDOMWindow *window;
+-	WebKitDOMDOMSelection *selection;
++	WebKitDOMDOMWindow *dom_window;
++	WebKitDOMDOMSelection *dom_selection;
+ 	WebKitDOMNode *node, *cell;
+ 	WebKitDOMRange *range;
+ 
+ 	if (!selection_is_in_table (document, NULL, NULL))
+ 		return FALSE;
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-	selection = webkit_dom_dom_window_get_selection (window);
+-	range = webkit_dom_dom_selection_get_range_at (selection, 0, NULL);
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++	g_object_unref (dom_window);
++	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 	node = webkit_dom_range_get_start_container (range, NULL);
+ 
+ 	cell = node;
+@@ -7185,8 +7259,11 @@ jump_to_next_table_cell (WebKitDOMDocument *document,
+ 		cell = webkit_dom_node_get_parent_node (cell);
+ 	}
+ 
+-	if (!WEBKIT_DOM_IS_HTML_TABLE_CELL_ELEMENT (cell))
++	if (!WEBKIT_DOM_IS_HTML_TABLE_CELL_ELEMENT (cell)) {
++		g_object_unref (range);
++		g_object_unref (dom_selection);
+ 		return FALSE;
++	}
+ 
+ 	if (jump_back) {
+ 		/* Get previous cell */
+@@ -7231,8 +7308,10 @@ jump_to_next_table_cell (WebKitDOMDocument *document,
+ 
+ 	webkit_dom_range_select_node_contents (range, node, NULL);
+ 	webkit_dom_range_collapse (range, TRUE, NULL);
+-	webkit_dom_dom_selection_remove_all_ranges (selection);
+-	webkit_dom_dom_selection_add_range (selection, range);
++	webkit_dom_dom_selection_remove_all_ranges (dom_selection);
++	webkit_dom_dom_selection_add_range (dom_selection, range);
++	g_object_unref (range);
++	g_object_unref (dom_selection);
+ 
+ 	return TRUE;
+ }
+@@ -7696,8 +7775,8 @@ dom_drag_and_drop_end (WebKitDOMDocument *document,
+                        EHTMLEditorWebExtension *extension)
+ {
+ 	gint ii, length;
+-	WebKitDOMDOMWindow *window;
+-	WebKitDOMDOMSelection *selection;
++	WebKitDOMDOMWindow *dom_window;
++	WebKitDOMDOMSelection *dom_selection;
+ 	WebKitDOMNodeList *list;
+ 
+ 	/* When the image is DnD inside the view WebKit removes the wrapper that
+@@ -7724,14 +7803,17 @@ dom_drag_and_drop_end (WebKitDOMDocument *document,
+ 
+ 	/* When the image is moved the new selection is created after after it, so
+ 	 * lets collapse the selection to have the caret right after the image. */
+-	window = webkit_dom_document_get_default_view (document);
+-	selection = webkit_dom_dom_window_get_selection (window);
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+ 	if (length > 0)
+-		webkit_dom_dom_selection_collapse_to_start (selection, NULL);
++		webkit_dom_dom_selection_collapse_to_start (dom_selection, NULL);
+ 	else
+-		webkit_dom_dom_selection_collapse_to_end (selection, NULL);
++		webkit_dom_dom_selection_collapse_to_end (dom_selection, NULL);
+ 
+ 	dom_force_spell_check_in_viewport (document, extension);
++
++	g_object_unref (dom_selection);
++	g_object_unref (dom_window);
+ }
+ 
+ void
+-- 
+2.15.0
+

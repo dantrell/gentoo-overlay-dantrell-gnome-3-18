@@ -1,0 +1,24 @@
+From 44acec8339902a6c37d82f62e801dbcef0870f77 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 10 Mar 2015 15:03:37 +0100
+Subject: [PATCH 0472/1800] Bug 692566 - [Templates] Honor Reply-To header
+
+---
+ plugins/templates/templates.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/plugins/templates/templates.c b/plugins/templates/templates.c
+index fe9dd98c73..77765b2ff2 100644
+--- a/plugins/templates/templates.c
++++ b/plugins/templates/templates.c
+@@ -912,6 +912,7 @@ create_new_message (CamelFolder *folder,
+ 	/* Set the To: field to the same To: field of the message we are replying to. */
+ 	camel_mime_message_set_recipients (
+ 		new, CAMEL_RECIPIENT_TYPE_TO,
++		camel_mime_message_get_reply_to (message) ? camel_mime_message_get_reply_to (message) :
+ 		camel_mime_message_get_from (message));
+ 
+ 	/* Copy the CC and BCC from the template.*/
+-- 
+2.15.0
+

@@ -1,0 +1,446 @@
+From d80f932d0211d0ec94b86937eaab642f150fda7e Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 12:55:26 +0100
+Subject: [PATCH 0736/1800] Composer - Undo/Redo on operations with selection
+ could be wrong
+
+---
+ .../composer/e-html-editor-history-event.h         |   1 +
+ .../e-html-editor-selection-dom-functions.c        |  36 ++++-
+ .../composer/e-html-editor-undo-redo-manager.c     |  42 +++++-
+ .../composer/e-html-editor-view-dom-functions.c    | 156 ++++++++++++++++++---
+ 4 files changed, 205 insertions(+), 30 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-history-event.h b/web-extensions/composer/e-html-editor-history-event.h
+index 7aed032adb..1a689c8563 100644
+--- a/web-extensions/composer/e-html-editor-history-event.h
++++ b/web-extensions/composer/e-html-editor-history-event.h
+@@ -25,6 +25,7 @@ G_BEGIN_DECLS
+ 
+ enum EHTMLEditorHistoryEventType {
+ 	HISTORY_ALIGNMENT,
++	HISTORY_AND,
+ 	HISTORY_BLOCK_FORMAT,
+ 	HISTORY_BLOCKQUOTE,
+ 	HISTORY_BOLD,
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 651726a0a3..393be924d2 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -153,14 +153,46 @@ dom_insert_base64_image (WebKitDOMDocument *document,
+ 	WebKitDOMElement *element, *selection_start_marker, *resizable_wrapper;
+ 	WebKitDOMText *text;
+ 
+-	if (!dom_selection_is_collapsed (document))
++	manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
++
++	if (!dom_selection_is_collapsed (document)) {
++		EHTMLEditorHistoryEvent *ev;
++		WebKitDOMDocumentFragment *fragment;
++		WebKitDOMRange *range;
++
++		ev = g_new0 (EHTMLEditorHistoryEvent, 1);
++		ev->type = HISTORY_DELETE;
++
++		range = dom_get_current_range (document);
++		fragment = webkit_dom_range_clone_contents (range, NULL);
++		g_object_unref (range);
++		ev->data.fragment = fragment;
++
++		dom_selection_get_coordinates (
++			document,
++			&ev->before.start.x,
++			&ev->before.start.y,
++			&ev->before.end.x,
++			&ev->before.end.y);
++
++		ev->after.start.x = ev->before.start.x;
++		ev->after.start.y = ev->before.start.y;
++		ev->after.end.x = ev->before.start.x;
++		ev->after.end.y = ev->before.start.y;
++
++		e_html_editor_undo_redo_manager_insert_history_event (manager, ev);
++
++		ev = g_new0 (EHTMLEditorHistoryEvent, 1);
++		ev->type = HISTORY_AND;
++
++		e_html_editor_undo_redo_manager_insert_history_event (manager, ev);
+ 		dom_exec_command (document, extension, E_HTML_EDITOR_VIEW_COMMAND_DELETE, NULL);
++	}
+ 
+ 	dom_selection_save (document);
+ 	selection_start_marker = webkit_dom_document_query_selector (
+ 		document, "span#-x-evo-selection-start-marker", NULL);
+ 
+-	manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
+ 	if (!e_html_editor_undo_redo_manager_is_operation_in_progress (manager)) {
+ 		ev = g_new0 (EHTMLEditorHistoryEvent, 1);
+ 		ev->type = HISTORY_IMAGE;
+diff --git a/web-extensions/composer/e-html-editor-undo-redo-manager.c b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+index a790d4531d..fe879361b6 100644
+--- a/web-extensions/composer/e-html-editor-undo-redo-manager.c
++++ b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+@@ -256,6 +256,9 @@ print_history_event (EHTMLEditorHistoryEvent *event)
+ 		case HISTORY_START:
+ 			printf ("HISTORY START\n");
+ 			break;
++		case HISTORY_AND:
++			printf ("HISTORY AND\n");
++			break;
+ 		default:
+ 			printf ("Unknown history type\n");
+ 	}
+@@ -317,6 +320,12 @@ print_redo_events (EHTMLEditorUndoRedoManager *manager)
+ }
+ #endif
+ 
++static gboolean
++event_selection_was_collapsed (EHTMLEditorHistoryEvent *ev)
++{
++	return (ev->before.start.x == ev->before.end.x) && (ev->before.start.y == ev->before.end.y);
++}
++
+ static void
+ undo_delete (WebKitDOMDocument *document,
+              EHTMLEditorWebExtension *extension,
+@@ -511,12 +520,6 @@ undo_delete (WebKitDOMDocument *document,
+ 	g_object_unref (dom_selection);
+ }
+ 
+-static gboolean
+-event_selection_was_collapsed (EHTMLEditorHistoryEvent *ev)
+-{
+-	return (ev->before.start.x == ev->before.end.x) && (ev->before.start.y == ev->before.end.y);
+-}
+-
+ static void
+ redo_delete (WebKitDOMDocument *document,
+              EHTMLEditorWebExtension *extension,
+@@ -1722,7 +1725,7 @@ e_html_editor_undo_redo_manager_insert_dash_history_event (EHTMLEditorUndoRedoMa
+ 
+ 				diff = event->after.start.x - item->after.start.x;
+ 
+-				/* We need to move the coordinater of the last
++				/* We need to move the coordinate of the last
+ 				 * event by one character. */
+ 				last->after.start.x += diff;
+ 				last->after.end.x += diff;
+@@ -1852,11 +1855,22 @@ e_html_editor_undo_redo_manager_undo (EHTMLEditorUndoRedoManager *manager)
+ 		case HISTORY_UNQUOTE:
+ 			undo_redo_unquote (document, extension, event, TRUE);
+ 			break;
++		case HISTORY_AND:
++			g_warning ("Unhandled HISTORY_AND event!");
++			break;
+ 		default:
+ 			g_object_unref (extension);
+ 			return;
+ 	}
+ 
++	/* FIXME WK2 - history->next can be NULL! */
++	event = history->next->data;
++	if (event->type == HISTORY_AND) {
++		manager->priv->history = history->next->next;
++		e_html_editor_undo_redo_manager_undo (manager);
++		return;
++	}
++
+ 	if (history->next)
+ 		manager->priv->history = manager->priv->history->next;
+ 
+@@ -1921,6 +1935,7 @@ e_html_editor_undo_redo_manager_redo (EHTMLEditorUndoRedoManager *manager)
+ 			break;
+ 		case HISTORY_INPUT:
+ 			undo_delete (document, extension, event);
++			dom_check_magic_smileys (document, extension);
+ 			break;
+ 		case HISTORY_REMOVE_LINK:
+ 			undo_redo_remove_link (document, extension, event, FALSE);
+@@ -1969,11 +1984,24 @@ e_html_editor_undo_redo_manager_redo (EHTMLEditorUndoRedoManager *manager)
+ 		case HISTORY_UNQUOTE:
+ 			undo_redo_unquote (document, extension, event, FALSE);
+ 			break;
++		case HISTORY_AND:
++			g_warning ("Unhandled HISTORY_AND event!");
++			break;
+ 		default:
+ 			g_object_unref (extension);
+ 			return;
+ 	}
+ 
++	/* FIXME WK2 - what if history->prev is NULL? */
++	if (history->prev->prev) {
++		event = history->prev->prev->data;
++		if (event->type == HISTORY_AND) {
++			manager->priv->history = manager->priv->history->prev->prev;
++			e_html_editor_undo_redo_manager_redo (manager);
++			return;
++		}
++	}
++
+ 	manager->priv->history = manager->priv->history->prev;
+ 
+ 	d (print_history (manager));
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index de2519b945..bf0f887893 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -1115,6 +1115,46 @@ dom_remove_embed_style_sheet (WebKitDOMDocument *document)
+ 	remove_node (WEBKIT_DOM_NODE (sheet));
+ }
+ 
++static void
++insert_delete_event (WebKitDOMDocument *document,
++		     EHTMLEditorWebExtension *extension,
++                     WebKitDOMRange *range)
++{
++	EHTMLEditorHistoryEvent *ev;
++	WebKitDOMDocumentFragment *fragment;
++	EHTMLEditorUndoRedoManager *manager;
++
++	manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
++
++	if (e_html_editor_undo_redo_manager_is_operation_in_progress (manager))
++		return;
++
++	ev = g_new0 (EHTMLEditorHistoryEvent, 1);
++	ev->type = HISTORY_DELETE;
++
++	fragment = webkit_dom_range_clone_contents (range, NULL);
++	ev->data.fragment = fragment;
++
++	dom_selection_get_coordinates (
++		document,
++		&ev->before.start.x,
++		&ev->before.start.y,
++		&ev->before.end.x,
++		&ev->before.end.y);
++
++	ev->after.start.x = ev->before.start.x;
++	ev->after.start.y = ev->before.start.y;
++	ev->after.end.x = ev->before.start.x;
++	ev->after.end.y = ev->before.start.y;
++
++	e_html_editor_undo_redo_manager_insert_history_event (manager, ev);
++
++	ev = g_new0 (EHTMLEditorHistoryEvent, 1);
++	ev->type = HISTORY_AND;
++
++	e_html_editor_undo_redo_manager_insert_history_event (manager, ev);
++}
++
+ /* Based on original use_pictograms() from GtkHTML */
+ static const gchar *emoticons_chars =
+ 	/*  0 */ "DO)(|/PQ*!"
+@@ -1233,22 +1273,28 @@ emoticon_insert_span (EEmoticon *emoticon,
+ 			}
+ 		}
+ 	} else {
+-		if (!smiley_written) {
+-			if (!e_html_editor_undo_redo_manager_is_operation_in_progress (manager)) {
+-				ev = g_new0 (EHTMLEditorHistoryEvent, 1);
+-				ev->type = HISTORY_SMILEY;
++		WebKitDOMRange *tmp_range;
+ 
+-				dom_selection_get_coordinates (
+-					document,
+-					&ev->before.start.x,
+-					&ev->before.start.y,
+-					&ev->before.end.x,
+-					&ev->before.end.y);
+-			}
+-		}
++		tmp_range = dom_get_current_range (document);
++		insert_delete_event (document, extension, tmp_range);
++		g_object_unref (tmp_range);
+ 
+ 		dom_exec_command (document, extension, E_HTML_EDITOR_VIEW_COMMAND_DELETE, NULL);
+ 
++		if (!smiley_written) {
++			if (!e_html_editor_undo_redo_manager_is_operation_in_progress (manager)) {
++				ev = g_new0 (EHTMLEditorHistoryEvent, 1);
++				ev->type = HISTORY_SMILEY;
++
++				dom_selection_get_coordinates (
++					document,
++					&ev->before.start.x,
++					&ev->before.start.y,
++					&ev->before.end.x,
++					&ev->before.end.y);
++			}
++		}
++
+ 		dom_selection_save (document);
+ 
+ 		selection_start_marker = webkit_dom_document_get_element_by_id (
+@@ -1871,17 +1917,19 @@ body_keypress_event_cb (WebKitDOMElement *element,
+ 		return;
+ 	}
+ 
+-	if (!webkit_dom_range_get_collapsed (range, NULL)) {
++	if (!webkit_dom_range_get_collapsed (range, NULL))
++		insert_delete_event (document, extension, range);
++
++	if (e_html_editor_web_extension_get_return_key_pressed (extension)) {
+ 		EHTMLEditorHistoryEvent *ev;
+ 		EHTMLEditorUndoRedoManager *manager;
+-		WebKitDOMDocumentFragment *fragment;
+ 
++		/* Insert new hiisvent for Return to have the right coordinates.
++		 * The fragment will be added later. */
+ 		ev = g_new0 (EHTMLEditorHistoryEvent, 1);
+-		ev->type = HISTORY_DELETE;
++		ev->type = HISTORY_INPUT;
+ 
+ 		manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
+-		fragment = webkit_dom_range_clone_contents (range, NULL);
+-		ev->data.fragment = fragment;
+ 
+ 		dom_selection_get_coordinates (
+ 			document,
+@@ -1965,6 +2013,8 @@ save_history_for_input (WebKitDOMDocument *document,
+ 	WebKitDOMRange *range, *range_clone;
+ 	WebKitDOMNode *start_container;
+ 
++	manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
++
+ 	dom_window = webkit_dom_document_get_default_view (document);
+ 	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+ 	g_object_unref (dom_window);
+@@ -1974,8 +2024,16 @@ save_history_for_input (WebKitDOMDocument *document,
+ 		return;
+ 	}
+ 
+-	ev = g_new0 (EHTMLEditorHistoryEvent, 1);
+-	ev->type = HISTORY_INPUT;
++	if (e_html_editor_web_extension_get_return_key_pressed (extension)) {
++		ev = e_html_editor_undo_redo_manager_get_current_history_event (manager);
++		if (ev->type != HISTORY_INPUT) {
++			g_object_unref (dom_selection);
++			return;
++		}
++	} else {
++		ev = g_new0 (EHTMLEditorHistoryEvent, 1);
++		ev->type = HISTORY_INPUT;
++	}
+ 
+ 	e_html_editor_web_extension_block_selection_changed_callback (extension);
+ 
+@@ -2080,8 +2138,8 @@ save_history_for_input (WebKitDOMDocument *document,
+ 
+ 	ev->data.fragment = fragment;
+ 
+-	manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
+-	e_html_editor_undo_redo_manager_insert_history_event (manager, ev);
++	if (!e_html_editor_web_extension_get_return_key_pressed (extension))
++		e_html_editor_undo_redo_manager_insert_history_event (manager, ev);
+ }
+ 
+ typedef struct _TimeoutContext TimeoutContext;
+@@ -4708,11 +4766,14 @@ dom_convert_and_insert_html_into_selection (WebKitDOMDocument *document,
+ 
+ 	manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
+ 	if (!e_html_editor_undo_redo_manager_is_operation_in_progress (manager)) {
++		gboolean collapsed;
++
+ 		ev = g_new0 (EHTMLEditorHistoryEvent, 1);
+ 		ev->type = HISTORY_PASTE;
+ /* FIXME WK2
+ 		ev->type = HISTORY_PASTE_AS_TEXT;*/
+ 
++		collapsed = dom_selection_is_collapsed (document);
+ 		dom_selection_get_coordinates (
+ 			document,
+ 			&ev->before.start.x,
+@@ -4720,6 +4781,11 @@ dom_convert_and_insert_html_into_selection (WebKitDOMDocument *document,
+ 			&ev->before.end.x,
+ 			&ev->before.end.y);
+ 
++		if (!collapsed) {
++			ev->before.end.x = ev->before.start.x;
++			ev->before.end.y = ev->before.start.y;
++		}
++
+ 		ev->data.string.from = NULL;
+ 		ev->data.string.to = g_strdup (html);
+ 	}
+@@ -4745,6 +4811,13 @@ dom_convert_and_insert_html_into_selection (WebKitDOMDocument *document,
+ 	g_free (inner_html);
+ 
+ 	has_selection = !dom_selection_is_collapsed (document);
++	if (has_selection) {
++		WebKitDOMRange *range;
++
++		range = dom_get_current_range (document);
++		insert_delete_event (document, extension, range);
++		g_object_unref (range);
++	}
+ 
+ 	citation_level = get_citation_level (WEBKIT_DOM_NODE (selection_end_marker), FALSE);
+ 	/* Pasting into the citation */
+@@ -7007,9 +7080,12 @@ dom_insert_html (WebKitDOMDocument *document,
+ 
+ 	manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
+ 	if (!e_html_editor_undo_redo_manager_is_operation_in_progress (manager)) {
++		gboolean collapsed;
++
+ 		ev = g_new0 (EHTMLEditorHistoryEvent, 1);
+ 		ev->type = HISTORY_INSERT_HTML;
+ 
++		collapsed = dom_selection_is_collapsed (document);
+ 		dom_selection_get_coordinates (
+ 			document,
+ 			&ev->before.start.x,
+@@ -7017,11 +7093,49 @@ dom_insert_html (WebKitDOMDocument *document,
+ 			&ev->before.end.x,
+ 			&ev->before.end.y);
+ 
++		if (!collapsed) {
++			ev->before.end.x = ev->before.start.x;
++			ev->before.end.y = ev->before.start.y;
++		}
++
+ 		ev->data.string.from = NULL;
+ 		ev->data.string.to = g_strdup (html_text);
+ 	}
+ 
+ 	if (e_html_editor_web_extension_get_html_mode (extension)) {
++		if (!dom_selection_is_collapsed (document)) {
++			EHTMLEditorHistoryEvent *ev;
++			WebKitDOMDocumentFragment *fragment;
++			WebKitDOMRange *range;
++
++			ev = g_new0 (EHTMLEditorHistoryEvent, 1);
++			ev->type = HISTORY_DELETE;
++
++			range = dom_get_current_range (document);
++			fragment = webkit_dom_range_clone_contents (range, NULL);
++			g_object_unref (range);
++			ev->data.fragment = fragment;
++
++			dom_selection_get_coordinates (
++				document,
++				&ev->before.start.x,
++				&ev->before.start.y,
++				&ev->before.end.x,
++				&ev->before.end.y);
++
++			ev->after.start.x = ev->before.start.x;
++			ev->after.start.y = ev->before.start.y;
++			ev->after.end.x = ev->before.start.x;
++			ev->after.end.y = ev->before.start.y;
++
++			e_html_editor_undo_redo_manager_insert_history_event (manager, ev);
++
++			ev = g_new0 (EHTMLEditorHistoryEvent, 1);
++			ev->type = HISTORY_AND;
++
++			e_html_editor_undo_redo_manager_insert_history_event (manager, ev);
++		}
++
+ 		dom_exec_command (
+ 			document, extension, E_HTML_EDITOR_VIEW_COMMAND_INSERT_HTML, html_text);
+ 		if (strstr (html_text, "id=\"-x-evo-selection-start-marker\""))
+-- 
+2.15.0
+

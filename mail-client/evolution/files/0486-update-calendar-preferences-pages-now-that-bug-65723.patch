@@ -1,0 +1,90 @@
+From f54a2589bb5b86eb96582fd512664aa6805d8663 Mon Sep 17 00:00:00 2001
+From: Andre Klapper <a9016009@gmx.de>
+Date: Tue, 10 Mar 2015 23:26:26 +0100
+Subject: [PATCH 0486/1800] Update calendar preferences pages (now that bug
+ 657233 is fixed).
+
+---
+ help/C/calendar-layout-appointment-display.page | 17 +++++------------
+ help/C/calendar-layout-general-formatting.page  | 14 +++++++++-----
+ 2 files changed, 14 insertions(+), 17 deletions(-)
+
+diff --git a/help/C/calendar-layout-appointment-display.page b/help/C/calendar-layout-appointment-display.page
+index f34d32936c..8dcc8986b5 100644
+--- a/help/C/calendar-layout-appointment-display.page
++++ b/help/C/calendar-layout-appointment-display.page
+@@ -5,7 +5,7 @@
+   <info>
+     <link type="guide" xref="calendar-layout" />
+ 
+-    <revision pkgversion="3.0.2" version="0.4" date="2012-02-18" status="final"/>
++    <revision pkgversion="3.13.90" version="0.5" date="2015-03-10" status="final"/>
+ 
+     <credit type="author">
+       <name its:translate="no">Andre Klapper</name>
+@@ -30,9 +30,6 @@
+        task-oriented, but that's it for the time being. Better ideas welcome.
+        -->
+ 
+-  <!-- TODO: Recheck once https://bugzilla.gnome.org/show_bug.cgi?id=657233 is
+-       fixed, as the current UI is a huge mess. -->
+-
+   <p>The following calendar-related options are available under
+   <guiseq><gui>Edit</gui><gui>Preferences</gui>
+   <gui>Calendar and Tasks</gui><gui>Display</gui></guiseq>.</p>
+@@ -71,15 +68,11 @@
+ 
+ </section>
+ 
+-<section id="date-time">
+-  <title>Date/Time Format</title>
++<section id="alerts">
++  <title>Alerts</title>
+ 
+-  <p>You can change the format of the <gui>Date</gui> column by setting your
+-  preferred format.</p>
+-
+-  <p>The placeholders in the format expression are strftime formats. For a
+-  complete list of available strftime formats, run <cmd>date --help</cmd> in
+-  the <app>Terminal</app> application.</p>
++  <p>If you want to be warned before you delete any appointment, select this
++  option.</p>
+ 
+ </section>
+ 
+diff --git a/help/C/calendar-layout-general-formatting.page b/help/C/calendar-layout-general-formatting.page
+index 1ed585b223..b71445f35a 100644
+--- a/help/C/calendar-layout-general-formatting.page
++++ b/help/C/calendar-layout-general-formatting.page
+@@ -4,7 +4,7 @@
+   <info>
+     <link type="guide" xref="calendar-layout" />
+ 
+-    <revision pkgversion="3.0.2" version="0.2" date="2011-07-30" status="final"/>
++    <revision pkgversion="3.13.90" version="0.3" date="2015-03-10" status="final"/>
+ 
+     <credit type="author">
+       <name its:translate="no">Andre Klapper</name>
+@@ -73,11 +73,15 @@
+ 
+ </section>
+ 
+-<section id="alerts">
+-  <title>Alerts</title>
++<section id="date-time">
++  <title>Date/Time Format</title>
+ 
+-  <p>If you want to be warned before you delete any appointment, select this
+-  option.</p>
++  <p>You can change the format of the <gui>Date</gui> column by setting your
++  preferred format.</p>
++
++  <p>The placeholders in the format expression are strftime formats. For a
++  complete list of available strftime formats, run <cmd>date --help</cmd> in
++  the <app>Terminal</app> application.</p>
+ 
+ </section>
+ 
+-- 
+2.15.0
+

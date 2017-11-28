@@ -1,0 +1,36 @@
+From ee6779f33ca5c0644cf4291334952acb36bdbeb8 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 20 Aug 2015 13:23:00 +0200
+Subject: [PATCH 0957/1800] Bug 753764 - Can't move recurring 24h calendar
+ entries back one day
+
+---
+ calendar/gui/e-cal-data-model.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/calendar/gui/e-cal-data-model.c b/calendar/gui/e-cal-data-model.c
+index c33a4eb742..9618c1c952 100644
+--- a/calendar/gui/e-cal-data-model.c
++++ b/calendar/gui/e-cal-data-model.c
+@@ -1028,10 +1028,18 @@ cal_data_model_instance_generated (ECalComponent *comp,
+ 
+ 	tt = icalcomponent_get_dtstart (e_cal_component_get_icalcomponent (comp_copy));
+ 	tt2 = icaltime_from_timet_with_zone (instance_start, tt.is_date, gid->zone);
++	if (tt.is_date || !tt.zone || tt.zone == icaltimezone_get_utc_timezone ())
++		tt2.zone = NULL;
++	else
++		tt2.zone = gid->zone;
+ 	icalcomponent_set_dtstart (e_cal_component_get_icalcomponent (comp_copy), tt2);
+ 
+ 	tt = icalcomponent_get_dtend (e_cal_component_get_icalcomponent (comp_copy));
+ 	tt2 = icaltime_from_timet_with_zone (instance_end, tt.is_date, gid->zone);
++	if (tt.is_date || !tt.zone || tt.zone == icaltimezone_get_utc_timezone ())
++		tt2.zone = NULL;
++	else
++		tt2.zone = gid->zone;
+ 	icalcomponent_set_dtend (e_cal_component_get_icalcomponent (comp_copy), tt2);
+ 
+ 	e_cal_component_rescan (comp_copy);
+-- 
+2.15.0
+

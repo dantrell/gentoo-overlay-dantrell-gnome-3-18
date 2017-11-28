@@ -1,0 +1,25 @@
+From 968a08745a0e8dde2003f6975ae6af45f7fd1950 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 22 May 2015 12:58:12 +0200
+Subject: [PATCH 0762/1800] Fix a double-free on a picture gallery dispose
+ (composer close)
+
+---
+ e-util/e-picture-gallery.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/e-util/e-picture-gallery.c b/e-util/e-picture-gallery.c
+index 594f13b19f..6e01715db0 100644
+--- a/e-util/e-picture-gallery.c
++++ b/e-util/e-picture-gallery.c
+@@ -394,6 +394,7 @@ picture_gallery_dispose (GObject *object)
+ 	}
+ 
+ 	g_free (gallery->priv->path);
++	gallery->priv->path = NULL;
+ 
+ 	/* Chain up to parent's dispose() method. */
+ 	G_OBJECT_CLASS (e_picture_gallery_parent_class)->dispose (object);
+-- 
+2.15.0
+

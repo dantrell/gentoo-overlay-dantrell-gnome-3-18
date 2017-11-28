@@ -1,0 +1,32 @@
+From 2b01d0f687e0cef658af02dbf227f97b6abac7f7 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 12:56:49 +0100
+Subject: [PATCH 0737/1800] EHTMLEditorView - Don't print coordinates for
+ HISTORY_AND and HISTORY_START events
+
+---
+ web-extensions/composer/e-html-editor-undo-redo-manager.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-undo-redo-manager.c b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+index fe879361b6..7944765c85 100644
+--- a/web-extensions/composer/e-html-editor-undo-redo-manager.c
++++ b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+@@ -208,9 +208,11 @@ print_node_inner_html (WebKitDOMNode *node)
+ static void
+ print_history_event (EHTMLEditorHistoryEvent *event)
+ {
+-	printf ("HISTORY EVENT: %d ; \n", event->type);
+-	printf ("\t before: start_x: %u ; start_y: %u ; end_x: %u ; end_y: %u ;\n", event->before.start.x, event->before.start.y, event->before.end.x, event->before.end.y);
+-	printf ("\t after: start_x: %u ; start_y: %u ; end_x: %u ; end_y: %u ;\n", event->after.start.x, event->after.start.y, event->after.end.x, event->after.end.y);
++	if (event->type != HISTORY_START && event->type != HISTORY_AND) {
++		printf ("HISTORY EVENT: %d ; \n", event->type);
++		printf ("\t before: start_x: %u ; start_y: %u ; end_x: %u ; end_y: %u ;\n", event->before.start.x, event->before.start.y, event->before.end.x, event->before.end.y);
++		printf ("\t after: start_x: %u ; start_y: %u ; end_x: %u ; end_y: %u ;\n", event->after.start.x, event->after.start.y, event->after.end.x, event->after.end.y);
++	}
+ 	switch (event->type) {
+ 		case HISTORY_DELETE:
+ 		case HISTORY_INPUT:
+-- 
+2.15.0
+

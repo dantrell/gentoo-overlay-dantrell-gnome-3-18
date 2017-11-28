@@ -1,0 +1,50 @@
+From 6dbbaca49c1a7da21af1d0972536d09b0ff141df Mon Sep 17 00:00:00 2001
+From: Andre Klapper <a9016009@gmx.de>
+Date: Mon, 9 Mar 2015 02:08:05 +0100
+Subject: [PATCH 0448/1800] Document Send Account Overrides
+
+Bug 725011
+---
+ help/C/mail-composer-send-account-overrides.page | 30 ++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
+ create mode 100644 help/C/mail-composer-send-account-overrides.page
+
+diff --git a/help/C/mail-composer-send-account-overrides.page b/help/C/mail-composer-send-account-overrides.page
+new file mode 100644
+index 0000000000..a79ba0acb1
+--- /dev/null
++++ b/help/C/mail-composer-send-account-overrides.page
+@@ -0,0 +1,30 @@
++<page xmlns="http://projectmallard.org/1.0/" xmlns:its="http://www.w3.org/2005/11/its"
++      type="topic" id="mail-composer-send-account-overrides">
++
++  <info>
++   <desc>Assign your mail accounts to certain folders or recipients.</desc>
++   
++   <link type="guide" xref="index#mail-composing-advanced" />
++   <link type="seealso" xref="mail-folders" />
++
++ <revision pkgversion="3.13.90" version="0.1" date="2015-03-09" status="draft"/>
++ <credit type="author">
++   <name its:translate="no">Andre Klapper</name>
++   <email its:translate="no">ak-47@gmx.net</email>
++ </credit>
++ 
++ <include href="legal.xml" xmlns="http://www.w3.org/2001/XInclude"/>
++     
++
++  </info>
++
++<title>Send Account Overrides</title>
++
++<p>If you use more than one email account, you can define which account should always be used as your sender address:</p>
++<list>
++<item><p>When replying to mail in specific <link xref="mail-folders">folders</link>.</p></item>
++<item><p>When replying to certain email addresses, names, or parts of email addresses or names.</p></item>
++</list>
++<p>These settings are available under <guiseq><gui>Edit</gui><gui>Preferences</gui><gui>Composer Preferences</gui><gui>Send Account</gui></guiseq>.</p>
++
++</page>
+-- 
+2.15.0
+

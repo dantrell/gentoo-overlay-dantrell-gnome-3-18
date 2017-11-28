@@ -1,0 +1,64 @@
+From b83f6f1283692c07bef0e3718e4712d4c432382a Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 22 Apr 2015 14:15:13 +0200
+Subject: [PATCH 0531/1800] EHTMLEditorView - Remove print_fragment_inner_html
+ as it is duplicate of print_node_inner_html
+
+---
+ web-extensions/e-html-editor-undo-redo-manager.c | 30 +++---------------------
+ 1 file changed, 3 insertions(+), 27 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-undo-redo-manager.c b/web-extensions/e-html-editor-undo-redo-manager.c
+index d298e38e87..8af425ca3d 100644
+--- a/web-extensions/e-html-editor-undo-redo-manager.c
++++ b/web-extensions/e-html-editor-undo-redo-manager.c
+@@ -170,31 +170,7 @@ restore_selection_to_history_event_state (WebKitDOMDocument *document,
+ 
+ #if d(1)+0
+ static void
+-print_fragment_inner_html (WebKitDOMDocumentFragment *fragment)
+-{
+-	WebKitDOMDocument *document;
+-	WebKitDOMElement *div;
+-	gchar *inner_html;
+-
+-	if (!fragment) {
+-		printf ("\tNone'\n");
+-		return;
+-	}
+-	document = webkit_dom_node_get_owner_document (WEBKIT_DOM_NODE (fragment));
+-	div = webkit_dom_document_create_element (document, "div", NULL);
+-	webkit_dom_node_append_child (
+-			WEBKIT_DOM_NODE (div),
+-			webkit_dom_node_clone_node (WEBKIT_DOM_NODE (fragment), TRUE),
+-			NULL);
+-
+-	inner_html = webkit_dom_html_element_get_inner_html (WEBKIT_DOM_HTML_ELEMENT (div));
+-	printf ("\t'%s'\n", inner_html);
+-	remove_node (WEBKIT_DOM_NODE (div));
+-	g_free (inner_html);
+-}
+-
+-static void
+-print_node_inner_html (WebKitDOMNode *fragment)
++print_node_inner_html (WebKitDOMNode *node)
+ {
+ 	WebKitDOMDocument *document;
+ 	WebKitDOMElement *div;
+@@ -204,11 +180,11 @@ print_node_inner_html (WebKitDOMNode *fragment)
+ 		printf ("\tnone\n");
+ 		return;
+ 	}
+-	document = webkit_dom_node_get_owner_document (WEBKIT_DOM_NODE (fragment));
++	document = webkit_dom_node_get_owner_document (node);
+ 	div = webkit_dom_document_create_element (document, "div", NULL);
+ 	webkit_dom_node_append_child (
+ 			WEBKIT_DOM_NODE (div),
+-			webkit_dom_node_clone_node (WEBKIT_DOM_NODE (fragment), TRUE),
++			webkit_dom_node_clone_node (node, TRUE),
+ 			NULL);
+ 
+ 	inner_html = webkit_dom_html_element_get_inner_html (WEBKIT_DOM_HTML_ELEMENT (div));
+-- 
+2.15.0
+

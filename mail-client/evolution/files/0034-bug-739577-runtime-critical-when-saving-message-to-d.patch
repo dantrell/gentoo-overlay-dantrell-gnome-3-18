@@ -1,0 +1,40 @@
+From 33323b115f2cdbf515368cb4a8b44c317c470c81 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 5 Nov 2014 08:22:32 +0100
+Subject: [PATCH 0034/1800] Bug 739577 - Runtime critical when saving message
+ to drafts
+
+We have to finish the async task before we continue with saving (that
+code was unintentionally removed when merging the WebKit based composer
+into the master).
+---
+ mail/em-composer-utils.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/mail/em-composer-utils.c b/mail/em-composer-utils.c
+index 3ba35810d9..cf44bedbad 100644
+--- a/mail/em-composer-utils.c
++++ b/mail/em-composer-utils.c
+@@ -767,13 +767,19 @@ composer_save_to_drafts_cleanup (GObject *source_object,
+ 	alert_sink = e_activity_get_alert_sink (activity);
+ 	cancellable = e_activity_get_cancellable (activity);
+ 
++	e_mail_folder_append_message_finish (
++		CAMEL_FOLDER (source_object), result,
++		&async_context->message_uid, &local_error);
++
+ 	if (e_activity_handle_cancellation (activity, local_error)) {
++		g_warn_if_fail (async_context->message_uid == NULL);
+ 		e_html_editor_view_set_changed (view, TRUE);
+ 		async_context_free (async_context);
+ 		g_error_free (local_error);
+ 		return;
+ 
+ 	} else if (local_error != NULL) {
++		g_warn_if_fail (async_context->message_uid == NULL);
+ 		e_alert_submit (
+ 			alert_sink,
+ 			"mail-composer:save-to-drafts-error",
+-- 
+2.15.0
+

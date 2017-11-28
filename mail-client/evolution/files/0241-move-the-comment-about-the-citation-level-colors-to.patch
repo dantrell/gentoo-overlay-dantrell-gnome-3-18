@@ -1,0 +1,47 @@
+From f37560a6c13744275873e9d8ffd3a9b9fa4c64d2 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 11:31:41 +0100
+Subject: [PATCH 0241/1800] Move the comment about the citation level colors to
+ the right place
+
+---
+ e-util/e-html-editor-view.c | 2 --
+ e-util/e-web-view.c         | 2 +-
+ 2 files changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 6ede8ad4b1..30b121b22f 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -2536,8 +2536,6 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 		"  border-radius: 2px;\n"
+ 		"}\n");
+ 
+-	/* Block quote border colors are borrowed from Thunderbird. */
+-
+ 	g_string_append_printf (
+ 		stylesheet,
+ 		"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
+diff --git a/e-util/e-web-view.c b/e-util/e-web-view.c
+index a543ca7fd7..5789c5aa04 100644
+--- a/e-util/e-web-view.c
++++ b/e-util/e-web-view.c
+@@ -3071,6 +3071,7 @@ e_web_view_get_selection_content_html_sync (EWebView *web_view,
+ const gchar *
+ e_web_view_get_citation_color_for_level (gint level)
+ {
++	/* Block quote border colors are borrowed from Thunderbird. */
+ 	static const gchar *citation_color_levels[5] = {
+ 		"rgb(233,185,110)",	/* level 5 - Chocolate 1 */
+ 		"rgb(114,159,207)",	/* level 1 - Sky Blue 1 */
+@@ -3232,7 +3233,6 @@ e_web_view_update_fonts_settings (GSettings *font_settings,
+ 			"  border-radius: 2px;\n"
+ 			"}\n");
+ 
+-		/* Block quote border colors are borrowed from Thunderbird. */
+ 		g_string_append_printf (
+ 			stylesheet,
+ 			"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
+-- 
+2.15.0
+

@@ -1,0 +1,41 @@
+From d4a52fd1f3cd55a37835eb152a499dac02714461 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 15 Jun 2015 19:10:46 +0200
+Subject: [PATCH 0814/1800] Bug 587476 - Hide appointment icons in the Month
+ view
+
+---
+ calendar/gui/e-week-view-event-item.c | 3 +++
+ calendar/gui/e-week-view.c            | 2 ++
+ 2 files changed, 5 insertions(+)
+
+diff --git a/calendar/gui/e-week-view-event-item.c b/calendar/gui/e-week-view-event-item.c
+index f94081f2f2..6a64484cf8 100644
+--- a/calendar/gui/e-week-view-event-item.c
++++ b/calendar/gui/e-week-view-event-item.c
+@@ -446,6 +446,9 @@ week_view_event_item_draw_icons (EWeekViewEventItem *event_item,
+ 	parent = gtk_widget_get_parent (GTK_WIDGET (canvas));
+ 	week_view = E_WEEK_VIEW (parent);
+ 
++	if (e_week_view_get_multi_week_view (week_view))
++		return;
++
+ 	if (!is_array_index_in_bounds (week_view->events, event_item->priv->event_num))
+ 		return;
+ 
+diff --git a/calendar/gui/e-week-view.c b/calendar/gui/e-week-view.c
+index 18b411297e..d170226c83 100644
+--- a/calendar/gui/e-week-view.c
++++ b/calendar/gui/e-week-view.c
+@@ -3590,6 +3590,8 @@ e_week_view_reshape_event_span (EWeekView *week_view,
+ 	    && week_view->editing_span_num == span_num) {
+ 		show_icons = FALSE;
+ 		use_max_width = TRUE;
++	} else if (e_week_view_get_multi_week_view (week_view)) {
++		show_icons = FALSE;
+ 	}
+ 
+ 	/* Calculate how many icons we need to show. */
+-- 
+2.15.0
+

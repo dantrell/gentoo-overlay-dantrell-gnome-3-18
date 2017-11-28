@@ -1,0 +1,26 @@
+From bc76e93c5bc11fc539dfcf9a70a3d095911fe40e Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 08:52:59 +0100
+Subject: [PATCH 0228/1800] EHTMLEditorView - Remove the node that is used for
+ quoting when whe quote the body
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index c2e91755ef..911395e835 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -750,6 +750,8 @@ put_body_in_citation (WebKitDOMDocument *document)
+ 
+ 		while ((sibling = webkit_dom_node_get_next_sibling (citation)))
+ 			webkit_dom_node_append_child (citation, sibling, NULL);
++
++		remove_node (WEBKIT_DOM_NODE (cite_body));
+ 	}
+ }
+ 
+-- 
+2.15.0
+

@@ -1,0 +1,139 @@
+From 0af17683024cb282f404bcb12eac2123bfdf6bed Mon Sep 17 00:00:00 2001
+From: Bernd Homuth <dev@hmt.im>
+Date: Tue, 6 Jan 2015 11:20:02 +0100
+Subject: [PATCH 0158/1800] Bug 741129 - Correct couple translatable strings
+
+---
+ composer/mail-composer.error.xml   |  2 +-
+ e-util/e-html-editor-page-dialog.c |  2 +-
+ mail/e-mail-reader-utils.c         |  4 ++--
+ mail/e-mail-reader.c               | 12 ++++++------
+ mail/mail.error.xml                |  8 ++++----
+ 5 files changed, 14 insertions(+), 14 deletions(-)
+
+diff --git a/composer/mail-composer.error.xml b/composer/mail-composer.error.xml
+index 0fdf2cdd77..06d4d42bef 100644
+--- a/composer/mail-composer.error.xml
++++ b/composer/mail-composer.error.xml
+@@ -97,7 +97,7 @@
+ 
+  <error id="prompt-accel-send" type="question" default="GTK_RESPONSE_YES">
+   <_primary>Are you sure you want to send the message?</_primary>
+-  <_secondary xml:space="preserve">A keyboard accelerator to send the message had been pressed. Either cancel message send, if it was done by an accident, or send the message.</_secondary>
++  <_secondary xml:space="preserve">A keyboard accelerator to send the message has been pressed. Either cancel sending the message, if it was done by an accident, or send the message.</_secondary>
+   <button stock="gtk-cancel" response="GTK_RESPONSE_CANCEL"/>
+   <button _label="_Send" response="GTK_RESPONSE_YES"/>
+  </error>
+diff --git a/e-util/e-html-editor-page-dialog.c b/e-util/e-html-editor-page-dialog.c
+index 6aff2e56e0..f5bb78d411 100644
+--- a/e-util/e-html-editor-page-dialog.c
++++ b/e-util/e-html-editor-page-dialog.c
+@@ -543,7 +543,7 @@ e_html_editor_page_dialog_init (EHTMLEditorPageDialog *dialog)
+ 
+ 	/* Custom image */
+ 	widget = gtk_file_chooser_button_new (
+-		_("Selection a file"), GTK_FILE_CHOOSER_ACTION_OPEN);
++		_("Select a file"), GTK_FILE_CHOOSER_ACTION_OPEN);
+ 	g_signal_connect_swapped (
+ 		widget, "selection-changed",
+ 		G_CALLBACK (html_editor_page_dialog_set_background_image), dialog);
+diff --git a/mail/e-mail-reader-utils.c b/mail/e-mail-reader-utils.c
+index 199bf90b4e..0692274b15 100644
+--- a/mail/e-mail-reader-utils.c
++++ b/mail/e-mail-reader-utils.c
+@@ -1038,11 +1038,11 @@ e_mail_reader_mark_selected_ignore_thread (EMailReader *reader,
+ 				alert_id = "mail:failed-mark-unignore-thread";
+ 				break;
+ 			case E_IGNORE_THREAD_SUBSET_SET:
+-				description = _("Marking sub-thread to be ignored");
++				description = _("Marking subthread to be ignored");
+ 				alert_id = "mail:failed-mark-ignore-subthread";
+ 				break;
+ 			case E_IGNORE_THREAD_SUBSET_UNSET:
+-				description = _("Unmarking sub-thread from being ignored");
++				description = _("Unmarking subthread from being ignored");
+ 				alert_id = "mail:failed-mark-unignore-subthread";
+ 				break;
+ 			}
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index c0ee82d01e..476ad5a6cc 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -2105,9 +2105,9 @@ static GtkActionEntry mail_reader_entries[] = {
+ 
+ 	{ "mail-mark-ignore-thread-sub",
+ 	  NULL,
+-	  N_("_Ignore Sub-Thread"),
++	  N_("_Ignore Subthread"),
+ 	  NULL,
+-	  N_("Mark new mails in a sub-thread as read automatically"),
++	  N_("Mark new mails in a subthread as read automatically"),
+ 	  G_CALLBACK (action_mail_mark_ignore_thread_sub_cb) },
+ 
+ 	{ "mail-mark-ignore-thread-whole",
+@@ -2147,9 +2147,9 @@ static GtkActionEntry mail_reader_entries[] = {
+ 
+ 	{ "mail-mark-unignore-thread-sub",
+ 	  NULL,
+-	  N_("Do not _Ignore Sub-Thread"),
++	  N_("Do not _Ignore Subthread"),
+ 	  NULL,
+-	  N_("Do not mark new mails in a sub-thread as read automatically"),
++	  N_("Do not mark new mails in a subthread as read automatically"),
+ 	  G_CALLBACK (action_mail_mark_unignore_thread_sub_cb) },
+ 
+ 	{ "mail-mark-unignore-thread-whole",
+@@ -2483,7 +2483,7 @@ static EPopupActionEntry mail_reader_popup_entries[] = {
+ 	  "mail-forward" },
+ 
+ 	{ "mail-popup-mark-ignore-thread-sub",
+-	  N_("_Ignore Sub-Thread"),
++	  N_("_Ignore Subthread"),
+ 	  "mail-mark-ignore-thread-sub" },
+ 
+ 	{ "mail-popup-mark-ignore-thread-whole",
+@@ -2507,7 +2507,7 @@ static EPopupActionEntry mail_reader_popup_entries[] = {
+ 	  "mail-mark-read" },
+ 
+ 	{ "mail-popup-mark-unignore-thread-sub",
+-	  N_("Do not _Ignore Sub-Thread"),
++	  N_("Do not _Ignore Subthread"),
+ 	  "mail-mark-unignore-thread-sub" },
+ 
+ 	{ "mail-popup-mark-unignore-thread-whole",
+diff --git a/mail/mail.error.xml b/mail/mail.error.xml
+index 7c1b51d3a0..1535e83cc5 100644
+--- a/mail/mail.error.xml
++++ b/mail/mail.error.xml
+@@ -477,11 +477,11 @@ An mbox account will be created to preserve the old mbox folders. You can delete
+   </error>
+ 
+   <error id="no-retrieve-message-offline" type="warning">
+-    <_primary>Message is not available in offline.</_primary>
++    <_primary>Message is not available in offline mode.</_primary>
+     <_secondary>This can be due to the message not being downloaded yet. The folder, or the account, can be marked
+ for offline synchronization. Then, once the account is online again, use File-&gt;Download
+ Messages for Offline Usage, when this folder is selected, to make sure that all the messages
+-in the folder will be available in offline.</_secondary>
++in the folder will be available in offline mode.</_secondary>
+   </error>
+ 
+   <error id="folder-open" type="error">
+@@ -560,12 +560,12 @@ in the folder will be available in offline.</_secondary>
+   </error>
+ 
+   <error id="failed-mark-ignore-subthread" type="error" default="GTK_RESPONSE_YES">
+-    <_primary>Failed to mark sub-thread to be ignored in folder '{0}'</_primary>
++    <_primary>Failed to mark subthread to be ignored in folder '{0}'</_primary>
+     <secondary>{1}</secondary>
+   </error>
+ 
+   <error id="failed-mark-unignore-subthread" type="error" default="GTK_RESPONSE_YES">
+-    <_primary>Failed to unmark sub-thread from being ignored in folder '{0}'</_primary>
++    <_primary>Failed to unmark subthread from being ignored in folder '{0}'</_primary>
+     <secondary>{1}</secondary>
+   </error>
+ </error-list>
+-- 
+2.15.0
+

@@ -1,0 +1,26 @@
+From 21a3a85bc2255f5d275b20799f8b2c77c2f0401a Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 26 Feb 2016 10:13:29 +0100
+Subject: [PATCH 0861/1800] Bug 751225 - Spell check selection changes font
+ settings to initial settings
+
+---
+ web-extensions/composer/e-html-editor-selection-dom-functions.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index d558f2d39d..f0f57df876 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -6102,7 +6102,7 @@ dom_replace_caret_word (WebKitDOMDocument *document,
+ 	g_object_unref (dom_selection);
+ 	g_object_unref (dom_window);
+ 
+-	dom_exec_command (document, extension, E_HTML_EDITOR_VIEW_COMMAND_INSERT_HTML, replacement);
++	dom_exec_command (document, extension, E_HTML_EDITOR_VIEW_COMMAND_PASTE_AND_MATCH_STYLE, replacement);
+ 	dom_force_spell_check_for_current_paragraph (document, extension);
+ }
+ 
+-- 
+2.15.0
+

@@ -1,0 +1,43 @@
+From 0ca0df8df934e92fee3e7ebe1a73a7f4632a0812 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 23 Mar 2015 14:14:33 +0100
+Subject: [PATCH 0178/1800] Bug 742955 - Missing text in a reply
+
+In some cases we have to append the existing paragraph to the body before
+appending the new one.
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 38fe59d3c9..4de62dbc32 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -3245,6 +3245,9 @@ parse_html_into_paragraphs (WebKitDOMDocument *document,
+ 			}
+ 
+ 			if (g_strcmp0 (rest_to_insert, UNICODE_ZERO_WIDTH_SPACE) == 0) {
++				if (paragraph)
++					append_new_paragraph (blockquote, &paragraph);
++
+ 				paragraph = create_and_append_new_paragraph (
+ 					document, extension, blockquote, block, "<br>");
+ 			} else if (preserve_block) {
+@@ -3274,9 +3277,13 @@ parse_html_into_paragraphs (WebKitDOMDocument *document,
+ 
+ 				g_free (html);
+ 				g_free (new_content);
+-			} else
++			} else {
++				if (paragraph)
++					append_new_paragraph (blockquote, &paragraph);
++
+ 				paragraph = create_and_append_new_paragraph (
+ 					document, extension, blockquote, block, rest_to_insert);
++			}
+ 
+ 			if (rest_to_insert && *rest_to_insert && preserve_block && paragraph) {
+ 				glong length = 0;
+-- 
+2.15.0
+

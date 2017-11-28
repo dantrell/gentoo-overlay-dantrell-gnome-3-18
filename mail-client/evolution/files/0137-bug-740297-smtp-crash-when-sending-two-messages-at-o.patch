@@ -1,0 +1,281 @@
+From 9752d82a598b9fcb161e9adcaff303a4bbeb3538 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 10 Dec 2014 10:25:52 +0100
+Subject: [PATCH 0137/1800] Bug 740297 - [SMTP] Crash when sending two messages
+ at once
+
+---
+ libemail-engine/e-mail-session-utils.c |  13 +++-
+ libemail-engine/e-mail-session.c       | 105 +++++++++++++++++++++++++++++++++
+ libemail-engine/e-mail-session.h       |   8 ++-
+ libemail-engine/mail-ops.c             |  21 +++++--
+ 4 files changed, 138 insertions(+), 9 deletions(-)
+
+diff --git a/libemail-engine/e-mail-session-utils.c b/libemail-engine/e-mail-session-utils.c
+index 19e62865c8..8f4630d439 100644
+--- a/libemail-engine/e-mail-session-utils.c
++++ b/libemail-engine/e-mail-session-utils.c
+@@ -540,6 +540,12 @@ mail_session_send_to_thread (GSimpleAsyncResult *simple,
+ 		return;
+ 	}
+ 
++	if (!e_mail_session_mark_service_used_sync (session, context->transport, cancellable)) {
++		g_warn_if_fail (g_cancellable_set_error_if_cancelled (cancellable, &error));
++		g_simple_async_result_take_error (simple, error);
++		return;
++	}
++
+ 	status = camel_service_get_connection_status (context->transport);
+ 	if (status != CAMEL_SERVICE_CONNECTED) {
+ 		EMailSession *session;
+@@ -558,17 +564,18 @@ mail_session_send_to_thread (GSimpleAsyncResult *simple,
+ 
+ 			if (error) {
+ 				g_simple_async_result_take_error (simple, error);
++				e_mail_session_unmark_service_used (session, context->transport);
+ 				return;
+ 			}
+ 		}
+ 
+ 		did_connect = TRUE;
+ 
+-		camel_service_connect_sync (
+-			context->transport, cancellable, &error);
++		camel_service_connect_sync (context->transport, cancellable, &error);
+ 
+ 		if (error != NULL) {
+ 			g_simple_async_result_take_error (simple, error);
++			e_mail_session_unmark_service_used (session, context->transport);
+ 			return;
+ 		}
+ 	}
+@@ -599,6 +606,8 @@ mail_session_send_to_thread (GSimpleAsyncResult *simple,
+ 		}
+ 	}
+ 
++	e_mail_session_unmark_service_used (session, context->transport);
++
+ 	if (error != NULL) {
+ 		g_simple_async_result_take_error (simple, error);
+ 		return;
+diff --git a/libemail-engine/e-mail-session.c b/libemail-engine/e-mail-session.c
+index da8e297481..fb97e4eaa3 100644
+--- a/libemail-engine/e-mail-session.c
++++ b/libemail-engine/e-mail-session.c
+@@ -92,6 +92,10 @@ struct _EMailSessionPrivate {
+ 	guint preparing_flush;
+ 	guint outbox_flush_id;
+ 	GMutex preparing_flush_lock;
++
++	GMutex used_services_lock;
++	GCond used_services_cond;
++	GHashTable *used_services;
+ };
+ 
+ struct _AsyncContext {
+@@ -965,11 +969,14 @@ mail_session_finalize (GObject *object)
+ 
+ 	g_hash_table_destroy (priv->auto_refresh_table);
+ 	g_hash_table_destroy (priv->junk_filters);
++	g_hash_table_destroy (priv->used_services);
+ 
+ 	g_ptr_array_free (priv->local_folders, TRUE);
+ 	g_ptr_array_free (priv->local_folder_uris, TRUE);
+ 
+ 	g_mutex_clear (&priv->preparing_flush_lock);
++	g_mutex_clear (&priv->used_services_lock);
++	g_cond_clear (&priv->used_services_cond);
+ 
+ 	g_free (mail_data_dir);
+ 	g_free (mail_config_dir);
+@@ -1808,6 +1815,10 @@ e_mail_session_init (EMailSession *session)
+ 		(GDestroyNotify) g_free);
+ 
+ 	g_mutex_init (&session->priv->preparing_flush_lock);
++	g_mutex_init (&session->priv->used_services_lock);
++	g_cond_init (&session->priv->used_services_cond);
++
++	session->priv->used_services = g_hash_table_new (g_direct_hash, g_direct_equal);
+ }
+ 
+ EMailSession *
+@@ -2447,3 +2458,97 @@ e_mail_session_cancel_scheduled_outbox_flush (EMailSession *session)
+ 	}
+ 	g_mutex_unlock (&session->priv->preparing_flush_lock);
+ }
++
++static void
++mail_session_wakeup_used_services_cond (GCancellable *cancenllable,
++					  EMailSession *session)
++{
++	g_return_if_fail (E_IS_MAIL_SESSION (session));
++
++	/* Use broadcast here, because it's not known which operation had been
++	   cancelled, thus rather wake up all of them to retest. */
++	g_cond_broadcast (&session->priv->used_services_cond);
++}
++
++/**
++ * e_mail_session_mark_service_used_sync:
++ * @session: an #EMailSession
++ * @service: a #CamelService
++ * @cancellable: (allow none): a #GCancellable, or NULL
++ *
++ * Marks the @service as being used. If it is already in use, then waits
++ * for its release. The only reasons for a failure are either invalid
++ * parameters being passed in the function or the wait being cancelled.
++ * Use e_mail_session_unmark_service_used() to notice the @session that
++ * that the @service is no longer being used by the caller.
++ *
++ * Returns: Whether successfully waited for the @service.
++ *
++ * Since: 3.14
++ **/
++gboolean
++e_mail_session_mark_service_used_sync (EMailSession *session,
++				       CamelService *service,
++				       GCancellable *cancellable)
++{
++	gulong cancelled_id = 0;
++	gboolean message_pushed = FALSE;
++
++	g_return_val_if_fail (E_IS_MAIL_SESSION (session), FALSE);
++	g_return_val_if_fail (CAMEL_IS_SERVICE (service), FALSE);
++
++	g_mutex_lock (&session->priv->used_services_lock);
++
++	if (cancellable)
++		cancelled_id = g_cancellable_connect (cancellable, G_CALLBACK (mail_session_wakeup_used_services_cond), session, NULL);
++
++	while (!g_cancellable_is_cancelled (cancellable) &&
++		g_hash_table_contains (session->priv->used_services, service)) {
++
++		if (!message_pushed) {
++			camel_operation_push_message (cancellable, _("Waiting for '%s'"), camel_service_get_display_name (service));
++			message_pushed = TRUE;
++		}
++
++		g_cond_wait (&session->priv->used_services_cond, &session->priv->used_services_lock);
++	}
++
++	if (message_pushed)
++		camel_operation_pop_message (cancellable);
++
++	if (cancelled_id)
++		g_cancellable_disconnect (cancellable, cancelled_id);
++
++	if (!g_cancellable_is_cancelled (cancellable))
++		g_hash_table_insert (session->priv->used_services, service, GINT_TO_POINTER (1));
++
++	g_mutex_unlock (&session->priv->used_services_lock);
++
++	return !g_cancellable_is_cancelled (cancellable);
++}
++
++/**
++ * e_mail_session_unmark_service_used:
++ * @session: an #EMailSession
++ * @service: a #CamelService
++ *
++ * Frees a "use lock" on the @service, thus it can be used by others. If anything
++ * is waiting for it in e_mail_session_mark_service_used_sync(), then it is woken up.
++ *
++ * Since: 3.14
++ **/
++void
++e_mail_session_unmark_service_used (EMailSession *session,
++				    CamelService *service)
++{
++	g_return_if_fail (E_IS_MAIL_SESSION (session));
++	g_return_if_fail (CAMEL_IS_SERVICE (service));
++
++	g_mutex_lock (&session->priv->used_services_lock);
++
++	if (g_hash_table_remove (session->priv->used_services, service)) {
++		g_cond_signal (&session->priv->used_services_cond);
++	}
++
++	g_mutex_unlock (&session->priv->used_services_lock);
++}
+diff --git a/libemail-engine/e-mail-session.h b/libemail-engine/e-mail-session.h
+index fb4df1e899..0d8f5e646b 100644
+--- a/libemail-engine/e-mail-session.h
++++ b/libemail-engine/e-mail-session.h
+@@ -157,7 +157,13 @@ void		e_mail_session_schedule_outbox_flush
+ 						 gint delay_minutes);
+ void		e_mail_session_cancel_scheduled_outbox_flush
+ 						(EMailSession *session);
+-
++gboolean	e_mail_session_mark_service_used_sync
++						(EMailSession *session,
++						 CamelService *service,
++						 GCancellable *cancellable);
++void		e_mail_session_unmark_service_used
++						(EMailSession *session,
++						 CamelService *service);
+ 
+ /* Useful GBinding transform functions */
+ gboolean	e_binding_transform_service_to_source
+diff --git a/libemail-engine/mail-ops.c b/libemail-engine/mail-ops.c
+index a440890eb4..7679d45e5d 100644
+--- a/libemail-engine/mail-ops.c
++++ b/libemail-engine/mail-ops.c
+@@ -590,7 +590,6 @@ static void
+ mail_send_message (struct _send_queue_msg *m,
+                    CamelFolder *queue,
+                    const gchar *uid,
+-                   CamelTransport *transport,
+                    CamelFilterDriver *driver,
+                    GCancellable *cancellable,
+                    GError **error)
+@@ -622,17 +621,24 @@ mail_send_message (struct _send_queue_msg *m,
+ 	if (service != NULL)
+ 		provider = camel_service_get_provider (service);
+ 
+-	err = g_string_new ("");
+-	xev = mail_tool_remove_xevolution_headers (message);
+-
+ 	if (CAMEL_IS_TRANSPORT (service)) {
+ 		const gchar *tuid;
+ 
+ 		/* Let the dialog know the right account it is using. */
+-		tuid = camel_service_get_uid (CAMEL_SERVICE (transport));
++		tuid = camel_service_get_uid (service);
+ 		report_status (m, CAMEL_FILTER_STATUS_ACTION, 0, tuid);
+ 	}
+ 
++	if (service && !e_mail_session_mark_service_used_sync (m->session, service, cancellable)) {
++		g_warn_if_fail (g_cancellable_set_error_if_cancelled (cancellable, error));
++		g_clear_object (&service);
++		g_clear_object (&message);
++		return;
++	}
++
++	err = g_string_new ("");
++	xev = mail_tool_remove_xevolution_headers (message);
++
+ 	/* Check for email sending */
+ 	from = (CamelAddress *) camel_internet_address_new ();
+ 	resent_from = camel_medium_get_header (
+@@ -889,6 +895,9 @@ exit:
+ 		}
+ 	}
+ 
++	if (service)
++		e_mail_session_unmark_service_used (m->session, service);
++
+ 	if (local_error != NULL)
+ 		g_propagate_error (error, local_error);
+ 
+@@ -989,7 +998,7 @@ send_queue_exec (struct _send_queue_msg *m,
+ 			cancellable, (i + 1) * 100 / send_uids->len);
+ 
+ 		mail_send_message (
+-			m, m->queue, send_uids->pdata[i], m->transport,
++			m, m->queue, send_uids->pdata[i],
+ 			m->driver, cancellable, &local_error);
+ 		if (local_error != NULL) {
+ 			if (!g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+-- 
+2.15.0
+

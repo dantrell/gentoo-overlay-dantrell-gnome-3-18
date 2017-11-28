@@ -1,0 +1,56 @@
+From 14f3b3c01d388686961a1ab5b5abb654b2cf47c2 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 18 Jun 2015 10:20:29 +0200
+Subject: [PATCH 0822/1800] [EMailAccountStore] Unnecessary ESource writes on
+ start
+
+When the ESource was disabled, then the mail account store changed
+the ESource enabled state and wrote it, but the ESource could be already
+disabled, thus the write was made unnecessarily.
+---
+ mail/e-mail-account-store.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/mail/e-mail-account-store.c b/mail/e-mail-account-store.c
+index 234f8e7afc..8fd06e807a 100644
+--- a/mail/e-mail-account-store.c
++++ b/mail/e-mail-account-store.c
+@@ -606,7 +606,7 @@ mail_account_store_service_enabled (EMailAccountStore *store,
+ 		if (uid != NULL)
+ 			identity = e_source_registry_ref_source (registry, uid);
+ 
+-		if (identity != NULL && e_source_get_writable (identity)) {
++		if (identity != NULL && e_source_get_writable (identity) && !e_source_get_enabled (identity)) {
+ 			e_source_set_enabled (identity, TRUE);
+ 
+ 			store->priv->busy_count++;
+@@ -636,7 +636,7 @@ mail_account_store_service_enabled (EMailAccountStore *store,
+ 		}
+ 	}
+ 
+-	if (source != NULL && e_source_get_writable (source)) {
++	if (source != NULL && e_source_get_writable (source) && !e_source_get_enabled (source)) {
+ 		e_source_set_enabled (source, TRUE);
+ 
+ 		store->priv->busy_count++;
+@@ -691,7 +691,7 @@ mail_account_store_service_disabled (EMailAccountStore *store,
+ 			call_allow_auth_prompt (identity);
+ 		}
+ 
+-		if (identity != NULL && e_source_get_writable (identity)) {
++		if (identity != NULL && e_source_get_writable (identity) && e_source_get_enabled (identity)) {
+ 			e_source_set_enabled (identity, FALSE);
+ 
+ 			store->priv->busy_count++;
+@@ -723,7 +723,7 @@ mail_account_store_service_disabled (EMailAccountStore *store,
+ 		}
+ 	}
+ 
+-	if (source != NULL && e_source_get_writable (source)) {
++	if (source != NULL && e_source_get_writable (source) && e_source_get_enabled (source)) {
+ 		e_source_set_enabled (source, FALSE);
+ 
+ 		store->priv->busy_count++;
+-- 
+2.15.0
+

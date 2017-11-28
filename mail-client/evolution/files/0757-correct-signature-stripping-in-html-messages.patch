@@ -1,0 +1,57 @@
+From e70cfc991cd80008de0f44ad36ea87101b09d4fe Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 19 May 2015 19:44:15 +0200
+Subject: [PATCH 0757/1800] Correct signature stripping in HTML messages
+
+The line divider in HTML messages is the <BR> tag, but the code was
+looking for '\n' only, thus it could skip the right place very easily.
+---
+ em-format/e-mail-stripsig-filter.c | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
+
+diff --git a/em-format/e-mail-stripsig-filter.c b/em-format/e-mail-stripsig-filter.c
+index f7069133b5..db6868961d 100644
+--- a/em-format/e-mail-stripsig-filter.c
++++ b/em-format/e-mail-stripsig-filter.c
+@@ -47,10 +47,14 @@ strip_signature (CamelMimeFilter *filter,
+ 	const gchar *start = NULL;
+ 
+ 	if (stripsig->midline) {
+-		while (inptr < inend && *inptr != '\n')
++		while (inptr < inend && *inptr != '\n' && (stripsig->text_plain_only ||
++		       inend - inptr < 4 || g_ascii_strncasecmp (inptr, "<BR>", 4) != 0))
+ 			inptr++;
+ 
+-		if (inptr < inend) {
++		if (!stripsig->text_plain_only && inend - inptr >= 4 && g_ascii_strncasecmp (inptr, "<BR>", 4) == 0) {
++			stripsig->midline = FALSE;
++			inptr += 4;
++		} else if (inptr < inend) {
+ 			stripsig->midline = FALSE;
+ 			inptr++;
+ 		}
+@@ -66,7 +70,8 @@ strip_signature (CamelMimeFilter *filter,
+ 			start = inptr;
+ 			inptr += 7;
+ 		} else {
+-			while (inptr < inend && *inptr != '\n')
++			while (inptr < inend && *inptr != '\n' && (stripsig->text_plain_only ||
++			       inend - inptr < 4 || g_ascii_strncasecmp (inptr, "<BR>", 4) != 0))
+ 				inptr++;
+ 
+ 			if (inptr == inend) {
+@@ -74,7 +79,10 @@ strip_signature (CamelMimeFilter *filter,
+ 				break;
+ 			}
+ 
+-			inptr++;
++			if (!stripsig->text_plain_only && inend - inptr >= 4 && g_ascii_strncasecmp (inptr, "<BR>", 4) == 0)
++				inptr += 4;
++			else
++				inptr++;
+ 		}
+ 	}
+ 
+-- 
+2.15.0
+

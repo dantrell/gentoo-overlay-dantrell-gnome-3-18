@@ -1,0 +1,37 @@
+From 884ee0bdb25f5bebec8beba1a290d1cc27b6d9f2 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 2 Feb 2015 10:37:15 +0100
+Subject: [PATCH 0207/1800] EMComposerUtils - Drop unused prefix and suffix
+ around the message
+
+---
+ mail/em-composer-utils.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/mail/em-composer-utils.c b/mail/em-composer-utils.c
+index 795ac9eb51..fcba621849 100644
+--- a/mail/em-composer-utils.c
++++ b/mail/em-composer-utils.c
+@@ -2871,8 +2871,7 @@ composer_set_body (EMsgComposer *composer,
+ 		original = quoting_text (QUOTING_ORIGINAL);
+ 		text = em_utils_message_to_html (
+ 			session, message, original, E_MAIL_FORMATTER_QUOTE_FLAG_HEADERS,
+-			parts_list, "<span id=\"-x-evolution-reply-citation\">",
+-			"</span>", &validity_found);
++			parts_list, NULL, NULL, &validity_found);
+ 		e_msg_composer_set_body_text (composer, text, TRUE);
+ 		g_free (text);
+ 		g_free (original);
+@@ -2885,8 +2884,7 @@ composer_set_body (EMsgComposer *composer,
+ 		credits = attribution_format (message);
+ 		text = em_utils_message_to_html (
+ 			session, message, credits, E_MAIL_FORMATTER_QUOTE_FLAG_CITE,
+-			parts_list, "<span id=\"-x-evolution-reply-citation\">",
+-			"</span>", &validity_found);
++			parts_list, NULL, NULL, &validity_found);
+ 		g_free (credits);
+ 		e_msg_composer_set_body_text (composer, text, TRUE);
+ 		g_free (text);
+-- 
+2.15.0
+

@@ -1,0 +1,35 @@
+From dca9943bad0f3b0d0c294e974b87fb007b2c6c1e Mon Sep 17 00:00:00 2001
+From: Yanko Kaneti <yaneti@declera.com>
+Date: Tue, 21 Jul 2015 08:15:50 +0200
+Subject: [PATCH 0899/1800] Bug 752522 - Add a stock icon to the
+ mail-next-unread action
+
+---
+ mail/e-mail-reader.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index dca7c5b426..c630f2a7f0 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -2156,7 +2156,7 @@ static GtkActionEntry mail_reader_entries[] = {
+ 	  G_CALLBACK (action_mail_next_thread_cb) },
+ 
+ 	{ "mail-next-unread",
+-	  NULL,
++	  "go-jump",
+ 	  N_("Next _Unread Message"),
+ 	  "<Control>bracketright",
+ 	  N_("Display the next unread message"),
+@@ -2326,7 +2326,7 @@ static GtkActionEntry mail_reader_entries[] = {
+ 	  NULL },
+ 
+ 	{ "mail-goto-menu",
+-	  "go-jump",
++	  NULL,
+ 	  N_("_Go To"),
+ 	  NULL,
+ 	  NULL,
+-- 
+2.15.0
+

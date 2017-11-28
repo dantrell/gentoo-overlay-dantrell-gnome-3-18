@@ -1,0 +1,44 @@
+From b7ef3254360751ccdb86a3f47ff2f8740fabee7a Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 26 Mar 2015 13:42:16 +0100
+Subject: [PATCH 0383/1800] EHTMLEditorView - Be more efficient when trying to
+ get if we are going to remove last element in body
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 801f9ebb19..1e9ce4e2c6 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -2392,13 +2392,14 @@ prevent_from_deleting_last_element_in_body (WebKitDOMDocument *document)
+ {
+ 	gboolean ret_val = FALSE;
+ 	WebKitDOMHTMLElement *body;
+-	WebKitDOMNodeList *list;
++	WebKitDOMNode *node;
+ 
+ 	body = webkit_dom_document_get_body (document);
+ 
+-	list = webkit_dom_node_get_child_nodes (WEBKIT_DOM_NODE (body));
+-
+-	if (webkit_dom_node_list_get_length (list) <= 1) {
++	node = webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (body));
++	if (!node || (
++	    webkit_dom_node_get_next_sibling (node) &&
++	    !webkit_dom_node_get_next_sibling (webkit_dom_node_get_next_sibling (node)))) {
+ 		gchar *content;
+ 
+ 		content = webkit_dom_node_get_text_content (WEBKIT_DOM_NODE (body));
+@@ -2411,7 +2412,6 @@ prevent_from_deleting_last_element_in_body (WebKitDOMDocument *document)
+ 		if (webkit_dom_element_query_selector (WEBKIT_DOM_ELEMENT (body), "img", NULL))
+ 			ret_val = FALSE;
+ 	}
+-	g_object_unref (list);
+ 
+ 	return ret_val;
+ }
+-- 
+2.15.0
+

@@ -1,0 +1,266 @@
+From 8915ed40f84ffeaee7aacf9fc613a5de7206a3ee Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 4 Feb 2015 13:38:39 +0100
+Subject: [PATCH 0233/1800] EWebView, EHTMLEditorView - Improve citations look
+
+Draw a color line (different for each level) on left and right side of citation
+even in mail preview. Also make the citations more compact (in preview
+and in editor).
+---
+ e-util/e-html-editor-view.c | 54 +++++++------------------------
+ e-util/e-web-view.c         | 78 +++++++++++++++++++++++++++++++++++++++++++++
+ e-util/e-web-view.h         |  2 ++
+ 3 files changed, 92 insertions(+), 42 deletions(-)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 9c244faa5c..65821197c9 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -2080,36 +2080,6 @@ e_html_editor_view_remove_embed_styles (EHTMLEditorView *view)
+ 	e_html_editor_view_call_simple_extension_function (view, "DOMRemoveEmbedStyleSheet");
+ }
+ 
+-static const gchar *
+-citation_color_level_1 (void)
+-{
+-	return "rgb(114,159,207)";  /* Sky Blue 1 */
+-}
+-
+-static const gchar *
+-citation_color_level_2 (void)
+-{
+-	return "rgb(173,127,168)";  /* Plum 1 */
+-}
+-
+-static const gchar *
+-citation_color_level_3 (void)
+-{
+-	return "rgb(138,226,52)";  /* Chameleon 1 */
+-}
+-
+-static const gchar *
+-citation_color_level_4 (void)
+-{
+-	return "rgb(252,175,62)";  /* Orange 1 */
+-}
+-
+-static const gchar *
+-citation_color_level_5 (void)
+-{
+-	return "rgb(233,185,110)";  /* Chocolate 1 */
+-}
+-
+ /**
+  * e_html_editor_view_update_fonts:
+  * @view: an #EHTMLEditorView
+@@ -2376,7 +2346,7 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 		"{\n"
+ 		"  color: %s;\n"
+ 		"}\n",
+-		citation_color_level_1 ());
++		e_web_view_get_citation_color_for_level (1));
+ 
+ 	g_string_append_printf (
+ 		stylesheet,
+@@ -2385,7 +2355,7 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 		"{\n"
+ 		"  color: %s;\n"
+ 		"}\n",
+-		citation_color_level_2 ());
++		e_web_view_get_citation_color_for_level (2));
+ 
+ 	g_string_append_printf (
+ 		stylesheet,
+@@ -2395,7 +2365,7 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 		"{\n"
+ 		"  color: %s;\n"
+ 		"}\n",
+-		citation_color_level_3 ());
++		e_web_view_get_citation_color_for_level (3));
+ 
+ 	g_string_append_printf (
+ 		stylesheet,
+@@ -2406,7 +2376,7 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 		"{\n"
+ 		"  color: %s;\n"
+ 		"}\n",
+-		citation_color_level_4 ());
++		e_web_view_get_citation_color_for_level (4));
+ 
+ 	g_string_append_printf (
+ 		stylesheet,
+@@ -2418,14 +2388,14 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 		"{\n"
+ 		"  color: %s;\n"
+ 		"}\n",
+-		citation_color_level_5 ());
++		e_web_view_get_citation_color_for_level (5));
+ 
+ 	g_string_append (
+ 		stylesheet,
+ 		"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
+ 		"{\n"
+-		"  padding: 0.4ex 1ex;\n"
+-		"  margin: 1ex;\n"
++		"  padding: 0ch 1ch 0ch 1ch;\n"
++		"  margin: 0ch;\n"
+ 		"  border-width: 0px 2px 0px 2px;\n"
+ 		"  border-style: none solid none solid;\n"
+ 		"  border-radius: 2px;\n"
+@@ -2439,7 +2409,7 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 		"{\n"
+ 		"  border-color: %s;\n"
+ 		"}\n",
+-		citation_color_level_1 ());
++		e_web_view_get_citation_color_for_level (1));
+ 
+ 	g_string_append_printf (
+ 		stylesheet,
+@@ -2448,7 +2418,7 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 		"{\n"
+ 		"  border-color: %s;\n"
+ 		"}\n",
+-		citation_color_level_2 ());
++		e_web_view_get_citation_color_for_level (2));
+ 
+ 	g_string_append_printf (
+ 		stylesheet,
+@@ -2458,7 +2428,7 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 		"{\n"
+ 		"  border-color: %s;\n"
+ 		"}\n",
+-		citation_color_level_3 ());
++		e_web_view_get_citation_color_for_level (3));
+ 
+ 	g_string_append_printf (
+ 		stylesheet,
+@@ -2469,7 +2439,7 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 		"{\n"
+ 		"  border-color: %s;\n"
+ 		"}\n",
+-		citation_color_level_4 ());
++		e_web_view_get_citation_color_for_level (4));
+ 
+ 	g_string_append_printf (
+ 		stylesheet,
+@@ -2481,7 +2451,7 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 		"{\n"
+ 		"  border-color: %s;\n"
+ 		"}\n",
+-		citation_color_level_5 ());
++		e_web_view_get_citation_color_for_level (5));
+ 
+ 	gdk_color_free (link);
+ 	gdk_color_free (visited);
+diff --git a/e-util/e-web-view.c b/e-util/e-web-view.c
+index 3055acb490..4a0f94583c 100644
+--- a/e-util/e-web-view.c
++++ b/e-util/e-web-view.c
+@@ -3068,6 +3068,22 @@ e_web_view_get_selection_content_html_sync (EWebView *web_view,
+ 	return NULL;
+ }
+ 
++const gchar *
++e_web_view_get_citation_color_for_level (gint level)
++{
++	static const gchar *citation_color_levels[5] = {
++		"rgb(233,185,110)",	/* level 5 - Chocolate 1 */
++		"rgb(114,159,207)",	/* level 1 - Sky Blue 1 */
++		"rgb(173,127,168)",	/* level 2 - Plum 1 */
++		"rgb(138,226,52)",	/* level 3 - Chameleon 1 */
++		"rgb(252,175,62)",	/* level 4 - Orange 1 */
++	};
++
++	g_return_val_if_fail (level > 0, citation_color_levels[1]);
++
++	return citation_color_levels[level % 5];
++}
++
+ void
+ e_web_view_update_fonts_settings (GSettings *font_settings,
+                                   GSettings *aliasing_settings,
+@@ -3203,6 +3219,68 @@ e_web_view_update_fonts_settings (GSettings *font_settings,
+ 
+ 		gdk_color_free (link);
+ 		gdk_color_free (visited);
++
++		g_string_append (
++			stylesheet,
++			"blockquote[type=cite] "
++			"{\n"
++			"  padding: 0ch 1ch 0ch 1ch;\n"
++			"  margin: 0ch;\n"
++			"  border-width: 0px 2px 0px 2px;\n"
++			"  border-style: none solid none solid;\n"
++			"  border-radius: 2px;\n"
++			"}\n");
++
++		/* Block quote border colors are borrowed from Thunderbird. */
++		g_string_append_printf (
++			stylesheet,
++			"blockquote[type=cite] "
++			"{\n"
++			"  border-color: %s;\n"
++			"}\n",
++			e_web_view_get_citation_color_for_level (1));
++
++		g_string_append_printf (
++			stylesheet,
++			"blockquote[type=cite] "
++			"blockquote[type=cite] "
++			"{\n"
++			"  border-color: %s;\n"
++			"}\n",
++			e_web_view_get_citation_color_for_level (2));
++
++		g_string_append_printf (
++			stylesheet,
++			"blockquote[type=cite] "
++			"blockquote[type=cite] "
++			"blockquote[type=cite] "
++			"{\n"
++			"  border-color: %s;\n"
++			"}\n",
++			e_web_view_get_citation_color_for_level (3));
++
++		g_string_append_printf (
++			stylesheet,
++			"blockquote[type=cite] "
++			"blockquote[type=cite] "
++			"blockquote[type=cite] "
++			"blockquote[type=cite] "
++			"{\n"
++			"  border-color: %s;\n"
++			"}\n",
++			e_web_view_get_citation_color_for_level (4));
++
++		g_string_append_printf (
++			stylesheet,
++			"blockquote[type=cite] "
++			"blockquote[type=cite] "
++			"blockquote[type=cite] "
++			"blockquote[type=cite] "
++			"blockquote[type=cite] "
++			"{\n"
++			"  border-color: %s;\n"
++			"}\n",
++			e_web_view_get_citation_color_for_level (5));
+ 	}
+ 
+ 	wk_settings = webkit_web_view_get_settings (WEBKIT_WEB_VIEW (view_widget));
+diff --git a/e-util/e-web-view.h b/e-util/e-web-view.h
+index 0b62998c2c..424570d8bb 100644
+--- a/e-util/e-web-view.h
++++ b/e-util/e-web-view.h
+@@ -246,6 +246,8 @@ void		e_web_view_add_css_rule_into_style_sheet
+ 						 const gchar *style_sheet_id,
+ 						 const gchar *selector,
+ 						 const gchar *style);
++const gchar *	e_web_view_get_citation_color_for_level
++						(gint level);
+ G_END_DECLS
+ 
+ #endif /* E_WEB_VIEW_H */
+-- 
+2.15.0
+

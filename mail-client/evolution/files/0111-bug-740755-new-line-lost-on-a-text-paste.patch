@@ -1,0 +1,27 @@
+From e32677254903d521adccf06ed614c976303eb8c7 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 27 Nov 2014 17:56:33 +0100
+Subject: [PATCH 0111/1800] Bug 740755 - New-line lost on a text paste
+
+Don't try to preserve the text blocks when the line starts with
+tabulator.
+---
+ e-util/e-html-editor-view-dom-functions.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/e-util/e-html-editor-view-dom-functions.c b/e-util/e-html-editor-view-dom-functions.c
+index 2953ebdab9..9b91397f1b 100644
+--- a/e-util/e-html-editor-view-dom-functions.c
++++ b/e-util/e-html-editor-view-dom-functions.c
+@@ -3016,7 +3016,7 @@ parse_html_into_paragraphs (WebKitDOMDocument *document,
+ 			g_strchomp (truncated);
+ 			empty = !*truncated && strlen (rest) > 0;
+ 
+-			if (strchr (" +-@*=", *rest))
++			if (strchr (" +-@*=\t", *rest))
+ 				prevent_block = FALSE;
+ 
+ 			rest_to_insert = g_regex_replace_eval (
+-- 
+2.15.0
+

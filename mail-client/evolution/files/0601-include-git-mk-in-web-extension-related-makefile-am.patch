@@ -1,0 +1,80 @@
+From 1ac4652d8ce9630395607d09e72db1b8b453efd2 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 23 Feb 2016 18:36:11 +0100
+Subject: [PATCH 0601/1800] Include git.mk in web-extension related
+ Makefile.am's
+
+The folders had missing .gitignore files, which are generated with
+the help of git.mk file.
+---
+ modules/itip-formatter/web-extension/Makefile.am | 2 ++
+ modules/mail/web-extension/Makefile.am           | 2 ++
+ modules/prefer-plain/web-extension/Makefile.am   | 2 ++
+ modules/text-highlight/web-extension/Makefile.am | 2 ++
+ web-extensions/Makefile.am                       | 2 ++
+ web-extensions/composer/Makefile.am              | 2 ++
+ 6 files changed, 12 insertions(+)
+
+diff --git a/modules/itip-formatter/web-extension/Makefile.am b/modules/itip-formatter/web-extension/Makefile.am
+index b956aefaa8..a519744d88 100644
+--- a/modules/itip-formatter/web-extension/Makefile.am
++++ b/modules/itip-formatter/web-extension/Makefile.am
+@@ -22,3 +22,5 @@ libmoduleitipformatterwebextension_la_LIBADD =		\
+ 
+ libmoduleitipformatterwebextension_la_LDFLAGS =		\
+ 	-module -avoid-version -no-undefined
++
++-include $(top_srcdir)/git.mk
+diff --git a/modules/mail/web-extension/Makefile.am b/modules/mail/web-extension/Makefile.am
+index 342cd2d169..3b25c82e71 100644
+--- a/modules/mail/web-extension/Makefile.am
++++ b/modules/mail/web-extension/Makefile.am
+@@ -20,3 +20,5 @@ libmodulemailwebextension_la_LIBADD =			\
+ 
+ libmodulemailwebextension_la_LDFLAGS =			\
+ 	-module -avoid-version -no-undefined
++
++-include $(top_srcdir)/git.mk
+diff --git a/modules/prefer-plain/web-extension/Makefile.am b/modules/prefer-plain/web-extension/Makefile.am
+index 4f26c477c2..3d0389540e 100644
+--- a/modules/prefer-plain/web-extension/Makefile.am
++++ b/modules/prefer-plain/web-extension/Makefile.am
+@@ -20,3 +20,5 @@ libmodulepreferplainwebextension_la_LIBADD =		\
+ 
+ libmodulepreferplainwebextension_la_LDFLAGS =		\
+ 	-module -avoid-version -no-undefined
++
++-include $(top_srcdir)/git.mk
+diff --git a/modules/text-highlight/web-extension/Makefile.am b/modules/text-highlight/web-extension/Makefile.am
+index dc521f9e63..6c0c64db8b 100644
+--- a/modules/text-highlight/web-extension/Makefile.am
++++ b/modules/text-highlight/web-extension/Makefile.am
+@@ -20,3 +20,5 @@ libmoduletexthighlightwebextension_la_LIBADD =		\
+ 
+ libmoduletexthighlightwebextension_la_LDFLAGS =		\
+ 	-module -avoid-version -no-undefined
++
++-include $(top_srcdir)/git.mk
+diff --git a/web-extensions/Makefile.am b/web-extensions/Makefile.am
+index 8950e19496..f6ad68f8f1 100644
+--- a/web-extensions/Makefile.am
++++ b/web-extensions/Makefile.am
+@@ -44,3 +44,5 @@ libewebextension_la_LIBADD =				\
+ 
+ libewebextension_la_LDFLAGS =				\
+ 	-module -avoid-version -no-undefined
++
++-include $(top_srcdir)/git.mk
+diff --git a/web-extensions/composer/Makefile.am b/web-extensions/composer/Makefile.am
+index 5a15345045..0cb2761378 100644
+--- a/web-extensions/composer/Makefile.am
++++ b/web-extensions/composer/Makefile.am
+@@ -51,3 +51,5 @@ libehtmleditorwebextension_la_LIBADD =			\
+ 
+ libehtmleditorwebextension_la_LDFLAGS =			\
+ 	-module -avoid-version -no-undefined
++
++-include $(top_srcdir)/git.mk
+-- 
+2.15.0
+

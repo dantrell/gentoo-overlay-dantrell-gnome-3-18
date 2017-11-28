@@ -1,0 +1,96 @@
+From 5491cc259bbeec287811dc2f5ee186e59a896650 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 1 Mar 2016 13:58:09 +0100
+Subject: [PATCH 1009/1800] Don't wrap on Unicode's non-breaking space
+ character
+
+---
+ e-util/e-html-editor-view.c                                  |  1 -
+ .../composer/e-html-editor-selection-dom-functions.c         | 12 +++++++-----
+ web-extensions/composer/e-html-editor-view-dom-functions.c   | 10 ----------
+ 3 files changed, 7 insertions(+), 16 deletions(-)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 8c217acd26..05bdf2f24d 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -2555,7 +2555,6 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 		"  font-size: %dpt;\n"
+ 		"  font-weight: %d;\n"
+ 		"  font-style: %s;\n"
+-		" -webkit-nbsp-mode: space;"
+ 		" -webkit-line-break: after-white-space;\n",
+ 		pango_font_description_get_family (vw),
+ 		pango_font_description_get_size (vw) / PANGO_SCALE,
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 773c3ae858..c6ea31fd7b 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -2001,7 +2001,8 @@ find_where_to_break_line (WebKitDOMCharacterData *node,
+ 			goto out;
+ 		}
+ 
+-		if (g_unichar_isspace (uc) || *str == '-') {
++		if ((g_unichar_isspace (uc) && !(g_unichar_break_type (uc) == G_UNICODE_BREAK_NON_BREAKING_GLUE)) ||
++		     *str == '-') {
+ 			if ((last_break_position_is_dash = *str == '-')) {
+ 				/* There was no space before the dash */
+ 				if (pos - 1 != last_break_position) {
+@@ -2033,7 +2034,8 @@ find_where_to_break_line (WebKitDOMCharacterData *node,
+ 				str = g_utf8_next_char (str);
+ 				uc = g_utf8_get_char (str);
+ 
+-				if (g_unichar_isspace (uc))
++				if ((g_unichar_isspace (uc) &&
++				    !(g_unichar_break_type (uc) == G_UNICODE_BREAK_NON_BREAKING_GLUE)))
+ 					last_break_position = ++pos;
+ 			}
+ 			break;
+@@ -2530,12 +2532,12 @@ wrap_lines (WebKitDOMDocument *document,
+ 
+ 							/* Find the last character where we can break. */
+ 							while (text_length - length > 0) {
+-								if (strchr (" "UNICODE_NBSP, data[text_length - length - 1])) {
++								if (strchr (" ", data[text_length - length - 1])) {
+ 									length++;
+ 									break;
+ 								} else if (data[text_length - length - 1] == '-' &&
+ 								           text_length - length > 1 &&
+-								           !strchr (" "UNICODE_NBSP, data[text_length - length - 2]))
++								           !strchr (" ", data[text_length - length - 2]))
+ 									break;
+ 								length++;
+ 							}
+@@ -2594,7 +2596,7 @@ wrap_lines (WebKitDOMDocument *document,
+ 							mark_and_remove_leading_space (document, nd);
+ 						g_free (nd_content);
+ 						nd_content = webkit_dom_node_get_text_content (nd);
+-						if (g_strcmp0 (nd_content, UNICODE_NBSP) == 0 || !*nd_content)
++						if (!*nd_content)
+ 							remove_node (nd);
+ 						g_free (nd_content);
+ 					}
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 741c3423da..4ddd9aca47 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -5983,16 +5983,6 @@ process_elements (EHTMLEditorWebExtension *extension,
+ 				gchar *class;
+ 				const gchar *css_align;
+ 
+-				if (strstr (content, UNICODE_NBSP)) {
+-					GString *nbsp_free;
+-
+-					nbsp_free = e_str_replace_string (
+-						content, UNICODE_NBSP, " ");
+-
+-					g_free (content);
+-					content = g_string_free (nbsp_free, FALSE);
+-				}
+-
+ 				class = webkit_dom_element_get_class_name (WEBKIT_DOM_ELEMENT (node));
+ 				if ((css_align = strstr (class, "-x-evo-align-"))) {
+ 					gchar *align;
+-- 
+2.15.0
+

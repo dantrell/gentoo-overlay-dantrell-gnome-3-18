@@ -1,0 +1,26 @@
+From 3a9ed5566e74515bb6fe3b9fd3813dd9f5712785 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 30 Mar 2015 11:39:42 +0200
+Subject: [PATCH 0469/1800] WebKit2 - Fix how the CSS link color rule is
+ created
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 768d3c7164..3b23debf1a 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -6806,7 +6806,7 @@ dom_set_link_color (WebKitDOMDocument *document,
+ 			WEBKIT_DOM_NODE (head), WEBKIT_DOM_NODE (style_element), NULL);
+ 	}
+ 
+-	color_str = g_strdup_printf ("a { color: #%06x; }", color);
++	color_str = g_strconcat ("a { color: ", color, "; }", NULL);
+ 	webkit_dom_html_element_set_inner_html (
+ 		WEBKIT_DOM_HTML_ELEMENT (style_element), color_str, NULL);
+ 
+-- 
+2.15.0
+

@@ -1,0 +1,62 @@
+From 38f6aea05eddae735ac84e6e305d9a42fb8ca45a Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 26 Mar 2015 14:41:21 +0100
+Subject: [PATCH 0398/1800] WebKit2 - Build fixes
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 25f738ce19..0f4f7513fb 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -1441,7 +1441,9 @@ dom_insert_smiley (WebKitDOMDocument *document,
+ 		webkit_dom_html_element_set_inner_text (
+ 			WEBKIT_DOM_HTML_ELEMENT (wrapper), emoticon->unicode_character, NULL);
+ 
++		load_context = emoticon_load_context_new (document, extension, emoticon);
+ 		emoticon_insert_span (emoticon, load_context, wrapper);
++		emoticon_load_context_free (load_context);
+ 	} else {
+ 		filename_uri = e_emoticon_get_uri (emoticon);
+ 		g_return_if_fail (filename_uri != NULL);
+@@ -2180,7 +2182,7 @@ dom_quote_and_insert_text_into_selection (WebKitDOMDocument *document,
+ 		sibling = webkit_dom_node_get_next_sibling (
+ 			WEBKIT_DOM_NODE (selection_start));
+ 		sibling = webkit_dom_node_get_next_sibling (sibling);
+-		if (!sibling || WEBKIT_DOM_IS_HTMLBR_ELEMENT (sibling)) {
++		if (!sibling || WEBKIT_DOM_IS_HTML_BR_ELEMENT (sibling)) {
+ 			webkit_dom_node_replace_child (
+ 				webkit_dom_node_get_parent_node (
+ 					webkit_dom_node_get_parent_node (
+@@ -4228,20 +4230,20 @@ dom_convert_and_insert_html_into_selection (WebKitDOMDocument *document,
+ 	if (!is_html && webkit_dom_element_get_child_element_count (element) == 1) {
+ 		inner_html = webkit_dom_html_element_get_inner_text (
+ 			WEBKIT_DOM_HTML_ELEMENT (element));
+-		e_html_editor_view_exec_command (
+-			view, E_HTML_EDITOR_VIEW_COMMAND_INSERT_TEXT, inner_html);
++		dom_exec_command (
++			document, E_HTML_EDITOR_VIEW_COMMAND_INSERT_TEXT, inner_html);
+ 		g_free (inner_html);
+ 	} else {
+ 		inner_html = webkit_dom_html_element_get_inner_html (
+ 			WEBKIT_DOM_HTML_ELEMENT (element));
+-		e_html_editor_view_exec_command (
+-			view, E_HTML_EDITOR_VIEW_COMMAND_INSERT_HTML, inner_html);
++		dom_exec_command (
++			document, E_HTML_EDITOR_VIEW_COMMAND_INSERT_HTML, inner_html);
+ 		g_free (inner_html);
+ 		inner_html = webkit_dom_html_element_get_inner_text (
+ 			WEBKIT_DOM_HTML_ELEMENT (element));
+ 		if (g_str_has_suffix (inner_html, " ")) {
+-			e_html_editor_view_exec_command (
+-				view, E_HTML_EDITOR_VIEW_COMMAND_INSERT_TEXT, " ");
++			dom_exec_command (
++				document, E_HTML_EDITOR_VIEW_COMMAND_INSERT_TEXT, " ");
+ 		}
+ 		g_free (inner_html);
+ 	}
+-- 
+2.15.0
+

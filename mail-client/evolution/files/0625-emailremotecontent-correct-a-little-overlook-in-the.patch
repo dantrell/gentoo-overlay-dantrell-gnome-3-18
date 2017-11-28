@@ -1,0 +1,26 @@
+From 708af04f563316ff2e9b43277a3b503ab802db36 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 2 Apr 2015 15:38:51 +0200
+Subject: [PATCH 0625/1800] [EMailRemoteContent] Correct a little overlook in
+ the previous commit
+
+---
+ mail/e-mail-remote-content.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mail/e-mail-remote-content.c b/mail/e-mail-remote-content.c
+index a951b5fa03..54129c17bc 100644
+--- a/mail/e-mail-remote-content.c
++++ b/mail/e-mail-remote-content.c
+@@ -207,7 +207,7 @@ e_mail_remote_content_has (EMailRemoteContent *content,
+ 
+ 	g_mutex_lock (&content->priv->recent_lock);
+ 
+-	for (link = values; link; link = g_slist_next (link)) {
++	for (link = values; link && !found; link = g_slist_next (link)) {
+ 		const gchar *value = link->data;
+ 
+ 		for (ii = 0; ii < RECENT_CACHE_SIZE; ii++) {
+-- 
+2.15.0
+

@@ -1,0 +1,73 @@
+From 957002625135946e2aa312d533f53bb72dcda92a Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 1 Mar 2016 14:10:57 +0100
+Subject: [PATCH 1017/1800] EHTMLEditorSelection - If copy/pasting in composer
+ WebKit wraps content in SPAN
+
+---
+ .../composer/e-html-editor-view-dom-functions.c    | 35 +++++++++++++++++++++-
+ 1 file changed, 34 insertions(+), 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 76822cf94c..aa0bfeb41f 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -7384,6 +7384,7 @@ dom_insert_html (WebKitDOMDocument *document,
+ {
+ 	EHTMLEditorHistoryEvent *ev = NULL;
+ 	EHTMLEditorUndoRedoManager *manager;
++	gboolean html_mode;
+ 
+ 	g_return_if_fail (html_text != NULL);
+ 
+@@ -7411,7 +7412,8 @@ dom_insert_html (WebKitDOMDocument *document,
+ 		ev->data.string.to = g_strdup (html_text);
+ 	}
+ 
+-	if (e_html_editor_web_extension_get_html_mode (extension) ||
++	html_mode = e_html_editor_web_extension_get_html_mode (extension);
++	if (html_mode ||
+ 	    (e_html_editor_web_extension_is_pasting_content_from_itself (extension) &&
+ 	    !pasting_quoted_content (html_text))) {
+ 		if (!dom_selection_is_collapsed (document)) {
+@@ -7451,6 +7453,37 @@ dom_insert_html (WebKitDOMDocument *document,
+ 			document, extension, E_HTML_EDITOR_VIEW_COMMAND_INSERT_HTML, html_text);
+ 		if (strstr (html_text, "id=\"-x-evo-selection-start-marker\""))
+ 			dom_selection_restore (document);
++
++		if (!html_mode) {
++			WebKitDOMNodeList *list;
++			gint ii, length;
++
++			list = webkit_dom_document_query_selector_all (
++				document, "span[style^=font-family]", NULL);
++			length = webkit_dom_node_list_get_length (list);
++			if (length > 0)
++				dom_selection_save (document);
++
++			for (ii = 0; ii < length; ii++) {
++				WebKitDOMNode *span, *child;
++
++				span = webkit_dom_node_list_item (list, ii);
++				while ((child = webkit_dom_node_get_first_child (span)))
++					webkit_dom_node_insert_before (
++						webkit_dom_node_get_parent_node (span),
++						child,
++						span,
++						NULL);
++
++				remove_node (span);
++				g_object_unref (span);
++			}
++			g_object_unref (list);
++
++			if (length > 0)
++				dom_selection_restore (document);
++		}
++
+ 		dom_check_magic_links (document, extension, FALSE);
+ 		dom_force_spell_check (document, extension);
+ 		dom_scroll_to_caret (document);
+-- 
+2.15.0
+

@@ -1,0 +1,125 @@
+From b18472b4342f5b0ff5891a341d79fafdb677ee48 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 15 Apr 2015 19:44:26 +0200
+Subject: [PATCH 0673/1800] Bug 693154 - Add "Copy raw email address" mailto:
+ context option
+
+---
+ e-util/e-web-view.c | 62 +++++++++++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 56 insertions(+), 6 deletions(-)
+
+diff --git a/e-util/e-web-view.c b/e-util/e-web-view.c
+index efdc3e40f3..c9b9baebf3 100644
+--- a/e-util/e-web-view.c
++++ b/e-util/e-web-view.c
+@@ -128,6 +128,7 @@ static const gchar *ui =
+ "    <placeholder name='custom-actions-2'>"
+ "      <menuitem action='uri-copy'/>"
+ "      <menuitem action='mailto-copy'/>"
++"      <menuitem action='mailto-copy-raw'/>"
+ "      <menuitem action='image-copy'/>"
+ "      <menuitem action='image-save'/>"
+ "    </placeholder>"
+@@ -189,13 +190,13 @@ action_http_open_cb (GtkAction *action,
+ }
+ 
+ static void
+-action_mailto_copy_cb (GtkAction *action,
+-                       EWebView *web_view)
++webview_mailto_copy (EWebView *web_view,
++		     gboolean only_email_address)
+ {
+ 	CamelURL *curl;
+ 	CamelInternetAddress *inet_addr;
+ 	GtkClipboard *clipboard;
+-	const gchar *uri;
++	const gchar *uri, *name = NULL, *email = NULL;
+ 	gchar *text;
+ 
+ 	uri = e_web_view_get_selected_uri (web_view);
+@@ -207,9 +208,15 @@ action_mailto_copy_cb (GtkAction *action,
+ 
+ 	inet_addr = camel_internet_address_new ();
+ 	camel_address_decode (CAMEL_ADDRESS (inet_addr), curl->path);
+-	text = camel_address_format (CAMEL_ADDRESS (inet_addr));
+-	if (text == NULL || *text == '\0')
+-		text = g_strdup (uri + strlen ("mailto:"));
++	if (only_email_address &&
++	    camel_internet_address_get (inet_addr, 0, &name, &email) &&
++	    email && *email) {
++		text = g_strdup (email);
++	} else {
++		text = camel_address_format (CAMEL_ADDRESS (inet_addr));
++		if (text == NULL || *text == '\0')
++			text = g_strdup (uri + strlen ("mailto:"));
++	}
+ 
+ 	g_object_unref (inet_addr);
+ 	camel_url_free (curl);
+@@ -225,6 +232,20 @@ action_mailto_copy_cb (GtkAction *action,
+ 	g_free (text);
+ }
+ 
++static void
++action_mailto_copy_cb (GtkAction *action,
++                       EWebView *web_view)
++{
++	webview_mailto_copy (web_view, FALSE);
++}
++
++static void
++action_mailto_copy_raw_cb (GtkAction *action,
++			   EWebView *web_view)
++{
++	webview_mailto_copy (web_view, TRUE);
++}
++
+ static void
+ action_select_all_cb (GtkAction *action,
+                       EWebView *web_view)
+@@ -315,6 +336,13 @@ static GtkActionEntry mailto_entries[] = {
+ 	  N_("Copy the email address to the clipboard"),
+ 	  G_CALLBACK (action_mailto_copy_cb) },
+ 
++	{ "mailto-copy-raw",
++	  "edit-copy",
++	  N_("Copy _Raw Email Address"),
++	  NULL,
++	  N_("Copy the raw email address to the clipboard"),
++	  G_CALLBACK (action_mailto_copy_raw_cb) },
++
+ 	{ "send-message",
+ 	  "mail-message-new",
+ 	  N_("_Send New Message To..."),
+@@ -1370,6 +1398,28 @@ web_view_update_actions_cb (WebKitWebView *webkit_web_view,
+ 	action_group = e_web_view_get_action_group (web_view, group_name);
+ 	gtk_action_group_set_visible (action_group, visible);
+ 
++	if (visible) {
++		CamelURL *curl;
++
++		curl = camel_url_new (uri, NULL);
++		if (curl) {
++			CamelInternetAddress *inet_addr;
++			const gchar *name = NULL, *email = NULL;
++			GtkAction *action;
++
++			inet_addr = camel_internet_address_new ();
++			camel_address_decode (CAMEL_ADDRESS (inet_addr), curl->path);
++
++			action = gtk_action_group_get_action (action_group, "mailto-copy-raw");
++			gtk_action_set_visible (action,
++				camel_internet_address_get (inet_addr, 0, &name, &email) &&
++				name && *name && email && *email);
++
++			g_object_unref (inet_addr);
++			camel_url_free (curl);
++		}
++	}
++
+ 	group_name = "image";
+ 	visible = (cursor_image_src != NULL);
+ 	action_group = e_web_view_get_action_group (web_view, group_name);
+-- 
+2.15.0
+

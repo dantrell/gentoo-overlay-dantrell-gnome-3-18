@@ -1,0 +1,28 @@
+From f264b3326a82c532056aacb5a59b7f4f25582a8f Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 6 Jan 2015 15:31:55 +0100
+Subject: [PATCH 0160/1800] Bug 735150 - Preserve multiselection on folder
+ change in message list
+
+---
+ mail/message-list.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/mail/message-list.c b/mail/message-list.c
+index 1b026dc7f4..9dd41ce25a 100644
+--- a/mail/message-list.c
++++ b/mail/message-list.c
+@@ -5818,7 +5818,9 @@ message_list_regen_done_cb (GObject *source_object,
+ 			saveuid = g_strdup (message_list->cursor_uid);
+ 		}
+ 
+-		if (saveuid) {
++		if (message_list_selected_count (message_list) > 1) {
++			g_free (saveuid);
++		} else if (saveuid) {
+ 			GNode *node;
+ 
+ 			node = g_hash_table_lookup (
+-- 
+2.15.0
+

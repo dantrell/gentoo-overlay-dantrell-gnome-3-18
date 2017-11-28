@@ -1,0 +1,55 @@
+From e4db7c0a263005542d7a64f9364a0f2eebab584f Mon Sep 17 00:00:00 2001
+From: Ting-Wei Lan <lantw@src.gnome.org>
+Date: Wed, 15 Apr 2015 11:43:30 +0200
+Subject: [PATCH 0670/1800] Bug 747701 - Remove documentation for
+ ECellRendererColor
+
+---
+ .../evolution-util/evolution-util-sections.txt         | 18 ------------------
+ doc/reference/evolution-util/evolution-util.types      |  1 -
+ 2 files changed, 19 deletions(-)
+
+diff --git a/doc/reference/evolution-util/evolution-util-sections.txt b/doc/reference/evolution-util/evolution-util-sections.txt
+index b5b4ee76bb..3a52d2f231 100644
+--- a/doc/reference/evolution-util/evolution-util-sections.txt
++++ b/doc/reference/evolution-util/evolution-util-sections.txt
+@@ -1113,24 +1113,6 @@ ECellPopupClass
+ e_cell_popup_get_type
+ </SECTION>
+ 
+-<SECTION>
+-<FILE>e-cell-renderer-color</FILE>
+-<TITLE>ECellRendererColor</TITLE>
+-ECellRendererColor
+-e_cell_renderer_color_new
+-<SUBSECTION Standard>
+-E_CELL_RENDERER_COLOR
+-E_IS_CELL_RENDERER_COLOR
+-E_TYPE_CELL_RENDERER_COLOR
+-E_CELL_RENDERER_COLOR_CLASS
+-E_IS_CELL_RENDERER_COLOR_CLASS
+-E_CELL_RENDERER_COLOR_GET_CLASS
+-ECellRendererColorClass
+-e_cell_renderer_color_get_type
+-<SUBSECTION Private>
+-ECellRendererColorPrivate
+-</SECTION>
+-
+ <SECTION>
+ <FILE>e-cell-size</FILE>
+ <TITLE>ECellSize</TITLE>
+diff --git a/doc/reference/evolution-util/evolution-util.types b/doc/reference/evolution-util/evolution-util.types
+index 812856735e..7a488a320e 100644
+--- a/doc/reference/evolution-util/evolution-util.types
++++ b/doc/reference/evolution-util/evolution-util.types
+@@ -45,7 +45,6 @@ e_cell_number_get_type
+ e_cell_percent_get_type
+ e_cell_pixbuf_get_type
+ e_cell_popup_get_type
+-e_cell_renderer_color_get_type
+ e_cell_size_get_type
+ e_cell_text_get_type
+ e_cell_toggle_get_type
+-- 
+2.15.0
+

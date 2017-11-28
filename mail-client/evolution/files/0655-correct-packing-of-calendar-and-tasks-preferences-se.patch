@@ -1,0 +1,28 @@
+From 3c982eda46b83eda2627dae4e62fe034df0bbe76 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 8 Apr 2015 16:24:09 +0200
+Subject: [PATCH 0655/1800] Correct packing of Calendar and Tasks preferences
+ section
+
+It didn't cover whole section space, because of different default
+packing flags for GtkBox and GTKV/HBox widgets.
+---
+ modules/calendar/e-calendar-preferences.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/modules/calendar/e-calendar-preferences.c b/modules/calendar/e-calendar-preferences.c
+index 19d8735656..5034074b4d 100644
+--- a/modules/calendar/e-calendar-preferences.c
++++ b/modules/calendar/e-calendar-preferences.c
+@@ -930,7 +930,7 @@ calendar_preferences_construct (ECalendarPreferences *prefs,
+ 	target = e_cal_config_target_new_prefs (ec);
+ 	e_config_set_target ((EConfig *) ec, (EConfigTarget *) target);
+ 	toplevel = e_config_create_widget ((EConfig *) ec);
+-	gtk_container_add (GTK_CONTAINER (prefs), toplevel);
++	gtk_box_pack_start (GTK_BOX (prefs), toplevel, TRUE, TRUE, 0);
+ 
+ 	show_config (prefs);
+ 	/* FIXME: weakref? */
+-- 
+2.15.0
+

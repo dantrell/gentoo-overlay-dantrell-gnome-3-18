@@ -1,0 +1,33 @@
+From aaf56ac34de66450f96a6c61a257f7d413807539 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 24 Feb 2016 13:52:06 +0100
+Subject: [PATCH 0640/1800] EHTMLEditorView - Remove unused function
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 10 +---------
+ 1 file changed, 1 insertion(+), 9 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 5676ef4728..3df4a99d2b 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -5467,15 +5467,7 @@ remove_evolution_attributes (WebKitDOMElement *element)
+ 	webkit_dom_element_remove_attribute (element, "data-user-wrapped");
+ 	webkit_dom_element_remove_attribute (element, "spellcheck");
+ }
+-/*
+-static void
+-remove_style_attributes (WebKitDOMElement *element)
+-{
+-	webkit_dom_element_remove_attribute (element, "bgcolor");
+-	webkit_dom_element_remove_attribute (element, "background");
+-	webkit_dom_element_remove_attribute (element, "style");
+-}
+-*/
++
+ static gboolean
+ replace_to_whitespaces (const GMatchInfo *info,
+                         GString *res,
+-- 
+2.15.0
+

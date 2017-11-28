@@ -1,0 +1,60 @@
+From aa0bf88513e58fa3bbedbddd1ffde1df95fb141c Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 16 Apr 2015 12:05:15 +0200
+Subject: [PATCH 0676/1800] Bug 694383 - Critical runtime warning from
+ component editors
+
+---
+ calendar/gui/dialogs/event-page.c | 4 +++-
+ calendar/gui/dialogs/memo-page.c  | 4 +++-
+ calendar/gui/dialogs/task-page.c  | 4 +++-
+ 3 files changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/calendar/gui/dialogs/event-page.c b/calendar/gui/dialogs/event-page.c
+index 47d7c9da3e..009603de13 100644
+--- a/calendar/gui/dialogs/event-page.c
++++ b/calendar/gui/dialogs/event-page.c
+@@ -3079,7 +3079,9 @@ combo_box_changed_cb (ESourceComboBox *combo_box,
+ 		return;
+ 
+ 	source = e_source_combo_box_ref_active (combo_box);
+-	g_return_if_fail (source != NULL);
++	/* This is valid when the 'combo_box' is rebuilding its content. */
++	if (!source)
++		return;
+ 
+ 	if (priv->connect_cancellable != NULL) {
+ 		g_cancellable_cancel (priv->connect_cancellable);
+diff --git a/calendar/gui/dialogs/memo-page.c b/calendar/gui/dialogs/memo-page.c
+index ce0c31ff8e..2aef67cce7 100644
+--- a/calendar/gui/dialogs/memo-page.c
++++ b/calendar/gui/dialogs/memo-page.c
+@@ -1017,7 +1017,9 @@ source_changed_cb (ESourceComboBox *combo_box,
+ 		return;
+ 
+ 	source = e_source_combo_box_ref_active (combo_box);
+-	g_return_if_fail (source != NULL);
++	/* This is valid when the 'combo_box' is rebuilding its content. */
++	if (!source)
++		return;
+ 
+ 	if (priv->connect_cancellable != NULL) {
+ 		g_cancellable_cancel (priv->connect_cancellable);
+diff --git a/calendar/gui/dialogs/task-page.c b/calendar/gui/dialogs/task-page.c
+index 27e33521f3..12b599db2f 100644
+--- a/calendar/gui/dialogs/task-page.c
++++ b/calendar/gui/dialogs/task-page.c
+@@ -2132,7 +2132,9 @@ source_changed_cb (ESourceComboBox *combo_box,
+ 		return;
+ 
+ 	source = e_source_combo_box_ref_active (combo_box);
+-	g_return_if_fail (source != NULL);
++	/* This is valid when the 'combo_box' is rebuilding its content. */
++	if (!source)
++		return;
+ 
+ 	if (priv->connect_cancellable != NULL) {
+ 		g_cancellable_cancel (priv->connect_cancellable);
+-- 
+2.15.0
+

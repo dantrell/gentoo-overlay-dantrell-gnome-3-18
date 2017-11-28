@@ -1,0 +1,59 @@
+From ab85b8b2683e86a6be7880f7c3af9c9e325eb45b Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 24 Feb 2016 17:45:49 +0100
+Subject: [PATCH 0667/1800] Composer - Don't block selection-changed handlers
+ if they are already blocked
+
+---
+ web-extensions/composer/e-html-editor-web-extension.c | 18 ++++++++++++++++--
+ 1 file changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-web-extension.c b/web-extensions/composer/e-html-editor-web-extension.c
+index c77e89127c..a74d139d72 100644
+--- a/web-extensions/composer/e-html-editor-web-extension.c
++++ b/web-extensions/composer/e-html-editor-web-extension.c
+@@ -55,6 +55,7 @@ struct _EHTMLEditorWebExtensionPrivate {
+ 	GDBusConnection *dbus_connection;
+ 	guint registration_id;
+ 	guint spell_check_on_scroll_event_source_id;
++	gboolean selection_changed_callbacks_blocked;
+ 
+ 	/* These properties show the actual state of EHTMLEditorView */
+ 	EHTMLEditorSelectionAlignment alignment;
+@@ -2959,6 +2960,8 @@ e_html_editor_web_extension_init (EHTMLEditorWebExtension *extension)
+ 		g_str_hash, g_str_equal,
+ 		(GDestroyNotify) g_free,
+ 		(GDestroyNotify) g_free);
++
++	extension->priv->selection_changed_callbacks_blocked = FALSE;
+ }
+ 
+ static gpointer
+@@ -3643,11 +3646,22 @@ e_html_editor_web_extension_set_spell_check_on_scroll_event_source_id (EHTMLEdit
+ void
+ e_html_editor_web_extension_block_selection_changed_callback (EHTMLEditorWebExtension *extension)
+ {
+-	g_signal_handlers_block_by_func (extension, web_editor_selection_changed_cb, NULL);
++	if (!extension->priv->selection_changed_callbacks_blocked) {
++		/* FIXME WK2 - the handler is added on WebKitWebEditor, not extension */
++		g_signal_handlers_block_by_func (extension, web_editor_selection_changed_cb, NULL);
++		extension->priv->selection_changed_callbacks_blocked = TRUE;
++	}
+ }
+ 
+ void
+ e_html_editor_web_extension_unblock_selection_changed_callback (EHTMLEditorWebExtension *extension)
+ {
+-	g_signal_handlers_unblock_by_func (extension, web_editor_selection_changed_cb, NULL);
++	if (extension->priv->selection_changed_callbacks_blocked) {
++		/* FIXME WK2 - the handler is added on WebKitWebEditor, not extension */
++		g_signal_handlers_unblock_by_func (extension, web_editor_selection_changed_cb, NULL);
++		extension->priv->selection_changed_callbacks_blocked = FALSE;
++
++		/* FIXME WK2 - missing page-ID, to get to the WebKitWebEditor instance */
++		/*web_editor_selection_changed_cb (editor, extension);*/
++	}
+ }
+-- 
+2.15.0
+

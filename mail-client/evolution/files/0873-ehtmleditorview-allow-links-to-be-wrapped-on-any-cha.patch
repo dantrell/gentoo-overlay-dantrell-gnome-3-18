@@ -1,0 +1,74 @@
+From 924fbea68321e14dfa125c4093aab4ac22b3cf9f Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 26 Feb 2016 10:50:50 +0100
+Subject: [PATCH 0873/1800] EHTMLEditorView - Allow links to be wrapped on any
+ character, not just on dash
+
+---
+ e-util/e-html-editor-view.c                           |  8 ++++++++
+ .../composer/e-html-editor-selection-dom-functions.c  | 19 +++++++++++++++----
+ 2 files changed, 23 insertions(+), 4 deletions(-)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 07ef5df47f..f12fd2ee33 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -2667,6 +2667,14 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 		"  -webkit-margin-after: 0em; \n"
+ 		"}\n");
+ 
++	g_string_append (
++		stylesheet,
++		"a "
++		"{\n"
++		"  word-wrap: break-word; \n"
++		"  word-break: break-all; \n"
++		"}\n");
++
+ 	citation_color = g_settings_get_string (
+ 		view->priv->mail_settings, "citation-color");
+ 	mark_citations = g_settings_get_boolean (
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 3323d8ccce..3a41076630 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -2561,11 +2561,16 @@ wrap_lines (WebKitDOMDocument *document,
+ 				g_free (text_content);
+ 
+ 				next_sibling = webkit_dom_node_get_next_sibling (node);
+-				/* If the anchor doesn't fit on the line wrap after it */
++				/* If the anchor doesn't fit on the line move the inner
++				 * nodes out of it and start to wrap them. */
+ 				if (anchor_length > length_to_wrap) {
+ 					WebKitDOMNode *inner_node;
+ 
+ 					while ((inner_node = webkit_dom_node_get_first_child (node))) {
++						g_object_set_data (
++							G_OBJECT (inner_node),
++							"-x-evo-anchor-text",
++							GINT_TO_POINTER (1));
+ 						webkit_dom_node_insert_before (
+ 							webkit_dom_node_get_parent_node (node),
+ 							inner_node,
+@@ -2661,9 +2666,15 @@ wrap_lines (WebKitDOMDocument *document,
+ 			max_length = length_to_wrap - line_length;
+ 			if (max_length < 0)
+ 				max_length = length_to_wrap;
+-			/* Find where we can line-break the node so that it
+-			 * effectively fills the rest of current row */
+-			offset = find_where_to_break_line (node, max_length);
++
++			/* Allow anchors to break on any character. */
++			if (g_object_get_data (G_OBJECT (node), "-x-evo-anchor-text"))
++				offset = max_length;
++			else {
++				/* Find where we can line-break the node so that it
++				 * effectively fills the rest of current row. */
++				offset = find_where_to_break_line (node, max_length);
++			}
+ 
+ 			element = webkit_dom_document_create_element (document, "BR", NULL);
+ 			element_add_class (element, "-x-evo-wrap-br");
+-- 
+2.15.0
+

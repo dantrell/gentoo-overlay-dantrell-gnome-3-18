@@ -1,0 +1,35 @@
+From 6d3f46f9e20fc327bbe524cc263e453746d841c0 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 17 Feb 2015 19:36:09 +0100
+Subject: [PATCH 0316/1800] Bug 744444 - Typo (encrpyted) in translatable
+ strings
+
+---
+ em-format/e-mail-formatter-utils.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/em-format/e-mail-formatter-utils.c b/em-format/e-mail-formatter-utils.c
+index 6bec66e527..0e0eac93d4 100644
+--- a/em-format/e-mail-formatter-utils.c
++++ b/em-format/e-mail-formatter-utils.c
+@@ -567,7 +567,7 @@ e_mail_formatter_format_security_header (EMailFormatter *formatter,
+ 		if (e_mail_part_get_validity (mail_part, E_MAIL_PART_VALIDITY_PGP | E_MAIL_PART_VALIDITY_ENCRYPTED)) {
+ 			if (tmp->len > 0)
+ 				g_string_append (tmp, ", ");
+-			g_string_append (tmp, _("GPG encrpyted"));
++			g_string_append (tmp, _("GPG encrypted"));
+ 		}
+ 
+ 		if (e_mail_part_get_validity (mail_part, E_MAIL_PART_VALIDITY_SMIME | E_MAIL_PART_VALIDITY_SIGNED)) {
+@@ -579,7 +579,7 @@ e_mail_formatter_format_security_header (EMailFormatter *formatter,
+ 		if (e_mail_part_get_validity (mail_part, E_MAIL_PART_VALIDITY_SMIME | E_MAIL_PART_VALIDITY_ENCRYPTED)) {
+ 			if (tmp->len > 0)
+ 				g_string_append (tmp, ", ");
+-			g_string_append (tmp, _("S/MIME encrpyted"));
++			g_string_append (tmp, _("S/MIME encrypted"));
+ 		}
+ 
+ 		break;
+-- 
+2.15.0
+

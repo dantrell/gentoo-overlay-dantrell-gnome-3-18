@@ -1,0 +1,27 @@
+From 904fe30baee630cbbe60daf881bb888b22dd748d Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 28 Apr 2015 16:44:08 +0200
+Subject: [PATCH 0551/1800] EComposerPrivate - Scroll to caret if starting
+ reply on bottom
+
+---
+ web-extensions/e-composer-private-dom-functions.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/web-extensions/e-composer-private-dom-functions.c b/web-extensions/e-composer-private-dom-functions.c
+index 2d29412502..ad8946596a 100644
+--- a/web-extensions/e-composer-private-dom-functions.c
++++ b/web-extensions/e-composer-private-dom-functions.c
+@@ -273,6 +273,9 @@ composer_move_caret (WebKitDOMDocument *document,
+ 		webkit_dom_range_collapse (new_range, TRUE, NULL);
+ 		webkit_dom_dom_selection_remove_all_ranges (dom_selection);
+ 		webkit_dom_dom_selection_add_range (dom_selection, new_range);
++
++		if (start_bottom)
++			dom_scroll_to_caret (document);
+ 	}
+ 
+ 	dom_force_spell_check (document, extension);
+-- 
+2.15.0
+

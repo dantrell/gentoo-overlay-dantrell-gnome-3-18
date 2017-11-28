@@ -1,0 +1,41 @@
+From 16d239175f36b03c3bc43790615946af156d5072 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 4 Feb 2015 12:38:02 +0100
+Subject: [PATCH 0226/1800] Simplify code at shell_trust_prompt_done_cb() a bit
+
+The e_source_invoke_authenticate() accepts NULL credentials, thus use
+them instead of creating and freeing effectively empty structure.
+---
+ shell/e-shell.c | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/shell/e-shell.c b/shell/e-shell.c
+index ed90be6b5c..09aa9369e5 100644
+--- a/shell/e-shell.c
++++ b/shell/e-shell.c
+@@ -687,7 +687,6 @@ shell_trust_prompt_done_cb (GObject *source_object,
+ 	ESource *source;
+ 	EShell *shell = user_data;
+ 	ETrustPromptResponse response = E_TRUST_PROMPT_RESPONSE_UNKNOWN;
+-	ENamedParameters *credentials;
+ 	GError *error = NULL;
+ 
+ 	g_return_if_fail (E_IS_SOURCE (source_object));
+@@ -723,12 +722,9 @@ shell_trust_prompt_done_cb (GObject *source_object,
+ 	/* If a credentials prompt is required, then it'll be shown immediately. */
+ 	e_credentials_prompter_set_auto_prompt_disabled_for (shell->priv->credentials_prompter, source, FALSE);
+ 
+-	credentials = e_named_parameters_new ();
+-
+-	e_source_invoke_authenticate (source, credentials, shell->priv->cancellable,
++	/* NULL credentials to retry with those used the last time */
++	e_source_invoke_authenticate (source, NULL, shell->priv->cancellable,
+ 		shell_source_invoke_authenticate_cb, shell);
+-
+-	e_named_parameters_free (credentials);
+ }
+ 
+ static void
+-- 
+2.15.0
+

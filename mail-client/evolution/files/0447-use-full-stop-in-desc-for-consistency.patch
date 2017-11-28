@@ -1,0 +1,25 @@
+From 241882be791e28143ab5502af8d02d6f02b56e65 Mon Sep 17 00:00:00 2001
+From: Andre Klapper <a9016009@gmx.de>
+Date: Mon, 9 Mar 2015 02:04:17 +0100
+Subject: [PATCH 0447/1800] Use full stop in <desc> for consistency.
+
+---
+ help/C/mail-composer-custom-header-lines.page | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/help/C/mail-composer-custom-header-lines.page b/help/C/mail-composer-custom-header-lines.page
+index 488b347780..375ebfcaaa 100644
+--- a/help/C/mail-composer-custom-header-lines.page
++++ b/help/C/mail-composer-custom-header-lines.page
+@@ -2,7 +2,7 @@
+       type="guide" id="mail-composer-custom-header-lines">
+ 
+   <info>
+-    <desc>Using custom fields in the header of composed messages</desc>
++    <desc>Using custom fields in the header of composed messages.</desc>
+ 
+     <link type="guide" xref="index#mail-composing-advanced" />
+ 
+-- 
+2.15.0
+

@@ -1,0 +1,25 @@
+From d710c2b32361965211d614a9597eb5d529e7d641 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 15 Jan 2015 15:55:45 +0100
+Subject: [PATCH 0118/1800] EHTMLEditorWebExtension - Don't crash at start
+
+Close the method XML element.
+---
+ web-extensions/e-html-editor-web-extension.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/web-extensions/e-html-editor-web-extension.c b/web-extensions/e-html-editor-web-extension.c
+index ee5331a8b3..44a6d52e39 100644
+--- a/web-extensions/e-html-editor-web-extension.c
++++ b/web-extensions/e-html-editor-web-extension.c
+@@ -216,6 +216,7 @@ static const char introspection_xml[] =
+ "      <arg type='t' name='page_id' direction='in'/>"
+ "      <arg type='s' name='value' direction='in'/>"
+ "      <arg type='u' name='scope' direction='in'/>"
++"    </method>"
+ "    <method name='EHTMLEditorCellDialogSetElementColSpan'>"
+ "      <arg type='t' name='page_id' direction='in'/>"
+ "      <arg type='i' name='value' direction='in'/>"
+-- 
+2.15.0
+

@@ -1,0 +1,42 @@
+From 656e2a06142eeefa8fc3f6dcbfc78476efc5952e Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 6 Feb 2015 09:13:33 +0100
+Subject: [PATCH 0260/1800] Remove "Unknown background operation" generic job
+ description message
+
+Camel identifies the jobs from the very beginning now, thus this
+generic message is not needed anymore.
+---
+ mail/e-mail-backend.c | 9 ---------
+ 1 file changed, 9 deletions(-)
+
+diff --git a/mail/e-mail-backend.c b/mail/e-mail-backend.c
+index 91d92621e1..ea2ec3b1f9 100644
+--- a/mail/e-mail-backend.c
++++ b/mail/e-mail-backend.c
+@@ -848,12 +848,6 @@ mail_backend_job_started_cb (CamelSession *session,
+ 
+ 	priv = E_MAIL_BACKEND_GET_PRIVATE (shell_backend);
+ 
+-	/* Make sure this operation shows up in the user interface.
+-	 * This message should get overridden, if not it's a bug in
+-	 * whatever CamelService submitted this. */
+-	camel_operation_push_message (
+-		cancellable, _("Unknown background operation"));
+-
+ 	activity = e_activity_new ();
+ 	e_activity_set_cancellable (activity, cancellable);
+ 	e_shell_backend_add_activity (shell_backend, activity);
+@@ -876,9 +870,6 @@ mail_backend_job_finished_cb (CamelSession *session,
+ 	priv = E_MAIL_BACKEND_GET_PRIVATE (shell_backend);
+ 	class = E_SHELL_BACKEND_GET_CLASS (shell_backend);
+ 
+-	/* Pop the generic "background operation" message. */
+-	camel_operation_pop_message (cancellable);
+-
+ 	activity = g_hash_table_lookup (priv->jobs, cancellable);
+ 	description = e_activity_get_text (activity);
+ 
+-- 
+2.15.0
+

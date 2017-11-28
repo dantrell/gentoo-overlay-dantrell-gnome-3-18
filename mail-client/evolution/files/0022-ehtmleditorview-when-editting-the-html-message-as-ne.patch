@@ -1,0 +1,37 @@
+From b183deaff3d2d3fdf2f2b6a0c3970876875ee390 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 3 Nov 2014 11:21:43 +0100
+Subject: [PATCH 0022/1800] EHTMLEditorView - When editting the HTML message as
+ new move the caret to the beginning as in plain text mode
+
+---
+ composer/e-composer-private.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/composer/e-composer-private.c b/composer/e-composer-private.c
+index 229b3aad74..4644c8ba69 100644
+--- a/composer/e-composer-private.c
++++ b/composer/e-composer-private.c
+@@ -865,7 +865,18 @@ composer_move_caret (EMsgComposer *composer)
+ 				"",
+ 				NULL);
+ 
+-		e_html_editor_selection_scroll_to_caret (editor_selection);
++		if (e_html_editor_view_get_html_mode (view) &&
++		    is_message_from_edit_as_new) {
++
++			webkit_dom_range_select_node_contents (
++				new_range, WEBKIT_DOM_NODE (body), NULL);
++			webkit_dom_range_collapse (new_range, TRUE, NULL);
++
++			webkit_dom_dom_selection_remove_all_ranges (dom_selection);
++			webkit_dom_dom_selection_add_range (dom_selection, new_range);
++		} else
++			e_html_editor_selection_scroll_to_caret (editor_selection);
++
+ 		return;
+ 	}
+ 
+-- 
+2.15.0
+

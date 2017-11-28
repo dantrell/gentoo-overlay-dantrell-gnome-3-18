@@ -1,0 +1,30 @@
+From a13673417bfb4acd5e653554a035641d56a6b041 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 2 Feb 2015 18:03:28 +0100
+Subject: [PATCH 0217/1800] Replace _BSD_SOURCE with _DEFAULT_SOURCE define
+
+To avoid compiler warning:
+/usr/include/features.h:148:3: warning: #warning "_BSD_SOURCE and _SVID_SOURCE are deprecated, use _DEFAULT_SOURCE" [-Wcpp]
+ # warning "_BSD_SOURCE and _SVID_SOURCE are deprecated, use _DEFAULT_SOURCE"
+---
+ libgnomecanvas/gnome-canvas-util.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/libgnomecanvas/gnome-canvas-util.c b/libgnomecanvas/gnome-canvas-util.c
+index 74ee32aaf2..76b2c0a35e 100644
+--- a/libgnomecanvas/gnome-canvas-util.c
++++ b/libgnomecanvas/gnome-canvas-util.c
+@@ -34,8 +34,8 @@
+ #endif
+ 
+ /* needed for M_PI_2 under 'gcc -ansi -predantic' on GNU/Linux */
+-#ifndef _BSD_SOURCE
+-#  define _BSD_SOURCE 1
++#ifndef _DEFAULT_SOURCE
++#  define _DEFAULT_SOURCE 1
+ #endif
+ #include <sys/types.h>
+ 
+-- 
+2.15.0
+

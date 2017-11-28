@@ -1,0 +1,26 @@
+From 1eacaaff3b33273beb54014d7ea506b949cde9be Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 15:36:14 +0100
+Subject: [PATCH 0758/1800] Bug 749613 - Crash when trying to wrap non-existing
+ node
+
+---
+ web-extensions/composer/e-html-editor-selection-dom-functions.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 7b80db93cc..9767ea233a 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -2333,7 +2333,7 @@ wrap_lines (WebKitDOMDocument *document,
+ 		}
+ 
+ 		/* wrap until we have something */
+-		while ((length_left + line_length) > word_wrap_length) {
++		while (node && (length_left + line_length) > word_wrap_length) {
+ 			gint max_length;
+ 
+ 			max_length = word_wrap_length - line_length;
+-- 
+2.15.0
+

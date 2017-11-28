@@ -1,0 +1,291 @@
+From 306391b5341edc0aeb158648fd12311533a07d9c Mon Sep 17 00:00:00 2001
+From: Trinh Anh Ngoc <atw1990@gmail.com>
+Date: Wed, 22 Apr 2015 11:09:07 +0200
+Subject: [PATCH 0693/1800] Bug 747729 - Update UI styles to be closer to gtk+
+ 3.16
+
+---
+ addressbook/gui/widgets/e-addressbook-view.c |  2 --
+ e-util/e-preview-pane.c                      |  2 --
+ e-util/e-table.c                             |  1 +
+ e-util/e-tree.c                              |  1 +
+ mail/e-mail-paned-view.c                     |  2 --
+ modules/addressbook/e-book-shell-sidebar.c   |  2 --
+ modules/calendar/e-cal-base-shell-sidebar.c  |  5 +++--
+ modules/calendar/e-cal-shell-content.c       |  4 ----
+ modules/calendar/e-memo-shell-content.c      |  2 --
+ modules/calendar/e-task-shell-content.c      |  2 --
+ modules/mail/e-mail-shell-sidebar.c          |  2 --
+ shell/e-shell-sidebar.c                      | 19 -------------------
+ shell/e-shell-switcher.c                     |  6 ++----
+ shell/e-shell-window-private.c               |  8 ++++++++
+ 14 files changed, 15 insertions(+), 43 deletions(-)
+
+diff --git a/addressbook/gui/widgets/e-addressbook-view.c b/addressbook/gui/widgets/e-addressbook-view.c
+index 2f90245874..b1acaf9b6d 100644
+--- a/addressbook/gui/widgets/e-addressbook-view.c
++++ b/addressbook/gui/widgets/e-addressbook-view.c
+@@ -886,8 +886,6 @@ e_addressbook_view_init (EAddressbookView *view)
+ 	gtk_scrolled_window_set_policy (
+ 		GTK_SCROLLED_WINDOW (view),
+ 		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+-	gtk_scrolled_window_set_shadow_type (
+-		GTK_SCROLLED_WINDOW (view), GTK_SHADOW_IN);
+ }
+ 
+ static void
+diff --git a/e-util/e-preview-pane.c b/e-util/e-preview-pane.c
+index a61cfeb639..824f5562bf 100644
+--- a/e-util/e-preview-pane.c
++++ b/e-util/e-preview-pane.c
+@@ -162,8 +162,6 @@ preview_pane_constructed (GObject *object)
+ 	/* EAlertBar controls its own visibility. */
+ 
+ 	widget = gtk_scrolled_window_new (NULL, NULL);
+-	gtk_scrolled_window_set_shadow_type (
+-		GTK_SCROLLED_WINDOW (widget), GTK_SHADOW_IN);
+ 	gtk_box_pack_start (GTK_BOX (object), widget, TRUE, TRUE, 0);
+ 	gtk_container_add (GTK_CONTAINER (widget), priv->web_view);
+ 	gtk_widget_show (widget);
+diff --git a/e-util/e-table.c b/e-util/e-table.c
+index 9cb4c26759..5b9b274736 100644
+--- a/e-util/e-table.c
++++ b/e-util/e-table.c
+@@ -727,6 +727,7 @@ e_table_setup_header (ETable *e_table)
+ {
+ 	gchar *pointer;
+ 	e_table->header_canvas = GNOME_CANVAS (e_canvas_new ());
++	gtk_style_context_add_class (gtk_widget_get_style_context (GTK_WIDGET (e_table->header_canvas)), "linked");
+ 
+ 	gtk_widget_show (GTK_WIDGET (e_table->header_canvas));
+ 
+diff --git a/e-util/e-tree.c b/e-util/e-tree.c
+index ee537a3e10..89076a14ed 100644
+--- a/e-util/e-tree.c
++++ b/e-util/e-tree.c
+@@ -750,6 +750,7 @@ e_tree_setup_header (ETree *tree)
+ 	gchar *pointer;
+ 
+ 	widget = e_canvas_new ();
++	gtk_style_context_add_class (gtk_widget_get_style_context (widget), "linked");
+ 	gtk_widget_set_can_focus (widget, FALSE);
+ 	tree->priv->header_canvas = GNOME_CANVAS (widget);
+ 	gtk_widget_show (widget);
+diff --git a/mail/e-mail-paned-view.c b/mail/e-mail-paned-view.c
+index 228fd13cef..902dbe1731 100644
+--- a/mail/e-mail-paned-view.c
++++ b/mail/e-mail-paned-view.c
+@@ -714,8 +714,6 @@ mail_paned_view_constructed (GObject *object)
+ 	gtk_scrolled_window_set_policy (
+ 		GTK_SCROLLED_WINDOW (widget),
+ 		GTK_POLICY_NEVER, GTK_POLICY_ALWAYS);
+-	gtk_scrolled_window_set_shadow_type (
+-		GTK_SCROLLED_WINDOW (widget), GTK_SHADOW_IN);
+ 	priv->scrolled_window = g_object_ref (widget);
+ 	gtk_paned_pack1 (GTK_PANED (container), widget, TRUE, FALSE);
+ 	gtk_widget_show (widget);
+diff --git a/modules/addressbook/e-book-shell-sidebar.c b/modules/addressbook/e-book-shell-sidebar.c
+index 1dcc565806..79940678b4 100644
+--- a/modules/addressbook/e-book-shell-sidebar.c
++++ b/modules/addressbook/e-book-shell-sidebar.c
+@@ -153,8 +153,6 @@ book_shell_sidebar_constructed (GObject *object)
+ 	gtk_scrolled_window_set_policy (
+ 		GTK_SCROLLED_WINDOW (widget),
+ 		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+-	gtk_scrolled_window_set_shadow_type (
+-		GTK_SCROLLED_WINDOW (widget), GTK_SHADOW_IN);
+ 	gtk_container_add (container, widget);
+ 	gtk_widget_show (widget);
+ 
+diff --git a/modules/calendar/e-cal-base-shell-sidebar.c b/modules/calendar/e-cal-base-shell-sidebar.c
+index e7530bdffa..8f2f9208c5 100644
+--- a/modules/calendar/e-cal-base-shell-sidebar.c
++++ b/modules/calendar/e-cal-base-shell-sidebar.c
+@@ -693,8 +693,6 @@ cal_base_shell_sidebar_constructed (GObject *object)
+ 	gtk_scrolled_window_set_policy (
+ 		GTK_SCROLLED_WINDOW (widget),
+ 		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+-	gtk_scrolled_window_set_shadow_type (
+-		GTK_SCROLLED_WINDOW (widget), GTK_SHADOW_IN);
+ 	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+ 
+ 	container = widget;
+@@ -711,6 +709,9 @@ cal_base_shell_sidebar_constructed (GObject *object)
+ 		container = cal_base_shell_sidebar->priv->paned;
+ 
+ 		widget = e_calendar_new ();
++		gtk_widget_set_margin_top (widget, 6);
++		gtk_widget_set_margin_start (widget, 6);
++		gtk_widget_set_margin_end (widget, 6);
+ 		calitem = E_CALENDAR (widget)->calitem;
+ 		e_calendar_item_set_days_start_week_sel (calitem, 9);
+ 		e_calendar_item_set_max_days_sel (calitem, 42);
+diff --git a/modules/calendar/e-cal-shell-content.c b/modules/calendar/e-cal-shell-content.c
+index 7c651402b8..7b765b3e01 100644
+--- a/modules/calendar/e-cal-shell-content.c
++++ b/modules/calendar/e-cal-shell-content.c
+@@ -1567,8 +1567,6 @@ cal_shell_content_constructed (GObject *object)
+ 	gtk_scrolled_window_set_policy (
+ 		GTK_SCROLLED_WINDOW (widget),
+ 		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+-	gtk_scrolled_window_set_shadow_type (
+-		GTK_SCROLLED_WINDOW (widget), GTK_SHADOW_IN);
+ 	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+ 	gtk_widget_show (widget);
+ 
+@@ -1609,8 +1607,6 @@ cal_shell_content_constructed (GObject *object)
+ 	gtk_scrolled_window_set_policy (
+ 		GTK_SCROLLED_WINDOW (widget),
+ 		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+-	gtk_scrolled_window_set_shadow_type (
+-		GTK_SCROLLED_WINDOW (widget), GTK_SHADOW_IN);
+ 	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+ 	gtk_widget_show (widget);
+ 
+diff --git a/modules/calendar/e-memo-shell-content.c b/modules/calendar/e-memo-shell-content.c
+index 6db340eeed..5c81731437 100644
+--- a/modules/calendar/e-memo-shell-content.c
++++ b/modules/calendar/e-memo-shell-content.c
+@@ -484,8 +484,6 @@ memo_shell_content_constructed (GObject *object)
+ 	gtk_scrolled_window_set_policy (
+ 		GTK_SCROLLED_WINDOW (widget),
+ 		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+-	gtk_scrolled_window_set_shadow_type (
+-		GTK_SCROLLED_WINDOW (widget), GTK_SHADOW_IN);
+ 	gtk_paned_pack1 (GTK_PANED (container), widget, TRUE, FALSE);
+ 	gtk_widget_show (widget);
+ 
+diff --git a/modules/calendar/e-task-shell-content.c b/modules/calendar/e-task-shell-content.c
+index d35fc0bd0e..f8d2b537a9 100644
+--- a/modules/calendar/e-task-shell-content.c
++++ b/modules/calendar/e-task-shell-content.c
+@@ -505,8 +505,6 @@ task_shell_content_constructed (GObject *object)
+ 	gtk_scrolled_window_set_policy (
+ 		GTK_SCROLLED_WINDOW (widget),
+ 		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+-	gtk_scrolled_window_set_shadow_type (
+-		GTK_SCROLLED_WINDOW (widget), GTK_SHADOW_IN);
+ 	gtk_paned_pack1 (GTK_PANED (container), widget, TRUE, FALSE);
+ 	gtk_widget_show (widget);
+ 
+diff --git a/modules/mail/e-mail-shell-sidebar.c b/modules/mail/e-mail-shell-sidebar.c
+index c5f7677a17..78b9a5c492 100644
+--- a/modules/mail/e-mail-shell-sidebar.c
++++ b/modules/mail/e-mail-shell-sidebar.c
+@@ -155,8 +155,6 @@ mail_shell_sidebar_constructed (GObject *object)
+ 	gtk_scrolled_window_set_policy (
+ 		GTK_SCROLLED_WINDOW (widget),
+ 		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+-	gtk_scrolled_window_set_shadow_type (
+-		GTK_SCROLLED_WINDOW (widget), GTK_SHADOW_IN);
+ 	gtk_container_add (GTK_CONTAINER (container), widget);
+ 	gtk_widget_show (widget);
+ 
+diff --git a/shell/e-shell-sidebar.c b/shell/e-shell-sidebar.c
+index 315efc699d..1683cf6164 100644
+--- a/shell/e-shell-sidebar.c
++++ b/shell/e-shell-sidebar.c
+@@ -294,21 +294,6 @@ shell_sidebar_size_allocate (GtkWidget *widget,
+ 		gtk_widget_size_allocate (child, &child_allocation);
+ }
+ 
+-static void
+-shell_sidebar_style_updated (GtkWidget *widget)
+-{
+-	EShellSidebar *shell_sidebar;
+-	GdkRGBA bg;
+-
+-	/* Chain up to parent's method. */
+-	GTK_WIDGET_CLASS (e_shell_sidebar_parent_class)->style_updated (widget);
+-
+-	shell_sidebar = E_SHELL_SIDEBAR (widget);
+-
+-	e_utils_get_theme_color (shell_sidebar->priv->event_box, "theme_bg_color", E_UTILS_DEFAULT_THEME_BG_COLOR, &bg);
+-	gtk_widget_override_background_color (shell_sidebar->priv->event_box, GTK_STATE_FLAG_NORMAL, &bg);
+-}
+-
+ static void
+ shell_sidebar_forall (GtkContainer *container,
+                       gboolean include_internals,
+@@ -366,7 +351,6 @@ e_shell_sidebar_class_init (EShellSidebarClass *class)
+ 	widget_class->get_preferred_width = shell_sidebar_get_preferred_width;
+ 	widget_class->get_preferred_height = shell_sidebar_get_preferred_height;
+ 	widget_class->size_allocate = shell_sidebar_size_allocate;
+-	widget_class->style_updated = shell_sidebar_style_updated;
+ 
+ 	container_class = GTK_CONTAINER_CLASS (class);
+ 	container_class->forall = shell_sidebar_forall;
+@@ -451,7 +435,6 @@ e_shell_sidebar_init (EShellSidebar *shell_sidebar)
+ 	GtkWidget *container;
+ 	PangoAttribute *attribute;
+ 	PangoAttrList *attribute_list;
+-	GdkRGBA bg;
+ 	const gchar *icon_name;
+ 
+ 	shell_sidebar->priv = E_SHELL_SIDEBAR_GET_PRIVATE (shell_sidebar);
+@@ -459,8 +442,6 @@ e_shell_sidebar_init (EShellSidebar *shell_sidebar)
+ 	gtk_widget_set_has_window (GTK_WIDGET (shell_sidebar), FALSE);
+ 
+ 	widget = gtk_event_box_new ();
+-	e_utils_get_theme_color (widget, "theme_bg_color", E_UTILS_DEFAULT_THEME_BG_COLOR, &bg);
+-	gtk_widget_override_background_color (widget, GTK_STATE_FLAG_NORMAL, &bg);
+ 	gtk_widget_set_parent (widget, GTK_WIDGET (shell_sidebar));
+ 	shell_sidebar->priv->event_box = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+diff --git a/shell/e-shell-switcher.c b/shell/e-shell-switcher.c
+index a979919735..d3c2d2b0c1 100644
+--- a/shell/e-shell-switcher.c
++++ b/shell/e-shell-switcher.c
+@@ -155,7 +155,7 @@ shell_switcher_layout_actions (EShellSwitcher *switcher)
+ 
+ 		left_width = allocation.width - 1;
+ 		x = H_PADDING + allocation.x;
+-		y -= max_height;
++		y -= max_height + V_PADDING;
+ 		len = g_list_length (rows[i]);
+ 		for (p = rows[i]; p != NULL; p = p->next, len--) {
+ 			GtkAllocation child_allocation;
+@@ -178,15 +178,13 @@ shell_switcher_layout_actions (EShellSwitcher *switcher)
+ 			x += child_allocation.width + H_PADDING;
+ 			left_width = left_width - child_allocation.width - H_PADDING;
+ 		}
+-
+-		y -= V_PADDING;
+ 	}
+ 
+ 	for (i = 0; i <= row_last; i++)
+ 		g_list_free (rows[i]);
+ 	g_free (rows);
+ 
+-	return y - allocation.y;
++	return y - allocation.y - V_PADDING;
+ }
+ 
+ static void
+diff --git a/shell/e-shell-window-private.c b/shell/e-shell-window-private.c
+index f9e21b1bdf..3f028a9ccc 100644
+--- a/shell/e-shell-window-private.c
++++ b/shell/e-shell-window-private.c
+@@ -322,11 +322,19 @@ e_shell_window_private_constructed (EShellWindow *shell_window)
+ 	if (widget != NULL)
+ 		gtk_box_pack_start (box, widget, FALSE, FALSE, 0);
+ 
++	widget = gtk_separator_new (GTK_ORIENTATION_HORIZONTAL);
++	gtk_box_pack_start (box, widget, FALSE, FALSE, 0);
++	gtk_widget_show (widget);
++
+ 	widget = gtk_paned_new (GTK_ORIENTATION_HORIZONTAL);
+ 	gtk_box_pack_start (box, widget, TRUE, TRUE, 0);
+ 	priv->content_pane = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+ 
++	widget = gtk_separator_new (GTK_ORIENTATION_HORIZONTAL);
++	gtk_box_pack_start (box, widget, FALSE, FALSE, 0);
++	gtk_widget_show (widget);
++
+ 	widget = shell_window_construct_taskbar (shell_window);
+ 	if (widget != NULL)
+ 		gtk_box_pack_start (box, widget, FALSE, FALSE, 0);
+-- 
+2.15.0
+

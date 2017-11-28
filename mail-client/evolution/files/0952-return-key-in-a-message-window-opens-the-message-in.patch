@@ -1,0 +1,29 @@
+From 1b076de908e4407f05da275de5ce1607e35ee31a Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 17 Aug 2015 16:02:27 +0200
+Subject: [PATCH 0952/1800] Return key in a message window opens the message in
+ a new window
+
+This had been reported downstream:
+https://bugzilla.redhat.com/show_bug.cgi?id=1253701
+---
+ mail/e-mail-reader.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index c630f2a7f0..6e89950ad9 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -2568,6 +2568,9 @@ mail_reader_key_press_event_cb (EMailReader *reader,
+ 		case GDK_KEY_Return:
+ 		case GDK_KEY_KP_Enter:
+ 		case GDK_KEY_ISO_Enter:
++			if (E_IS_MAIL_BROWSER (reader))
++				return FALSE;
++
+ 			action_name = "mail-message-open";
+ 			break;
+ 
+-- 
+2.15.0
+

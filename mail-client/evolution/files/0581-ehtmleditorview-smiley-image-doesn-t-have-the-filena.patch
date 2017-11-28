@@ -1,0 +1,35 @@
+From 985cdefb7d23cfda841114151297f4f3597ad7cb Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 12 May 2015 17:02:26 +0200
+Subject: [PATCH 0581/1800] EHTMLEditorView - Smiley image doesn't have the
+ filename set
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index cec6a3d1ee..da1f371684 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -1502,8 +1502,8 @@ emoticon_read_async_cb (GFile *file,
+ 	image = webkit_dom_document_create_element (document, "IMG", NULL);
+ 	webkit_dom_element_set_attribute (image, "src", output, NULL);
+ 	webkit_dom_element_set_attribute (image, "data-inline", "", NULL);
++	webkit_dom_element_set_attribute (image, "data-name", load_context->name, NULL);
+ 	webkit_dom_element_set_attribute (image, "alt", emoticon->text_face, NULL);
+-	webkit_dom_element_set_attribute (image, "-x-evo-smiley", emoticon->icon_name, NULL);
+ 	webkit_dom_element_set_attribute (image, "class", "-x-evo-smiley-img", NULL);
+ 	if (!html_mode)
+ 		webkit_dom_element_set_attribute (image, "style", "display: none;", NULL);
+@@ -5378,7 +5378,6 @@ remove_base_attributes (WebKitDOMElement *element)
+ static void
+ remove_evolution_attributes (WebKitDOMElement *element)
+ {
+-	webkit_dom_element_remove_attribute (element, "x-evo-smiley");
+ 	webkit_dom_element_remove_attribute (element, "data-converted");
+ 	webkit_dom_element_remove_attribute (element, "data-edit-as-new");
+ 	webkit_dom_element_remove_attribute (element, "data-evo-draft");
+-- 
+2.15.0
+

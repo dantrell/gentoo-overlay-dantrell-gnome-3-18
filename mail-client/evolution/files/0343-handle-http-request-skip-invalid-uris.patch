@@ -1,0 +1,40 @@
+From f3f827d348914dbb197e192871fe1b839b3e5aaf Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 26 Mar 2015 09:58:43 +0100
+Subject: [PATCH 0343/1800] handle_http_request: Skip invalid URIs
+
+It wasn't checked whether the passed-in URI was correct, but the message
+object returned from soup_message_new() was dereferenced anyway, which
+could cause a crash.
+---
+ mail/e-mail-display.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/mail/e-mail-display.c b/mail/e-mail-display.c
+index 798fd58b39..8fcc313b79 100644
+--- a/mail/e-mail-display.c
++++ b/mail/e-mail-display.c
+@@ -1793,6 +1793,12 @@ web_view_process_http_uri_scheme_request (GTask *task,
+ 		GError *error;
+ 		GMainContext *context;
+ 
++		message = soup_message_new (SOUP_METHOD_GET, uri);
++		if (!message) {
++			g_debug ("%s: Skipping invalid URI '%s'", G_STRFUNC, uri);
++			goto cleanup;
++		}
++
+ 		context = g_main_context_new ();
+ 		g_main_context_push_thread_default (context);
+ 
+@@ -1804,7 +1810,6 @@ web_view_process_http_uri_scheme_request (GTask *task,
+ 			temp_session, "proxy-resolver",
+ 			G_BINDING_SYNC_CREATE);
+ */
+-		message = soup_message_new (SOUP_METHOD_GET, uri);
+ 		soup_message_headers_append (
+ 			message->request_headers, "User-Agent", "Evolution/" VERSION);
+ /* FIXME WK2
+-- 
+2.15.0
+

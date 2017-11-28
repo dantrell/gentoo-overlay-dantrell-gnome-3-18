@@ -1,0 +1,48 @@
+From 20320fc8ec0d57fec2b31b1e15bfc30a14f8c1b1 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 12 May 2015 17:00:44 +0200
+Subject: [PATCH 0579/1800] Fix regressions after "Fix various leaks of WebKit
+ DOM objects"
+
+---
+ web-extensions/e-html-editor-selection-dom-functions.c | 8 +++++---
+ web-extensions/e-html-editor-view-dom-functions.c      | 2 +-
+ 2 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index 41884b1d4b..c40bc89c80 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -69,11 +69,13 @@ dom_get_current_range (WebKitDOMDocument *document)
+ 
+ 	dom_window = webkit_dom_document_get_default_view (document);
+ 	if (!dom_window)
+-		goto exit;
++		return NULL;
+ 
+ 	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+-	if (!WEBKIT_DOM_IS_DOM_SELECTION (dom_selection))
+-		goto exit;
++	if (!WEBKIT_DOM_IS_DOM_SELECTION (dom_selection)) {
++		g_object_unref (dom_window);
++		return NULL;
++	}
+ 
+ 	if (webkit_dom_dom_selection_get_range_count (dom_selection) < 1)
+ 		goto exit;
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 0baed859f2..281aa61988 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -162,7 +162,7 @@ perform_spell_check (WebKitDOMDOMSelection *dom_selection,
+ 		actual = webkit_dom_dom_selection_get_range_at (
+ 			dom_selection, 0, NULL);
+ 	}
+-	g_object_unref (actual);
++	g_clear_object (&actual);
+ }
+ 
+ void
+-- 
+2.15.0
+

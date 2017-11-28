@@ -1,0 +1,72 @@
+From 6775d0f5e9ee057dc3e9c7fcc5b2df878cb6ef0f Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 26 Feb 2016 10:01:21 +0100
+Subject: [PATCH 0859/1800] Editor - Width limits are wrong for lists when
+ switching composer modes
+
+---
+ .../composer/e-html-editor-selection-dom-functions.c | 20 +++++++++++++++-----
+ .../composer/e-html-editor-view-dom-functions.c      | 12 +++++++++++-
+ 2 files changed, 26 insertions(+), 6 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index b3913803be..d558f2d39d 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -555,15 +555,25 @@ dom_set_paragraph_style (WebKitDOMDocument *document,
+                          gint offset,
+                          const gchar *style_to_add)
+ {
+-	EHTMLEditorSelectionAlignment alignment;
+ 	char *style = NULL;
+ 	gint word_wrap_length = set_word_wrap_length (extension, width);
+-
+-	alignment = dom_get_alignment (document);
++	WebKitDOMNode *parent;
+ 
+ 	element_add_class (element, "-x-evo-paragraph");
+-	element_add_class (element, get_css_alignment_value_class (alignment));
+-	if (!e_html_editor_web_extension_get_html_mode (extension)) {
++
++	/* Don't set the alignment for nodes as they are handled separately. */
++	if (!node_is_list (WEBKIT_DOM_NODE (element))) {
++		EHTMLEditorSelectionAlignment alignment;
++
++		alignment = dom_get_alignment (document);
++		element_add_class (element, get_css_alignment_value_class (alignment));
++	}
++
++	parent = webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (element));
++	/* Don't set the width limit to sub-blocks as the width limit is inhered
++	 * from its parents. */
++	if (!e_html_editor_web_extension_get_html_mode (extension) &&
++	    (!parent || WEBKIT_DOM_IS_HTML_BODY_ELEMENT (parent))) {
+ 		style = g_strdup_printf (
+ 			"width: %dch; word-wrap: normal; %s",
+ 			(word_wrap_length + offset), style_to_add);
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index b1595ccfa1..6fddbf63dc 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -6330,7 +6330,17 @@ toggle_paragraphs_style_in_element (WebKitDOMDocument *document,
+ 			parent = webkit_dom_node_get_parent_node (node);
+ 			/* If the paragraph is inside indented paragraph don't set
+ 			 * the style as it will be inherited */
+-			if (!element_has_class (WEBKIT_DOM_ELEMENT (parent), "-x-evo-indented")) {
++			if (WEBKIT_DOM_IS_HTML_BODY_ELEMENT (parent) &&
++			    (WEBKIT_DOM_IS_HTML_O_LIST_ELEMENT (node) ||
++			     WEBKIT_DOM_IS_HTML_U_LIST_ELEMENT (node))) {
++				gint offset;
++
++				offset = WEBKIT_DOM_IS_HTML_U_LIST_ELEMENT (node) ?
++					SPACES_PER_LIST_LEVEL : SPACES_ORDERED_LIST_FIRST_LEVEL;
++				/* In plain text mode the paragraphs have width limit */
++				dom_set_paragraph_style (
++					document, extension, WEBKIT_DOM_ELEMENT (node), -1, -offset, "");
++			} else if (!element_has_class (WEBKIT_DOM_ELEMENT (parent), "-x-evo-indented")) {
+ 				const gchar *style_to_add = "";
+ 				style = webkit_dom_element_get_attribute (
+ 					WEBKIT_DOM_ELEMENT (node), "style");
+-- 
+2.15.0
+

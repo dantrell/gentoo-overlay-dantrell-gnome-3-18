@@ -1,0 +1,26 @@
+From 5a5a22d18906c2164a61498ea5bf77d2bb5bf22f Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 26 Mar 2015 13:26:40 +0100
+Subject: [PATCH 0379/1800] EHTMLEditorView - When inserting inline image
+ refresh spell check just in current block
+
+---
+ web-extensions/e-html-editor-selection-dom-functions.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index 698e2b4acc..2a99398b50 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -395,7 +395,7 @@ dom_insert_base64_image (WebKitDOMDocument *document,
+ 		NULL);
+ 
+ 	dom_selection_restore (document);
+-	dom_force_spell_check (document, extension);
++	dom_force_spell_check_for_current_paragraph (document, extension);
+ }
+ 
+ /**
+-- 
+2.15.0
+

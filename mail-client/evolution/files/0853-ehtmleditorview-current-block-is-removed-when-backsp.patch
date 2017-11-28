@@ -1,0 +1,26 @@
+From 3979ecfea64a014ac63a62c4ea25d590bc58494b Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 26 Feb 2016 08:56:54 +0100
+Subject: [PATCH 0853/1800] EHTMLEditorView - Current block is removed when
+ Backspace is pressed on its end
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 8344296181..d6d5779632 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -2737,7 +2737,7 @@ body_keyup_event_cb (WebKitDOMElement *element,
+ 						document, block, level);
+ 				}
+ 			}
+-		} else if (node && WEBKIT_DOM_IS_HTML_BR_ELEMENT (node)) {
++		} else if (level > 0 && node && WEBKIT_DOM_IS_HTML_BR_ELEMENT (node)) {
+ 			EHTMLEditorUndoRedoManager *manager;
+ 			EHTMLEditorHistoryEvent *event;
+ 			WebKitDOMDocumentFragment *fragment;
+-- 
+2.15.0
+

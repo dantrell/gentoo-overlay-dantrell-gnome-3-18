@@ -1,0 +1,27 @@
+From 89b707a129db5bec90128d598a3ea54b01702ae1 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 23 Mar 2015 13:57:58 +0100
+Subject: [PATCH 0172/1800] EComposerPrivate - Block the selection-changed
+ signal before trying to unblock it
+
+To avoid warning printed on console.
+---
+ web-extensions/e-composer-private-dom-functions.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/web-extensions/e-composer-private-dom-functions.c b/web-extensions/e-composer-private-dom-functions.c
+index 2ef1c741f7..8ec9e835e2 100644
+--- a/web-extensions/e-composer-private-dom-functions.c
++++ b/web-extensions/e-composer-private-dom-functions.c
+@@ -140,6 +140,8 @@ composer_move_caret (WebKitDOMDocument *document,
+ 
+ 		if (is_message_from_edit_as_new) {
+ 			element = WEBKIT_DOM_ELEMENT (body);
++/* FIXME WK2
++			e_html_editor_selection_block_selection_changed (editor_selection);*/
+ 			goto move_caret;
+ 		} else
+ 			dom_scroll_to_caret (document);
+-- 
+2.15.0
+

@@ -1,0 +1,34 @@
+From 57cd375d2246100a7a68bf840598dbd707178398 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 30 Mar 2015 11:10:03 +0200
+Subject: [PATCH 0455/1800] EHTMLEditorSelection - Return the right font color
+ when is set on body
+
+---
+ web-extensions/e-html-editor-selection-dom-functions.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index 80702170ea..3415bdccf0 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -3849,8 +3849,14 @@ dom_selection_get_font_color (WebKitDOMDocument *document,
+ 	gchar *color;
+ 
+ 	color = get_font_property (document, "color");
+-	if (!(color && *color))
+-		return g_strdup ("#000000");
++	if (!(color && *color)) {
++		WebKitDOMHTMLElement *body;
++
++		body = webkit_dom_document_get_body (document);
++		color = webkit_dom_html_body_element_get_text (WEBKIT_DOM_HTML_BODY_ELEMENT (body));
++		if (!(color && *color))
++			return g_strdup ("#000000");
++	}
+ 
+ 	return color;
+ }
+-- 
+2.15.0
+

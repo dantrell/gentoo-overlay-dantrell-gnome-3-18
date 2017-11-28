@@ -1,0 +1,34 @@
+From f808777a2dd26cd05e7c2cf6806950e0eacdd693 Mon Sep 17 00:00:00 2001
+From: Christian Kirbach <Christian.Kirbach@gmail.com>
+Date: Sat, 10 Jan 2015 00:05:42 +0000
+Subject: [PATCH 0168/1800] Updated German translation
+
+---
+ help/de/de.po | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/help/de/de.po b/help/de/de.po
+index be9abf6a1d..83c3fe9637 100644
+--- a/help/de/de.po
++++ b/help/de/de.po
+@@ -30,7 +30,7 @@ msgid ""
+ msgstr ""
+ "Project-Id-Version: manual_evolution\n"
+ "Report-Msgid-Bugs-To: \n"
+-"POT-Creation-Date: 2014-08-20 03:44+0000\n"
++"POT-Creation-Date: 2015-01-09 08:03+0000\n"
+ "PO-Revision-Date: 2014-08-20 14:26+0100\n"
+ "Last-Translator: Christian Kirbach <christian.kirbach@gmail.com>\n"
+ "Language-Team: Deutsch <gnome-de@gnome.org>\n"
+@@ -384,7 +384,7 @@ msgid ""
+ "The different levels vary depending on your server settings; check with your "
+ "system administrator or adjust your delegation settings."
+ msgstr ""
+-"Die verschiedenen Stufen variieren anhängig von den Server-Einstellungen. "
++"Die verschiedenen Stufen variieren abhängig von den Server-Einstellungen. "
+ "Fragen Sie dazu Ihren Systemverwalter oder passen Sie Ihre "
+ "Vertretungseinstellungen an."
+ 
+-- 
+2.15.0
+

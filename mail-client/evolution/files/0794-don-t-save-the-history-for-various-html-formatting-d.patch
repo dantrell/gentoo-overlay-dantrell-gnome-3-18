@@ -1,0 +1,123 @@
+From 9a14dd44737dbc2300d2cf4e10b088ad9f29b7e5 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 17:34:50 +0100
+Subject: [PATCH 0794/1800] Don't save the history for various HTML formatting
+ dialogs if the formatting didn't changed
+
+---
+ .../composer/e-html-editor-cell-dialog-dom-functions.c        |  8 ++++++--
+ .../composer/e-html-editor-hrule-dialog-dom-functions.c       |  8 ++++++--
+ .../composer/e-html-editor-page-dialog-dom-functions.c        |  8 ++++++--
+ .../composer/e-html-editor-table-dialog-dom-functions.c       |  8 ++++++--
+ web-extensions/composer/e-html-editor-undo-redo-manager.c     | 11 +++++++++++
+ web-extensions/composer/e-html-editor-undo-redo-manager.h     |  2 ++
+ 6 files changed, 37 insertions(+), 8 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-cell-dialog-dom-functions.c b/web-extensions/composer/e-html-editor-cell-dialog-dom-functions.c
+index 8c21376742..25c05a3a6d 100644
+--- a/web-extensions/composer/e-html-editor-cell-dialog-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-cell-dialog-dom-functions.c
+@@ -297,8 +297,12 @@ e_html_editor_cell_dialog_save_history_on_exit (WebKitDOMDocument *document,
+ 	ev->data.dom.to = webkit_dom_node_clone_node (
+ 		WEBKIT_DOM_NODE (table), TRUE);
+ 
+-	dom_selection_get_coordinates (
+-		document, &ev->after.start.x, &ev->after.start.y, &ev->after.end.x, &ev->after.end.y);
++	if (!webkit_dom_node_is_equal_node (ev->data.dom.from, ev->data.dom.to)) {
++		dom_selection_get_coordinates (
++			document, &ev->after.start.x, &ev->after.start.y, &ev->after.end.x, &ev->after.end.y);
++	} else {
++		e_html_editor_undo_redo_manager_remove_current_history_event (manager);
++	}
+ }
+ 
+ void
+diff --git a/web-extensions/composer/e-html-editor-hrule-dialog-dom-functions.c b/web-extensions/composer/e-html-editor-hrule-dialog-dom-functions.c
+index 10a940e4bb..1879df897c 100644
+--- a/web-extensions/composer/e-html-editor-hrule-dialog-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-hrule-dialog-dom-functions.c
+@@ -111,6 +111,10 @@ e_html_editor_hrule_dialog_save_history_on_exit (WebKitDOMDocument *document,
+ 	ev->data.dom.to = webkit_dom_node_clone_node (
+ 		WEBKIT_DOM_NODE (element), TRUE);
+ 
+-	dom_selection_get_coordinates (
+-		document, &ev->after.start.x, &ev->after.start.y, &ev->after.end.x, &ev->after.end.y);
++	if (!webkit_dom_node_is_equal_node (ev->data.dom.from, ev->data.dom.to)) {
++		dom_selection_get_coordinates (
++			document, &ev->after.start.x, &ev->after.start.y, &ev->after.end.x, &ev->after.end.y);
++	} else {
++		e_html_editor_undo_redo_manager_remove_current_history_event (manager);
++	}
+ }
+diff --git a/web-extensions/composer/e-html-editor-page-dialog-dom-functions.c b/web-extensions/composer/e-html-editor-page-dialog-dom-functions.c
+index b18e0bda25..69c6d1e00a 100644
+--- a/web-extensions/composer/e-html-editor-page-dialog-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-page-dialog-dom-functions.c
+@@ -59,6 +59,10 @@ e_html_editor_page_dialog_save_history_on_exit (WebKitDOMDocument *document,
+ 	body = webkit_dom_document_get_body (document);
+ 	ev->data.dom.to = webkit_dom_node_clone_node (WEBKIT_DOM_NODE (body), FALSE);
+ 
+-	dom_selection_get_coordinates (
+-		document, &ev->after.start.x, &ev->after.start.y, &ev->after.end.x, &ev->after.end.y);
++	if (!webkit_dom_node_is_equal_node (ev->data.dom.from, ev->data.dom.to)) {
++		dom_selection_get_coordinates (
++			document, &ev->after.start.x, &ev->after.start.y, &ev->after.end.x, &ev->after.end.y);
++	} else {
++		e_html_editor_undo_redo_manager_remove_current_history_event (manager);
++	}
+ }
+diff --git a/web-extensions/composer/e-html-editor-table-dialog-dom-functions.c b/web-extensions/composer/e-html-editor-table-dialog-dom-functions.c
+index dc3023f4a1..30df691c40 100644
+--- a/web-extensions/composer/e-html-editor-table-dialog-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-table-dialog-dom-functions.c
+@@ -301,6 +301,10 @@ e_html_editor_table_dialog_save_history_on_exit (WebKitDOMDocument *document,
+ 	ev->data.dom.to = webkit_dom_node_clone_node (
+ 		WEBKIT_DOM_NODE (element), TRUE);
+ 
+-	dom_selection_get_coordinates (
+-		document, &ev->after.start.x, &ev->after.start.y, &ev->after.end.x, &ev->after.end.y);
++	if (!webkit_dom_node_is_equal_node (ev->data.dom.from, ev->data.dom.to)) {
++		dom_selection_get_coordinates (
++			document, &ev->after.start.x, &ev->after.start.y, &ev->after.end.x, &ev->after.end.y);
++	} else {
++		e_html_editor_undo_redo_manager_remove_current_history_event (manager);
++	}
+ }
+diff --git a/web-extensions/composer/e-html-editor-undo-redo-manager.c b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+index 68f6b085ea..b03b2f8330 100644
+--- a/web-extensions/composer/e-html-editor-undo-redo-manager.c
++++ b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+@@ -1666,6 +1666,17 @@ e_html_editor_undo_redo_manager_get_current_history_event (EHTMLEditorUndoRedoMa
+ 	return NULL;
+ }
+ 
++void
++e_html_editor_undo_redo_manager_remove_current_history_event (EHTMLEditorUndoRedoManager *manager)
++{
++	g_return_if_fail (E_IS_HTML_EDITOR_UNDO_REDO_MANAGER (manager));
++
++	if (!manager->priv->history)
++		return;
++
++	remove_history_event (manager, manager->priv->history);
++}
++
+ void
+ e_html_editor_undo_redo_manager_insert_dash_history_event (EHTMLEditorUndoRedoManager *manager)
+ {
+diff --git a/web-extensions/composer/e-html-editor-undo-redo-manager.h b/web-extensions/composer/e-html-editor-undo-redo-manager.h
+index a60dccaf27..08f7456860 100644
+--- a/web-extensions/composer/e-html-editor-undo-redo-manager.h
++++ b/web-extensions/composer/e-html-editor-undo-redo-manager.h
+@@ -81,6 +81,8 @@ void		e_html_editor_undo_redo_manager_insert_history_event
+ EHTMLEditorHistoryEvent *
+ 		e_html_editor_undo_redo_manager_get_current_history_event
+ 						(EHTMLEditorUndoRedoManager *manager);
++void		e_html_editor_undo_redo_manager_remove_current_history_event
++						(EHTMLEditorUndoRedoManager *manager);
+ 
+ void
+ e_html_editor_undo_redo_manager_insert_dash_history_event
+-- 
+2.15.0
+

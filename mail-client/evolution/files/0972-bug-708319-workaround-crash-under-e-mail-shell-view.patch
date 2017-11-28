@@ -1,0 +1,27 @@
+From 88c9b52dfab3f05e3cc0cf3568e5f73655072998 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 27 Aug 2015 19:12:46 +0200
+Subject: [PATCH 0972/1800] Bug 708319 - Workaround crash under
+ e_mail_shell_view_update_popup_labels()
+
+---
+ modules/mail/e-mail-shell-view-actions.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/modules/mail/e-mail-shell-view-actions.c b/modules/mail/e-mail-shell-view-actions.c
+index faa2bc2e4a..08c07493fe 100644
+--- a/modules/mail/e-mail-shell-view-actions.c
++++ b/modules/mail/e-mail-shell-view-actions.c
+@@ -2428,6 +2428,9 @@ e_mail_shell_view_update_popup_labels (EMailShellView *mail_shell_view)
+ 	shell_backend = e_shell_view_get_shell_backend (shell_view);
+ 	ui_manager = e_shell_window_get_ui_manager (shell_window);
+ 
++	g_return_if_fail (ui_manager != NULL);
++	g_return_if_fail (GTK_IS_UI_MANAGER (ui_manager));
++
+ 	backend = E_MAIL_BACKEND (shell_backend);
+ 	session = e_mail_backend_get_session (backend);
+ 	label_store = e_mail_ui_session_get_label_store (
+-- 
+2.15.0
+

@@ -1,0 +1,34 @@
+From 15ce73c279adced6602e9bf18b123d88351b34f1 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 1 Mar 2016 11:10:06 +0100
+Subject: [PATCH 0969/1800] Bug 753702 - Changing mail composer to plaintext
+ mode and back to HTML mode changes the font family
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 30c68b8acf..aeccddc7cb 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -4659,14 +4659,14 @@ set_monospace_font_family_on_body (WebKitDOMElement *body,
+ 	 * font-family style to the body, so WebKit will know about it and will
+ 	 * avoid the described behaviour. */
+ 	if (!html_mode) {
+-		rename_attribute (WEBKIT_DOM_ELEMENT (body), "style", "data-style");
++		rename_attribute (WEBKIT_DOM_ELEMENT (body), "data-style", "style");
+ 		webkit_dom_element_set_attribute (
+ 			WEBKIT_DOM_ELEMENT (body),
+ 			"style",
+ 			"font-family: Monospace;",
+ 			NULL);
+ 	} else {
+-		rename_attribute (WEBKIT_DOM_ELEMENT (body), "data-style", "style");
++		rename_attribute (WEBKIT_DOM_ELEMENT (body), "style", "data-style");
+ 	}
+ }
+ 
+-- 
+2.15.0
+

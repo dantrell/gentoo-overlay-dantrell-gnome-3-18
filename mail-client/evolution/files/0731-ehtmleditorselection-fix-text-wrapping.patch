@@ -1,0 +1,83 @@
+From b5442f0f74c76d418d88fafa379cc450006ebad0 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 11:41:55 +0100
+Subject: [PATCH 0731/1800] EHTMLEditorSelection - Fix text wrapping
+
+---
+ .../composer/e-html-editor-selection-dom-functions.c | 20 +++++++++++---------
+ 1 file changed, 11 insertions(+), 9 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 3e52e18146..32a83f309b 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -1892,7 +1892,7 @@ find_where_to_break_line (WebKitDOMNode *node,
+ {
+ 	gchar *str, *text_start;
+ 	gunichar uc;
+-	gint pos;
++	gint pos = 1;
+ 	gint last_space = 0;
+ 	gint length;
+ 	gint ret_val = 0;
+@@ -1901,8 +1901,6 @@ find_where_to_break_line (WebKitDOMNode *node,
+ 	text_start =  webkit_dom_character_data_get_data (WEBKIT_DOM_CHARACTER_DATA (node));
+ 	length = g_utf8_strlen (text_start, -1);
+ 
+-	pos = 1;
+-	last_space = 0;
+ 	str = text_start;
+ 	do {
+ 		uc = g_utf8_get_char (str);
+@@ -1911,6 +1909,9 @@ find_where_to_break_line (WebKitDOMNode *node,
+ 			goto out;
+ 		}
+ 
++		if (g_unichar_isspace (uc) || str[0] == '-')
++			last_space = pos;
++
+ 		/* If last_space is zero then the word is longer than
+ 		 * word_wrap_length characters, so continue until we find
+ 		 * a space */
+@@ -1937,9 +1938,6 @@ find_where_to_break_line (WebKitDOMNode *node,
+ 			goto out;
+ 		}
+ 
+-		if (g_unichar_isspace (uc) || str[0] == '-')
+-			last_space = pos;
+-
+ 		pos += 1;
+ 		str = g_utf8_next_char (str);
+ 	} while (*str);
+@@ -2333,7 +2331,7 @@ wrap_lines (WebKitDOMDocument *document,
+ 		length_left = webkit_dom_character_data_get_length (
+ 			WEBKIT_DOM_CHARACTER_DATA (node));
+ 
+-		if ((length_left + line_length) < word_wrap_length) {
++		if ((length_left + line_length) <= word_wrap_length) {
+ 			line_length += length_left;
+ 			goto next_node;
+ 		}
+@@ -2435,13 +2433,17 @@ wrap_lines (WebKitDOMDocument *document,
+ 					node,
+ 					NULL);
+ 			}
+-			length_left = webkit_dom_character_data_get_length (
+-				WEBKIT_DOM_CHARACTER_DATA (node));
++			if (node)
++				length_left = webkit_dom_character_data_get_length (
++					WEBKIT_DOM_CHARACTER_DATA (node));
+ 
+ 			line_length = 0;
+ 		}
+ 		line_length += length_left - offset;
+  next_node:
++		if (!node)
++			break;
++
+ 		if (WEBKIT_DOM_IS_HTML_LI_ELEMENT (node))
+ 			line_length = 0;
+ 
+-- 
+2.15.0
+

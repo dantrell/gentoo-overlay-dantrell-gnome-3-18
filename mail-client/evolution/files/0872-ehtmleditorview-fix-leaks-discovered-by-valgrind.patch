@@ -1,0 +1,55 @@
+From ab4549779476c655ee89caa9f49026d8378e7cd3 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 26 Feb 2016 10:43:36 +0100
+Subject: [PATCH 0872/1800] EHTMLEditorView - Fix leaks discovered by Valgrind
+
+---
+ e-util/e-html-editor-view.c                               | 6 ++++++
+ web-extensions/composer/e-html-editor-undo-redo-manager.c | 6 +++---
+ 2 files changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 56b607cb5d..07ef5df47f 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -1522,6 +1522,12 @@ html_editor_view_load_changed_cb (EHTMLEditorView *view,
+ 			op->data_free_func (op->data);
+ 		g_free (op);
+ 
++		while ((op = g_queue_pop_head (view->priv->post_reload_operations))) {
++			if (op->data_free_func)
++				op->data_free_func (op->data);
++			g_free (op);
++		}
++
+ 		g_queue_clear (view->priv->post_reload_operations);
+ 
+ 		return;
+diff --git a/web-extensions/composer/e-html-editor-undo-redo-manager.c b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+index 55d5010fba..3f5f8f2362 100644
+--- a/web-extensions/composer/e-html-editor-undo-redo-manager.c
++++ b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+@@ -1822,7 +1822,7 @@ free_history_event_content (EHTMLEditorHistoryEvent *event)
+ 		case HISTORY_REMOVE_LINK:
+ 		case HISTORY_BLOCKQUOTE:
+ 			if (event->data.fragment != NULL)
+-				g_object_unref (event->data.fragment);
++				g_clear_object (&event->data.fragment);
+ 			break;
+ 		case HISTORY_FONT_COLOR:
+ 		case HISTORY_PASTE:
+@@ -1845,9 +1845,9 @@ free_history_event_content (EHTMLEditorHistoryEvent *event)
+ 		case HISTORY_UNQUOTE:
+ 		case HISTORY_LINK_DIALOG:
+ 			if (event->data.dom.from != NULL)
+-				g_object_unref (event->data.dom.from);
++				g_clear_object (&event->data.dom.from);
+ 			if (event->data.dom.to != NULL)
+-				g_object_unref (event->data.dom.to);
++				g_clear_object (&event->data.dom.to);
+ 			break;
+ 		default:
+ 			break;
+-- 
+2.15.0
+

@@ -1,0 +1,37 @@
+From 005cf2708ef333c721ae0b0ea1039f23adee5237 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 4 Mar 2015 16:18:33 +0100
+Subject: [PATCH 0412/1800] EColorCombo - Cannot choose a color from a popup
+ palette
+
+It closed immediately, causing no way to select any color.
+---
+ e-util/e-color-combo.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/e-util/e-color-combo.c b/e-util/e-color-combo.c
+index ea26388e4a..ca3de8933a 100644
+--- a/e-util/e-color-combo.c
++++ b/e-util/e-color-combo.c
+@@ -269,9 +269,8 @@ color_combo_window_button_press_event_cb (EColorCombo *combo,
+ 	if (combo->priv->popup_shown == TRUE)
+ 		return FALSE;
+ 
+-	color_combo_popup (combo);
+-
+ 	combo->priv->popup_in_progress = TRUE;
++	color_combo_popup (combo);
+ 
+ 	return TRUE;
+ }
+@@ -364,6 +363,7 @@ color_combo_button_press_event_cb (GtkWidget *widget,
+ 	if (combo->priv->popup_shown) {
+ 		color_combo_popdown (combo);
+ 	} else {
++		combo->priv->popup_in_progress = TRUE;
+ 		color_combo_popup (combo);
+ 	}
+ 
+-- 
+2.15.0
+

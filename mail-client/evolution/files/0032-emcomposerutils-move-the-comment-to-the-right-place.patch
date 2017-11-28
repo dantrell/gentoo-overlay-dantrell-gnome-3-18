@@ -1,0 +1,34 @@
+From d132309e24e958315decf2817e13a0e71f56bb2a Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 4 Nov 2014 09:59:33 +0100
+Subject: [PATCH 0032/1800] EmComposerUtils - Move the comment to the right
+ place and remove code duplication
+
+---
+ mail/em-composer-utils.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
+
+diff --git a/mail/em-composer-utils.c b/mail/em-composer-utils.c
+index dfbea1e92c..3ba35810d9 100644
+--- a/mail/em-composer-utils.c
++++ b/mail/em-composer-utils.c
+@@ -715,14 +715,11 @@ composer_save_to_drafts_complete (GObject *source_object,
+ 	/* We don't really care if this failed.  If something other than
+ 	 * cancellation happened, emit a runtime warning so the error is
+ 	 * not completely lost. */
+-
+-	async_context = (AsyncContext *) user_data;
+-
+-	activity = async_context->activity;
+-
+ 	e_mail_session_handle_draft_headers_finish (
+ 		E_MAIL_SESSION (source_object), result, &local_error);
+ 
++	activity = async_context->activity;
++
+ 	if (e_activity_handle_cancellation (activity, local_error)) {
+ 		e_html_editor_view_set_changed (view, TRUE);
+ 		g_error_free (local_error);
+-- 
+2.15.0
+

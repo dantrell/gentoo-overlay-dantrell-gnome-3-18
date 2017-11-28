@@ -1,0 +1,42 @@
+From cd2908c4ccd2127ac4118eaa8c85234a7952e7c4 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 11 Feb 2015 17:36:23 +0100
+Subject: [PATCH 0281/1800] Use camel_application_is_exiting declaration from
+ camel.h
+
+It's part of camel.h now, thus let's use it, instead of re-declare it.
+---
+ mail/e-mail-backend.c    | 3 ---
+ mail/e-mail-ui-session.c | 2 --
+ 2 files changed, 5 deletions(-)
+
+diff --git a/mail/e-mail-backend.c b/mail/e-mail-backend.c
+index ea2ec3b1f9..beb5eeffd9 100644
+--- a/mail/e-mail-backend.c
++++ b/mail/e-mail-backend.c
+@@ -65,9 +65,6 @@ enum {
+ 	PROP_SEND_ACCOUNT_OVERRIDE
+ };
+ 
+-/* FIXME Kill this thing.  It's a horrible hack. */
+-extern gint camel_application_is_exiting;
+-
+ G_DEFINE_ABSTRACT_TYPE (
+ 	EMailBackend,
+ 	e_mail_backend,
+diff --git a/mail/e-mail-ui-session.c b/mail/e-mail-ui-session.c
+index ac36bc2234..5e3cbe3147 100644
+--- a/mail/e-mail-ui-session.c
++++ b/mail/e-mail-ui-session.c
+@@ -887,8 +887,6 @@ mail_ui_session_authenticate_sync (CamelSession *session,
+ 	return authenticated;
+ }
+ 
+-extern gint camel_application_is_exiting;
+-
+ static void
+ mail_ui_session_refresh_service (EMailSession *session,
+                                  CamelService *service)
+-- 
+2.15.0
+

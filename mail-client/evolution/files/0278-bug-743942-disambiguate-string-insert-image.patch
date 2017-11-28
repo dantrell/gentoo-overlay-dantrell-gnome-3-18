@@ -1,0 +1,33 @@
+From ba6aae97110c61dcc89ad6549fd31f9e1cea67d1 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 11 Feb 2015 13:08:25 +0100
+Subject: [PATCH 0278/1800] Bug 743942 - Disambiguate string "Insert Image"
+
+---
+ e-util/e-html-editor-actions.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/e-util/e-html-editor-actions.c b/e-util/e-html-editor-actions.c
+index e1effb4c8a..b577b4d217 100644
+--- a/e-util/e-html-editor-actions.c
++++ b/e-util/e-html-editor-actions.c
+@@ -336,7 +336,7 @@ action_insert_image_cb (GtkAction *action,
+ {
+ 	GtkWidget *dialog;
+ 
+-	dialog = e_image_chooser_dialog_new (_("Insert Image"), NULL);
++	dialog = e_image_chooser_dialog_new (C_("dialog-title", "Insert Image"), NULL);
+ 
+ 	if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT) {
+ 		EHTMLEditorView *view;
+@@ -1113,6 +1113,7 @@ static GtkActionEntry html_entries[] = {
+ 	  "insert-image",
+ 	  N_("_Image..."),
+ 	  NULL,
++	  /* Translators: This is an action tooltip */
+ 	  N_("Insert Image"),
+ 	  G_CALLBACK (action_insert_image_cb) },
+ 
+-- 
+2.15.0
+

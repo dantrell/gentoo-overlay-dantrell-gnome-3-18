@@ -1,0 +1,26 @@
+From 0e20b51addedaccf86727daadbafc306f9f09efd Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 23 Mar 2015 13:27:36 +0100
+Subject: [PATCH 0165/1800] Bug 741313 - Disable DNS prefetching for EWebView
+
+Disable the DNS prefetching to avoid the unintended possible leakage of
+date and IP address of whoever reads the message.
+---
+ e-util/e-web-view.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/e-util/e-web-view.c b/e-util/e-web-view.c
+index 0bdcd63ecb..3055acb490 100644
+--- a/e-util/e-web-view.c
++++ b/e-util/e-web-view.c
+@@ -3253,6 +3253,7 @@ e_web_view_get_default_webkit_settings (void)
+ 		"auto-load-images", TRUE,
+ 		"default-charset", "utf-8",
+ 		"enable-html5-database", FALSE,
++		"enable-dns-prefetching", FALSE,
+ 		"enable-html5-local-storage", FALSE,
+ 		"enable-java", FALSE,
+ 		"enable-javascript", FALSE,
+-- 
+2.15.0
+

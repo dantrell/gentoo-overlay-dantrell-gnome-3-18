@@ -1,0 +1,724 @@
+From 7790ca5cc184148a77c23e0b6acaeae56e9d549b Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 16:29:19 +0100
+Subject: [PATCH 0323/1800] Bug 740169 - Add support for smileys via
+ Unicode-characters
+
+---
+ composer/e-composer-actions.c                     |  21 ++++
+ composer/e-composer-actions.h                     |   2 +
+ composer/e-msg-composer.c                         |   4 +
+ composer/evolution-composer.ui                    |   1 +
+ data/org.gnome.evolution.mail.gschema.xml.in      |   7 +-
+ e-util/e-emoticon-chooser.c                       |  43 ++++----
+ e-util/e-emoticon.c                               |   5 +
+ e-util/e-emoticon.h                               |   1 +
+ e-util/e-html-editor-view.c                       |  78 +++++++++++++-
+ e-util/e-html-editor-view.h                       |   5 +
+ mail/mail-config.ui                               |  22 +++-
+ modules/mail/em-composer-prefs.c                  |   6 ++
+ modules/settings/e-settings-html-editor-view.c    |   5 +
+ web-extensions/e-html-editor-view-dom-functions.c | 125 +++++++++++++---------
+ web-extensions/e-html-editor-web-extension.c      |   8 ++
+ web-extensions/e-html-editor-web-extension.h      |   3 +
+ 16 files changed, 257 insertions(+), 79 deletions(-)
+
+diff --git a/composer/e-composer-actions.c b/composer/e-composer-actions.c
+index cc33a6feb3..dbb15def87 100644
+--- a/composer/e-composer-actions.c
++++ b/composer/e-composer-actions.c
+@@ -329,6 +329,19 @@ action_smime_sign_cb (GtkToggleAction *action,
+ 	e_html_editor_view_set_changed (view, TRUE);
+ }
+ 
++static void
++action_unicode_smileys_cb (GtkToggleAction *action,
++                           EMsgComposer *composer)
++{
++	EHTMLEditor *editor;
++	EHTMLEditorView *view;
++
++	editor = e_msg_composer_get_editor (composer);
++	view = e_html_editor_get_view (editor);
++	e_html_editor_view_set_unicode_smileys (view,
++		gtk_toggle_action_get_active (action));
++}
++
+ static void
+ composer_actions_toolbar_option_toggled_cb (GtkToggleAction *toggle_action,
+ 					    EMsgComposer *composer)
+@@ -558,6 +571,14 @@ static GtkToggleActionEntry toggle_entries[] = {
+ 	  NULL,
+ 	  FALSE },
+ 
++	{ "unicode-smileys",
++	  NULL,
++	  N_("Unicode smilyes"),
++	  NULL,
++	  N_("Use Unicode characters for smileys."),
++	  G_CALLBACK (action_unicode_smileys_cb),
++	  FALSE },
++
+ 	{ "view-bcc",
+ 	  NULL,
+ 	  N_("_Bcc Field"),
+diff --git a/composer/e-composer-actions.h b/composer/e-composer-actions.h
+index 968b226cd2..8fd6321510 100644
+--- a/composer/e-composer-actions.h
++++ b/composer/e-composer-actions.h
+@@ -56,6 +56,8 @@
+ 	E_COMPOSER_ACTION ((composer), "smime-encrypt")
+ #define E_COMPOSER_ACTION_SMIME_SIGN(composer) \
+ 	E_COMPOSER_ACTION ((composer), "smime-sign")
++#define E_COMPOSER_ACTION_UNICODE_SMILEYS(composer) \
++	E_COMPOSER_ACTION ((composer), "unicode-smileys")
+ #define E_COMPOSER_ACTION_TOOLBAR_PGP_ENCRYPT(composer) \
+ 	E_COMPOSER_ACTION ((composer), "toolbar-pgp-encrypt")
+ #define E_COMPOSER_ACTION_TOOLBAR_PGP_SIGN(composer) \
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index b7688f03f4..186cfe66f8 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -2306,6 +2306,10 @@ msg_composer_constructed (GObject *object)
+ 	action = GTK_TOGGLE_ACTION (ACTION (REQUEST_READ_RECEIPT));
+ 	active = g_settings_get_boolean (settings, "composer-request-receipt");
+ 	gtk_toggle_action_set_active (action, active);
++
++	action = GTK_TOGGLE_ACTION (ACTION (UNICODE_SMILEYS));
++	active = g_settings_get_boolean (settings, "composer-unicode-smileys");
++	gtk_toggle_action_set_active (action, active);
+ 	g_object_unref (settings);
+ 
+ 	/* Clipboard Support */
+diff --git a/composer/evolution-composer.ui b/composer/evolution-composer.ui
+index d1256188f4..8b107eb008 100644
+--- a/composer/evolution-composer.ui
++++ b/composer/evolution-composer.ui
+@@ -50,6 +50,7 @@
+       <menuitem action='request-read-receipt'/>
+       <menuitem action='prioritize-message'/>
+       <separator/>
++      <menuitem action='unicode-smileys'/>
+       <menu action='charset-menu'/>
+     </menu>
+   </menubar>
+diff --git a/data/org.gnome.evolution.mail.gschema.xml.in b/data/org.gnome.evolution.mail.gschema.xml.in
+index 58e2fbb883..91095aadb3 100644
+--- a/data/org.gnome.evolution.mail.gschema.xml.in
++++ b/data/org.gnome.evolution.mail.gschema.xml.in
+@@ -58,7 +58,12 @@
+     <key name="composer-magic-smileys" type="b">
+       <default>false</default>
+       <_summary>Automatic emoticon recognition</_summary>
+-      <_description>Recognize emoticons in text and replace them with images.</_description>
++      <_description>Recognize emoticons in text and replace them with images or Unicode characters.</_description>
++    </key>
++    <key name="composer-unicode-smileys" type="b">
++      <default>false</default>
++      <_summary>Unicode smileys</_summary>
++      <_description>Use Unicode characters for smileys.</_description>
+     </key>
+     <key name="composer-message-attribution" type="s">
+       <default>''</default>
+diff --git a/e-util/e-emoticon-chooser.c b/e-util/e-emoticon-chooser.c
+index 44ce06ba55..428e116f67 100644
+--- a/e-util/e-emoticon-chooser.c
++++ b/e-util/e-emoticon-chooser.c
+@@ -31,52 +31,53 @@
+ typedef struct {
+ 	const gchar *label;
+ 	const gchar *icon_name;
++	const gchar *unicode_character;
+ 	const gchar *text_face;
+ } ConstantEmoticon;
+ 
+ static ConstantEmoticon available_emoticons[] = {
+ 	/* Translators: :-) */
+-	{ N_("_Smile"),		"face-smile",		":-)"	},
++	{ N_("_Smile"),		"face-smile",		"☺",	":-)"	},
+ 	/* Translators: :-( */
+-	{ N_("S_ad"),		"face-sad",		":-("	},
++	{ N_("S_ad"),		"face-sad",		"☹",	":-("	},
+ 	/* Translators: ;-) */
+-	{ N_("_Wink"),		"face-wink",		";-)"	},
++	{ N_("_Wink"),		"face-wink",		"😉",	";-)"	},
+ 	/* Translators: :-P */
+-	{ N_("Ton_gue"),	"face-raspberry",	":-P"	},
++	{ N_("Ton_gue"),	"face-raspberry",	"😛",	":-P"	},
+ 	/* Translators: :-)) */
+-	{ N_("Laug_h"),		"face-laugh",		":-))"	},
++	{ N_("Laug_h"),		"face-laugh",		"😃",	":-D"	},
+ 	/* Translators: :-| */
+-	{ N_("_Plain"),		"face-plain",		":-|"	},
++	{ N_("_Plain"),		"face-plain",		"😔",	":-|"	},
+ 	/* Translators: :-! */
+-	{ N_("Smi_rk"),		"face-smirk",		":-!"	},
++	{ N_("Smi_rk"),		"face-smirk",		"😏",	":-!"	},
+ 	/* Translators: :"-) */
+-	{ N_("_Embarrassed"),	"face-embarrassed",	":\"-)"	},
++	{ N_("_Embarrassed"),	"face-embarrassed",	"😯",	":\"-)"	},
+ 	/* Translators: :-D */
+-	{ N_("_Big Smile"),	"face-smile-big",	":-D"	},
++	{ N_("_Big Smile"),	"face-smile-big",	"😄",	":-D"	},
+ 	/* Translators: :-/ */
+-	{ N_("Uncer_tain"),	"face-uncertain",	":-/"	},
++	{ N_("Uncer_tain"),	"face-uncertain",	"😕",	":-/"	},
+ 	/* Translators: :-O */
+-	{ N_("S_urprise"),	"face-surprise",	":-O"	},
++	{ N_("S_urprise"),	"face-surprise",	"😲",	":-O"	},
+ 	/* Translators: :-S */
+-	{ N_("W_orried"),	"face-worried",		":-S"	},
++	{ N_("W_orried"),	"face-worried",		"😟",	":-S"	},
+ 	/* Translators: :-* */
+-	{ N_("_Kiss"),		"face-kiss",		":-*"	},
++	{ N_("_Kiss"),		"face-kiss",		"😗",	":-*"	},
+ 	/* Translators: X-( */
+-	{ N_("A_ngry"),		"face-angry",		"X-("	},
++	{ N_("A_ngry"),		"face-angry",		"😠",	"X-("	},
+ 	/* Translators: B-) */
+-	{ N_("_Cool"),		"face-cool",		"B-)"	},
++	{ N_("_Cool"),		"face-cool",		"😎",	"B-)"	},
+ 	/* Translators: O:-) */
+-	{ N_("Ange_l"),		"face-angel",		"O:-)"	},
++	{ N_("Ange_l"),		"face-angel",		"😇",	"O:-)"	},
+ 	/* Translators: :'( */
+-	{ N_("Cr_ying"),	"face-crying",		":'("	},
++	{ N_("Cr_ying"),	"face-crying",		"😢",	":'("	},
+ 	/* Translators: :-Q */
+-	{ N_("S_ick"),		"face-sick",		":-Q"	},
++	{ N_("S_ick"),		"face-sick",		"😨",	":-Q"	},
+ 	/* Translators: |-) */
+-	{ N_("Tire_d"),		"face-tired",		"|-)"	},
++	{ N_("Tire_d"),		"face-tired",		"😫",	"|-)"	},
+ 	/* Translators: >:-) */
+-	{ N_("De_vilish"),	"face-devilish",	">:-)"	},
++	{ N_("De_vilish"),	"face-devilish",	"😈",	">:-)"	},
+ 	/* Translators: :-(|) */
+-	{ N_("_Monkey"),	"face-monkey",		":-(|)"	}
++	{ N_("_Monkey"),	"face-monkey",		"🐵",	":-(|)"	}
+ };
+ 
+ enum {
+diff --git a/e-util/e-emoticon.c b/e-util/e-emoticon.c
+index c543e52417..cc2fd419ff 100644
+--- a/e-util/e-emoticon.c
++++ b/e-util/e-emoticon.c
+@@ -31,6 +31,7 @@ emoticon_copy (EEmoticon *emoticon)
+ 	copy = g_slice_new (EEmoticon);
+ 	copy->label = g_strdup (emoticon->label);
+ 	copy->icon_name = g_strdup (emoticon->icon_name);
++	copy->unicode_character = g_strdup (emoticon->unicode_character);
+ 	copy->text_face = g_strdup (emoticon->text_face);
+ 
+ 	return copy;
+@@ -41,6 +42,7 @@ emoticon_free (EEmoticon *emoticon)
+ {
+ 	g_free (emoticon->label);
+ 	g_free (emoticon->icon_name);
++	g_free (emoticon->unicode_character);
+ 	g_free (emoticon->text_face);
+ 	g_slice_free (EEmoticon, emoticon);
+ }
+@@ -76,6 +78,9 @@ e_emoticon_equal (EEmoticon *emoticon_a,
+ 	if (g_strcmp0 (emoticon_a->icon_name, emoticon_b->icon_name) != 0)
+ 		return FALSE;
+ 
++	if (g_strcmp0 (emoticon_a->unicode_character, emoticon_b->unicode_character) != 0)
++		return FALSE;
++
+ 	if (g_strcmp0 (emoticon_a->text_face, emoticon_b->text_face) != 0)
+ 		return FALSE;
+ 
+diff --git a/e-util/e-emoticon.h b/e-util/e-emoticon.h
+index 66327ab788..e77806f691 100644
+--- a/e-util/e-emoticon.h
++++ b/e-util/e-emoticon.h
+@@ -38,6 +38,7 @@ typedef struct _EEmoticon EEmoticon;
+ struct _EEmoticon {
+ 	gchar *label;
+ 	gchar *icon_name;
++	gchar *unicode_character;
+ 	gchar *text_face;
+ };
+ 
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 3f00c411ee..cc169d3202 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -52,6 +52,7 @@ struct _EHTMLEditorViewPrivate {
+ 	gint inline_spelling	: 1;
+ 	gint magic_links	: 1;
+ 	gint magic_smileys	: 1;
++	gint unicode_smileys	: 1;
+ 	gint can_copy		: 1;
+ 	gint can_cut		: 1;
+ 	gint can_paste		: 1;
+@@ -93,6 +94,7 @@ enum {
+ 	PROP_INLINE_SPELLING,
+ 	PROP_MAGIC_LINKS,
+ 	PROP_MAGIC_SMILEYS,
++	PROP_UNICODE_SMILEYS,
+ 	PROP_SPELL_CHECKER
+ };
+ 
+@@ -418,6 +420,12 @@ html_editor_view_set_property (GObject *object,
+ 				E_HTML_EDITOR_VIEW (object),
+ 				g_value_get_boolean (value));
+ 			return;
++
++		case PROP_UNICODE_SMILEYS:
++			e_html_editor_view_set_unicode_smileys (
++				E_HTML_EDITOR_VIEW (object),
++				g_value_get_boolean (value));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -490,6 +498,12 @@ html_editor_view_get_property (GObject *object,
+ 				E_HTML_EDITOR_VIEW (object)));
+ 			return;
+ 
++		case PROP_UNICODE_SMILEYS:
++			g_value_set_boolean (
++				value, e_html_editor_view_get_unicode_smileys (
++				E_HTML_EDITOR_VIEW (object)));
++			return;
++
+ 		case PROP_SPELL_CHECKER:
+ 			g_value_set_object (
+ 				value, e_html_editor_view_get_spell_checker (
+@@ -1168,7 +1182,7 @@ e_html_editor_view_class_init (EHTMLEditorViewClass *class)
+ 	 * EHTMLEditorView:magic-smileys
+ 	 *
+ 	 * Determines whether automatic conversion of text smileys into
+-	 * images is enabled.
++	 * images or Unicode characters is enabled.
+ 	 */
+ 	g_object_class_install_property (
+ 		object_class,
+@@ -1176,7 +1190,24 @@ e_html_editor_view_class_init (EHTMLEditorViewClass *class)
+ 		g_param_spec_boolean (
+ 			"magic-smileys",
+ 			"Magic Smileys",
+-			"Convert emoticons to images as you type",
++			"Convert emoticons to images or Unicode characters as you type",
++			TRUE,
++			G_PARAM_READWRITE |
++			G_PARAM_CONSTRUCT |
++			G_PARAM_STATIC_STRINGS));
++
++	/**
++	 * EHTMLEditorView:unicode-smileys
++	 *
++	 * Determines whether Unicode characters should be used for smileys.
++	 */
++	g_object_class_install_property (
++		object_class,
++		PROP_UNICODE_SMILEYS,
++		g_param_spec_boolean (
++			"unicode-smileys",
++			"Unicode Smileys",
++			"Use Unicode characters for smileys",
+ 			TRUE,
+ 			G_PARAM_READWRITE |
+ 			G_PARAM_CONSTRUCT |
+@@ -1732,7 +1763,7 @@ e_html_editor_view_set_magic_links (EHTMLEditorView *view,
+  *
+  * Returns whether automatic conversion of smileys is enabled or disabled. When
+  * enabled, the editor will automatically convert text smileys ( :-), ;-),...)
+- * into images.
++ * into images or Unicode characters.
+  *
+  * Returns: @TRUE when magic smileys are enabled, @FALSE otherwise.
+  */
+@@ -1765,6 +1796,47 @@ e_html_editor_view_set_magic_smileys (EHTMLEditorView *view,
+ 	g_object_notify (G_OBJECT (view), "magic-smileys");
+ }
+ 
++/**
++ * e_html_editor_view_get_unicode_smileys:
++ * @view: an #EHTMLEditorView
++ *
++ * Returns whether to use Unicode characters for smileys.
++ *
++ * Returns: @TRUE when Unicode characters should be used, @FALSE otherwise.
++ *
++ * Since: 3.14
++ */
++gboolean
++e_html_editor_view_get_unicode_smileys (EHTMLEditorView *view)
++{
++	g_return_val_if_fail (E_IS_HTML_EDITOR_VIEW (view), FALSE);
++
++	return view->priv->unicode_smileys;
++}
++
++/**
++ * e_html_editor_view_set_unicode_smileys:
++ * @view: an #EHTMLEditorView
++ * @unicode_smileys: @TRUE to use Unicode characters, @FALSE to use images
++ *
++ * Enables or disables the usage of Unicode characters for smileys.
++ *
++ * Since: 3.14
++ */
++void
++e_html_editor_view_set_unicode_smileys (EHTMLEditorView *view,
++                                        gboolean unicode_smileys)
++{
++	g_return_if_fail (E_IS_HTML_EDITOR_VIEW (view));
++
++	if (view->priv->unicode_smileys == unicode_smileys)
++		return;
++
++	view->priv->unicode_smileys = unicode_smileys;
++
++	g_object_notify (G_OBJECT (view), "unicode-smileys");
++}
++
+ /**
+  * e_html_editor_view_get_spell_checker:
+  * @view: an #EHTMLEditorView
+diff --git a/e-util/e-html-editor-view.h b/e-util/e-html-editor-view.h
+index 1fc5bc58c5..5bcd3945b9 100644
+--- a/e-util/e-html-editor-view.h
++++ b/e-util/e-html-editor-view.h
+@@ -133,6 +133,11 @@ gboolean	e_html_editor_view_get_magic_smileys
+ void		e_html_editor_view_set_magic_smileys
+ 						(EHTMLEditorView *view,
+ 						 gboolean magic_smileys);
++gboolean	e_html_editor_view_get_unicode_smileys
++						(EHTMLEditorView *view);
++void		e_html_editor_view_set_unicode_smileys
++						(EHTMLEditorView *view,
++						 gboolean unicode_smileys);
+ ESpellChecker *	e_html_editor_view_get_spell_checker
+ 						(EHTMLEditorView *view);
+ gchar *		e_html_editor_view_get_text_html
+diff --git a/mail/mail-config.ui b/mail/mail-config.ui
+index edb52f9867..fff639a5ac 100644
+--- a/mail/mail-config.ui
++++ b/mail/mail-config.ui
+@@ -238,7 +238,7 @@
+                     </child>
+                     <child>
+                       <object class="GtkCheckButton" id="chkAutoSmileys">
+-                        <property name="label" translatable="yes">Automatically insert _emoticon images</property>
++                        <property name="label" translatable="yes">Automatically insert _emoticons</property>
+                         <property name="visible">True</property>
+                         <property name="can_focus">True</property>
+                         <property name="receives_default">False</property>
+@@ -252,6 +252,22 @@
+                         <property name="position">1</property>
+                       </packing>
+                     </child>
++                    <child>
++                      <object class="GtkCheckButton" id="chkUnicodeSmileys">
++                        <property name="label" translatable="yes">Use Unicode characters for smile_ys</property>
++                        <property name="visible">True</property>
++                        <property name="can_focus">True</property>
++                        <property name="receives_default">False</property>
++                        <property name="use_underline">True</property>
++                        <property name="xalign">0.5</property>
++                        <property name="draw_indicator">True</property>
++                      </object>
++                      <packing>
++                        <property name="expand">False</property>
++                        <property name="fill">False</property>
++                        <property name="position">2</property>
++                      </packing>
++                    </child>
+                     <child>
+                       <object class="GtkCheckButton" id="chkRequestReceipt">
+                         <property name="label" translatable="yes">Always request rea_d receipt</property>
+@@ -265,7 +281,7 @@
+                       <packing>
+                         <property name="expand">False</property>
+                         <property name="fill">False</property>
+-                        <property name="position">2</property>
++                        <property name="position">3</property>
+                       </packing>
+                     </child>
+                     <child>
+@@ -281,7 +297,7 @@
+                       <packing>
+                         <property name="expand">False</property>
+                         <property name="fill">False</property>
+-                        <property name="position">3</property>
++                        <property name="position">4</property>
+                       </packing>
+                     </child>
+                     <child>
+diff --git a/modules/mail/em-composer-prefs.c b/modules/mail/em-composer-prefs.c
+index a11e0c2661..d0f390db81 100644
+--- a/modules/mail/em-composer-prefs.c
++++ b/modules/mail/em-composer-prefs.c
+@@ -1122,6 +1122,12 @@ em_composer_prefs_construct (EMComposerPrefs *prefs,
+ 		widget, "active",
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
++	widget = e_builder_get_widget (prefs->builder, "chkUnicodeSmileys");
++	g_settings_bind (
++		settings, "composer-unicode-smileys",
++		widget, "active",
++		G_SETTINGS_BIND_DEFAULT);
++
+ 	widget = e_builder_get_widget (prefs->builder, "chkRequestReceipt");
+ 	g_settings_bind (
+ 		settings, "composer-request-receipt",
+diff --git a/modules/settings/e-settings-html-editor-view.c b/modules/settings/e-settings-html-editor-view.c
+index 1920940416..c4cb99cb52 100644
+--- a/modules/settings/e-settings-html-editor-view.c
++++ b/modules/settings/e-settings-html-editor-view.c
+@@ -96,6 +96,11 @@ settings_html_editor_view_realize (GtkWidget *widget,
+ 		widget, "magic-smileys",
+ 		G_SETTINGS_BIND_GET);
+ 
++	g_settings_bind (
++		settings, "composer-unicode-smileys",
++		widget, "unicode-smileys",
++		G_SETTINGS_BIND_GET);
++
+ 	settings_html_editor_view_load_style (extension);
+ 
+ 	/* Reload the web view when certain settings change. */
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 4a2c001a89..444f96cbaa 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -1178,38 +1178,20 @@ emoticon_load_context_free (LoadContext *load_context)
+ }
+ 
+ static void
+-emoticon_read_async_cb (GFile *file,
+-                        GAsyncResult *result,
+-                        LoadContext *load_context)
++emoticon_insert_span (EEmoticon *emoticon,
++                      LoadContext *load_context,
++                      const gchar *html)
+ {
+ 	EHTMLEditorWebExtension *extension = load_context->extension;
+-	EEmoticon *emoticon = load_context->emoticon;
+-	GError *error = NULL;
+ 	gboolean misplaced_selection = FALSE, empty = FALSE;
+-	gchar *html, *node_text = NULL, *mime_type, *content;
+-	gchar *base64_encoded, *output, *data;
++	gchar *final_html, *node_text = NULL, *content;
+ 	const gchar *emoticon_start;
+-	GFileInputStream *input_stream;
+-	GOutputStream *output_stream;
+-	gssize size;
+ 	WebKitDOMDocument *document = load_context->document;
+ 	WebKitDOMElement *span, *selection_start_marker, *selection_end_marker;
+ 	WebKitDOMNode *node, *insert_before, *prev_sibling, *next_sibling;
+ 	WebKitDOMNode *selection_end_marker_parent;
+ 	WebKitDOMRange *range;
+ 
+-	input_stream = g_file_read_finish (file, result, &error);
+-	g_return_if_fail (!error && input_stream);
+-
+-	output_stream = g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
+-
+-	size = g_output_stream_splice (
+-		output_stream, G_INPUT_STREAM (input_stream),
+-		G_OUTPUT_STREAM_SPLICE_NONE, NULL, &error);
+-
+-	if (error || (size == -1))
+-		goto out;
+-
+ 	if (!dom_selection_is_collapsed (document))
+ 		dom_exec_command (document, E_HTML_EDITOR_VIEW_COMMAND_DELETE, NULL);
+ 
+@@ -1276,32 +1258,17 @@ emoticon_read_async_cb (GFile *file,
+ 		if (element_has_class (WEBKIT_DOM_ELEMENT (next_sibling), "-x-evo-smiley-wrapper"))
+ 			misplaced_selection = TRUE;
+ 
+-	mime_type = g_content_type_get_mime_type (load_context->content_type);
+ 	range = dom_get_current_range (document);
+ 	node = webkit_dom_range_get_end_container (range, NULL);
+ 	if (WEBKIT_DOM_IS_TEXT (node))
+ 		node_text = webkit_dom_text_get_whole_text (WEBKIT_DOM_TEXT (node));
+ 
+-	data = g_memory_output_stream_get_data (G_MEMORY_OUTPUT_STREAM (output_stream));
+-	base64_encoded = g_base64_encode ((const guchar *) data, size);
+-	output = g_strconcat ("data:", mime_type, ";base64,", base64_encoded, NULL);
+-
+ 	content = webkit_dom_node_get_text_content (selection_end_marker_parent);
+ 	empty = !*content || (g_strcmp0 (content, UNICODE_ZERO_WIDTH_SPACE) == 0);
+ 	g_free (content);
+ 
+-	/* Insert span with image representation and another one with text
+-	 * represetation and hide/show them dependant on active composer mode */
+ 	/* &#8203 == UNICODE_ZERO_WIDTH_SPACE */
+-	html = g_strdup_printf (
+-		"<span class=\"-x-evo-smiley-wrapper -x-evo-resizable-wrapper\">"
+-		"<img src=\"%s\" alt=\"%s\" x-evo-smiley=\"%s\" "
+-		"class=\"-x-evo-smiley-img\" data-inline data-name=\"%s\"/>"
+-		"<span class=\"-x-evo-smiley-text\" style=\"display: none;\">%s"
+-		"</span></span>%s",
+-		output, emoticon ? emoticon->text_face : "", emoticon->icon_name,
+-		load_context->name, emoticon ? emoticon->text_face : "",
+-		empty ? "&#8203;" : "");
++	final_html = g_strdup_printf ("%s%s", html, empty ? "&#8203;" : "");
+ 
+ 	span = webkit_dom_document_create_element (document, "SPAN", NULL);
+ 
+@@ -1333,7 +1300,7 @@ emoticon_read_async_cb (GFile *file,
+ 	}
+ 
+ 	webkit_dom_html_element_set_outer_html (
+-		WEBKIT_DOM_HTML_ELEMENT (span), html, NULL);
++		WEBKIT_DOM_HTML_ELEMENT (span), final_html, NULL);
+ 
+ 	if (node_text) {
+ 		emoticon_start = g_utf8_strrchr (
+@@ -1351,8 +1318,55 @@ emoticon_read_async_cb (GFile *file,
+ 
+ 	e_html_editor_web_extension_set_content_changed (extension);
+ 
++	g_free (final_html);
++	g_free (node_text);
++}
++
++static void
++emoticon_read_async_cb (GFile *file,
++                        GAsyncResult *result,
++                        LoadContext *load_context)
++{
++	EEmoticon *emoticon = load_context->emoticon;
++	GError *error = NULL;
++	gchar *html, *mime_type;
++	gchar *base64_encoded, *output, *data;
++	GFileInputStream *input_stream;
++	GOutputStream *output_stream;
++	gssize size;
++
++	input_stream = g_file_read_finish (file, result, &error);
++	g_return_if_fail (!error && input_stream);
++
++	output_stream = g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
++
++	size = g_output_stream_splice (
++		output_stream, G_INPUT_STREAM (input_stream),
++		G_OUTPUT_STREAM_SPLICE_NONE, NULL, &error);
++
++	if (error || (size == -1))
++		goto out;
++
++	mime_type = g_content_type_get_mime_type (load_context->content_type);
++
++	data = g_memory_output_stream_get_data (G_MEMORY_OUTPUT_STREAM (output_stream));
++	base64_encoded = g_base64_encode ((const guchar *) data, size);
++	output = g_strconcat ("data:", mime_type, ";base64,", base64_encoded, NULL);
++
++	/* Insert span with image representation and another one with text
++	 * represetation and hide/show them dependant on active composer mode */
++	html = g_strdup_printf (
++		"<span class=\"-x-evo-smiley-wrapper -x-evo-resizable-wrapper\">"
++		"<img src=\"%s\" alt=\"%s\" x-evo-smiley=\"%s\" "
++		"class=\"-x-evo-smiley-img\" data-inline data-name=\"%s\"/>"
++		"<span class=\"-x-evo-smiley-text\" style=\"display: none;\">%s"
++		"</span></span>",
++		output, emoticon ? emoticon->text_face : "", emoticon->icon_name,
++		load_context->name, emoticon ? emoticon->text_face : "");
++
++	emoticon_insert_span (emoticon, load_context, html);
++
+ 	g_free (html);
+-	g_free (node_text);
+ 	g_free (base64_encoded);
+ 	g_free (output);
+ 	g_free (mime_type);
+@@ -1388,22 +1402,31 @@ dom_insert_smiley (WebKitDOMDocument *document,
+                    EEmoticon *emoticon)
+ {
+ 	GFile *file;
+-	gchar *filename_uri;
++	gchar *html, *filename_uri;
+ 	LoadContext *load_context;
+ 
+-	filename_uri = e_emoticon_get_uri (emoticon);
+-	g_return_if_fail (filename_uri != NULL);
++	if (e_html_editor_web_extension_get_unicode_smileys_enabled (extension)) {
++		html = g_strdup_printf ("<span>%s</span>",
++			emoticon->unicode_character);
+ 
+-	load_context = emoticon_load_context_new (document, extension, emoticon);
++		emoticon_insert_span (emoticon, load_context ,html);
+ 
+-	file = g_file_new_for_uri (filename_uri);
+-	g_file_query_info_async (
+-		file,  "standard::*", G_FILE_QUERY_INFO_NONE,
+-		G_PRIORITY_DEFAULT, NULL,
+-		(GAsyncReadyCallback) emoticon_query_info_async_cb, load_context);
++		g_free (html);
++	} else {
++		filename_uri = e_emoticon_get_uri (emoticon);
++		g_return_if_fail (filename_uri != NULL);
+ 
+-	g_free (filename_uri);
+-	g_object_unref (file);
++		load_context = emoticon_load_context_new (document, extension, emoticon);
++
++		file = g_file_new_for_uri (filename_uri);
++		g_file_query_info_async (
++			file,  "standard::*", G_FILE_QUERY_INFO_NONE,
++			G_PRIORITY_DEFAULT, NULL,
++			(GAsyncReadyCallback) emoticon_query_info_async_cb, load_context);
++
++		g_free (filename_uri);
++		g_object_unref (file);
++	}
+ }
+ 
+ void
+diff --git a/web-extensions/e-html-editor-web-extension.c b/web-extensions/e-html-editor-web-extension.c
+index f171e7537c..07d7f1bd0e 100644
+--- a/web-extensions/e-html-editor-web-extension.c
++++ b/web-extensions/e-html-editor-web-extension.c
+@@ -76,6 +76,7 @@ struct _EHTMLEditorWebExtensionPrivate {
+ 	gboolean inline_spelling;
+ 	gboolean magic_links;
+ 	gboolean magic_smileys;
++	gboolean unicode_smileys;
+ 	gboolean html_mode;
+ 	gboolean return_key_pressed;
+ 	gboolean space_key_pressed;
+@@ -2226,6 +2227,7 @@ e_html_editor_web_extension_init (EHTMLEditorWebExtension *extension)
+ 	extension->priv->inline_spelling = FALSE;
+ 	extension->priv->magic_links = FALSE;
+ 	extension->priv->magic_smileys = FALSE;
++	extension->priv->unicode_smileys = FALSE;
+ 	extension->priv->html_mode = FALSE;
+ 	extension->priv->return_key_pressed = FALSE;
+ 	extension->priv->space_key_pressed = FALSE;
+@@ -2582,6 +2584,12 @@ e_html_editor_web_extension_get_magic_smileys_enabled (EHTMLEditorWebExtension *
+ 	return extension->priv->magic_smileys;
+ }
+ 
++gboolean
++e_html_editor_web_extension_get_unicode_smileys_enabled (EHTMLEditorWebExtension *extension)
++{
++	return extension->priv->unicode_smileys;
++}
++
+ void
+ e_html_editor_web_extension_set_inline_spelling (EHTMLEditorWebExtension *extension,
+                                                  gboolean value)
+diff --git a/web-extensions/e-html-editor-web-extension.h b/web-extensions/e-html-editor-web-extension.h
+index e68ae14c2c..f039bdfd36 100644
+--- a/web-extensions/e-html-editor-web-extension.h
++++ b/web-extensions/e-html-editor-web-extension.h
+@@ -138,6 +138,9 @@ void		e_html_editor_web_extension_set_space_key_pressed
+ gboolean	e_html_editor_web_extension_get_magic_smileys_enabled
+ 						(EHTMLEditorWebExtension *extension);
+ 
++gboolean	e_html_editor_web_extension_get_unicode_smileys_enabled
++						(EHTMLEditorWebExtension *extension);
++
+ void		e_html_editor_web_extension_set_inline_spelling
+ 						(EHTMLEditorWebExtension *extension,
+                                                  gboolean value);
+-- 
+2.15.0
+

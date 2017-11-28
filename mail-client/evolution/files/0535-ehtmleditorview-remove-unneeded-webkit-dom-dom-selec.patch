@@ -1,0 +1,25 @@
+From b0a8dec9b0a354de671f88a0c5b6c621f4d07317 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 22 Apr 2015 14:40:30 +0200
+Subject: [PATCH 0535/1800] EHTMLEditorView - Remove unneeded
+ webkit_dom_dom_selection_get_range_at call
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 642d9b18b9..557210a5bc 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -1837,7 +1837,6 @@ save_history_for_input (WebKitDOMDocument *document,
+ 	ev = g_new0 (EHTMLEditorHistoryEvent, 1);
+ 	ev->type = HISTORY_INPUT;
+ 
+-	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 	dom_selection_get_coordinates (
+ 		document,
+ 		&ev->after.start.x,
+-- 
+2.15.0
+

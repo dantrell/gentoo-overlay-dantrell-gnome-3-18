@@ -1,0 +1,29 @@
+From 72a2a8200472bbcc0b7d0cb99ae5e69e4ffd0d83 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 7 Jan 2015 16:09:21 +0100
+Subject: [PATCH 0161/1800] Bug 742034 - Crash after dragging image URL to
+ photo box in contact editor
+
+---
+ e-util/e-image-chooser.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/e-util/e-image-chooser.c b/e-util/e-image-chooser.c
+index fdf9febe0a..cd7d663456 100644
+--- a/e-util/e-image-chooser.c
++++ b/e-util/e-image-chooser.c
+@@ -265,9 +265,8 @@ image_chooser_file_loaded_cb (GFile *file,
+ 		goto exit;
+ 	}
+ 
+-	set_image_from_data (chooser, contents, length);
+-
+-	g_free (contents);
++	if (!set_image_from_data (chooser, contents, length))
++		g_free (contents);
+ 
+ exit:
+ 	g_object_unref (chooser);
+-- 
+2.15.0
+

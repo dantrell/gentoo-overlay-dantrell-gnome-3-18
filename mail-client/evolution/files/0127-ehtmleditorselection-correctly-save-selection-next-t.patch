@@ -1,0 +1,31 @@
+From 5988481f90af60c0f68e8645722e3b6c056f6976 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 23 Mar 2015 13:03:55 +0100
+Subject: [PATCH 0127/1800] EHTMLEditorSelection - Correctly save selection
+ next to images
+
+---
+ web-extensions/e-html-editor-selection-dom-functions.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index d5e64d5c7d..987e640924 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -1492,6 +1492,13 @@ dom_selection_save (WebKitDOMDocument *document)
+ 			webkit_dom_node_get_first_child (container),
+ 			NULL);
+ 		goto end_marker;
++	} else if (element_has_class (WEBKIT_DOM_ELEMENT (container), "-x-evo-resizable-wrapper")) {
++		marker_node = webkit_dom_node_insert_before (
++			parent_node,
++			WEBKIT_DOM_NODE (marker),
++			webkit_dom_node_get_next_sibling (container),
++			NULL);
++		goto end_marker;
+ 	} else {
+ 		/* Insert the selection marker on the right position in
+ 		 * an empty paragraph in the quoted content */
+-- 
+2.15.0
+

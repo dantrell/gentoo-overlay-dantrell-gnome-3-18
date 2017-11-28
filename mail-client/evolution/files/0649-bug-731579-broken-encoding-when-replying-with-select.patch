@@ -1,0 +1,26 @@
+From 2cb3ab384c9f5fcc74c873167acf2da7566bbfd8 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 7 Apr 2015 15:09:48 +0200
+Subject: [PATCH 0649/1800] Bug 731579 - Broken encoding when replying with
+ selection
+
+---
+ mail/e-mail-reader-utils.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mail/e-mail-reader-utils.c b/mail/e-mail-reader-utils.c
+index 45086c139e..aedcd5ec48 100644
+--- a/mail/e-mail-reader-utils.c
++++ b/mail/e-mail-reader-utils.c
+@@ -2208,7 +2208,7 @@ e_mail_reader_reply_to_message (EMailReader *reader,
+ 
+ 	camel_mime_part_set_content (
+ 		CAMEL_MIME_PART (new_message),
+-		selection, length, "text/html");
++		selection, length, "text/html; charset=utf-8");
+ 
+ 	composer = em_utils_reply_to_message (
+ 		shell, new_message, folder, uid,
+-- 
+2.15.0
+

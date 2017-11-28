@@ -1,0 +1,25 @@
+From b0894369f06d62566b1e57d6b2e28eb01ff459d6 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 23 Mar 2015 14:12:57 +0100
+Subject: [PATCH 0177/1800] Bug 742956 - Spell check error highlights lost on
+ message (auto)save
+
+---
+ composer/e-msg-composer.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 80b01de024..20eece4cad 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -1245,6 +1245,7 @@ composer_build_message (EMsgComposer *composer,
+ 
+ 		e_html_editor_view_remove_embed_styles (view);
+ 		e_html_editor_view_restore_selection (view);
++		e_html_editor_view_force_spell_check (view);
+ 
+ 		g_byte_array_append (data, (guint8 *) text, strlen (text));
+ 
+-- 
+2.15.0
+

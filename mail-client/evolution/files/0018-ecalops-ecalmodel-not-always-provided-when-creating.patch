@@ -1,0 +1,34 @@
+From 5e1a4b21ee47a5dbf96a1807f2d45a1dd9f282f1 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 31 Oct 2014 18:11:05 +0100
+Subject: [PATCH 0018/1800] [ECalOps] ECalModel not always provided when
+ creating a new component editor
+
+Produced runtime warnings.
+---
+ calendar/gui/e-cal-ops.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/calendar/gui/e-cal-ops.c b/calendar/gui/e-cal-ops.c
+index 610b1c7a9b..cd8224ee15 100644
+--- a/calendar/gui/e-cal-ops.c
++++ b/calendar/gui/e-cal-ops.c
+@@ -1493,10 +1493,12 @@ new_component_data_free (gpointer ptr)
+ 			}
+ 
+ 			if (editor) {
+-				g_signal_connect (editor, "object-created",
+-					G_CALLBACK (cal_ops_emit_model_object_created), ncd->model);
++				if (ncd->model) {
++					g_signal_connect (editor, "object-created",
++						G_CALLBACK (cal_ops_emit_model_object_created), ncd->model);
+ 
+-				g_object_set_data_full (G_OBJECT (editor), "e-cal-ops-model", g_object_ref (ncd->model), g_object_unref);
++					g_object_set_data_full (G_OBJECT (editor), "e-cal-ops-model", g_object_ref (ncd->model), g_object_unref);
++				}
+ 
+ 				comp_editor_edit_comp (editor, ncd->comp);
+ 				gtk_window_present (GTK_WINDOW (editor));
+-- 
+2.15.0
+

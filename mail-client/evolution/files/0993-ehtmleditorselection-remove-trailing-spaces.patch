@@ -1,0 +1,34 @@
+From 66e7fb220a161abd62482b7d7ff62f4b3cedbc0e Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 1 Mar 2016 13:24:31 +0100
+Subject: [PATCH 0993/1800] EHTMLEditorSelection - Remove trailing spaces
+
+---
+ web-extensions/composer/e-html-editor-selection-dom-functions.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 08ad1735cd..a3133f7460 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -4668,7 +4668,7 @@ dom_selection_get_block_format (WebKitDOMDocument *document,
+ 
+ 		tmp_element = dom_node_find_parent_element (node, "OL");
+ 		if (tmp_element) {
+-			if (webkit_dom_node_contains (WEBKIT_DOM_NODE (tmp_element), WEBKIT_DOM_NODE (element))) 
++			if (webkit_dom_node_contains (WEBKIT_DOM_NODE (tmp_element), WEBKIT_DOM_NODE (element)))
+ 				result = dom_get_list_format_from_node (WEBKIT_DOM_NODE (element));
+ 			else
+ 				result = dom_get_list_format_from_node (WEBKIT_DOM_NODE (tmp_element));
+@@ -4679,7 +4679,7 @@ dom_selection_get_block_format (WebKitDOMDocument *document,
+ 
+ 		tmp_element = dom_node_find_parent_element (node, "UL");
+ 		if (tmp_element) {
+-			if (webkit_dom_node_contains (WEBKIT_DOM_NODE (element), WEBKIT_DOM_NODE (tmp_element))) 
++			if (webkit_dom_node_contains (WEBKIT_DOM_NODE (element), WEBKIT_DOM_NODE (tmp_element)))
+ 				result = dom_get_list_format_from_node (WEBKIT_DOM_NODE (element));
+ 			else
+ 				result = dom_get_list_format_from_node (WEBKIT_DOM_NODE (tmp_element));
+-- 
+2.15.0
+

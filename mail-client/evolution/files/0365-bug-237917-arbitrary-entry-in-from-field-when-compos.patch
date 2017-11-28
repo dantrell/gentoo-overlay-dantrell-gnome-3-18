@@ -1,0 +1,809 @@
+From 2851892882a0fdd040435a095146d268eff5f18c Mon Sep 17 00:00:00 2001
+From: Valentin Blot <gnome-devel@valentinblot.org>
+Date: Wed, 25 Feb 2015 12:46:20 +0100
+Subject: [PATCH 0365/1800] Bug 237917 - Arbitrary entry in From: field when
+ composing
+
+---
+ composer/e-composer-actions.c                |   8 +
+ composer/e-composer-actions.h                |   2 +
+ composer/e-composer-from-header.c            | 234 ++++++++++++++++++++++++++-
+ composer/e-composer-from-header.h            |  20 +++
+ composer/e-composer-header-table.c           |  81 +++++++++-
+ composer/e-composer-header-table.h           |   4 +
+ composer/e-composer-private.c                |  17 ++
+ composer/e-msg-composer.c                    |  49 +++++-
+ composer/evolution-composer.ui               |   1 +
+ data/org.gnome.evolution.mail.gschema.xml.in |   5 +
+ e-util/e-mail-identity-combo-box.c           |  24 +++
+ e-util/e-mail-identity-combo-box.h           |   2 +
+ po/POTFILES.in                               |   1 +
+ 13 files changed, 433 insertions(+), 15 deletions(-)
+
+diff --git a/composer/e-composer-actions.c b/composer/e-composer-actions.c
+index d9dd67777e..4a072e3bde 100644
+--- a/composer/e-composer-actions.c
++++ b/composer/e-composer-actions.c
+@@ -595,6 +595,14 @@ static GtkToggleActionEntry toggle_entries[] = {
+ 	  NULL,  /* Handled by property bindings */
+ 	  FALSE },
+ 
++	{ "view-from-override",
++	  NULL,
++	  N_("_From Override Field"),
++	  NULL,
++	  N_("Toggles whether the From override field to change name or email address is displayed"),
++	  NULL,  /* Handled by property bindings */
++	  FALSE },
++
+ 	{ "view-reply-to",
+ 	  NULL,
+ 	  N_("_Reply-To Field"),
+diff --git a/composer/e-composer-actions.h b/composer/e-composer-actions.h
+index 8fd6321510..eb8a4aadc5 100644
+--- a/composer/e-composer-actions.h
++++ b/composer/e-composer-actions.h
+@@ -74,6 +74,8 @@
+ 	E_COMPOSER_ACTION ((composer), "view-bcc")
+ #define E_COMPOSER_ACTION_VIEW_CC(composer) \
+ 	E_COMPOSER_ACTION ((composer), "view-cc")
++#define E_COMPOSER_ACTION_VIEW_FROM_OVERRIDE(composer) \
++	E_COMPOSER_ACTION ((composer), "view-from-override")
+ #define E_COMPOSER_ACTION_VIEW_REPLY_TO(composer) \
+ 	E_COMPOSER_ACTION ((composer), "view-reply-to")
+ 
+diff --git a/composer/e-composer-from-header.c b/composer/e-composer-from-header.c
+index 87d0e73e3b..ecc2985a4d 100644
+--- a/composer/e-composer-from-header.c
++++ b/composer/e-composer-from-header.c
+@@ -21,8 +21,15 @@
+ #include <config.h>
+ #endif
+ 
++#include <glib/gi18n-lib.h>
++
+ #include "e-composer-from-header.h"
+ 
++enum {
++	PROP_0,
++	PROP_OVERRIDE_VISIBLE
++};
++
+ G_DEFINE_TYPE (
+ 	EComposerFromHeader,
+ 	e_composer_from_header,
+@@ -32,38 +39,146 @@ static void
+ composer_from_header_changed_cb (EMailIdentityComboBox *combo_box,
+                                  EComposerFromHeader *header)
+ {
++	if (e_mail_identity_combo_box_get_refreshing (combo_box))
++		return;
++
+ 	g_signal_emit_by_name (header, "changed");
+ }
+ 
++static void
++composer_from_header_set_property (GObject *object,
++				   guint property_id,
++				   const GValue *value,
++				   GParamSpec *pspec)
++{
++	switch (property_id) {
++		case PROP_OVERRIDE_VISIBLE:
++			e_composer_from_header_set_override_visible (
++				E_COMPOSER_FROM_HEADER (object),
++				g_value_get_boolean (value));
++			return;
++	}
++
++	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
++}
++
++static void
++composer_from_header_get_property (GObject *object,
++				   guint property_id,
++				   GValue *value,
++				   GParamSpec *pspec)
++{
++	switch (property_id) {
++		case PROP_OVERRIDE_VISIBLE:
++			g_value_set_boolean (
++				value, e_composer_from_header_get_override_visible (
++				E_COMPOSER_FROM_HEADER (object)));
++			return;
++	}
++
++	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
++}
++
+ static void
+ composer_from_header_constructed (GObject *object)
+ {
+ 	ESourceRegistry *registry;
+ 	EComposerHeader *header;
++	EComposerFromHeader *from_header;
+ 	GtkWidget *widget;
++	GtkWidget *grid;
++	GtkWidget *label;
++	GtkWidget *name;
++	GtkWidget *address;
+ 
+ 	header = E_COMPOSER_HEADER (object);
++	from_header = E_COMPOSER_FROM_HEADER (object);
+ 	registry = e_composer_header_get_registry (header);
+ 
+ 	/* Input widget must be set before chaining up. */
+ 
+ 	widget = e_mail_identity_combo_box_new (registry);
++	gtk_widget_show (widget);
+ 	g_signal_connect (
+ 		widget, "changed",
+ 		G_CALLBACK (composer_from_header_changed_cb), header);
+ 	header->input_widget = g_object_ref_sink (widget);
+ 
++	grid = gtk_grid_new ();
++	gtk_grid_set_column_homogeneous (GTK_GRID (grid), FALSE);
++	label = gtk_label_new_with_mnemonic (_("_Name:"));
++	gtk_grid_attach (GTK_GRID (grid), label, 0, 0, 1, 1);
++	name = gtk_entry_new ();
++	g_object_set (G_OBJECT (name),
++		"hexpand", TRUE,
++		"halign", GTK_ALIGN_FILL,
++		"margin-left", 2,
++		"margin-right", 2,
++		NULL);
++	gtk_grid_attach (GTK_GRID (grid), name, 1, 0, 1, 1);
++	gtk_label_set_mnemonic_widget (GTK_LABEL (label), name);
++	gtk_widget_show (label);
++	gtk_widget_show (name);
++
++	label = gtk_label_new_with_mnemonic (_("_Address:"));
++	gtk_grid_attach (GTK_GRID (grid), label, 2, 0, 1, 1);
++	address = gtk_entry_new ();
++	g_object_set (G_OBJECT (address),
++		"hexpand", TRUE,
++		"halign", GTK_ALIGN_FILL,
++		"margin-left", 2,
++		"margin-right", 0,
++		NULL);
++	gtk_grid_attach (GTK_GRID (grid), address, 3, 0, 1, 1);
++	gtk_label_set_mnemonic_widget (GTK_LABEL (label), address);
++	gtk_widget_show (label);
++	gtk_widget_show (address);
++
++	if (from_header->override_visible)
++		gtk_widget_show (grid);
++	else
++		gtk_widget_hide (grid);
++
++	from_header->override_widget = g_object_ref_sink (grid);
++
+ 	/* Chain up to parent's constructed() method. */
+ 	G_OBJECT_CLASS (e_composer_from_header_parent_class)->constructed (object);
+ }
+ 
++static void
++composer_from_header_dispose (GObject *object)
++{
++	EComposerFromHeader *from_header;
++
++	from_header = E_COMPOSER_FROM_HEADER (object);
++
++	g_clear_object (&from_header->override_widget);
++
++	/* Chain up to parent's method. */
++	G_OBJECT_CLASS (e_composer_from_header_parent_class)->dispose (object);
++}
++
+ static void
+ e_composer_from_header_class_init (EComposerFromHeaderClass *class)
+ {
+ 	GObjectClass *object_class;
+ 
+ 	object_class = G_OBJECT_CLASS (class);
++	object_class->set_property = composer_from_header_set_property;
++	object_class->get_property = composer_from_header_get_property;
+ 	object_class->constructed = composer_from_header_constructed;
++	object_class->dispose = composer_from_header_dispose;
++
++	g_object_class_install_property (
++		object_class,
++		PROP_OVERRIDE_VISIBLE,
++		g_param_spec_boolean (
++			"override-visible",
++			NULL,
++			NULL,
++			FALSE,
++			G_PARAM_READWRITE |
++			G_PARAM_STATIC_STRINGS));
+ }
+ 
+ static void
+@@ -83,6 +198,15 @@ e_composer_from_header_new (ESourceRegistry *registry,
+ 		"registry", registry, NULL);
+ }
+ 
++static GtkComboBox *
++e_composer_from_header_get_identities_widget (EComposerFromHeader *header)
++
++{
++	g_return_val_if_fail (E_IS_COMPOSER_FROM_HEADER (header), NULL);
++
++	return GTK_COMBO_BOX (E_COMPOSER_HEADER (header)->input_widget);
++}
++
+ const gchar *
+ e_composer_from_header_get_active_id (EComposerFromHeader *header)
+ {
+@@ -90,7 +214,7 @@ e_composer_from_header_get_active_id (EComposerFromHeader *header)
+ 
+ 	g_return_val_if_fail (E_IS_COMPOSER_FROM_HEADER (header), NULL);
+ 
+-	combo_box = GTK_COMBO_BOX (E_COMPOSER_HEADER (header)->input_widget);
++	combo_box = e_composer_from_header_get_identities_widget (header);
+ 
+ 	return gtk_combo_box_get_active_id (combo_box);
+ }
+@@ -106,7 +230,7 @@ e_composer_from_header_set_active_id (EComposerFromHeader *header,
+ 	if (!active_id)
+ 		return;
+ 
+-	combo_box = GTK_COMBO_BOX (E_COMPOSER_HEADER (header)->input_widget);
++	combo_box = e_composer_from_header_get_identities_widget (header);
+ 
+ 	if (!gtk_combo_box_set_active_id (combo_box, active_id) && active_id && *active_id) {
+ 		ESourceRegistry *registry;
+@@ -144,3 +268,109 @@ e_composer_from_header_set_active_id (EComposerFromHeader *header,
+ 		}
+ 	}
+ }
++
++GtkEntry *
++e_composer_from_header_get_name_entry (EComposerFromHeader *header)
++{
++	g_return_val_if_fail (E_IS_COMPOSER_FROM_HEADER (header), NULL);
++
++	return GTK_ENTRY (gtk_grid_get_child_at (GTK_GRID (header->override_widget), 1, 0));
++}
++
++const gchar *
++e_composer_from_header_get_name (EComposerFromHeader *header)
++{
++	const gchar *text;
++
++	g_return_val_if_fail (E_IS_COMPOSER_FROM_HEADER (header), NULL);
++
++	text = gtk_entry_get_text (e_composer_from_header_get_name_entry (header));
++	if (text && !*text)
++		text = NULL;
++
++	return text;
++}
++
++void
++e_composer_from_header_set_name (EComposerFromHeader *header,
++                                 const gchar *name)
++{
++	GtkEntry *widget;
++
++	g_return_if_fail (E_IS_COMPOSER_FROM_HEADER (header));
++
++	if (!name)
++		name = "";
++
++	widget = e_composer_from_header_get_name_entry (header);
++
++	gtk_entry_set_text (widget, name);
++}
++
++GtkEntry *
++e_composer_from_header_get_address_entry (EComposerFromHeader *header)
++{
++	g_return_val_if_fail (E_IS_COMPOSER_FROM_HEADER (header), NULL);
++
++	return GTK_ENTRY (gtk_grid_get_child_at (GTK_GRID (header->override_widget), 3, 0));
++}
++
++const gchar *
++e_composer_from_header_get_address (EComposerFromHeader *header)
++{
++	const gchar *text;
++
++	g_return_val_if_fail (E_IS_COMPOSER_FROM_HEADER (header), NULL);
++
++	text = gtk_entry_get_text (e_composer_from_header_get_address_entry (header));
++	if (text && !*text)
++		text = NULL;
++
++	return text;
++}
++
++void
++e_composer_from_header_set_address (EComposerFromHeader *header,
++                                    const gchar *address)
++{
++	GtkEntry *widget;
++
++	g_return_if_fail (E_IS_COMPOSER_FROM_HEADER (header));
++
++	if (!address)
++		address = "";
++
++	widget = e_composer_from_header_get_address_entry (header);
++
++	gtk_entry_set_text (widget, address);
++}
++
++gboolean
++e_composer_from_header_get_override_visible (EComposerFromHeader *header)
++{
++	g_return_val_if_fail (E_IS_COMPOSER_FROM_HEADER (header), FALSE);
++
++	return header->override_visible;
++}
++
++void
++e_composer_from_header_set_override_visible (EComposerFromHeader *header,
++					     gboolean visible)
++{
++	g_return_if_fail (E_IS_COMPOSER_FROM_HEADER (header));
++
++	if (header->override_visible == visible)
++		return;
++
++	header->override_visible = visible;
++
++	/* Show/hide the override widgets accordingly. */
++	if (header->override_widget) {
++		if (visible)
++			gtk_widget_show (header->override_widget);
++		else
++			gtk_widget_hide (header->override_widget);
++	}
++
++	g_object_notify (G_OBJECT (header), "override-visible");
++}
+diff --git a/composer/e-composer-from-header.h b/composer/e-composer-from-header.h
+index ed15329128..7dd3579a6a 100644
+--- a/composer/e-composer-from-header.h
++++ b/composer/e-composer-from-header.h
+@@ -48,6 +48,9 @@ typedef struct _EComposerFromHeaderClass EComposerFromHeaderClass;
+ 
+ struct _EComposerFromHeader {
+ 	EComposerHeader parent;
++
++	GtkWidget *override_widget;
++	gboolean override_visible;
+ };
+ 
+ struct _EComposerFromHeaderClass {
+@@ -63,6 +66,23 @@ const gchar *	e_composer_from_header_get_active_id
+ void		e_composer_from_header_set_active_id
+ 						(EComposerFromHeader *header,
+ 						 const gchar *active_id);
++GtkEntry *	e_composer_from_header_get_name_entry
++						(EComposerFromHeader *header);
++const gchar *	e_composer_from_header_get_name (EComposerFromHeader *header);
++void		e_composer_from_header_set_name (EComposerFromHeader *header,
++						 const gchar *name);
++GtkEntry *	e_composer_from_header_get_address_entry
++						(EComposerFromHeader *header);
++const gchar *	e_composer_from_header_get_address
++						(EComposerFromHeader *header);
++void		e_composer_from_header_set_address
++						(EComposerFromHeader *header,
++						 const gchar *address);
++gboolean	e_composer_from_header_get_override_visible
++						(EComposerFromHeader *header);
++void		e_composer_from_header_set_override_visible
++						(EComposerFromHeader *header,
++						 gboolean visible);
+ 
+ G_END_DECLS
+ 
+diff --git a/composer/e-composer-header-table.c b/composer/e-composer-header-table.c
+index 49fe82759f..a56d83deb9 100644
+--- a/composer/e-composer-header-table.c
++++ b/composer/e-composer-header-table.c
+@@ -281,6 +281,10 @@ composer_header_table_setup_mail_headers (EComposerHeaderTable *table)
+ 		header = e_composer_header_table_get_header (table, ii);
+ 
+ 		switch (ii) {
++			case E_COMPOSER_HEADER_FROM:
++				key = "composer-show-from-override";
++				break;
++
+ 			case E_COMPOSER_HEADER_BCC:
+ 				key = "composer-show-bcc";
+ 				break;
+@@ -325,11 +329,18 @@ composer_header_table_setup_mail_headers (EComposerHeaderTable *table)
+ 		e_composer_header_set_sensitive (header, sensitive);
+ 		e_composer_header_set_visible (header, visible);
+ 
+-		if (key != NULL)
+-			g_settings_bind (
+-				settings, key,
+-				header, "visible",
+-				G_SETTINGS_BIND_DEFAULT);
++		if (key != NULL) {
++			if (ii == E_COMPOSER_HEADER_FROM)
++				g_settings_bind (
++					settings, key,
++					header, "override-visible",
++					G_SETTINGS_BIND_DEFAULT);
++			else
++				g_settings_bind (
++					settings, key,
++					header, "visible",
++					G_SETTINGS_BIND_DEFAULT);
++		}
+ 	}
+ 
+ 	g_object_unref (settings);
+@@ -455,10 +466,13 @@ composer_header_table_from_changed_cb (EComposerHeaderTable *table)
+ 	ESource *mail_account = NULL;
+ 	EComposerHeader *header;
+ 	EComposerHeaderType type;
++	EComposerFromHeader *from_header;
+ 	EComposerPostHeader *post_header;
+ 	EComposerTextHeader *text_header;
+ 	EDestination **old_destinations;
+ 	EDestination **new_destinations;
++	const gchar *name = NULL;
++	const gchar *address = NULL;
+ 	const gchar *reply_to = NULL;
+ 	const gchar * const *bcc = NULL;
+ 	const gchar * const *cc = NULL;
+@@ -492,6 +506,8 @@ composer_header_table_from_changed_cb (EComposerHeaderTable *table)
+ 		extension_name = E_SOURCE_EXTENSION_MAIL_COMPOSITION;
+ 		mc = e_source_get_extension (source, extension_name);
+ 
++		name = e_source_mail_identity_get_name (mi);
++		address = e_source_mail_identity_get_address (mi);
+ 		reply_to = e_source_mail_identity_get_reply_to (mi);
+ 		bcc = e_source_mail_composition_get_bcc (mc);
+ 		cc = e_source_mail_composition_get_cc (mc);
+@@ -499,6 +515,12 @@ composer_header_table_from_changed_cb (EComposerHeaderTable *table)
+ 		g_object_unref (source);
+ 	}
+ 
++	type = E_COMPOSER_HEADER_FROM;
++	header = e_composer_header_table_get_header (table, type);
++	from_header = E_COMPOSER_FROM_HEADER (header);
++	e_composer_from_header_set_name (from_header, name);
++	e_composer_from_header_set_address (from_header, address);
++
+ 	type = E_COMPOSER_HEADER_POST_TO;
+ 	header = e_composer_header_table_get_header (table, type);
+ 	post_header = E_COMPOSER_POST_HEADER (header);
+@@ -748,6 +770,7 @@ static void
+ composer_header_table_constructed (GObject *object)
+ {
+ 	EComposerHeaderTable *table;
++	EComposerFromHeader *from_header;
+ 	ENameSelector *name_selector;
+ 	EClientCache *client_cache;
+ 	ESourceRegistry *registry;
+@@ -819,14 +842,19 @@ composer_header_table_constructed (GObject *object)
+ 	row_padding = 3;
+ 
+ 	for (ii = 0; ii < G_N_ELEMENTS (table->priv->headers); ii++) {
++		gint row = ii;
++
++		if (ii > E_COMPOSER_HEADER_FROM)
++			row++;
++
+ 		gtk_table_attach (
+ 			GTK_TABLE (object),
+ 			table->priv->headers[ii]->title_widget, 0, 1,
+-			ii, ii + 1, GTK_FILL, GTK_FILL, 0, row_padding);
++			row, row + 1, GTK_FILL, GTK_FILL, 0, row_padding);
+ 		gtk_table_attach (
+ 			GTK_TABLE (object),
+ 			table->priv->headers[ii]->input_widget, 1, 4,
+-			ii, ii + 1, GTK_FILL | GTK_EXPAND, 0, 0, row_padding);
++			row, row + 1, GTK_FILL | GTK_EXPAND, 0, 0, row_padding);
+ 	}
+ 
+ 	ii = E_COMPOSER_HEADER_FROM;
+@@ -857,6 +885,13 @@ composer_header_table_constructed (GObject *object)
+ 		table->priv->signature_combo_box,
+ 		3, 4, ii, ii + 1, 0, 0, 0, row_padding);
+ 
++	from_header = E_COMPOSER_FROM_HEADER (e_composer_header_table_get_header (table, E_COMPOSER_HEADER_FROM));
++
++	gtk_table_attach (
++		GTK_TABLE (object),
++		from_header->override_widget, 1, 2,
++		ii + 1, ii + 2, GTK_FILL, GTK_FILL, 0, row_padding);
++
+ 	/* Initialize the headers. */
+ 	composer_header_table_from_changed_cb (table);
+ 
+@@ -1295,6 +1330,38 @@ e_composer_header_table_set_identity_uid (EComposerHeaderTable *table,
+ 	e_composer_from_header_set_active_id (from_header, identity_uid);
+ }
+ 
++const gchar *
++e_composer_header_table_get_from_name (EComposerHeaderTable *table)
++{
++	EComposerHeader *header;
++	EComposerHeaderType type;
++	EComposerFromHeader *from_header;
++
++	g_return_val_if_fail (E_IS_COMPOSER_HEADER_TABLE (table), NULL);
++
++	type = E_COMPOSER_HEADER_FROM;
++	header = e_composer_header_table_get_header (table, type);
++	from_header = E_COMPOSER_FROM_HEADER (header);
++
++	return e_composer_from_header_get_name (from_header);
++}
++
++const gchar *
++e_composer_header_table_get_from_address (EComposerHeaderTable *table)
++{
++	EComposerHeader *header;
++	EComposerHeaderType type;
++	EComposerFromHeader *from_header;
++
++	g_return_val_if_fail (E_IS_COMPOSER_HEADER_TABLE (table), NULL);
++
++	type = E_COMPOSER_HEADER_FROM;
++	header = e_composer_header_table_get_header (table, type);
++	from_header = E_COMPOSER_FROM_HEADER (header);
++
++	return e_composer_from_header_get_address (from_header);
++}
++
+ GList *
+ e_composer_header_table_get_post_to (EComposerHeaderTable *table)
+ {
+diff --git a/composer/e-composer-header-table.h b/composer/e-composer-header-table.h
+index 977862480c..cff5ed1452 100644
+--- a/composer/e-composer-header-table.h
++++ b/composer/e-composer-header-table.h
+@@ -109,6 +109,10 @@ const gchar *	e_composer_header_table_get_identity_uid
+ void		e_composer_header_table_set_identity_uid
+ 						(EComposerHeaderTable *table,
+ 						 const gchar *identity_uid);
++const gchar *	e_composer_header_table_get_from_name
++						(EComposerHeaderTable *table);
++const gchar *	e_composer_header_table_get_from_address
++						(EComposerHeaderTable *table);
+ GList *		e_composer_header_table_get_post_to
+ 						(EComposerHeaderTable *table);
+ void		e_composer_header_table_set_post_to_base
+diff --git a/composer/e-composer-private.c b/composer/e-composer-private.c
+index 72cfc609af..104954a2a3 100644
+--- a/composer/e-composer-private.c
++++ b/composer/e-composer-private.c
+@@ -21,6 +21,7 @@
+ #endif
+ 
+ #include "e-composer-private.h"
++#include "e-composer-from-header.h"
+ #include "e-composer-spell-header.h"
+ #include "e-util/e-util-private.h"
+ 
+@@ -297,6 +298,22 @@ e_composer_private_constructed (EMsgComposer *composer)
+ 		header = e_composer_header_table_get_header (table, ii);
+ 
+ 		switch (ii) {
++			case E_COMPOSER_HEADER_FROM:
++				e_widget_undo_attach (
++					GTK_WIDGET (e_composer_from_header_get_name_entry (E_COMPOSER_FROM_HEADER (header))),
++					focus_tracker);
++				e_widget_undo_attach (
++					GTK_WIDGET (e_composer_from_header_get_address_entry (E_COMPOSER_FROM_HEADER (header))),
++					focus_tracker);
++
++				action = ACTION (VIEW_FROM_OVERRIDE);
++				e_binding_bind_property (
++					header, "override-visible",
++					action, "active",
++					G_BINDING_BIDIRECTIONAL |
++					G_BINDING_SYNC_CREATE);
++				continue;
++
+ 			case E_COMPOSER_HEADER_BCC:
+ 				action = ACTION (VIEW_BCC);
+ 				break;
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 186cfe66f8..22c8da762f 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -37,6 +37,7 @@
+ #include <fcntl.h>
+ #include <enchant/enchant.h>
+ 
++#include "e-composer-from-header.h"
+ #include "e-composer-private.h"
+ 
+ #include <em-format/e-mail-part.h>
+@@ -546,19 +547,26 @@ build_message_headers (EMsgComposer *composer,
+ 	if (source != NULL) {
+ 		CamelMedium *medium;
+ 		CamelInternetAddress *addr;
+-		ESourceMailIdentity *mi;
+ 		ESourceMailSubmission *ms;
++		EComposerHeader *composer_header;
+ 		const gchar *extension_name;
+ 		const gchar *header_name;
+ 		const gchar *name, *address;
+ 		const gchar *transport_uid;
+ 		const gchar *sent_folder;
+ 
+-		extension_name = E_SOURCE_EXTENSION_MAIL_IDENTITY;
+-		mi = e_source_get_extension (source, extension_name);
++		composer_header = e_composer_header_table_get_header (table, E_COMPOSER_HEADER_FROM);
++		if (e_composer_from_header_get_override_visible (E_COMPOSER_FROM_HEADER (composer_header))) {
++			name = e_composer_header_table_get_from_name (table);
++			address = e_composer_header_table_get_from_address (table);
++		} else {
++			ESourceMailIdentity *mail_identity;
+ 
+-		name = e_source_mail_identity_get_name (mi);
+-		address = e_source_mail_identity_get_address (mi);
++			mail_identity = e_source_get_extension (source, E_SOURCE_EXTENSION_MAIL_IDENTITY);
++
++			name = e_source_mail_identity_get_name (mail_identity);
++			address = e_source_mail_identity_get_address (mail_identity);
++		}
+ 
+ 		extension_name = E_SOURCE_EXTENSION_MAIL_SUBMISSION;
+ 		ms = e_source_get_extension (source, extension_name);
+@@ -3370,7 +3378,7 @@ e_msg_composer_new_with_message (EShell *shell,
+                                  gboolean keep_signature,
+                                  GCancellable *cancellable)
+ {
+-	CamelInternetAddress *to, *cc, *bcc;
++	CamelInternetAddress *from, *to, *cc, *bcc;
+ 	GList *To = NULL, *Cc = NULL, *Bcc = NULL, *postto = NULL;
+ 	const gchar *format, *subject, *composer_mode;
+ 	EDestination **Tov, **Ccv, **Bccv;
+@@ -3530,6 +3538,35 @@ e_msg_composer_new_with_message (EShell *shell,
+ 	e_destination_freev (Ccv);
+ 	e_destination_freev (Bccv);
+ 
++	from = camel_mime_message_get_from (message);
++	if (from) {
++		const gchar *name = NULL, *address = NULL;
++
++		if (camel_address_length (CAMEL_ADDRESS (from)) == 1 &&
++		    camel_internet_address_get (from, 0, &name, &address)) {
++			EComposerFromHeader *header_from;
++			const gchar *filled_name, *filled_address;
++
++			header_from = E_COMPOSER_FROM_HEADER (e_composer_header_table_get_header (table, E_COMPOSER_HEADER_FROM));
++
++			filled_name = e_composer_from_header_get_name (header_from);
++			filled_address = e_composer_from_header_get_address (header_from);
++
++			if (name && !*name)
++				name = NULL;
++
++			if (address && !*address)
++				address = NULL;
++
++			if (g_strcmp0 (filled_name, name) != 0 ||
++			    g_strcmp0 (filled_address, address) != 0) {
++				e_composer_from_header_set_name (header_from, name);
++				e_composer_from_header_set_address (header_from, address);
++				e_composer_from_header_set_override_visible (header_from, TRUE);
++			}
++		}
++	}
++
+ 	/* Restore the format editing preference */
+ 	format = camel_medium_get_header (
+ 		CAMEL_MEDIUM (message), "X-Evolution-Format");
+diff --git a/composer/evolution-composer.ui b/composer/evolution-composer.ui
+index 8b107eb008..7acd273cf1 100644
+--- a/composer/evolution-composer.ui
++++ b/composer/evolution-composer.ui
+@@ -26,6 +26,7 @@
+     </menu>
+     <placeholder name='pre-insert-menu'>
+       <menu action='view-menu'>
++        <menuitem action='view-from-override'/>
+         <menuitem action='view-reply-to'/>
+         <menuitem action='view-cc'/>
+         <menuitem action='view-bcc'/>
+diff --git a/data/org.gnome.evolution.mail.gschema.xml.in b/data/org.gnome.evolution.mail.gschema.xml.in
+index 91095aadb3..89373bb14b 100644
+--- a/data/org.gnome.evolution.mail.gschema.xml.in
++++ b/data/org.gnome.evolution.mail.gschema.xml.in
+@@ -115,6 +115,11 @@
+       <_summary>Show "Cc" field when sending a mail message</_summary>
+       <_description>Show the "Cc" field when sending a mail message. This is controlled from the View menu when a mail account is chosen.</_description>
+     </key>
++    <key name="composer-show-from-override" type="b">
++      <default>false</default>
++      <_summary>Show "From" override field when sending a mail message</_summary>
++      <_description>Show the "From" override field when sending a mail message. This is controlled from the View menu when a mail account is chosen.</_description>
++    </key>
+     <key name="composer-show-reply-to" type="b">
+       <default>false</default>
+       <_summary>Show "Reply To" field when sending a mail message</_summary>
+diff --git a/e-util/e-mail-identity-combo-box.c b/e-util/e-mail-identity-combo-box.c
+index 2bb17e1109..7e52291374 100644
+--- a/e-util/e-mail-identity-combo-box.c
++++ b/e-util/e-mail-identity-combo-box.c
+@@ -47,6 +47,8 @@ struct _EMailIdentityComboBoxPrivate {
+ 	gboolean allow_none;
+ 
+ 	guint refresh_idle_id;
++
++	gint refreshing;
+ };
+ 
+ enum {
+@@ -365,6 +367,8 @@ e_mail_identity_combo_box_refresh (EMailIdentityComboBox *combo_box)
+ 
+ 	g_return_if_fail (E_IS_MAIL_IDENTITY_COMBO_BOX (combo_box));
+ 
++	g_atomic_int_inc (&combo_box->priv->refreshing);
++
+ 	if (combo_box->priv->refresh_idle_id > 0) {
+ 		g_source_remove (combo_box->priv->refresh_idle_id);
+ 		combo_box->priv->refresh_idle_id = 0;
+@@ -486,6 +490,11 @@ e_mail_identity_combo_box_refresh (EMailIdentityComboBox *combo_box)
+ 
+ 	if (gtk_combo_box_get_active_id (gtk_combo_box) == NULL)
+ 		gtk_combo_box_set_active (gtk_combo_box, 0);
++
++	if (g_atomic_int_dec_and_test (&combo_box->priv->refreshing)) {
++		if (g_strcmp0 (gtk_combo_box_get_active_id (gtk_combo_box), saved_uid) != 0)
++			g_signal_emit_by_name (gtk_combo_box, "changed");
++	}
+ }
+ 
+ /**
+@@ -547,3 +556,18 @@ e_mail_identity_combo_box_set_allow_none (EMailIdentityComboBox *combo_box,
+ 	e_mail_identity_combo_box_refresh (combo_box);
+ }
+ 
++/**
++ * e_mail_identity_combo_box_get_refreshing:
++ * @combo_box: an #EMailIdentityComboBox
++ *
++ * Returns: Whether the combo box content is currently refreshing.
++ *
++ * Since: 3.16
++ **/
++gboolean
++e_mail_identity_combo_box_get_refreshing (EMailIdentityComboBox *combo_box)
++{
++	g_return_val_if_fail (E_IS_MAIL_IDENTITY_COMBO_BOX (combo_box), FALSE);
++
++	return combo_box->priv->refreshing != 0;
++}
+diff --git a/e-util/e-mail-identity-combo-box.h b/e-util/e-mail-identity-combo-box.h
+index 3311e86a0e..4b37774763 100644
+--- a/e-util/e-mail-identity-combo-box.h
++++ b/e-util/e-mail-identity-combo-box.h
+@@ -79,6 +79,8 @@ gboolean	e_mail_identity_combo_box_get_allow_none
+ void		e_mail_identity_combo_box_set_allow_none
+ 					(EMailIdentityComboBox *combo_box,
+ 					 gboolean allow_none);
++gboolean	e_mail_identity_combo_box_get_refreshing
++					(EMailIdentityComboBox *combo_box);
+ 
+ G_END_DECLS
+ 
+diff --git a/po/POTFILES.in b/po/POTFILES.in
+index 30075b27b5..291f38bd32 100644
+--- a/po/POTFILES.in
++++ b/po/POTFILES.in
+@@ -114,6 +114,7 @@ calendar/gui/tasktypes.xml
+ calendar/importers/icalendar-importer.c
+ calendar/zones.h
+ composer/e-composer-actions.c
++composer/e-composer-from-header.c
+ composer/e-composer-header.c
+ composer/e-composer-header-table.c
+ composer/e-composer-name-header.c
+-- 
+2.15.0
+

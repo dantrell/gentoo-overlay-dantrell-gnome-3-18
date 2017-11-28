@@ -1,0 +1,25 @@
+From e5c4972a2a817ee95bbc3f85ee759f04dd9fa3bc Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marek=20=C4=8Cernock=C3=BD?= <marek@manet.cz>
+Date: Thu, 5 Feb 2015 09:42:43 +0100
+Subject: [PATCH 0249/1800] Updated Czech translation
+
+---
+ po/cs.po | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/po/cs.po b/po/cs.po
+index d17e73e4bf..48b2b27484 100644
+--- a/po/cs.po
++++ b/po/cs.po
+@@ -17923,7 +17923,7 @@ msgstr "Přijato"
+ 
+ #: ../mail/message-list.etspec.h:11
+ msgid "Flag Status"
+-msgstr "Stav příznaků"
++msgstr "Příznak Stav"
+ 
+ #: ../mail/message-list.etspec.h:12
+ msgid "Follow Up Flag"
+-- 
+2.15.0
+

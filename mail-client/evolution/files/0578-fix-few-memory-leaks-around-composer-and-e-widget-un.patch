@@ -1,0 +1,53 @@
+From 7e3111f33a31db68a660886180f15ed921e127b9 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 26 Mar 2015 10:38:44 +0100
+Subject: [PATCH 0578/1800] Fix few memory leaks around composer and
+ e-widget-undo.c
+
+---
+ composer/e-msg-composer.c                    | 2 ++
+ e-util/e-widget-undo.c                       | 1 +
+ modules/composer-autosave/e-autosave-utils.c | 2 ++
+ 3 files changed, 5 insertions(+)
+
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 560690b9f6..decce0da52 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -4208,6 +4208,8 @@ add_recipients (GList *list,
+ 		}
+ 	}
+ 
++	g_object_unref (cia);
++
+ 	return list;
+ }
+ 
+diff --git a/e-util/e-widget-undo.c b/e-util/e-widget-undo.c
+index f2a3ec7d17..a7e6f8cc99 100644
+--- a/e-util/e-widget-undo.c
++++ b/e-util/e-widget-undo.c
+@@ -90,6 +90,7 @@ free_undo_data (gpointer ptr)
+ 		for (ii = 0; ii < data->undo_len; ii++) {
+ 			free_undo_info (data->undo_stack[ii]);
+ 		}
++		g_free (data->undo_stack);
+ 		g_free (data);
+ 	}
+ }
+diff --git a/modules/composer-autosave/e-autosave-utils.c b/modules/composer-autosave/e-autosave-utils.c
+index c96481fc8c..ce74d49051 100644
+--- a/modules/composer-autosave/e-autosave-utils.c
++++ b/modules/composer-autosave/e-autosave-utils.c
+@@ -111,6 +111,8 @@ create_snapshot_file (EMsgComposer *composer,
+ 		SNAPSHOT_FILE_KEY, snapshot_file,
+ 		(GDestroyNotify) delete_snapshot_file);
+ 
++	g_free (path);
++
+ 	return snapshot_file;
+ }
+ 
+-- 
+2.15.0
+

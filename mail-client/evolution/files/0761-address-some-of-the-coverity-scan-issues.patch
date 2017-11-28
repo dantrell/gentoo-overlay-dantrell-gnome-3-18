@@ -1,0 +1,188 @@
+From 67875edbe3268a42c50ce83b725e8ec43f775c26 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 22 May 2015 12:55:08 +0200
+Subject: [PATCH 0761/1800] Address some of the Coverity Scan issues
+
+---
+ addressbook/gui/widgets/eab-contact-formatter.c | 4 ++--
+ calendar/gui/e-calendar-view.c                  | 2 ++
+ calendar/gui/e-day-view.c                       | 2 ++
+ e-util/e-cell-date-edit.c                       | 4 ++--
+ e-util/e-filter-input.c                         | 2 +-
+ e-util/e-focus-tracker.c                        | 6 +++---
+ e-util/e-table-sort-info.c                      | 4 ++--
+ mail/e-mail-reader-utils.c                      | 1 +
+ mail/em-folder-tree.c                           | 2 +-
+ mail/message-list.c                             | 2 +-
+ mail/test-mail-autoconfig.c                     | 2 ++
+ 11 files changed, 19 insertions(+), 12 deletions(-)
+
+diff --git a/addressbook/gui/widgets/eab-contact-formatter.c b/addressbook/gui/widgets/eab-contact-formatter.c
+index 983ae666c7..d2e217b2c6 100644
+--- a/addressbook/gui/widgets/eab-contact-formatter.c
++++ b/addressbook/gui/widgets/eab-contact-formatter.c
+@@ -546,7 +546,7 @@ render_title_block (EABContactFormatter *formatter,
+ 		const gchar *uri = photo->data.uri;
+ 		/* WebKit 2.2.x doesn't re-escape URIs, thus do this for versions before and after this */
+ 		#if !(WEBKIT_MAJOR_VERSION == 2 && WEBKIT_MINOR_VERSION == 2)
+-		gchar *unescaped = g_uri_unescape_string (photo->data.uri, NULL);
++		gchar *unescaped = g_uri_unescape_string (uri, NULL);
+ 		uri = unescaped;
+ 		#endif
+ 		g_string_append_printf (
+@@ -1064,7 +1064,7 @@ render_compact (EABContactFormatter *formatter,
+ 			const gchar *uri = photo->data.uri;
+ 			/* WebKit 2.2.x doesn't re-escape URIs, thus do this for versions before and after this */
+ 			#if !(WEBKIT_MAJOR_VERSION == 2 && WEBKIT_MINOR_VERSION == 2)
+-			gchar *unescaped = g_uri_unescape_string (photo->data.uri, NULL);
++			gchar *unescaped = g_uri_unescape_string (uri, NULL);
+ 			uri = unescaped;
+ 			#endif
+ 			g_string_append_printf (
+diff --git a/calendar/gui/e-calendar-view.c b/calendar/gui/e-calendar-view.c
+index d04ea5a54b..049fe1df98 100644
+--- a/calendar/gui/e-calendar-view.c
++++ b/calendar/gui/e-calendar-view.c
+@@ -1860,6 +1860,8 @@ e_calendar_view_get_tooltips (const ECalendarViewEventData *data)
+ 			tmp = tmp2;
+ 			tmp2 = NULL;
+ 		}
++	} else {
++		tmp = NULL;
+ 	}
+ 
+ 	e_cal_component_free_datetime (&dtstart);
+diff --git a/calendar/gui/e-day-view.c b/calendar/gui/e-day-view.c
+index 77e391e815..555238d13d 100644
+--- a/calendar/gui/e-day-view.c
++++ b/calendar/gui/e-day-view.c
+@@ -612,6 +612,8 @@ e_day_view_get_text_color (EDayView *day_view,
+ 		color.blue = 65535.0f;
+ 	}
+ 
++	color.pixel = 0;
++
+ 	return color;
+ }
+ 
+diff --git a/e-util/e-cell-date-edit.c b/e-util/e-cell-date-edit.c
+index 5b203b494d..24e9e8d5fb 100644
+--- a/e-util/e-cell-date-edit.c
++++ b/e-util/e-cell-date-edit.c
+@@ -960,8 +960,8 @@ e_cell_date_edit_update_cell (ECellDateEdit *ecde,
+ 			ecell_text, ecv->e_table_model,
+ 			ecol->spec->model_col, ecp->popup_row, text);
+ 		e_cell_leave_edit (
+-			ecv, ecp->popup_view_col,
+-			ecol->spec->model_col, ecp->popup_row, NULL);
++			ecv, ecol->spec->model_col,
++			ecp->popup_view_col, ecp->popup_row, NULL);
+ 	}
+ 
+ 	e_cell_text_free_text (ecell_text, ecv->e_table_model,
+diff --git a/e-util/e-filter-input.c b/e-util/e-filter-input.c
+index 8fa31d0962..3772ce19ba 100644
+--- a/e-util/e-filter-input.c
++++ b/e-util/e-filter-input.c
+@@ -110,7 +110,7 @@ filter_input_validate (EFilterElement *element,
+ 
+ 		regfree (&regexpat);
+ 	} else if (!input->allow_empty && (!input->values || !input->values->next)) {
+-		const gchar *value = input->values->data;
++		const gchar *value = input->values ? input->values->data : NULL;
+ 		gboolean is_empty = value == NULL;
+ 
+ 		if (value) {
+diff --git a/e-util/e-focus-tracker.c b/e-util/e-focus-tracker.c
+index 3d3daec9fb..7a9477ac0e 100644
+--- a/e-util/e-focus-tracker.c
++++ b/e-util/e-focus-tracker.c
+@@ -1178,9 +1178,9 @@ e_focus_tracker_paste_clipboard (EFocusTracker *focus_tracker)
+ 
+ 	} else if (GTK_IS_TEXT_VIEW (focus)) {
+ 		GtkClipboard *clipboard;
+-		GtkTextView *text_view = GTK_TEXT_VIEW (focus);
+-		GtkTextBuffer *buffer = gtk_text_view_get_buffer (text_view);
+-		gboolean is_editable = gtk_text_view_get_editable (text_view);
++		GtkTextView *text_view;
++		GtkTextBuffer *buffer;
++		gboolean is_editable;
+ 
+ 		clipboard = gtk_widget_get_clipboard (
+ 			focus, GDK_SELECTION_CLIPBOARD);
+diff --git a/e-util/e-table-sort-info.c b/e-util/e-table-sort-info.c
+index ae1806d776..e36a7f5bd0 100644
+--- a/e-util/e-table-sort-info.c
++++ b/e-util/e-table-sort-info.c
+@@ -860,7 +860,7 @@ e_table_sort_info_save_to_node (ETableSortInfo *sort_info,
+ 
+ 	for (ii = 0; ii < group_count; ii++) {
+ 		ETableColumnSpecification *column_spec;
+-		GtkSortType sort_type;
++		GtkSortType sort_type = GTK_SORT_ASCENDING;
+ 		xmlNode *new_node;
+ 		gint index;
+ 
+@@ -887,7 +887,7 @@ e_table_sort_info_save_to_node (ETableSortInfo *sort_info,
+ 
+ 	for (ii = 0; ii < sort_count; ii++) {
+ 		ETableColumnSpecification *column_spec;
+-		GtkSortType sort_type;
++		GtkSortType sort_type = GTK_SORT_ASCENDING;
+ 		xmlNode *new_node;
+ 		gint index;
+ 
+diff --git a/mail/e-mail-reader-utils.c b/mail/e-mail-reader-utils.c
+index 5ae29817e0..22cc715a10 100644
+--- a/mail/e-mail-reader-utils.c
++++ b/mail/e-mail-reader-utils.c
+@@ -1278,6 +1278,7 @@ mail_reader_print_parse_message_cb (GObject *source_object,
+ 	if (local_error) {
+ 		g_warn_if_fail (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_CANCELLED));
+ 
++		/* coverity[check_return] */
+ 		e_activity_handle_cancellation (activity, local_error);
+ 		g_clear_error (&local_error);
+ 		async_context_free (async_context);
+diff --git a/mail/em-folder-tree.c b/mail/em-folder-tree.c
+index eb8e676cb7..37d57928ae 100644
+--- a/mail/em-folder-tree.c
++++ b/mail/em-folder-tree.c
+@@ -1950,7 +1950,7 @@ tree_drag_data_get (GtkWidget *widget,
+ 	GtkTreeModel *model;
+ 	GtkTreePath *src_path;
+ 	CamelFolder *folder;
+-	CamelStore *store;
++	CamelStore *store = NULL;
+ 	GtkTreeIter iter;
+ 	gchar *folder_name = NULL;
+ 	gchar *folder_uri;
+diff --git a/mail/message-list.c b/mail/message-list.c
+index 905d978cb5..b0922ed199 100644
+--- a/mail/message-list.c
++++ b/mail/message-list.c
+@@ -3188,7 +3188,7 @@ message_list_duplicate_value (ETreeModel *tree_model,
+ 
+ 				return res;
+ 			} else
+-				return value;
++				return NULL;
+ 
+ 		default:
+ 			g_return_val_if_reached (NULL);
+diff --git a/mail/test-mail-autoconfig.c b/mail/test-mail-autoconfig.c
+index 80163843a9..f7d9e48bcb 100644
+--- a/mail/test-mail-autoconfig.c
++++ b/mail/test-mail-autoconfig.c
+@@ -39,6 +39,8 @@ main (gint argc,
+ 		autoconfig = e_mail_autoconfig_new_sync (
+ 			registry, argv[1], NULL, &error);
+ 		g_object_unref (registry);
++	} else {
++		autoconfig = NULL;
+ 	}
+ 
+ 	/* Sanity check. */
+-- 
+2.15.0
+

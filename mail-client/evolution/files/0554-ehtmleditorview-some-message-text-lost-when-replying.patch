@@ -1,0 +1,28 @@
+From 8e24d8dacd5ae3535a017986672eafcfa139eb31 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 29 Apr 2015 14:54:50 +0200
+Subject: [PATCH 0554/1800] EHTMLEditorView - Some message text lost when
+ replying on mail from GMail
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 33d0e27576..f5acbfbce5 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -735,6 +735,10 @@ repair_gmail_blockquotes (WebKitDOMDocument *document)
+ 		webkit_dom_element_remove_attribute (WEBKIT_DOM_ELEMENT (node), "class");
+ 		webkit_dom_element_remove_attribute (WEBKIT_DOM_ELEMENT (node), "style");
+ 		webkit_dom_element_set_attribute (WEBKIT_DOM_ELEMENT (node), "type", "cite", NULL);
++
++		if (!WEBKIT_DOM_IS_HTML_BR_ELEMENT (webkit_dom_node_get_last_child (node)))
++			webkit_dom_node_append_child (
++				node, WEBKIT_DOM_NODE (webkit_dom_document_create_element (document, "br", NULL)), NULL);
+ 		g_object_unref (node);
+ 	}
+ 	g_object_unref (list);
+-- 
+2.15.0
+

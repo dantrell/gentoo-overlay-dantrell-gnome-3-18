@@ -1,0 +1,33 @@
+From 0e01debcbec58439d9069ce43642d0223e9b51f1 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 3 Nov 2014 16:58:34 +0100
+Subject: [PATCH 0024/1800] EMsgComposer - Use underscore to split the variable
+ name
+
+---
+ composer/e-msg-composer.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 41a72756f2..b0dc783eb2 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -4280,11 +4280,11 @@ handle_mailto (EMsgComposer *composer,
+ 	g_free (subject);
+ 
+ 	if (body) {
+-		gchar *htmlbody;
++		gchar *html_body;
+ 
+-		htmlbody = camel_text_to_html (body, CAMEL_MIME_FILTER_TOHTML_PRE, 0);
+-		set_editor_text (composer, htmlbody, TRUE, TRUE);
+-		g_free (htmlbody);
++		html_body = camel_text_to_html (body, CAMEL_MIME_FILTER_TOHTML_PRE, 0);
++		set_editor_text (composer, html_body, TRUE, TRUE);
++		g_free (html_body);
+ 	}
+ }
+ 
+-- 
+2.15.0
+

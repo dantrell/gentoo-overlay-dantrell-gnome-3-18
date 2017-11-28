@@ -1,0 +1,50 @@
+From 4154d5755849a12d6e226ee385bc11e14d13d913 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 14 Aug 2015 14:24:08 +0200
+Subject: [PATCH 0948/1800] Bug 358162 - Crash in gal_a11y_e_cell_popup_new()
+
+---
+ e-util/e-cell-popup.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/e-util/e-cell-popup.c b/e-util/e-cell-popup.c
+index 476b6c43bf..ee7fc5497d 100644
+--- a/e-util/e-cell-popup.c
++++ b/e-util/e-cell-popup.c
+@@ -181,7 +181,7 @@ ecp_new_view (ECell *ecell,
+ 
+ 	ecp_view = g_new0 (ECellPopupView, 1);
+ 
+-	ecp_view->cell_view.ecell = ecell;
++	ecp_view->cell_view.ecell = g_object_ref (ecell);
+ 	ecp_view->cell_view.e_table_model = table_model;
+ 	ecp_view->cell_view.e_table_item_view = e_table_item_view;
+ 	ecp_view->cell_view.kill_view_cb = NULL;
+@@ -202,6 +202,15 @@ ecp_kill_view (ECellView *ecv)
+ {
+ 	ECellPopupView *ecp_view = (ECellPopupView *) ecv;
+ 
++	if (E_IS_CELL_POPUP (ecp_view->cell_view.ecell)) {
++		ECellPopup *ecp = E_CELL_POPUP (ecp_view->cell_view.ecell);
++
++		if (ecp->popup_cell_view == ecp_view)
++			ecp->popup_cell_view = NULL;
++	}
++
++	g_clear_object (&ecp_view->cell_view.ecell);
++
+ 	if (ecp_view->cell_view.kill_view_cb)
+ 		ecp_view->cell_view.kill_view_cb (
+ 			ecv, ecp_view->cell_view.kill_view_cb_data);
+@@ -528,6 +537,8 @@ e_cell_popup_queue_cell_redraw (ECellPopup *ecp)
+ {
+ 	ETableItem *eti;
+ 
++	g_return_if_fail (ecp->popup_cell_view != NULL);
++
+ 	eti = E_TABLE_ITEM (ecp->popup_cell_view->cell_view.e_table_item_view);
+ 
+ 	e_table_item_redraw_range (
+-- 
+2.15.0
+

@@ -1,0 +1,27 @@
+From f0f898352682c49ed36748106db43c563a57464e Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 23 Mar 2015 14:26:35 +0100
+Subject: [PATCH 0196/1800] Bug 743288 - Extra space left when breaking a long
+ paragraph
+
+---
+ e-util/e-html-editor-view.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 25fce5d6e1..503f1cf4fa 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -2174,7 +2174,8 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 		"  font-family: '%s';\n"
+ 		"  font-size: %dpt;\n"
+ 		"  font-weight: %d;\n"
+-		"  font-style: %s;\n",
++		"  font-style: %s;\n"
++		" -webkit-line-break: after-white-space;\n",
+ 		pango_font_description_get_family (vw),
+ 		pango_font_description_get_size (vw) / PANGO_SCALE,
+ 		pango_font_description_get_weight (vw),
+-- 
+2.15.0
+

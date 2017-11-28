@@ -1,0 +1,103 @@
+From 3b3c539cd6f55dca01d68b43030845a108e01340 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 26 Feb 2016 10:35:30 +0100
+Subject: [PATCH 0864/1800] Bug 751915 - Crash when using both internal and
+ external editors to compose plain-text mail
+
+---
+ plugins/external-editor/external-editor.c          | 32 ++++++++++++++++++++++
+ .../composer/e-html-editor-web-extension.c         | 14 ++++++++++
+ 2 files changed, 46 insertions(+)
+
+diff --git a/plugins/external-editor/external-editor.c b/plugins/external-editor/external-editor.c
+index c2692210a7..f4b6632def 100644
+--- a/plugins/external-editor/external-editor.c
++++ b/plugins/external-editor/external-editor.c
+@@ -284,6 +284,31 @@ get_caret_position (EHTMLEditorView *view)
+ 	return position;
+ }
+ 
++static void
++clear_undo_redo_history (EHTMLEditorView *view)
++{
++	GDBusProxy *web_extension;
++	GVariant *result;
++
++	web_extension = e_html_editor_view_get_web_extension_proxy (view);
++	if (!web_extension)
++		return;
++
++	result = g_dbus_proxy_call_sync (
++		web_extension,
++		"DOMClearUndoRedoHistory",
++		g_variant_new (
++			"(t)",
++			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view))),
++		G_DBUS_CALL_FLAGS_NONE,
++		-1,
++		NULL,
++		NULL);
++
++	if (result)
++		g_variant_unref (result);
++}
++
+ static gboolean external_editor_running = FALSE;
+ static GMutex external_editor_running_lock;
+ 
+@@ -430,6 +455,9 @@ finished:
+ 
+ static void launch_editor (GtkAction *action, EMsgComposer *composer)
+ {
++	EHTMLEditor *editor;
++	EHTMLEditorView *view;
++
+ 	d (printf ("\n\nexternal_editor plugin is launched \n\n"));
+ 
+ 	if (editor_running ()) {
+@@ -437,6 +465,10 @@ static void launch_editor (GtkAction *action, EMsgComposer *composer)
+ 		return;
+ 	}
+ 
++	editor = e_msg_composer_get_editor (composer);
++	view = e_html_editor_get_view (editor);
++
++	clear_undo_redo_history (view);
+ 	disable_composer (composer);
+ 
+ 	g_mutex_lock (&external_editor_running_lock);
+diff --git a/web-extensions/composer/e-html-editor-web-extension.c b/web-extensions/composer/e-html-editor-web-extension.c
+index 5949ec71d6..9c85fbd848 100644
+--- a/web-extensions/composer/e-html-editor-web-extension.c
++++ b/web-extensions/composer/e-html-editor-web-extension.c
+@@ -634,6 +634,9 @@ static const char introspection_xml[] =
+ "      <arg type='t' name='page_id' direction='in'/>"
+ "      <arg type='i' name='position' direction='out'/>"
+ "    </method>"
++"    <method name='DOMClearUndoRedoHistory'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"    </method>"
+ "  </interface>"
+ "</node>";
+ 
+@@ -2383,6 +2386,17 @@ handle_method_call (GDBusConnection *connection,
+ 		g_dbus_method_invocation_return_value (
+ 			invocation,
+ 			value ? g_variant_new_int32 (value) : NULL);
++	} else if (g_strcmp0 (method_name, "DOMClearUndoRedoHistory") == 0) {
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			goto error;
++
++		e_html_editor_undo_redo_manager_clean_history (extension->priv->undo_redo_manager);
++
++		g_dbus_method_invocation_return_value (invocation, NULL);
+ 	} else {
+ 		g_warning ("UNKNOWN METHOD '%s:i'", method_name);
+ 	}
+-- 
+2.15.0
+

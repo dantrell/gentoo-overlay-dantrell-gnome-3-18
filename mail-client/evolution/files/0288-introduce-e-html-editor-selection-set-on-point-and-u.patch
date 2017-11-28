@@ -1,0 +1,277 @@
+From 0ec9df989571da7de5f020dabea7b711b167ab03 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 15:17:56 +0100
+Subject: [PATCH 0288/1800] Introduce e_html_editor_selection_set_on_point and
+ use it where possible
+
+This function will move the caret on given coordinates. It uses the
+webkit_dom_dom_document_caret_range_from_point. We can finally
+drop the e_html_editor_view_get_element_under_mouse_click the was there
+for workaround this.
+---
+ e-util/e-html-editor-view.c                        | 36 ++++++++++++++++++
+ .../e-html-editor-hrule-dialog-dom-functions.c     | 14 ++++++-
+ .../e-html-editor-link-dialog-dom-functions.c      | 25 +++++++++----
+ .../e-html-editor-selection-dom-functions.c        | 43 ++++++++++++++++------
+ .../e-html-editor-selection-dom-functions.h        |  4 ++
+ web-extensions/e-html-editor-web-extension.c       | 18 +++++++++
+ 6 files changed, 119 insertions(+), 21 deletions(-)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index ae0c30b00f..08c7b8b39f 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -588,6 +588,39 @@ html_editor_view_constructed (GObject *object)
+ 	 * does not block loading resources from file:// protocol */
+ 	webkit_web_view_load_html (WEBKIT_WEB_VIEW (object), "", "file://");
+ }
++
++static void
++html_editor_view_move_selection_on_point (EHTMLEditorView *view)
++{
++	gint x, y;
++	GdkDeviceManager *device_manager;
++	GdkDevice *pointer;
++	GDBusProxy *web_extension;
++
++	g_return_if_fail (E_IS_HTML_EDITOR_VIEW (view));
++
++	device_manager = gdk_display_get_device_manager (
++		gtk_widget_get_display (GTK_WIDGET (view)));
++	pointer = gdk_device_manager_get_client_pointer (device_manager);
++	gdk_window_get_device_position (
++		gtk_widget_get_window (GTK_WIDGET (view)), pointer, &x, &y, NULL);
++
++	web_extension = e_html_editor_view_get_web_extension_proxy (view);
++	if (web_extension)
++		return;
++
++	g_dbus_proxy_call_sync (
++		web_extension,
++		"DOMMoveSelectionOnPoint",
++		g_variant_new (
++			"(tii)",
++			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view)), x, y),
++		G_DBUS_CALL_FLAGS_NONE,
++		-1,
++		NULL,
++		NULL);
++}
++
+ static gboolean
+ html_editor_view_button_press_event (GtkWidget *widget,
+                                      GdkEventButton *event)
+@@ -599,6 +632,7 @@ html_editor_view_button_press_event (GtkWidget *widget,
+ 		g_signal_emit (widget, signals[PASTE_PRIMARY_CLIPBOARD], 0);
+ 		event_handled = TRUE;
+ 	} else if (event->button == 3) {
++		html_editor_view_move_selection_on_point (E_HTML_EDITOR_VIEW (widget));
+ 		g_signal_emit (
+ 			widget, signals[POPUP_EVENT],
+ 			0, event, &event_handled);
+@@ -646,6 +680,8 @@ html_editor_view_key_press_event (GtkWidget *widget,
+ 
+ 	if (event->keyval == GDK_KEY_Menu) {
+ 		gboolean event_handled;
++
++		html_editor_view_move_selection_on_point (E_HTML_EDITOR_VIEW (widget));
+ 		g_signal_emit (
+ 			widget, signals[POPUP_EVENT],
+ 			0, event, &event_handled);
+diff --git a/web-extensions/e-html-editor-hrule-dialog-dom-functions.c b/web-extensions/e-html-editor-hrule-dialog-dom-functions.c
+index e826ad9489..ac1adf907f 100644
+--- a/web-extensions/e-html-editor-hrule-dialog-dom-functions.c
++++ b/web-extensions/e-html-editor-hrule-dialog-dom-functions.c
+@@ -31,13 +31,23 @@ e_html_editor_hrule_dialog_find_hrule (WebKitDOMDocument *document)
+ 	WebKitDOMDOMWindow *window;
+ 	WebKitDOMDOMSelection *selection;
+ 	WebKitDOMElement *rule = NULL;
++	WebKitDOMRange *range;
++	WebKitDOMNode *node;
+ 
+ 	window = webkit_dom_document_get_default_view (document);
+ 	selection = webkit_dom_dom_window_get_selection (window);
+ 	if (webkit_dom_dom_selection_get_range_count (selection) < 1)
+ 		return FALSE;
+-/* FIXME WK2
+-	rule = e_html_editor_view_get_element_under_mouse_click (view); */
++
++	range = webkit_dom_dom_selection_get_range_at (selection, 0, NULL);
++	node = webkit_dom_range_get_common_ancestor_container (range, NULL);
++	if (node && !WEBKIT_DOM_IS_HTML_HR_ELEMENT (node)) {
++		rule = dom_node_find_parent_element (node, "A");
++		if (rule && !WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (rule))
++			rule = NULL;
++	} else
++		rule = WEBKIT_DOM_ELEMENT (node);
++
+ 	if (!rule) {
+ 		WebKitDOMElement *caret, *parent, *element;
+ 
+diff --git a/web-extensions/e-html-editor-link-dialog-dom-functions.c b/web-extensions/e-html-editor-link-dialog-dom-functions.c
+index 11899e0254..7e392ea478 100644
+--- a/web-extensions/e-html-editor-link-dialog-dom-functions.c
++++ b/web-extensions/e-html-editor-link-dialog-dom-functions.c
+@@ -69,11 +69,15 @@ e_html_editor_link_dialog_ok (WebKitDOMDocument *document,
+ 				webkit_dom_range_get_end_offset (range, NULL),
+ 				NULL);
+ 		} else {
++			WebKitDOMNode *node;
+ 			/* get element that was clicked on */
+-			/* FIXME WK2
+-			link = e_html_editor_view_get_element_under_mouse_click (view); */
+-			if (!WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (link))
+-				link = NULL;
++			node = webkit_dom_range_get_common_ancestor_container (range, NULL);
++			if (node && !WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (node)) {
++				link = dom_node_find_parent_element (node, "A");
++				if (link && !WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (link))
++					link = NULL;
++			} else
++				link = WEBKIT_DOM_ELEMENT (node);
+ 		}
+ 	}
+ 
+@@ -136,10 +140,15 @@ e_html_editor_link_dialog_show (WebKitDOMDocument *document)
+ 			link = dom_node_find_child_element (WEBKIT_DOM_NODE (fragment), "A");
+ 		} else {
+ 			/* get element that was clicked on */
+-			/* FIXME WK2
+-			link = e_html_editor_view_get_element_under_mouse_click (view); */
+-			if (!WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (link))
+-				link = NULL;
++			WebKitDOMNode *node;
++
++			node = webkit_dom_range_get_common_ancestor_container (range, NULL);
++			if (node && !WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (node)) {
++				link = dom_node_find_parent_element (node, "A");
++				if (link && !WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (link))
++					link = NULL;
++			} else
++				link = WEBKIT_DOM_ELEMENT (node);
+ 		}
+ 	}
+ 
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index 073cca96d8..ee4fcbfdaa 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -408,6 +408,7 @@ dom_insert_base64_image (WebKitDOMDocument *document,
+ void
+ dom_unlink (WebKitDOMDocument *document)
+ {
++	gchar *text;
+ 	WebKitDOMDOMWindow *window;
+ 	WebKitDOMDOMSelection *selection_dom;
+ 	WebKitDOMRange *range;
+@@ -421,21 +422,25 @@ dom_unlink (WebKitDOMDocument *document)
+ 		webkit_dom_range_get_start_container (range, NULL), "A");
+ 
+ 	if (!link) {
+-		gchar *text;
++		WebKitDOMNode *node;
++
+ 		/* get element that was clicked on */
+-		/* FIXME WK2
+-		link = e_html_editor_view_get_element_under_mouse_click (view); */
+-		if (!WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (link))
+-			link = NULL;
+-
+-		text = webkit_dom_html_element_get_inner_text (
+-			WEBKIT_DOM_HTML_ELEMENT (link));
+-		webkit_dom_html_element_set_outer_html (
+-			WEBKIT_DOM_HTML_ELEMENT (link), text, NULL);
+-		g_free (text);
++		node = webkit_dom_range_get_common_ancestor_container (range, NULL);
++		if (node && !WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (node)) {
++			link = dom_node_find_parent_element (node, "A");
++			if (link && !WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (link))
++				return;
++			} else
++				link = WEBKIT_DOM_ELEMENT (node);
+ 	} else {
+ 		dom_exec_command (document, E_HTML_EDITOR_VIEW_COMMAND_UNLINK, NULL);
+ 	}
++
++	text = webkit_dom_html_element_get_inner_text (
++		WEBKIT_DOM_HTML_ELEMENT (link));
++	webkit_dom_html_element_set_outer_html (
++		WEBKIT_DOM_HTML_ELEMENT (link), text, NULL);
++	g_free (text);
+ }
+ 
+ /**
+@@ -4963,3 +4968,19 @@ dom_prepare_paragraph (WebKitDOMDocument *document,
+ 	return paragraph;
+ }
+ 
++void
++dom_selection_set_on_point (WebKitDOMDocument *document,
++                            guint x,
++                            guint y)
++{
++	WebKitDOMRange *range;
++	WebKitDOMDOMWindow *dom_window;
++	WebKitDOMDOMSelection *dom_selection;
++
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++
++	range = webkit_dom_document_caret_range_from_point (document, x, y);
++	webkit_dom_dom_selection_remove_all_ranges (dom_selection);
++	webkit_dom_dom_selection_add_range (dom_selection, range);
++}
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.h b/web-extensions/e-html-editor-selection-dom-functions.h
+index d320d207f1..19049b765f 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.h
++++ b/web-extensions/e-html-editor-selection-dom-functions.h
+@@ -264,6 +264,10 @@ WebKitDOMElement *
+ 						 EHTMLEditorWebExtension *extension,
+ 						 gboolean with_selection);
+ 
++void		dom_selection_set_on_point	(WebKitDOMDocument *document,
++						 guint x,
++						 guint y);
++
+ G_END_DECLS
+ 
+ #endif /* E_HTML_EDITOR_SELECTION_DOM_FUNCTIONS_H */
+diff --git a/web-extensions/e-html-editor-web-extension.c b/web-extensions/e-html-editor-web-extension.c
+index 55137ccd6e..8228fb4dff 100644
+--- a/web-extensions/e-html-editor-web-extension.c
++++ b/web-extensions/e-html-editor-web-extension.c
+@@ -462,6 +462,11 @@ static const char introspection_xml[] =
+ "    <method name='DOMDragAndDropEnd'>"
+ "      <arg type='t' name='page_id' direction='in'/>"
+ "    </method>"
++"    <method name='DOMMoveSelectionOnPoint'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='i' name='x' direction='in'/>"
++"      <arg type='i' name='y' direction='in'/>"
++"    </method>"
+ "<!-- ********************************************************* -->"
+ "<!--     Functions that are used in EHTMLEditorSelection       -->"
+ "<!-- ********************************************************* -->"
+@@ -1600,6 +1605,19 @@ handle_method_call (GDBusConnection *connection,
+ 		document = webkit_web_page_get_dom_document (web_page);
+ 		dom_drag_and_drop_end (document, extension);
+ 		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMMoveSelectionOnPoint") == 0) {
++		gint x, y;
++
++		g_variant_get (parameters, "(tii)", &page_id, &x, &y);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_selection_set_on_point (document, x, y);
++		g_dbus_method_invocation_return_value (invocation, NULL);
+ 	} else if (g_strcmp0 (method_name, "DOMSelectionIndent") == 0) {
+ 		g_variant_get (parameters, "(t)", &page_id);
+ 
+-- 
+2.15.0
+

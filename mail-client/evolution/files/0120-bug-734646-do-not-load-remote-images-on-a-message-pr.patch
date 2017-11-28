@@ -1,0 +1,27 @@
+From e042aeff1dffeb3b545d995b56f08a135e0b1ba4 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 28 Nov 2014 14:57:34 +0100
+Subject: [PATCH 0120/1800] Bug 734646 - Do not load remote images on a message
+ print
+
+---
+ mail/e-mail-printer.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/mail/e-mail-printer.c b/mail/e-mail-printer.c
+index dd29a194b0..a26ea850c2 100644
+--- a/mail/e-mail-printer.c
++++ b/mail/e-mail-printer.c
+@@ -363,7 +363,8 @@ mail_printer_new_web_view (const gchar *charset,
+ 		G_OBJECT (web_settings),
+ 		"enable-frame-flattening", FALSE, NULL);
+ 
+-	e_mail_display_set_force_load_images (E_MAIL_DISPLAY (web_view), TRUE);
++	/* Do not load remote images, print what user sees in the preview panel */
++	e_mail_display_set_force_load_images (E_MAIL_DISPLAY (web_view), FALSE);
+ 
+ 	formatter = e_mail_display_get_formatter (E_MAIL_DISPLAY (web_view));
+ 	if (charset != NULL && *charset != '\0')
+-- 
+2.15.0
+

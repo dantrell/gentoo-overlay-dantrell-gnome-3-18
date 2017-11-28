@@ -1,0 +1,25 @@
+From f5c06c4854eaa44974c991ed5dbe14480158bbd9 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 13 May 2015 19:22:01 +0200
+Subject: [PATCH 0747/1800] Bug 531054 - Reply to All changes To: and Cc:
+
+---
+ mail/em-composer-utils.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mail/em-composer-utils.c b/mail/em-composer-utils.c
+index ff55154419..12c69400f3 100644
+--- a/mail/em-composer-utils.c
++++ b/mail/em-composer-utils.c
+@@ -2708,7 +2708,7 @@ em_utils_get_reply_all (ESourceRegistry *registry,
+ 		}
+ 	}
+ 
+-	concat_unique_addrs (cc, to_addrs, rcpt_hash);
++	concat_unique_addrs (to, to_addrs, rcpt_hash);
+ 	concat_unique_addrs (cc, cc_addrs, rcpt_hash);
+ 
+ 	/* Promote the first Cc: address to To: if To: is empty. */
+-- 
+2.15.0
+

@@ -1,0 +1,27 @@
+From 5e2b1682aaeafd60824b4a3abf936d6351423843 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 2 Feb 2015 18:58:45 +0100
+Subject: [PATCH 0219/1800] Mute "Shell not finalized on exit" runtime warning
+
+See bug #737949 for the reason what caused it.
+---
+ shell/main.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/shell/main.c b/shell/main.c
+index 502c934197..4a161a196a 100644
+--- a/shell/main.c
++++ b/shell/main.c
+@@ -636,7 +636,8 @@ exit:
+ 	g_object_unref (shell);
+ 
+ 	if (e_shell_get_default () != NULL) {
+-		g_warning ("Shell not finalized on exit");
++		/* Mute the warning, due to https://bugzilla.gnome.org/show_bug.cgi?id=737949
++		g_warning ("Shell not finalized on exit"); */
+ 
+ 		/* To not run in the safe mode the next start */
+ 		if (e_file_lock_get_pid () == getpid ())
+-- 
+2.15.0
+

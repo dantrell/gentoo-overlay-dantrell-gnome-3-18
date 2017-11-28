@@ -1,0 +1,51 @@
+From 9e40c6be8ce07818bdd7a48446c55ed905fc3b0c Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 23 Mar 2015 14:43:21 +0100
+Subject: [PATCH 0199/1800] EHTMLEditorSelection - Save the selection marks to
+ right position when it starts or ends near the quote marks
+
+---
+ .../e-html-editor-selection-dom-functions.c           | 19 ++++++++++++++++---
+ 1 file changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index 555147aae8..bddc12cc26 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -1607,8 +1607,15 @@ dom_selection_save (WebKitDOMDocument *document)
+ 				WEBKIT_DOM_NODE (marker),
+ 				next_sibling,
+ 				NULL);
+-			return;
++		} else {
++			webkit_dom_node_insert_before (
++				node,
++				WEBKIT_DOM_NODE (marker),
++				webkit_dom_node_get_next_sibling (
++					webkit_dom_node_get_parent_node (parent_node)),
++				NULL);
+ 		}
++		return;
+ 	}
+ 
+ 	if (WEBKIT_DOM_IS_TEXT (container)) {
+@@ -1661,8 +1668,14 @@ dom_selection_save (WebKitDOMDocument *document)
+ 	if (split_node) {
+ 		parent_node = webkit_dom_node_get_parent_node (split_node);
+ 
+-		webkit_dom_node_insert_before (
+-			parent_node, marker_node, split_node, NULL);
++		if (WEBKIT_DOM_IS_HTML_BODY_ELEMENT (parent_node)) {
++			webkit_dom_node_append_child (
++				webkit_dom_node_get_previous_sibling (split_node),
++				marker_node,
++				NULL);
++		} else
++			webkit_dom_node_insert_before (
++				parent_node, marker_node, split_node, NULL);
+ 	} else
+ 		webkit_dom_node_append_child (
+ 			WEBKIT_DOM_NODE (container), marker_node, NULL);
+-- 
+2.15.0
+

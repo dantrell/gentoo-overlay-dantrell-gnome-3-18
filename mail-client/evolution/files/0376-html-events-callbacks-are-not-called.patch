@@ -1,0 +1,27 @@
+From 2ceba687e7dd6a2357de6c0caeffdc3e3040af6e Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 26 Mar 2015 10:26:09 +0100
+Subject: [PATCH 0376/1800] HTML events callbacks are not called
+
+The problem is that if we call webkit_dom_event_target_add_event_listener
+on the element and unref it afterwards (even when we get that element
+from WebKitDOMNodeList) the callback won't be called at all.
+---
+ web-extensions/e-dom-utils.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/web-extensions/e-dom-utils.c b/web-extensions/e-dom-utils.c
+index bf1a0376ed..9f3a912222 100644
+--- a/web-extensions/e-dom-utils.c
++++ b/web-extensions/e-dom-utils.c
+@@ -670,7 +670,6 @@ e_dom_utils_bind_dom (WebKitDOMDocument *document,
+ 		webkit_dom_event_target_add_event_listener (
+ 			WEBKIT_DOM_EVENT_TARGET (node), event,
+ 			G_CALLBACK (callback), FALSE, user_data);
+-		g_object_unref (node);
+ 	}
+ 	g_object_unref (nodes);
+ }
+-- 
+2.15.0
+

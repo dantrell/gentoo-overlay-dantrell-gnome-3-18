@@ -1,0 +1,25 @@
+From fcdd9ce7f793ce323330045faa5cf72ae96f153b Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 1 Mar 2016 13:36:20 +0100
+Subject: [PATCH 0996/1800] EHTMLEditorView - Avoid double quotes when deleting
+ a text inside quoted content
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index b44c5994f8..eeec279ad3 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -2788,6 +2788,7 @@ body_keyup_event_cb (WebKitDOMElement *element,
+ 				if (webkit_dom_element_has_attribute (block, "data-no-quote")) {
+ 					webkit_dom_element_remove_attribute (block, "data-no-quote");
+ 				} else {
++					dom_remove_quoting_from_element (block);
+ 					if (element_has_class (block, "-x-evo-paragraph")) {
+ 						gint length, word_wrap_length;
+ 
+-- 
+2.15.0
+

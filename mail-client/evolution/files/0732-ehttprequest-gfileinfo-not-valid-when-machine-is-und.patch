@@ -1,0 +1,49 @@
+From d615394d8dfe919537a92ecb4c316ab9a5164c9f Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 6 May 2015 14:42:44 +0200
+Subject: [PATCH 0732/1800] EHTTPRequest - GFileInfo not valid when machine is
+ under heavy load
+
+When the machine is under heavy load and I'm moving between messages with
+inline images (that are already downloaded and are in the cache) I get warnings
+that GFileInfo object is not valid. I managed to get these warnings when the task
+was already cancelled (I already moved to another message) but for the active task
+as well. So try to access the GFileInfo object just when we know that it is valid.
+---
+ mail/e-http-request.c | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
+
+diff --git a/mail/e-http-request.c b/mail/e-http-request.c
+index 48688fdce0..403a454226 100644
+--- a/mail/e-http-request.c
++++ b/mail/e-http-request.c
+@@ -278,16 +278,18 @@ handle_http_request (GSimpleAsyncResult *res,
+ 				file, G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE,
+ 				0, cancellable, NULL);
+ 
+-			priv->content_type = g_strdup (
+-				g_file_info_get_content_type (info));
++			if (info) {
++				priv->content_type = g_strdup (
++					g_file_info_get_content_type (info));
+ 
+-			d (
+-				printf ("'%s' found in cache (%d bytes, %s)\n",
+-				uri, priv->content_length,
+-				priv->content_type));
++				d (
++					printf ("'%s' found in cache (%d bytes, %s)\n",
++					uri, priv->content_length,
++					priv->content_type));
++			}
+ 
+-			g_object_unref (info);
+-			g_object_unref (file);
++			g_clear_object (&info);
++			g_clear_object (&file);
+ 			g_free (path);
+ 
+ 			/* Set result and quit the thread */
+-- 
+2.15.0
+

@@ -1,0 +1,32 @@
+From 1962132a0d5e2a9c2ed6c791b4d639b74360f7d3 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 26 Mar 2015 13:28:40 +0100
+Subject: [PATCH 0381/1800] EHTMLEditorView - Emoticons can be resizable just
+ in HTML mode
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index f49b16b8dc..78513c8f0e 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -1368,8 +1368,12 @@ emoticon_read_async_cb (GFile *file,
+ 	/* Insert span with image representation and another one with text
+ 	 * represetation and hide/show them dependant on active composer mode */
+ 	wrapper = webkit_dom_document_create_element (document, "SPAN", NULL);
+-	webkit_dom_element_set_attribute (
+-		wrapper, "class", "-x-evo-smiley-wrapper -x-evo-resizable-wrapper", NULL);
++	if (html_mode)
++		webkit_dom_element_set_attribute (
++			wrapper, "class", "-x-evo-smiley-wrapper -x-evo-resizable-wrapper", NULL);
++	else
++		webkit_dom_element_set_attribute (
++			wrapper, "class", "-x-evo-smiley-wrapper", NULL);
+ 
+ 	image = webkit_dom_document_create_element (document, "IMG", NULL);
+ 	webkit_dom_element_set_attribute (image, "src", output, NULL);
+-- 
+2.15.0
+

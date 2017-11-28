@@ -1,0 +1,33 @@
+From 5367733422f7ccefec7a7b54a976d12e07934cc2 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 10 Jun 2015 15:38:29 +0200
+Subject: [PATCH 0799/1800] Bug 676974 - Use window's alert sink when preview
+ panel is hidden
+
+---
+ mail/e-mail-reader.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index 3f7c842169..4a78214d39 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -3266,6 +3266,15 @@ mail_reader_get_alert_sink (EMailReader *reader)
+ 
+ 	preview_pane = e_mail_reader_get_preview_pane (reader);
+ 
++	if (!gtk_widget_is_visible (GTK_WIDGET (preview_pane))) {
++		GtkWindow *window;
++
++		window = e_mail_reader_get_window (reader);
++
++		if (E_IS_SHELL_WINDOW (window))
++			return E_ALERT_SINK (window);
++	}
++
+ 	return E_ALERT_SINK (preview_pane);
+ }
+ 
+-- 
+2.15.0
+

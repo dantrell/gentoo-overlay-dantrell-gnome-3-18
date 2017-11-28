@@ -1,0 +1,289 @@
+From 87396694e73c19de0064000797b288ea678787b4 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 29 Apr 2015 17:14:31 +0200
+Subject: [PATCH 0721/1800] Bug 668808 - Can't cancel mbox file import
+
+---
+ libemail-engine/mail-mt.c      | 14 +++++++++++--
+ libemail-engine/mail-mt.h      |  2 ++
+ mail/importers/elm-importer.c  |  6 ++++--
+ mail/importers/mail-importer.c | 45 ++++++++++++++----------------------------
+ mail/importers/pine-importer.c |  6 ++++--
+ 5 files changed, 37 insertions(+), 36 deletions(-)
+
+diff --git a/libemail-engine/mail-mt.c b/libemail-engine/mail-mt.c
+index c0cd27da55..d97f120147 100644
+--- a/libemail-engine/mail-mt.c
++++ b/libemail-engine/mail-mt.c
+@@ -93,7 +93,8 @@ mail_msg_submit (CamelOperation *cancellable)
+ }
+ 
+ gpointer
+-mail_msg_new (MailMsgInfo *info)
++mail_msg_new_with_cancellable (MailMsgInfo *info,
++			       GCancellable *cancellable)
+ {
+ 	MailMsg *msg;
+ 
+@@ -104,7 +105,10 @@ mail_msg_new (MailMsgInfo *info)
+ 	msg->ref_count = 1;
+ 	msg->seq = mail_msg_seq++;
+ 
+-	msg->cancellable = camel_operation_new ();
++	if (cancellable)
++		msg->cancellable = g_object_ref (cancellable);
++	else
++		msg->cancellable = camel_operation_new ();
+ 
+ 	if (create_activity)
+ 		create_activity (msg->cancellable);
+@@ -124,6 +128,12 @@ mail_msg_new (MailMsgInfo *info)
+ 	return msg;
+ }
+ 
++gpointer
++mail_msg_new (MailMsgInfo *info)
++{
++	return mail_msg_new_with_cancellable (info, NULL);
++}
++
+ #ifdef MALLOC_CHECK
+ #include <mcheck.h>
+ 
+diff --git a/libemail-engine/mail-mt.h b/libemail-engine/mail-mt.h
+index b6377cdd1e..b9c312eb38 100644
+--- a/libemail-engine/mail-mt.h
++++ b/libemail-engine/mail-mt.h
+@@ -86,6 +86,8 @@ gboolean mail_in_main_thread (void);
+ 
+ /* allocate a new message */
+ gpointer mail_msg_new (MailMsgInfo *info);
++gpointer mail_msg_new_with_cancellable (MailMsgInfo *info,
++					GCancellable *cancellable);
+ gpointer mail_msg_ref (gpointer msg);
+ void mail_msg_unref (gpointer msg);
+ void mail_msg_check_error (gpointer msg);
+diff --git a/mail/importers/elm-importer.c b/mail/importers/elm-importer.c
+index 7c2761ec99..b7cb38a7a2 100644
+--- a/mail/importers/elm-importer.c
++++ b/mail/importers/elm-importer.c
+@@ -279,10 +279,12 @@ static gint
+ mail_importer_elm_import (EImport *ei,
+                           EImportTarget *target)
+ {
++	GCancellable *cancellable;
+ 	struct _elm_import_msg *m;
+ 	gint id;
+ 
+-	m = mail_msg_new (&elm_import_info);
++	cancellable = camel_operation_new ();
++	m = mail_msg_new_with_cancellable (&elm_import_info, cancellable);
+ 	g_datalist_set_data (&target->data, "elm-msg", m);
+ 	m->import = ei;
+ 	g_object_ref (m->import);
+@@ -290,7 +292,7 @@ mail_importer_elm_import (EImport *ei,
+ 	m->status_timeout_id =
+ 		e_named_timeout_add (100, elm_status_timeout, m);
+ 	g_mutex_init (&m->status_lock);
+-	m->status = camel_operation_new ();
++	m->status = cancellable;
+ 
+ 	g_signal_connect (
+ 		m->status, "status",
+diff --git a/mail/importers/mail-importer.c b/mail/importers/mail-importer.c
+index b63251a8b1..cb88c1d9d2 100644
+--- a/mail/importers/mail-importer.c
++++ b/mail/importers/mail-importer.c
+@@ -43,7 +43,6 @@ struct _import_mbox_msg {
+ 	EMailSession *session;
+ 	gchar *path;
+ 	gchar *uri;
+-	GCancellable *cancellable;
+ 
+ 	void (*done)(gpointer data, GError **error);
+ 	gpointer done_data;
+@@ -184,11 +183,11 @@ import_mbox_exec (struct _import_mbox_msg *m,
+ 		}
+ 
+ 		camel_operation_push_message (
+-			m->cancellable, _("Importing '%s'"),
++			cancellable, _("Importing '%s'"),
+ 			camel_folder_get_display_name (folder));
+ 		camel_folder_freeze (folder);
+-		while (camel_mime_parser_step (mp, NULL, NULL) ==
+-				CAMEL_MIME_PARSER_STATE_FROM) {
++		while (camel_mime_parser_step (mp, NULL, NULL) == CAMEL_MIME_PARSER_STATE_FROM &&
++		       !g_cancellable_is_cancelled (cancellable)) {
+ 
+ 			CamelMimeMessage *msg;
+ 			gint pc = 0;
+@@ -199,7 +198,7 @@ import_mbox_exec (struct _import_mbox_msg *m,
+ 				pc = (gint) (100.0 * ((gdouble)
+ 					camel_mime_parser_tell (mp) /
+ 					(gdouble) st.st_size));
+-			camel_operation_progress (m->cancellable, pc);
++			camel_operation_progress (cancellable, pc);
+ 
+ 			msg = camel_mime_message_new ();
+ 			if (!camel_mime_part_construct_from_parser_sync (
+@@ -219,7 +218,7 @@ import_mbox_exec (struct _import_mbox_msg *m,
+ 			camel_mime_parser_step (mp, NULL, NULL);
+ 		}
+ 
+-		if (!any_read) {
++		if (!any_read && !g_cancellable_is_cancelled (cancellable)) {
+ 			CamelStream *stream;
+ 
+ 			stream = camel_stream_fs_new_with_name (m->path, O_RDONLY, 0, NULL);
+@@ -238,7 +237,7 @@ import_mbox_exec (struct _import_mbox_msg *m,
+ 		/* Not passing a GCancellable or GError here. */
+ 		camel_folder_synchronize_sync (folder, FALSE, NULL, NULL);
+ 		camel_folder_thaw (folder);
+-		camel_operation_pop_message (m->cancellable);
++		camel_operation_pop_message (cancellable);
+ 	fail2:
+ 		g_object_unref (mp);
+ 	}
+@@ -261,8 +260,6 @@ static void
+ import_mbox_free (struct _import_mbox_msg *m)
+ {
+ 	g_object_unref (m->session);
+-	if (m->cancellable)
+-		g_object_unref (m->cancellable);
+ 	g_free (m->uri);
+ 	g_free (m->path);
+ }
+@@ -311,12 +308,12 @@ import_kmail_folder (struct _import_mbox_msg *m,
+ 	}
+ 
+ 	camel_operation_push_message (
+-			m->cancellable, _("Importing '%s'"),
++			cancellable, _("Importing '%s'"),
+ 			camel_folder_get_display_name (folder));
+ 	camel_folder_freeze (folder);
+ 
+ 	for (i = 0; special_folders [i]; i++) {
+-		camel_operation_progress (m->cancellable, 100*i/3);
++		camel_operation_progress (cancellable, 100*i/3);
+ 		special_path = g_build_filename (k_path, special_folders[i], NULL);
+ 		dir = g_dir_open (special_path, 0, NULL);
+ 		while ((d = g_dir_read_name (dir))) {
+@@ -367,10 +364,10 @@ import_kmail_folder (struct _import_mbox_msg *m,
+ 			}
+ 		}
+ 	}
+-	camel_operation_progress (m->cancellable, 100);
++	camel_operation_progress (cancellable, 100);
+ 	camel_folder_synchronize_sync (folder, FALSE, NULL, NULL);
+ 	camel_folder_thaw (folder);
+-	camel_operation_pop_message (m->cancellable);
++	camel_operation_pop_message (cancellable);
+ 
+ 	g_free (k_path);
+ }
+@@ -418,8 +415,6 @@ static void
+ import_kmail_free (struct _import_mbox_msg *m)
+ {
+ 	g_object_unref (m->session);
+-	if (m->cancellable)
+-		g_object_unref (m->cancellable);
+ 	g_free (m->uri);
+ 	g_free (m->path);
+ }
+@@ -454,14 +449,12 @@ mail_importer_import_mbox (EMailSession *session,
+ 	struct _import_mbox_msg *m;
+ 	gint id;
+ 
+-	m = mail_msg_new (&import_mbox_info);
++	m = mail_msg_new_with_cancellable (&import_mbox_info, cancellable);
+ 	m->session = g_object_ref (session);
+ 	m->path = g_strdup (path);
+ 	m->uri = g_strdup (folderuri);
+ 	m->done = done;
+ 	m->done_data = data;
+-	if (cancellable)
+-		m->cancellable = g_object_ref (cancellable);
+ 
+ 	id = m->base.seq;
+ 	mail_msg_fast_ordered_push (m);
+@@ -477,14 +470,10 @@ mail_importer_import_mbox_sync (EMailSession *session,
+ {
+ 	struct _import_mbox_msg *m;
+ 
+-	m = mail_msg_new (&import_mbox_info);
++	m = mail_msg_new_with_cancellable (&import_mbox_info, cancellable);
+ 	m->session = g_object_ref (session);
+ 	m->path = g_strdup (path);
+ 	m->uri = g_strdup (folderuri);
+-	if (cancellable)
+-		m->base.cancellable = g_object_ref (cancellable);
+-
+-	cancellable = m->base.cancellable;
+ 
+ 	import_mbox_exec (m, cancellable, &m->base.error);
+ 	import_mbox_done (m);
+@@ -503,14 +492,12 @@ mail_importer_import_kmail (EMailSession *session,
+ 	struct _import_mbox_msg *m;
+ 	gint id;
+ 
+-	m = mail_msg_new (&import_kmail_info);
++	m = mail_msg_new_with_cancellable (&import_kmail_info, cancellable);
+ 	m->session = g_object_ref (session);
+ 	m->path = g_strdup (path);
+ 	m->uri = g_strdup (folderuri);
+ 	m->done = done;
+ 	m->done_data = data;
+-	if (cancellable)
+-		m->cancellable = g_object_ref (cancellable);
+ 	id = m->base.seq;
+ 	mail_msg_fast_ordered_push (m);
+ 
+@@ -525,16 +512,14 @@ mail_importer_import_kmail_sync (EMailSession *session,
+ {
+ 	struct _import_mbox_msg *m;
+ 
+-	m = mail_msg_new (&import_kmail_info);
++	m = mail_msg_new_with_cancellable (&import_kmail_info, cancellable);
+ 	m->session = g_object_ref (session);
+ 	m->path = g_strdup (path);
+ 	if (folderuri)
+ 		m->uri = g_strdup (folderuri);
+ 	else
+ 		m->uri = NULL;
+-	if (cancellable)
+-		m->base.cancellable = cancellable;
+-	cancellable = m->base.cancellable;
++
+ 	import_kmail_exec (m, cancellable, &m->base.error);
+ 	import_kmail_done (m);
+ 	mail_msg_unref (m);
+diff --git a/mail/importers/pine-importer.c b/mail/importers/pine-importer.c
+index 391ea0714b..8ce8e9cdf4 100644
+--- a/mail/importers/pine-importer.c
++++ b/mail/importers/pine-importer.c
+@@ -351,10 +351,12 @@ static gint
+ mail_importer_pine_import (EImport *ei,
+                            EImportTarget *target)
+ {
++	GCancellable *cancellable;
+ 	struct _pine_import_msg *m;
+ 	gint id;
+ 
+-	m = mail_msg_new (&pine_import_info);
++	cancellable = camel_operation_new ();
++	m = mail_msg_new_with_cancellable (&pine_import_info, cancellable);
+ 	g_datalist_set_data (&target->data, "pine-msg", m);
+ 	m->import = ei;
+ 	g_object_ref (m->import);
+@@ -362,7 +364,7 @@ mail_importer_pine_import (EImport *ei,
+ 	m->status_timeout_id = e_named_timeout_add (
+ 		100, pine_status_timeout, m);
+ 	g_mutex_init (&m->status_lock);
+-	m->cancellable = camel_operation_new ();
++	m->cancellable = cancellable;
+ 
+ 	g_signal_connect (
+ 		m->cancellable, "status",
+-- 
+2.15.0
+

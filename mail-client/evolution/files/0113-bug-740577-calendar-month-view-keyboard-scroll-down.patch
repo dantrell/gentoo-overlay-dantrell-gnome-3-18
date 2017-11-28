@@ -1,0 +1,26 @@
+From cf53490d2818f7e12cc53aacede4819656e1e837 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 27 Nov 2014 09:01:42 +0100
+Subject: [PATCH 0113/1800] Bug 740577 - Calendar Month view keyboard scroll
+ down misplaced
+
+---
+ calendar/gui/e-month-view.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/calendar/gui/e-month-view.c b/calendar/gui/e-month-view.c
+index a159190905..265d974ccb 100644
+--- a/calendar/gui/e-month-view.c
++++ b/calendar/gui/e-month-view.c
+@@ -81,7 +81,7 @@ month_view_cursor_key_down (EWeekView *week_view)
+ 		if (e_calendar_view_get_selected_time_range (
+ 			E_CALENDAR_VIEW (week_view), &current, NULL)) {
+ 
+-			current = time_add_week (current, -1);
++			current = time_add_week (current, 1);
+ 			e_week_view_scroll_a_step (
+ 				week_view, E_CAL_VIEW_MOVE_PAGE_DOWN);
+ 			e_week_view_set_selected_time_range_visible (
+-- 
+2.15.0
+

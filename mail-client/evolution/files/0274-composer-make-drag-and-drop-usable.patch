@@ -1,0 +1,633 @@
+From 4bfe6b6357bdd093dd04b3a7fcfbfd9c89f8e193 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 14:17:39 +0100
+Subject: [PATCH 0274/1800] Composer - Make drag and drop usable
+
+Fix the DnD inside the view itself and DnD from outside to composer.
+Comments about some workarounds that had to be used are inside the commit.
+---
+ composer/e-composer-private.c                      |   4 +-
+ composer/e-composer-private.h                      |   2 +
+ composer/e-msg-composer.c                          | 248 ++++++++++++++-------
+ e-util/e-html-editor-view.c                        |  10 +
+ web-extensions/e-composer-private-dom-functions.c  |  27 +++
+ web-extensions/e-composer-private-dom-functions.h  |   3 +
+ .../e-html-editor-selection-dom-functions.c        |   1 +
+ .../e-html-editor-selection-dom-functions.h        |   1 +
+ web-extensions/e-html-editor-view-dom-functions.c  |  41 ++++
+ web-extensions/e-html-editor-view-dom-functions.h  |   3 +
+ web-extensions/e-html-editor-web-extension.c       |  36 ++-
+ 11 files changed, 299 insertions(+), 77 deletions(-)
+
+diff --git a/composer/e-composer-private.c b/composer/e-composer-private.c
+index 9db3bc6a00..c7b2c3b186 100644
+--- a/composer/e-composer-private.c
++++ b/composer/e-composer-private.c
+@@ -135,7 +135,9 @@ e_composer_private_constructed (EMsgComposer *composer)
+ 	priv->set_signature_from_message = FALSE;
+ 	priv->disable_signature = FALSE;
+ 	priv->busy = FALSE;
+-	priv->saved_editable= FALSE;
++	priv->saved_editable = FALSE;
++	priv->drop_occured = FALSE;
++	priv->remove_inserted_uri_on_drop = FALSE;
+ 
+ 	priv->focused_entry = NULL;
+ 
+diff --git a/composer/e-composer-private.h b/composer/e-composer-private.h
+index 5cc09e3558..69ebd90843 100644
+--- a/composer/e-composer-private.h
++++ b/composer/e-composer-private.h
+@@ -100,6 +100,8 @@ struct _EMsgComposerPrivate {
+ 	 * This is used to restore the previous editable state. */
+ 	gboolean saved_editable;
+ 	gboolean set_signature_from_message;
++	gboolean drop_occured;
++	gboolean remove_inserted_uri_on_drop;
+ 
+ 	gint focused_entry_selection_start;
+ 	gint focused_entry_selection_end;
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 945e5fb87a..52e2a20e3f 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -1743,14 +1743,24 @@ msg_composer_drag_motion_cb (GtkWidget *widget,
+                              guint time,
+                              EMsgComposer *composer)
+ {
+-	EAttachmentView *view;
++	GtkWidget *source_widget;
++	EHTMLEditor *editor = e_msg_composer_get_editor (composer);
++	EHTMLEditorView *editor_view = e_html_editor_get_view (editor);
+ 
+-	view = e_msg_composer_get_attachment_view (composer);
++	source_widget = gtk_drag_get_source_widget (context);
++	/* When we are doind DnD just inside the web view, the DnD is supposed
++	 * to move things around. */
++	if (E_IS_HTML_EDITOR_VIEW (source_widget)) {
++		if ((gpointer) editor_view == (gpointer) source_widget) {
++			gdk_drag_status (context, GDK_ACTION_MOVE, time);
+ 
+-	/* Stop the signal from propagating to GtkHtml. */
+-	g_signal_stop_emission_by_name (widget, "drag-motion");
++			return FALSE;
++		}
++	}
+ 
+-	return e_attachment_view_drag_motion (view, context, x, y, time);
++	gdk_drag_status (context, GDK_ACTION_COPY, time);
++
++	return FALSE;
+ }
+ 
+ static gchar *
+@@ -1778,6 +1788,73 @@ next_uri (guchar **uri_list,
+ 	return (gchar *) uri;
+ }
+ 
++static gboolean
++msg_composer_drag_drop_cb (GtkWidget *widget,
++                           GdkDragContext *context,
++                           gint x,
++                           gint y,
++                           guint time,
++                           EMsgComposer *composer)
++{
++	GdkAtom target;
++	GtkWidget *source_widget;
++
++	/* When we are doind DnD just inside the web view, the DnD is supposed
++	 * to move things around. */
++	source_widget = gtk_drag_get_source_widget (context);
++	if (E_IS_HTML_EDITOR_VIEW (source_widget)) {
++		EHTMLEditor *editor = e_msg_composer_get_editor (composer);
++		EHTMLEditorView *editor_view = e_html_editor_get_view (editor);
++
++		if ((gpointer) editor_view == (gpointer) source_widget)
++			return FALSE;
++	}
++
++	target = gtk_drag_dest_find_target (widget, context, NULL);
++	if (target == GDK_NONE)
++		gdk_drag_status (context, 0, time);
++	else {
++		gdk_drag_status (context, GDK_ACTION_COPY, time);
++		composer->priv->drop_occured = TRUE;
++		gtk_drag_get_data (widget, context, target, time);
++	}
++
++	return FALSE;
++}
++
++static void
++msg_composer_drag_data_received_after_cb (GtkWidget *widget,
++                                          GdkDragContext *context,
++                                          gint x,
++                                          gint y,
++                                          GtkSelectionData *selection,
++                                          guint info,
++                                          guint time,
++                                          EMsgComposer *composer)
++{
++	EHTMLEditor *editor;
++	EHTMLEditorView *view;
++	GDBusProxy *web_extension;
++
++	editor = e_msg_composer_get_editor (composer);
++	view = e_html_editor_get_view (editor);
++	web_extension = e_html_editor_view_get_web_extension_proxy (view);
++	if (!web_extension)
++		return;
++
++	g_dbus_proxy_call_sync (
++		web_extension,
++		"DOMCleanAfterDragAndDrop",
++		g_variant_new (
++			"(tb)",
++			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view)),
++			composer->priv->remove_inserted_uri_on_drop),
++		G_DBUS_CALL_FLAGS_NONE,
++		-1,
++		NULL,
++		NULL);
++}
++
+ static void
+ msg_composer_drag_data_received_cb (GtkWidget *widget,
+                                     GdkDragContext *context,
+@@ -1788,41 +1865,58 @@ msg_composer_drag_data_received_cb (GtkWidget *widget,
+                                     guint time,
+                                     EMsgComposer *composer)
+ {
+-	GdkAtom atom;
+-	gchar *name;
+ 	EHTMLEditor *editor;
+ 	EHTMLEditorView *view;
++	gboolean html_mode;
++	GtkWidget *source_widget;
+ 
+ 	editor = e_msg_composer_get_editor (composer);
+ 	view = e_html_editor_get_view (editor);
++	html_mode = e_html_editor_view_get_html_mode (view);
+ 
+-	atom = gtk_selection_data_get_target (selection);
+-	name = gdk_atom_name (atom);
++	if (!composer->priv->drop_occured)
++		return;
+ 
+-	if (g_strcmp0 (name, "UTF8_STRING") == 0 || g_strcmp0 (name, "text/html") == 0) {
+-		gboolean is_text;
++	composer->priv->remove_inserted_uri_on_drop = FALSE;
++	composer->priv->drop_occured = FALSE;
++
++	/* When we are doind DnD just inside the web view, the DnD is supposed
++	 * to move things around. */
++	source_widget = gtk_drag_get_source_widget (context);
++	if (E_IS_HTML_EDITOR_VIEW (source_widget)) {
++		EHTMLEditor *editor = e_msg_composer_get_editor (composer);
++		EHTMLEditorView *editor_view = e_html_editor_get_view (editor);
++
++		if ((gpointer) editor_view == (gpointer) source_widget)
++			return;
++	}
++
++	/* Leave the text on WebKit to handle it. */
++	if (info == DND_TARGET_TYPE_UTF8_STRING ||
++	    info == DND_TARGET_TYPE_STRING ||
++	    info == DND_TARGET_TYPE_TEXT_PLAIN) {
++		gdk_drag_status (context, 0, time);
++		return;
++	}
++
++	if (info == DND_TARGET_TYPE_TEXT_HTML) {
+ 		const guchar *data;
+ 		gint length;
+ 		gint list_len, len;
+ 		gchar *text;
+ 
+-		is_text = g_strcmp0 (name, "UTF8_STRING") == 0;
+-
+ 		data = gtk_selection_data_get_data (selection);
+ 		length = gtk_selection_data_get_length (selection);
+ 
+ 		if (!data || length < 0) {
+-			g_free (name);
++			gtk_drag_finish (context, FALSE, FALSE, time);
+ 			return;
+ 		}
+ 
+ 		list_len = length;
+ 		do {
+ 			text = next_uri ((guchar **) &data, &len, &list_len);
+-			if (is_text)
+-				e_html_editor_view_insert_text (view, text);
+-			else
+-				e_html_editor_view_insert_html (view, text);
++			e_html_editor_view_insert_html (view, text);
+ 		} while (list_len);
+ 
+ 		e_html_editor_view_check_magic_links (view);
+@@ -1830,68 +1924,66 @@ msg_composer_drag_data_received_cb (GtkWidget *widget,
+ 
+ 		e_html_editor_view_scroll_to_caret (view);
+ 
+-		/* Stop the signal from propagating */
+-		g_signal_stop_emission_by_name (widget, "drag-data-received");
+-		g_free (name);
++		gtk_drag_finish (context, TRUE, FALSE, time);
+ 		return;
+ 	}
+ 
+-	g_free (name);
+-
+ 	/* HTML mode has a few special cases for drops... */
+-	if (e_html_editor_view_get_html_mode (view)) {
+-		/* If we're receiving an image, we want the image to be
+-		 * inserted in the message body.  Let GtkHtml handle it. */
+-		/* FIXME WebKit - how to reproduce this?
+-		if (gtk_selection_data_targets_include_image (selection, TRUE))
++	/* If we're receiving URIs and -all- the URIs point to
++	 * image files, we want the image(s) to be inserted in
++	 * the message body. */
++	if (html_mode && e_composer_selection_is_image_uris (composer, selection)) {
++		const guchar *data;
++		gint length;
++		gint list_len, len;
++		gchar *uri;
++
++		data = gtk_selection_data_get_data (selection);
++		length = gtk_selection_data_get_length (selection);
++
++		if (!data || length < 0) {
++			gtk_drag_finish (context, FALSE, FALSE, time);
+ 			return;
+-		 */
+-		/* If we're receiving URIs and -all- the URIs point to
+-		 * image files, we want the image(s) to be inserted in
+-		 * the message body. */
+-		if (e_composer_selection_is_image_uris (composer, selection)) {
+-			const guchar *data;
+-			gint length;
+-			gint list_len, len;
+-			gchar *uri;
+-
+-			data = gtk_selection_data_get_data (selection);
+-			length = gtk_selection_data_get_length (selection);
+-
+-			if (!data || length < 0)
+-				return;
+-
+-			list_len = length;
+-			do {
+-				uri = next_uri ((guchar **) &data, &len, &list_len);
+-				e_html_editor_view_insert_image (view, uri);
+-			} while (list_len);
+ 		}
+ 
+-		if (e_composer_selection_is_base64_uris (composer, selection)) {
+-			const guchar *data;
+-			gint length;
+-			gint list_len, len;
+-			gchar *uri;
++		list_len = length;
++		do {
++			uri = next_uri ((guchar **) &data, &len, &list_len);
++			e_html_editor_view_insert_image (view, uri);
++		} while (list_len);
+ 
+-			data = gtk_selection_data_get_data (selection);
+-			length = gtk_selection_data_get_length (selection);
++		gtk_drag_finish (context, TRUE, FALSE, time);
++	} else if (html_mode && e_composer_selection_is_base64_uris (composer, selection)) {
++		const guchar *data;
++		gint length;
++		gint list_len, len;
++		gchar *uri;
+ 
+-			if (!data || length < 0)
+-				return;
++		data = gtk_selection_data_get_data (selection);
++		length = gtk_selection_data_get_length (selection);
+ 
+-			list_len = length;
+-			do {
+-				uri = next_uri ((guchar **) &data, &len, &list_len);
+-
+-				e_html_editor_view_insert_image (view, uri);
+-			} while (list_len);
++		if (!data || length < 0) {
++			gtk_drag_finish (context, FALSE, FALSE, time);
++			return;
+ 		}
++
++		list_len = length;
++		do {
++			uri = next_uri ((guchar **) &data, &len, &list_len);
++
++			e_html_editor_view_insert_image (view, uri);
++		} while (list_len);
++
++		gtk_drag_finish (context, TRUE, FALSE, time);
+ 	} else {
+-		EAttachmentView *attachment_view;
+-
+-		attachment_view = e_msg_composer_get_attachment_view (composer);
+-
++		EAttachmentView *attachment_view =
++			e_msg_composer_get_attachment_view (composer);
++		/* FIXME When the user drops something inside the view and it is
++		 * added as an EAttachment, WebKit still inserts the URI of the
++		 * resource into the view. Now we are deleting it in
++		 * msg_composer_drag_data_received_after_cb, but there has to be
++		 * a way how to tell the WebKit to not process this drop. */
++		composer->priv->remove_inserted_uri_on_drop = TRUE;
+ 		/* Forward the data to the attachment view.  Note that calling
+ 		 * e_attachment_view_drag_data_received() will not work because
+ 		 * that function only handles the case where all the other drag
+@@ -1900,8 +1992,6 @@ msg_composer_drag_data_received_cb (GtkWidget *widget,
+ 			E_ATTACHMENT_PANED (attachment_view),
+ 			context, x, y, selection, info, time);
+ 	}
+-	/* Stop the signal from propagating */
+-	g_signal_stop_emission_by_name (widget, "drag-data-received");
+ }
+ 
+ static void
+@@ -2205,10 +2295,19 @@ msg_composer_constructed (GObject *object)
+ 		view, "drag-motion",
+ 		G_CALLBACK (msg_composer_drag_motion_cb), composer);
+ 
++	 g_signal_connect (
++		view, "drag-drop",
++		G_CALLBACK (msg_composer_drag_drop_cb), composer);
++
+ 	g_signal_connect (
+ 		view, "drag-data-received",
+ 		G_CALLBACK (msg_composer_drag_data_received_cb), composer);
+ 
++	/* Used for fixing various stuff after WebKit processed the DnD data. */
++	g_signal_connect_after (
++		view, "drag-data-received",
++		G_CALLBACK (msg_composer_drag_data_received_after_cb), composer);
++
+ 	g_signal_connect (
+ 		composer->priv->gallery_icon_view, "drag-data-get",
+ 		G_CALLBACK (msg_composer_gallery_drag_data_get), NULL);
+@@ -2257,11 +2356,10 @@ msg_composer_constructed (GObject *object)
+ 	/* Initialization may have tripped the "changed" state. */
+ 	e_html_editor_view_set_changed (view, FALSE);
+ 
+-	gtk_drag_dest_set (
+-		GTK_WIDGET (view),
+-		GTK_DEST_DEFAULT_HIGHLIGHT | GTK_DEST_DEFAULT_DROP,
+-		drag_dest_targets, G_N_ELEMENTS (drag_dest_targets),
+-		GDK_ACTION_COPY | GDK_ACTION_MOVE | GDK_ACTION_LINK);
++	gtk_target_list_add_table (
++		gtk_drag_dest_get_target_list (GTK_WIDGET (view)),
++		drag_dest_targets,
++		G_N_ELEMENTS (drag_dest_targets));
+ 
+ 	id = "org.gnome.evolution.composer";
+ 	e_plugin_ui_register_manager (ui_manager, id, composer);
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 71f628d020..ae0c30b00f 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -1480,6 +1480,13 @@ e_html_editor_view_set_html_mode (EHTMLEditorView *view,
+ 	g_object_notify (G_OBJECT (view), "html-mode");
+ }
+ 
++static void
++html_editor_view_drag_end_cb (EHTMLEditorView *view,
++                              GdkDragContext *context)
++{
++	e_html_editor_view_call_simple_extension_function (view, "DOMDragAndDropEnd");
++}
++
+ static void
+ e_html_editor_view_init (EHTMLEditorView *view)
+ {
+@@ -1512,6 +1519,9 @@ e_html_editor_view_init (EHTMLEditorView *view)
+ 	g_signal_connect (
+ 		view, "should-show-delete-interface-for-element",
+ 		G_CALLBACK (html_editor_view_should_show_delete_interface_for_element), NULL);*/
++	g_signal_connect (
++		view, "drag-end",
++		G_CALLBACK (html_editor_view_drag_end_cb), NULL);
+ 	g_signal_connect (
+ 		view, "load-changed",
+ 		G_CALLBACK (html_editor_view_load_changed_cb), NULL);
+diff --git a/web-extensions/e-composer-private-dom-functions.c b/web-extensions/e-composer-private-dom-functions.c
+index e3f14536f5..c63435f231 100644
+--- a/web-extensions/e-composer-private-dom-functions.c
++++ b/web-extensions/e-composer-private-dom-functions.c
+@@ -327,3 +327,30 @@ dom_insert_signature (WebKitDOMDocument *document,
+ 	composer_move_caret (document, extension, top_signature, start_bottom);
+ }
+ 
++void
++dom_clean_after_drag_and_drop (WebKitDOMDocument *document,
++                               EHTMLEditorWebExtension *extension,
++                               gboolean remove_inserted_uri_on_drop)
++{
++	WebKitDOMDOMWindow *dom_window;
++	WebKitDOMDOMSelection *dom_selection;
++
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++
++	/* FIXME When the user drops something inside the view and it is
++	 * added as an EAttachment, WebKit still inserts the URI of the
++	 * resource into the view. Let's delete it as it is selected. */
++	if (remove_inserted_uri_on_drop)
++		webkit_dom_dom_selection_delete_from_document (dom_selection);
++	else {
++		/* When text is DnD'ed into the view, WebKit will select it. So let's
++		 * collapse it to its end to have the caret after the DnD'ed text. */
++		webkit_dom_dom_selection_collapse_to_end (dom_selection, NULL);
++	}
++
++	webkit_dom_dom_selection_collapse_to_end (dom_selection, NULL);
++	dom_check_magic_links (document, extension, FALSE);
++	/* Also force spell check on view. */
++	dom_force_spell_check (document, extension);
++}
+diff --git a/web-extensions/e-composer-private-dom-functions.h b/web-extensions/e-composer-private-dom-functions.h
+index c54829cbfe..466372b2cd 100644
+--- a/web-extensions/e-composer-private-dom-functions.h
++++ b/web-extensions/e-composer-private-dom-functions.h
+@@ -34,6 +34,9 @@ void		dom_insert_signature		(WebKitDOMDocument *document,
+ 						 const gchar *signature_html,
+ 						 gboolean top_signature,
+ 						 gboolean start_bottom);
++void		dom_clean_after_drag_and_drop	(WebKitDOMDocument *document,
++						 EHTMLEditorWebExtension *extension,
++						 gboolean remove_inserted_uri_on_drop);
+ 
+ G_END_DECLS
+ 
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index 7c460a5c20..af7ed2bc5e 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -337,6 +337,7 @@ dom_restore_caret_position (WebKitDOMDocument *document)
+ 
+ void
+ dom_insert_base64_image (WebKitDOMDocument *document,
++                         EHTMLEditorWebExtension *extension,
+                          const gchar *filename,
+                          const gchar *uri,
+                          const gchar *base64_content)
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.h b/web-extensions/e-html-editor-selection-dom-functions.h
+index d2d1d670be..d320d207f1 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.h
++++ b/web-extensions/e-html-editor-selection-dom-functions.h
+@@ -79,6 +79,7 @@ void		dom_move_caret_into_element	(WebKitDOMDocument *document,
+ void		dom_restore_caret_position	(WebKitDOMDocument *document);
+ 
+ void		dom_insert_base64_image		(WebKitDOMDocument *document,
++						 EHTMLEditorWebExtension *extension,
+ 						 const gchar *filename,
+ 						 const gchar *uri,
+ 						 const gchar *base64_content);
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 05f6de086f..1f342db263 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -6450,3 +6450,44 @@ dom_get_caret_position (WebKitDOMDocument *document)
+ 	g_object_unref (nodes);
+ 	return webkit_dom_range_get_start_offset (range, NULL) + range_count;
+ }
++
++void
++dom_drag_and_drop_end (WebKitDOMDocument *document,
++                       EHTMLEditorWebExtension *extension)
++{
++	gint ii, length;
++	WebKitDOMDOMWindow *window;
++	WebKitDOMDOMSelection *selection;
++	WebKitDOMNodeList *list;
++
++	/* When the image is DnD inside the view WebKit removes the wrapper that
++	 * is used for resizing the image, so we have to recreate it again. */
++	list = webkit_dom_document_query_selector_all (document, ":not(span) > img[data-inline]", NULL);
++	length = webkit_dom_node_list_get_length (list);
++	for (ii = 0; ii < length; ii++) {
++		WebKitDOMElement *element;
++		WebKitDOMNode *node = webkit_dom_node_list_item (list, ii);
++
++		element = webkit_dom_document_create_element (document, "span", NULL);
++		webkit_dom_element_set_class_name (element, "-x-evo-resizable-wrapper");
++
++		webkit_dom_node_insert_before (
++			webkit_dom_node_get_parent_node (node),
++			WEBKIT_DOM_NODE (element),
++			node,
++			NULL);
++
++		webkit_dom_node_append_child (WEBKIT_DOM_NODE (element), node, NULL);
++	}
++
++	/* When the image is moved the new selection is created after after it, so
++	 * lets collapse the selection to have the caret right after the image. */
++	window = webkit_dom_document_get_default_view (document);
++	selection = webkit_dom_dom_window_get_selection (window);
++	if (length > 0)
++		webkit_dom_dom_selection_collapse_to_start (selection, NULL);
++	else
++		webkit_dom_dom_selection_collapse_to_end (selection, NULL);
++
++	dom_force_spell_check (document, extension);
++}
+diff --git a/web-extensions/e-html-editor-view-dom-functions.h b/web-extensions/e-html-editor-view-dom-functions.h
+index 90ab5607a3..84dfc9c240 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.h
++++ b/web-extensions/e-html-editor-view-dom-functions.h
+@@ -105,6 +105,9 @@ void		dom_process_content_after_mode_change
+ 
+ gint		dom_get_caret_position		(WebKitDOMDocument *document);
+ 
++void		dom_drag_and_drop_end		(WebKitDOMDocument *document,
++						 EHTMLEditorWebExtension *extension);
++
+ G_END_DECLS
+ 
+ #endif /* E_HTML_EDITOR_VIEW_DOM_FUNCTIONS_H */
+diff --git a/web-extensions/e-html-editor-web-extension.c b/web-extensions/e-html-editor-web-extension.c
+index cce89496ea..55137ccd6e 100644
+--- a/web-extensions/e-html-editor-web-extension.c
++++ b/web-extensions/e-html-editor-web-extension.c
+@@ -459,6 +459,9 @@ static const char introspection_xml[] =
+ "      <arg type='s' name='filename' direction='in'/>"
+ "      <arg type='s' name='uri' direction='in'/>"
+ "    </method>"
++"    <method name='DOMDragAndDropEnd'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"    </method>"
+ "<!-- ********************************************************* -->"
+ "<!--     Functions that are used in EHTMLEditorSelection       -->"
+ "<!-- ********************************************************* -->"
+@@ -482,6 +485,10 @@ static const char introspection_xml[] =
+ "      <arg type='b' name='top_signature' direction='in'/>"
+ "      <arg type='b' name='start_bottom' direction='in'/>"
+ "    </method>"
++"    <method name='DOMCleanAfterDragAndDrop'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='b' name='remove_inserted_uri_on_drop' direction='in'/>"
++"    </method>"
+ "  </interface>"
+ "</node>";
+ 
+@@ -1564,7 +1571,8 @@ handle_method_call (GDBusConnection *connection,
+ 		e_html_editor_web_extension_add_new_inline_image_into_list (
+ 			extension, cid_uri, src);
+ 
+-		dom_insert_base64_image (document, filename, cid_uri, src);
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_insert_base64_image (document, extension, filename, cid_uri, src);
+ 
+ 		g_dbus_method_invocation_return_value (invocation, NULL);
+ 	} else if (g_strcmp0 (method_name, "DOMReplaceBase64ImageSrc") == 0) {
+@@ -1580,6 +1588,17 @@ handle_method_call (GDBusConnection *connection,
+ 		document = webkit_web_page_get_dom_document (web_page);
+ 		dom_replace_base64_image_src (document, selector, base64_content, filename, uri);
+ 
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMDragAndDropEnd") == 0) {
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_drag_and_drop_end (document, extension);
+ 		g_dbus_method_invocation_return_value (invocation, NULL);
+ 	} else if (g_strcmp0 (method_name, "DOMSelectionIndent") == 0) {
+ 		g_variant_get (parameters, "(t)", &page_id);
+@@ -1635,6 +1654,21 @@ handle_method_call (GDBusConnection *connection,
+ 		document = webkit_web_page_get_dom_document (web_page);
+ 		dom_insert_signature (document, extension, signature_html, top_signature, start_bottom);
+ 
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "DOMCleanAfterDragAndDrop") == 0) {
++		gboolean remove_inserted_uri_on_drop;
++
++		g_variant_get (
++			parameters, "(tb)", &page_id, &remove_inserted_uri_on_drop);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_clean_after_drag_and_drop (document, extension, remove_inserted_uri_on_drop);
++
+ 		g_dbus_method_invocation_return_value (invocation, NULL);
+ 	} else if (g_strcmp0 (method_name, "DOMGetActiveSignatureUid") == 0) {
+ 		gchar *value;
+-- 
+2.15.0
+

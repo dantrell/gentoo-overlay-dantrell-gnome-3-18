@@ -1,0 +1,70 @@
+From f3982e31c3f7f29e8de59411622aa0ff4eab9068 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 24 Feb 2016 13:51:07 +0100
+Subject: [PATCH 0639/1800] Composer - Don't remove wrapping from user wrapped
+ blocks
+
+---
+ .../composer/e-html-editor-selection-dom-functions.c    | 17 ++++++++++++++---
+ .../composer/e-html-editor-view-dom-functions.c         |  1 +
+ 2 files changed, 15 insertions(+), 3 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 58d6c62a9a..e0757d3f2f 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -2501,7 +2501,11 @@ dom_remove_wrapping_from_element (WebKitDOMElement *element)
+ 	length = webkit_dom_node_list_get_length (list);
+ 	for (ii = 0; ii < length; ii++) {
+ 		WebKitDOMNode *node = webkit_dom_node_list_item (list, ii);
+-		remove_node (node);
++		WebKitDOMNode *parent;
++
++		parent = get_parent_block_node_from_child (node);
++		if (!webkit_dom_element_has_attribute (WEBKIT_DOM_ELEMENT (parent), "data-user-wrapped"))
++			remove_node (node);
+ 		g_object_unref (node);
+ 	}
+ 
+@@ -2512,10 +2516,14 @@ dom_remove_wrapping_from_element (WebKitDOMElement *element)
+ 	length = webkit_dom_node_list_get_length (list);
+ 	for (ii = 0; ii < length; ii++) {
+ 		WebKitDOMNode *hidden_space_node;
++		WebKitDOMNode *parent;
+ 
+ 		hidden_space_node = webkit_dom_node_list_item (list, ii);
+-		webkit_dom_html_element_set_outer_text (
+-			WEBKIT_DOM_HTML_ELEMENT (hidden_space_node), " ", NULL);
++		parent = get_parent_block_node_from_child (hidden_space_node);
++		if (!webkit_dom_element_has_attribute (WEBKIT_DOM_ELEMENT (parent), "data-user-wrapped")) {
++			webkit_dom_html_element_set_outer_text (
++				WEBKIT_DOM_HTML_ELEMENT (hidden_space_node), " ", NULL);
++		}
+ 		g_object_unref (hidden_space_node);
+ 	}
+ 	g_object_unref (list);
+@@ -2724,6 +2732,9 @@ dom_selection_wrap (WebKitDOMDocument *document,
+ 		wrapped_paragraph = dom_wrap_paragraph_length (
+ 			document, extension, WEBKIT_DOM_ELEMENT (block), word_wrap_length - quote);
+ 
++		webkit_dom_element_set_attribute (
++			wrapped_paragraph, "data-user-wrapped", "", NULL);
++
+ 		if (quoted && !html_mode)
+ 			dom_quote_plain_text_element (document, wrapped_paragraph);
+ 
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index b3e4ea024c..5676ef4728 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -5464,6 +5464,7 @@ remove_evolution_attributes (WebKitDOMElement *element)
+ 	webkit_dom_element_remove_attribute (element, "data-message");
+ 	webkit_dom_element_remove_attribute (element, "data-name");
+ 	webkit_dom_element_remove_attribute (element, "data-new-message");
++	webkit_dom_element_remove_attribute (element, "data-user-wrapped");
+ 	webkit_dom_element_remove_attribute (element, "spellcheck");
+ }
+ /*
+-- 
+2.15.0
+

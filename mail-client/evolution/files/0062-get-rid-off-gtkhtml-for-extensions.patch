@@ -1,0 +1,111 @@
+From 9ffaae0cbbf29880033ab4719a354502f0572a31 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 16 Sep 2014 15:25:40 +0200
+Subject: [PATCH 0062/1800] Get rid off GTKHTML for extensions
+
+---
+ modules/itip-formatter/web-extension/Makefile.am | 2 --
+ modules/mail/web-extension/Makefile.am           | 2 --
+ modules/prefer-plain/web-extension/Makefile.am   | 2 --
+ modules/text-highlight/web-extension/Makefile.am | 2 --
+ web-extensions/Makefile.am                       | 2 --
+ 5 files changed, 10 deletions(-)
+
+diff --git a/modules/itip-formatter/web-extension/Makefile.am b/modules/itip-formatter/web-extension/Makefile.am
+index ab62dff42d..4e044bb449 100644
+--- a/modules/itip-formatter/web-extension/Makefile.am
++++ b/modules/itip-formatter/web-extension/Makefile.am
+@@ -11,14 +11,12 @@ libmoduleitipformatterwebextension_la_CPPFLAGS =	\
+ 	-I$(top_srcdir)					\
+ 	$(EVOLUTION_DATA_SERVER_CFLAGS)			\
+ 	$(GNOME_PLATFORM_CFLAGS)			\
+-	$(GTKHTML_CFLAGS)				\
+ 	$(WEB_EXTENSIONS_CFLAGS)
+ 
+ libmoduleitipformatterwebextension_la_LIBADD =		\
+ 	$(top_builddir)/e-util/libevolution-util.la	\
+ 	$(EVOLUTION_DATA_SERVER_LIBS)			\
+ 	$(GNOME_PLATFORM_LIBS)				\
+-	$(GTKHTML_LIBS)					\
+ 	$(WEB_EXTENSIONS_LIBS)
+ 
+ libmoduleitipformatterwebextension_la_LDFLAGS =		\
+diff --git a/modules/mail/web-extension/Makefile.am b/modules/mail/web-extension/Makefile.am
+index b89d1124e9..b585110e9c 100644
+--- a/modules/mail/web-extension/Makefile.am
++++ b/modules/mail/web-extension/Makefile.am
+@@ -9,14 +9,12 @@ libmodulemailwebextension_la_CPPFLAGS =			\
+ 	-I$(top_srcdir)					\
+ 	$(EVOLUTION_DATA_SERVER_CFLAGS)			\
+ 	$(GNOME_PLATFORM_CFLAGS)			\
+-	$(GTKHTML_CFLAGS)				\
+ 	$(WEB_EXTENSIONS_CFLAGS)
+ 
+ libmodulemailwebextension_la_LIBADD =			\
+ 	$(top_builddir)/e-util/libevolution-util.la	\
+ 	$(EVOLUTION_DATA_SERVER_LIBS)			\
+ 	$(GNOME_PLATFORM_LIBS)				\
+-	$(GTKHTML_LIBS)					\
+ 	$(WEB_EXTENSIONS_LIBS)
+ 
+ libmodulemailwebextension_la_LDFLAGS =			\
+diff --git a/modules/prefer-plain/web-extension/Makefile.am b/modules/prefer-plain/web-extension/Makefile.am
+index d11385eb99..24936e9566 100644
+--- a/modules/prefer-plain/web-extension/Makefile.am
++++ b/modules/prefer-plain/web-extension/Makefile.am
+@@ -9,14 +9,12 @@ libmodulepreferplainwebextension_la_CPPFLAGS =		\
+ 	-I$(top_srcdir)					\
+ 	$(EVOLUTION_DATA_SERVER_CFLAGS)			\
+ 	$(GNOME_PLATFORM_CFLAGS)			\
+-	$(GTKHTML_CFLAGS)				\
+ 	$(WEB_EXTENSIONS_CFLAGS)
+ 
+ libmodulepreferplainwebextension_la_LIBADD =		\
+ 	$(top_builddir)/e-util/libevolution-util.la	\
+ 	$(EVOLUTION_DATA_SERVER_LIBS)			\
+ 	$(GNOME_PLATFORM_LIBS)				\
+-	$(GTKHTML_LIBS)					\
+ 	$(WEB_EXTENSIONS_LIBS)
+ 
+ libmodulepreferplainwebextension_la_LDFLAGS =		\
+diff --git a/modules/text-highlight/web-extension/Makefile.am b/modules/text-highlight/web-extension/Makefile.am
+index e9e3fafac7..9aa0f2b8aa 100644
+--- a/modules/text-highlight/web-extension/Makefile.am
++++ b/modules/text-highlight/web-extension/Makefile.am
+@@ -9,14 +9,12 @@ libmoduletexthighlightwebextension_la_CPPFLAGS =	\
+ 	-I$(top_srcdir)					\
+ 	$(EVOLUTION_DATA_SERVER_CFLAGS)			\
+ 	$(GNOME_PLATFORM_CFLAGS)			\
+-	$(GTKHTML_CFLAGS)				\
+ 	$(WEB_EXTENSIONS_CFLAGS)
+ 
+ libmoduletexthighlightwebextension_la_LIBADD =		\
+ 	$(top_builddir)/e-util/libevolution-util.la	\
+ 	$(EVOLUTION_DATA_SERVER_LIBS)			\
+ 	$(GNOME_PLATFORM_LIBS)				\
+-	$(GTKHTML_LIBS)					\
+ 	$(WEB_EXTENSIONS_LIBS)
+ 
+ libmoduletexthighlightwebextension_la_LDFLAGS =		\
+diff --git a/web-extensions/Makefile.am b/web-extensions/Makefile.am
+index 3577cfb85d..4b3441ed24 100644
+--- a/web-extensions/Makefile.am
++++ b/web-extensions/Makefile.am
+@@ -9,14 +9,12 @@ libevolutionwebextension_la_CPPFLAGS =			\
+ 	-I$(top_srcdir)					\
+ 	$(EVOLUTION_DATA_SERVER_CFLAGS)			\
+ 	$(GNOME_PLATFORM_CFLAGS)			\
+-	$(GTKHTML_CFLAGS)				\
+ 	$(WEB_EXTENSIONS_CFLAGS)
+ 
+ libevolutionwebextension_la_LIBADD =			\
+ 	$(top_builddir)/e-util/libevolution-util.la	\
+ 	$(EVOLUTION_DATA_SERVER_LIBS)			\
+ 	$(GNOME_PLATFORM_LIBS)				\
+-	$(GTKHTML_LIBS)					\
+ 	$(WEB_EXTENSIONS_LIBS)
+ 
+ libevolutionwebextension_la_LDFLAGS =			\
+-- 
+2.15.0
+

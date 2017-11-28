@@ -1,0 +1,29 @@
+From d11f5cb0c5dbc2509d46b8733c22425fe4d604c5 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 10 Mar 2015 14:24:12 +0100
+Subject: [PATCH 0471/1800] Bug 745951 - Disable "Create filter for
+ Mailing-List" when not from ML
+
+---
+ mail/e-mail-reader.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index 86b3ef3edd..9b61826be1 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -3558,6 +3558,11 @@ mail_reader_update_actions (EMailReader *reader,
+ 	action = e_mail_reader_get_action (reader, action_name);
+ 	gtk_action_set_sensitive (action, sensitive);
+ 
++	action_name = "mail-filter-rule-for-mailing-list";
++	sensitive = single_message_selected && selection_is_mailing_list;
++	action = e_mail_reader_get_action (reader, action_name);
++	gtk_action_set_sensitive (action, sensitive);
++
+ 	action_name = "mail-find";
+ 	sensitive = single_message_selected;
+ 	action = e_mail_reader_get_action (reader, action_name);
+-- 
+2.15.0
+

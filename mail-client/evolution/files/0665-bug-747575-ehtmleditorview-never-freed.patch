@@ -1,0 +1,25 @@
+From be2941490811adc19e397aa08f517218df111de4 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 24 Feb 2016 16:12:16 +0100
+Subject: [PATCH 0665/1800] Bug 747575 - EHTMLEditorView never freed
+
+Nothing to use, actually
+---
+ web-extensions/composer/e-html-editor-selection-dom-functions.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index fed4ea0655..1840c62ba8 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -82,7 +82,6 @@ dom_get_current_range (WebKitDOMDocument *document)
+ 		goto exit;
+ 
+ 	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+-
+  exit:
+ 	g_object_unref (dom_selection);
+ 	g_object_unref (dom_window);
+-- 
+2.15.0
+

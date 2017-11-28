@@ -1,0 +1,40 @@
+From 5890a982923a34bd156ee9eba245cee54e791447 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 23 Mar 2015 13:01:21 +0100
+Subject: [PATCH 0125/1800] Bug 740993 - Reply to an empty message breaks
+ quotation
+
+When the message that we are replying on is empty, put empty paragraph in quotation.
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 73c2e17108..b297db5b50 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -3718,6 +3718,9 @@ dom_convert_content (WebKitDOMDocument *document,
+ 	}
+ 	remove_node (WEBKIT_DOM_NODE (wrapper));
+ 
++	if (inner_html && !*inner_html)
++		empty = TRUE;
++
+ 	/* FIXME XXX */
+ 	length = webkit_dom_element_get_child_element_count (WEBKIT_DOM_ELEMENT (body));
+ 	if (length <= 1) {
+@@ -3735,6 +3738,11 @@ dom_convert_content (WebKitDOMDocument *document,
+ 
+ 	if (!empty)
+ 		parse_html_into_paragraphs (document, extension, content_wrapper, NULL, inner_html);
++	else
++		webkit_dom_node_append_child (
++			WEBKIT_DOM_NODE (content_wrapper),
++			WEBKIT_DOM_NODE (prepare_paragraph (selection, document, FALSE)),
++			NULL);
+ 
+ 	if (!cite_body) {
+ 		if (!empty) {
+-- 
+2.15.0
+

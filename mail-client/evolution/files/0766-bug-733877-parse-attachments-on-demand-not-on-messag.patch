@@ -1,0 +1,94 @@
+From ef17a541a4242f120c6bf607ab11a2377fa9c82e Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 25 Feb 2016 16:48:37 +0100
+Subject: [PATCH 0766/1800] Bug 733877 - Parse attachments on demand, not on
+ message open
+
+---
+ em-format/e-mail-formatter-attachment.c | 11 ++++++-----
+ mail/e-mail-display.c                   | 19 +++++++++++++++++--
+ 2 files changed, 23 insertions(+), 7 deletions(-)
+
+diff --git a/em-format/e-mail-formatter-attachment.c b/em-format/e-mail-formatter-attachment.c
+index 0a921571a6..643b839a1e 100644
+--- a/em-format/e-mail-formatter-attachment.c
++++ b/em-format/e-mail-formatter-attachment.c
+@@ -320,7 +320,7 @@ emfe_attachment_format (EMailFormatterExtension *extension,
+ 		}
+ 
+ 		if (success) {
+-			gchar *wrapper_element_id;
++			gchar *wrapper_element_id, *inner_html_data;
+ 			gconstpointer data;
+ 			gsize size;
+ 
+@@ -332,17 +332,18 @@ emfe_attachment_format (EMailFormatterExtension *extension,
+ 			size = g_memory_output_stream_get_data_size (
+ 				G_MEMORY_OUTPUT_STREAM (content_stream));
+ 
++			inner_html_data = g_markup_escape_text (data, size);
++
+ 			g_string_append_printf (
+ 				buffer,
+ 				"<tr><td colspan=\"2\">"
+-				"<div class=\"attachment-wrapper\" id=\"%s\">",
+-				wrapper_element_id);
+-
+-			g_string_append_len (buffer, data, size);
++				"<div class=\"attachment-wrapper\" id=\"%s\" inner-html-data=\"%s\">",
++				wrapper_element_id, inner_html_data);
+ 
+ 			g_string_append (buffer, "</div></td></tr>");
+ 
+ 			g_free (wrapper_element_id);
++			g_free (inner_html_data);
+ 		}
+ 
+ 		g_object_unref (content_stream);
+diff --git a/mail/e-mail-display.c b/mail/e-mail-display.c
+index ee603dd639..278137c8c8 100644
+--- a/mail/e-mail-display.c
++++ b/mail/e-mail-display.c
+@@ -342,7 +342,7 @@ decide_policy_cb (WebKitWebView *web_view,
+ 	uri = webkit_uri_request_get_uri (request);
+ 
+ 	if (!uri || !*uri) {
+-		g_warning ("asdasdasdasdadasdasd");
++		g_warning ("asdasdasdasdadasdasd"); /* FIXME WK2 */
+ 		webkit_policy_decision_ignore (decision);
+ 		return TRUE;
+ 	}
+@@ -383,7 +383,7 @@ decide_policy_cb (WebKitWebView *web_view,
+ 	/* Let WebKit handle it. */
+ 	return FALSE;
+ }
+-#if 0
++#if 0 /* FIXME WK2 */
+ static void
+ mail_display_resource_requested (WebKitWebView *web_view,
+                                  WebKitWebFrame *frame,
+@@ -560,6 +560,21 @@ attachment_button_expanded (GObject *object,
+ 		return;
+ 	}
+ 
++	if (WEBKIT_DOM_IS_HTML_ELEMENT (element) && expanded &&
++	    webkit_dom_element_get_child_element_count (element) == 0) {
++		gchar *inner_html_data;
++
++		inner_html_data = webkit_dom_element_get_attribute (element, "inner-html-data");
++		if (inner_html_data && *inner_html_data) {
++			WebKitDOMHTMLElement *html_element;
++
++			html_element = WEBKIT_DOM_HTML_ELEMENT (element);
++			webkit_dom_html_element_set_inner_html (html_element, inner_html_data, NULL);
++		}
++
++		g_free (inner_html_data);
++	}
++
+ 	/* Show or hide the DIV which contains
+ 	 * the attachment (iframe, image...). */
+ 	css = webkit_dom_element_get_style (element);
+-- 
+2.15.0
+

@@ -1,0 +1,26 @@
+From 0e26154b1ddecc301efe1e5c65959b0a0bd84b5e Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 23 Feb 2015 10:03:36 +0100
+Subject: [PATCH 0355/1800] Use a secure URL for queries from gravatar.com
+
+As suggested in bug #730743 comment #6
+---
+ modules/gravatar/e-gravatar-photo-source.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/modules/gravatar/e-gravatar-photo-source.c b/modules/gravatar/e-gravatar-photo-source.c
+index a1afa5ef94..e401a61e04 100644
+--- a/modules/gravatar/e-gravatar-photo-source.c
++++ b/modules/gravatar/e-gravatar-photo-source.c
+@@ -24,7 +24,7 @@
+ 	(G_TYPE_INSTANCE_GET_PRIVATE \
+ 	((obj), E_TYPE_GRAVATAR_PHOTO_SOURCE, EGravatarPhotoSourcePrivate))
+ 
+-#define AVATAR_BASE_URI "http://www.gravatar.com/avatar/"
++#define AVATAR_BASE_URI "https://secure.gravatar.com/avatar/"
+ 
+ struct _EGravatarPhotoSourcePrivate
+ {
+-- 
+2.15.0
+

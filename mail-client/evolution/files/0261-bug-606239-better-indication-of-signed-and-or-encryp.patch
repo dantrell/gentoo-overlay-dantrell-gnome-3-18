@@ -1,0 +1,508 @@
+From 3d7965c6c16715a02a39740d03fe4efbb4e27bea Mon Sep 17 00:00:00 2001
+From: Christian Schaarschmidt <schaarsc@gmx.de>
+Date: Fri, 6 Feb 2015 10:21:12 +0100
+Subject: [PATCH 0261/1800] Bug 606239 - Better indication of signed and/or
+ encrypted received email
+
+---
+ em-format/e-mail-formatter-headers.c               | 13 ++--
+ em-format/e-mail-formatter-print-headers.c         | 52 +--------------
+ em-format/e-mail-formatter-text-enriched.c         | 12 ++--
+ em-format/e-mail-formatter-text-html.c             |  7 +-
+ em-format/e-mail-formatter-text-plain.c            |  8 +--
+ em-format/e-mail-formatter-utils.c                 | 77 ++++++++++++++++++++++
+ em-format/e-mail-formatter-utils.h                 |  7 ++
+ em-format/e-mail-part-utils.c                      | 36 ++++++++++
+ em-format/e-mail-part-utils.h                      |  4 ++
+ mail/e-mail-display.c                              | 53 ++++++++++++++-
+ .../e-mail-formatter-text-highlight.c              |  5 +-
+ 11 files changed, 206 insertions(+), 68 deletions(-)
+
+diff --git a/em-format/e-mail-formatter-headers.c b/em-format/e-mail-formatter-headers.c
+index 12445f6c08..2affbe104a 100644
+--- a/em-format/e-mail-formatter-headers.c
++++ b/em-format/e-mail-formatter-headers.c
+@@ -203,10 +203,11 @@ static void
+ format_full_headers (EMailFormatter *formatter,
+                      GString *buffer,
+                      EMailPart *part,
+-                     guint32 mode,
+-                     guint32 flags,
++                     EMailFormatterContext *context,
+                      GCancellable *cancellable)
+ {
++	guint32 mode = context->mode;
++	guint32 flags = context->flags;
+ 	CamelMimePart *mime_part;
+ 	const gchar *charset;
+ 	CamelContentType *ct;
+@@ -353,6 +354,7 @@ format_full_headers (EMailFormatter *formatter,
+ 				E_MAIL_FORMATTER_HEADER_FLAG_NOCOLUMNS, charset);
+ 			header = header->next;
+ 		}
++		e_mail_formatter_format_security_header (formatter, context, buffer, part, E_MAIL_FORMATTER_HEADER_FLAG_NOCOLUMNS);
+ 	} else {
+ 		CamelMedium *medium;
+ 		gchar **default_headers;
+@@ -427,6 +429,7 @@ format_full_headers (EMailFormatter *formatter,
+ 		}
+ 
+ 		g_strfreev (default_headers);
++		e_mail_formatter_format_security_header (formatter, context, buffer, part, 0);
+ 	}
+ 
+ 	g_string_append (buffer, "</table></td>");
+@@ -548,9 +551,9 @@ emfe_headers_format (EMailFormatterExtension *extension,
+ 
+ 	format_full_headers (
+ 		formatter,
+-		buffer, part,
+-		context->mode,
+-		context->flags,
++		buffer,
++		part,
++		context,
+ 		cancellable);
+ 
+ 	g_string_append (buffer, "</td>");
+diff --git a/em-format/e-mail-formatter-print-headers.c b/em-format/e-mail-formatter-print-headers.c
+index 7825913c17..8d6ee849a5 100644
+--- a/em-format/e-mail-formatter-print-headers.c
++++ b/em-format/e-mail-formatter-print-headers.c
+@@ -59,7 +59,7 @@ emfpe_headers_format (EMailFormatterExtension *extension,
+ 	GtkTreeModel *tree_model;
+ 	GtkTreeIter iter;
+ 	gboolean iter_valid;
+-	GString *str, *tmp;
++	GString *str;
+ 	gchar *subject;
+ 	const gchar *buf;
+ 	gint attachments_count;
+@@ -118,61 +118,15 @@ emfpe_headers_format (EMailFormatterExtension *extension,
+ 
+ 	g_object_unref (tree_model);
+ 
++	e_mail_formatter_format_security_header (formatter, context, str, part, E_MAIL_FORMATTER_HEADER_FLAG_NOLINKS);
++
+ 	/* Get prefix of this PURI */
+ 	part_id = e_mail_part_get_id (part);
+ 	part_id_prefix = g_strndup (part_id, g_strrstr (part_id, ".") - part_id);
+ 
+-	/* Add encryption/signature header */
+-	tmp = g_string_new ("");
+-
+ 	e_mail_part_list_queue_parts (context->part_list, NULL, &queue);
+-
+ 	head = g_queue_peek_head_link (&queue);
+ 
+-	/* Find first secured part. */
+-	for (link = head; link != NULL; link = g_list_next (link)) {
+-		EMailPart *mail_part = link->data;
+-
+-		if (!e_mail_part_has_validity (mail_part))
+-			continue;
+-
+-		if (!e_mail_part_id_has_prefix (mail_part, part_id_prefix))
+-			continue;
+-
+-		if (e_mail_part_get_validity (mail_part, E_MAIL_PART_VALIDITY_PGP | E_MAIL_PART_VALIDITY_SIGNED)) {
+-			g_string_append (tmp, _("GPG signed"));
+-		}
+-
+-		if (e_mail_part_get_validity (mail_part, E_MAIL_PART_VALIDITY_PGP | E_MAIL_PART_VALIDITY_ENCRYPTED)) {
+-			if (tmp->len > 0)
+-				g_string_append (tmp, ", ");
+-			g_string_append (tmp, _("GPG encrpyted"));
+-		}
+-
+-		if (e_mail_part_get_validity (mail_part, E_MAIL_PART_VALIDITY_SMIME | E_MAIL_PART_VALIDITY_SIGNED)) {
+-			if (tmp->len > 0)
+-				g_string_append (tmp, ", ");
+-			g_string_append (tmp, _("S/MIME signed"));
+-		}
+-
+-		if (e_mail_part_get_validity (mail_part, E_MAIL_PART_VALIDITY_SMIME | E_MAIL_PART_VALIDITY_ENCRYPTED)) {
+-			if (tmp->len > 0)
+-				g_string_append (tmp, ", ");
+-			g_string_append (tmp, _("S/MIME encrpyted"));
+-		}
+-
+-		break;
+-	}
+-
+-	if (tmp->len > 0) {
+-		e_mail_formatter_format_header (
+-			formatter, str,
+-			_("Security"), tmp->str,
+-			E_MAIL_FORMATTER_HEADER_FLAG_BOLD |
+-			E_MAIL_FORMATTER_HEADER_FLAG_NOLINKS, "UTF-8");
+-	}
+-	g_string_free (tmp, TRUE);
+-
+ 	/* Count attachments and display the number as a header */
+ 	attachments_count = 0;
+ 
+diff --git a/em-format/e-mail-formatter-text-enriched.c b/em-format/e-mail-formatter-text-enriched.c
+index e9fccd72be..31cc8eb45a 100644
+--- a/em-format/e-mail-formatter-text-enriched.c
++++ b/em-format/e-mail-formatter-text-enriched.c
+@@ -25,6 +25,7 @@
+ 
+ #include "e-mail-formatter-extension.h"
+ #include "e-mail-inline-filter.h"
++#include "e-mail-part-utils.h"
+ 
+ typedef EMailFormatterExtension EMailFormatterTextEnriched;
+ typedef EMailFormatterExtensionClass EMailFormatterTextEnrichedClass;
+@@ -54,6 +55,7 @@ emfe_text_enriched_format (EMailFormatterExtension *extension,
+ 	CamelMimeFilter *filter;
+ 	const gchar *mime_type;
+ 	const gchar *string;
++	gchar *str;
+ 	guint32 filter_flags = 0;
+ 
+ 	if (g_cancellable_is_cancelled (cancellable))
+@@ -70,13 +72,15 @@ emfe_text_enriched_format (EMailFormatterExtension *extension,
+ 		G_FILTER_OUTPUT_STREAM (filtered_stream), FALSE);
+ 	g_object_unref (filter);
+ 
+-	string =
+-		"<div class=\"part-container -e-mail-formatter-frame-color "
++	str = g_strdup_printf (
++		"<div class=\"part-container -e-mail-formatter-frame-color %s"
+ 		"-e-web-view-background-color -e-web-view-text-color\">"
+-		"<div class=\"part-container-inner-margin\">\n";
++		"<div class=\"part-container-inner-margin\">\n",
++		e_mail_part_get_frame_security_style (part));
+ 
+ 	g_output_stream_write_all (
+-		stream, string, strlen (string), NULL, cancellable, NULL);
++		stream, str, strlen (str), NULL, cancellable, NULL);
++	g_free (str);
+ 
+ 	e_mail_formatter_format_text (
+ 		formatter, part, filtered_stream, cancellable);
+diff --git a/em-format/e-mail-formatter-text-html.c b/em-format/e-mail-formatter-text-html.c
+index b8832d5f5d..61b98cccae 100644
+--- a/em-format/e-mail-formatter-text-html.c
++++ b/em-format/e-mail-formatter-text-html.c
+@@ -334,13 +334,14 @@ emfe_text_html_format (EMailFormatterExtension *extension,
+ 			"<iframe width=\"100%%\" height=\"10\" "
+ 			" frameborder=\"0\" src=\"%s\" "
+ 			" id=\"%s.iframe\" name=\"%s\" "
+-			" class=\"-e-mail-formatter-frame-color\" "
+-			" style=\"background-color: #ffffff; border: 1px solid;\">"
++			" class=\"-e-mail-formatter-frame-color %s\" "
++			" style=\"background-color: #ffffff; \">"
+ 			"</iframe>"
+ 			"</div>",
+ 			uri,
+ 			e_mail_part_get_id (part),
+-			e_mail_part_get_id (part));
++			e_mail_part_get_id (part),
++			e_mail_part_get_frame_security_style (part));
+ 
+ 		g_output_stream_write_all (
+ 			stream, str, strlen (str),
+diff --git a/em-format/e-mail-formatter-text-plain.c b/em-format/e-mail-formatter-text-plain.c
+index 373ffdf826..a314d52bf7 100644
+--- a/em-format/e-mail-formatter-text-plain.c
++++ b/em-format/e-mail-formatter-text-plain.c
+@@ -171,14 +171,14 @@ emfe_text_plain_format (EMailFormatterExtension *extension,
+ 			"<iframe width=\"100%%\" height=\"10\""
+ 			" id=\"%s.iframe\" name=\"%s\" "
+ 			" frameborder=\"0\" src=\"%s\" "
+-			" class=\"-e-mail-formatter-frame-color"
+-			" -e-web-view-text-color\" "
+-			" style=\"border: 1px solid;\">"
++			" class=\"-e-mail-formatter-frame-color %s"
++			" -e-web-view-text-color\" >"
+ 			"</iframe>"
+ 			"</div>",
+ 			e_mail_part_get_id (part),
+ 			e_mail_part_get_id (part),
+-			uri);
++			uri,
++			e_mail_part_get_frame_security_style (part));
+ 
+ 		g_output_stream_write_all (
+ 			stream, str, strlen (str),
+diff --git a/em-format/e-mail-formatter-utils.c b/em-format/e-mail-formatter-utils.c
+index a60dd1da21..6bec66e527 100644
+--- a/em-format/e-mail-formatter-utils.c
++++ b/em-format/e-mail-formatter-utils.c
+@@ -20,6 +20,7 @@
+ #endif
+ 
+ #include "e-mail-formatter-utils.h"
++#include "e-mail-part-headers.h"
+ 
+ #include <string.h>
+ #include <glib/gi18n.h>
+@@ -522,3 +523,79 @@ e_mail_formatter_parse_html_mnemonics (const gchar *label,
+ 
+ 	return g_string_free (html_label, FALSE);
+ }
++
++void
++e_mail_formatter_format_security_header (EMailFormatter *formatter,
++                                         EMailFormatterContext *context,
++                                         GString *buffer,
++                                         EMailPart *part,
++                                         guint32 flags)
++{
++	const gchar* part_id;
++	gchar* part_id_prefix;
++	GString* tmp;
++	GQueue queue = G_QUEUE_INIT;
++	GList *head, *link;
++
++	g_return_if_fail (E_IS_MAIL_PART_HEADERS (part));
++
++	/* Get prefix of this PURI */
++	part_id = e_mail_part_get_id (part);
++	part_id_prefix = g_strndup (part_id, g_strrstr (part_id, ".") - part_id);
++
++	/* Add encryption/signature header */
++	tmp = g_string_new ("");
++
++	e_mail_part_list_queue_parts (context->part_list, NULL, &queue);
++
++	head = g_queue_peek_head_link (&queue);
++
++	/* Find first secured part. */
++	for (link = head; link != NULL; link = g_list_next(link)) {
++		EMailPart *mail_part = link->data;
++
++		if (!e_mail_part_has_validity (mail_part))
++			continue;
++
++		if (!e_mail_part_id_has_prefix (mail_part, part_id_prefix))
++			continue;
++
++		if (e_mail_part_get_validity (mail_part, E_MAIL_PART_VALIDITY_PGP | E_MAIL_PART_VALIDITY_SIGNED)) {
++			g_string_append (tmp, _("GPG signed"));
++		}
++
++		if (e_mail_part_get_validity (mail_part, E_MAIL_PART_VALIDITY_PGP | E_MAIL_PART_VALIDITY_ENCRYPTED)) {
++			if (tmp->len > 0)
++				g_string_append (tmp, ", ");
++			g_string_append (tmp, _("GPG encrpyted"));
++		}
++
++		if (e_mail_part_get_validity (mail_part, E_MAIL_PART_VALIDITY_SMIME | E_MAIL_PART_VALIDITY_SIGNED)) {
++			if (tmp->len > 0)
++				g_string_append (tmp, ", ");
++			g_string_append (tmp, _("S/MIME signed"));
++		}
++
++		if (e_mail_part_get_validity (mail_part, E_MAIL_PART_VALIDITY_SMIME | E_MAIL_PART_VALIDITY_ENCRYPTED)) {
++			if (tmp->len > 0)
++				g_string_append (tmp, ", ");
++			g_string_append (tmp, _("S/MIME encrpyted"));
++		}
++
++		break;
++	}
++
++	if (tmp->len > 0) {
++		e_mail_formatter_format_header (
++			formatter, buffer,
++			_("Security"), tmp->str,
++			flags,
++			"UTF-8");
++	}
++
++	while (!g_queue_is_empty (&queue))
++		g_object_unref (g_queue_pop_head (&queue));
++
++	g_string_free (tmp, TRUE);
++	g_free (part_id_prefix);
++}
+diff --git a/em-format/e-mail-formatter-utils.h b/em-format/e-mail-formatter-utils.h
+index b4ccf6daa8..ba232ebe2d 100644
+--- a/em-format/e-mail-formatter-utils.h
++++ b/em-format/e-mail-formatter-utils.h
+@@ -54,6 +54,13 @@ gchar *		e_mail_formatter_parse_html_mnemonics
+ 						(const gchar *label,
+ 						 gchar **out_access_key);
+ 
++void		e_mail_formatter_format_security_header
++						(EMailFormatter *formatter,
++						 EMailFormatterContext *context,
++						 GString *buffer,
++						 EMailPart *part,
++						 guint32 flags);
++
+ G_END_DECLS
+ 
+ #endif /* E_MAIL_FORMATTER_UTILS_H_ */
+diff --git a/em-format/e-mail-part-utils.c b/em-format/e-mail-part-utils.c
+index 7fb38ac199..afc28f4472 100644
+--- a/em-format/e-mail-part-utils.c
++++ b/em-format/e-mail-part-utils.c
+@@ -54,6 +54,42 @@ e_mail_part_is_secured (CamelMimePart *part)
+ 		camel_content_type_is (ct, "application", "pkcs7-mime"));
+ }
+ 
++/*
++ * Returns: one of -e-mail-formatter-frame-security-* style classes
++ */
++const gchar *
++e_mail_part_get_frame_security_style (EMailPart *part)
++{
++	const gchar *frame_style = NULL;
++
++	g_return_val_if_fail (part != NULL, "-e-mail-formatter-frame-security-none");
++
++	if (e_mail_part_get_validity_flags (part) == E_MAIL_PART_VALIDITY_NONE) {
++		return "-e-mail-formatter-frame-security-none";
++	} else {
++		GList *head, *link;
++
++		head = g_queue_peek_head_link (&part->validities);
++
++		for (link = head; link != NULL; link = g_list_next (link)) {
++			EMailPartValidityPair *pair = link->data;
++			if (pair->validity->sign.status == CAMEL_CIPHER_VALIDITY_SIGN_BAD) {
++				return "-e-mail-formatter-frame-security-bad";
++			} else if (pair->validity->sign.status == CAMEL_CIPHER_VALIDITY_SIGN_UNKNOWN) {
++				frame_style = "-e-mail-formatter-frame-security-unknown";
++			} else if (frame_style == NULL &&
++				pair->validity->sign.status == CAMEL_CIPHER_VALIDITY_SIGN_NEED_PUBLIC_KEY) {
++				frame_style = "-e-mail-formatter-frame-security-need-key";
++			}
++		}
++	}
++
++	if (frame_style == NULL)
++		frame_style = "-e-mail-formatter-frame-security-good";
++
++	return frame_style;
++}
++
+ /**
+  * e_mail_part_snoop_type:
+  * @part: a #CamelMimePart
+diff --git a/em-format/e-mail-part-utils.h b/em-format/e-mail-part-utils.h
+index ef8b36e67d..58db01df5d 100644
+--- a/em-format/e-mail-part-utils.h
++++ b/em-format/e-mail-part-utils.h
+@@ -19,11 +19,15 @@
+ #define E_MAIL_PART_UTILS_H_
+ 
+ #include <camel/camel.h>
++#include "e-mail-part.h"
+ 
+ G_BEGIN_DECLS
+ 
+ gboolean	e_mail_part_is_secured		(CamelMimePart *part);
+ 
++const gchar *	e_mail_part_get_frame_security_style
++						(EMailPart *part);
++
+ const gchar *	e_mail_part_snoop_type		(CamelMimePart *part);
+ 
+ gboolean	e_mail_part_is_attachment	(CamelMimePart *part);
+diff --git a/mail/e-mail-display.c b/mail/e-mail-display.c
+index 0fcce9f49f..cb6c27133e 100644
+--- a/mail/e-mail-display.c
++++ b/mail/e-mail-display.c
+@@ -738,7 +738,7 @@ add_color_css_rule_for_web_view (EWebView *view,
+ 			"color: ", color_value, " !important;", NULL);
+ 	} else if (g_strstr_len (color_name, -1, "frame")) {
+ 		style = g_strconcat (
+-			"border-color: ", color_value, " !important;", NULL);
++			"border-color: ", color_value, NULL);
+ 	} else {
+ 		style = g_strconcat (
+ 			"background-color: ", color_value, " !important;", NULL);
+@@ -758,6 +758,8 @@ static void
+ initialize_web_view_colors (EMailDisplay *display)
+ {
+ 	EMailFormatter *formatter;
++	GtkTextDirection direction;
++	const gchar *style;
+ 	gint ii;
+ 
+ 	const gchar *color_names[] = {
+@@ -785,6 +787,55 @@ initialize_web_view_colors (EMailDisplay *display)
+ 		gdk_rgba_free (color);
+ 		g_free (color_value);
+ 	}
++
++	e_web_view_add_css_rule_into_style_sheet (
++		E_WEB_VIEW (display),
++		"-e-mail-formatter-style-sheet",
++		".-e-mail-formatter-frame-security-none",
++		"border-width: 1px; border-style: solid");
++
++	/* the rgba values below were copied from e-formatter-secure-button */
++	direction = gtk_widget_get_default_direction ();
++
++	if (direction == GTK_TEXT_DIR_LTR)
++		style = "border-width: 1px 1px 1px 4px; border-style: solid; border-color: rgba(53%, 73%, 53%, 1.0)";
++	else
++		style = "border-width: 1px 4px 1px 1px; border-style: solid; border-color: rgba(53%, 73%, 53%, 1.0)";
++	e_web_view_add_css_rule_into_style_sheet (
++		E_WEB_VIEW (display),
++		"-e-mail-formatter-style-sheet",
++		".-e-mail-formatter-frame-security-good",
++		style);
++
++	if (direction == GTK_TEXT_DIR_LTR)
++		style = "border-width: 1px 1px 1px 4px; border-style: solid; border-color: rgba(73%, 53%, 53%, 1.0)";
++	else
++		style = "border-width: 1px 4px 1px 1px; border-style: solid; border-color: rgba(73%, 53%, 53%, 1.0)";
++	e_web_view_add_css_rule_into_style_sheet (
++		E_WEB_VIEW (display),
++		"-e-mail-formatter-style-sheet",
++		".-e-mail-formatter-frame-security-bad",
++		style);
++
++	if (direction == GTK_TEXT_DIR_LTR)
++		style = "border-width: 1px 1px 1px 4px; border-style: solid; border-color: rgba(91%, 82%, 13%, 1.0)";
++	else
++		style = "border-width: 1px 4px 1px 1px; border-style: solid; border-color: rgba(91%, 82%, 13%, 1.0)";
++	e_web_view_add_css_rule_into_style_sheet (
++		E_WEB_VIEW (display),
++		"-e-mail-formatter-style-sheet",
++		".-e-mail-formatter-frame-security-unknown",
++		style);
++
++	if (direction == GTK_TEXT_DIR_LTR)
++		style = "border-width: 1px 1px 1px 4px; border-style: solid; border-color: rgba(91%, 82%, 13%, 1.0)";
++	else
++		style = "border-width: 1px 4px 1px 1px; border-style: solid; border-color: rgba(91%, 82%, 13%, 1.0)";
++	e_web_view_add_css_rule_into_style_sheet (
++		E_WEB_VIEW (display),
++		"-e-mail-formatter-style-sheet",
++		".-e-mail-formatter-frame-security-need-key",
++		style);
+ }
+ 
+ static void
+diff --git a/modules/text-highlight/e-mail-formatter-text-highlight.c b/modules/text-highlight/e-mail-formatter-text-highlight.c
+index 2ffd67516d..4eb1cbe8ba 100644
+--- a/modules/text-highlight/e-mail-formatter-text-highlight.c
++++ b/modules/text-highlight/e-mail-formatter-text-highlight.c
+@@ -406,13 +406,14 @@ emfe_text_highlight_format (EMailFormatterExtension *extension,
+ 			"<div class=\"part-container-nostyle\" >"
+ 			"<iframe width=\"100%%\" height=\"10\""
+ 			" id=\"%s\" name=\"%s\" "
+-			" class=\"-e-mail-formatter-frame-color -e-web-view-background-color\" "
++			" class=\"-e-mail-formatter-frame-color %s -e-web-view-background-color\" "
+ 			" frameborder=\"0\" src=\"%s\" "
+-			" style=\"border: 1px solid;\">"
++			" >"
+ 			"</iframe>"
+ 			"</div>",
+ 			e_mail_part_get_id (part),
+ 			e_mail_part_get_id (part),
++			e_mail_part_get_frame_security_style (part),
+ 			uri);
+ 
+ 		g_output_stream_write_all (
+-- 
+2.15.0
+

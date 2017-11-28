@@ -1,0 +1,25 @@
+From a593b2333c46d75119c4f3285b540037b6c0434c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marek=20=C4=8Cernock=C3=BD?= <marek@manet.cz>
+Date: Tue, 20 Jan 2015 19:10:35 +0100
+Subject: [PATCH 0184/1800] Updated Czech translation
+
+---
+ po/cs.po | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/po/cs.po b/po/cs.po
+index ad3cfe71bd..c6e7b965e8 100644
+--- a/po/cs.po
++++ b/po/cs.po
+@@ -19170,7 +19170,7 @@ msgstr "%u a %d budou nahrazeny uživatelem a doménou z e-mailové adresy."
+ 
+ #: ../modules/calendar/e-calendar-preferences.ui.h:78
+ msgid "Publishing Information"
+-msgstr "Informace o zveřejnění"
++msgstr "Zveřejněné informace"
+ 
+ #: ../modules/calendar/e-cal-shell-backend.c:114
+ msgctxt "New"
+-- 
+2.15.0
+

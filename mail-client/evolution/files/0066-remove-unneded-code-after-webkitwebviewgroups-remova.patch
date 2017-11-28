@@ -1,0 +1,37 @@
+From b6525ead3d3818c03791b28341ba13fc192bb36b Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 16 Sep 2014 15:36:20 +0200
+Subject: [PATCH 0066/1800] Remove unneded code after WebkitWebViewGroups
+ removal
+
+---
+ e-util/e-web-view.c | 13 -------------
+ 1 file changed, 13 deletions(-)
+
+diff --git a/e-util/e-web-view.c b/e-util/e-web-view.c
+index 04ff176a1f..91fec52348 100644
+--- a/e-util/e-web-view.c
++++ b/e-util/e-web-view.c
+@@ -3517,19 +3517,6 @@ e_web_view_update_fonts (EWebView *web_view)
+ 	pango_font_description_free (vw);
+ }
+ 
+-WebKitWebViewGroup *
+-e_web_view_get_web_view_group (void)
+-{
+-	static WebKitWebViewGroup *web_view_group = NULL;
+-
+-	if (!web_view_group) {
+-		web_view_group = webkit_web_view_group_new ("Evolution WebView Group");
+-		web_view_initialize_group (web_view_group);
+-	}
+-
+-	return web_view_group;
+-}
+-
+ void
+ e_web_view_initialize_webkit (void)
+ {
+-- 
+2.15.0
+

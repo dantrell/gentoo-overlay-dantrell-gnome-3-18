@@ -1,0 +1,53 @@
+From 81f39c599cc5a23337e9c5ee907603fcd0d8a61a Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 1 Jun 2015 11:01:35 +0200
+Subject: [PATCH 0776/1800] Bug 750202 - Crash under
+ shell_source_invoke_authenticate_cb()
+
+---
+ shell/e-shell.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/shell/e-shell.c b/shell/e-shell.c
+index 97d58dc84e..3975339ee6 100644
+--- a/shell/e-shell.c
++++ b/shell/e-shell.c
+@@ -672,7 +672,7 @@ shell_source_invoke_authenticate_cb (GObject *source_object,
+ 
+ 	if (!e_source_invoke_authenticate_finish (source, result, &error)) {
+ 		/* Can be cancelled only if the shell is disposing/disposed */
+-		if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
++		if (error && !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+ 			EAlert *alert;
+ 
+ 			g_return_if_fail (E_IS_SHELL (shell));
+@@ -710,7 +710,7 @@ shell_trust_prompt_done_cb (GObject *source_object,
+ 
+ 	if (!e_trust_prompt_run_for_source_finish (source, result, &response, &error)) {
+ 		/* Can be cancelled only if the shell is disposing/disposed */
+-		if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
++		if (error && !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+ 			EAlert *alert;
+ 
+ 			g_return_if_fail (E_IS_SHELL (shell));
+@@ -757,7 +757,7 @@ shell_credentials_prompt_done_cb (GObject *source_object,
+ 	if (e_credentials_prompter_prompt_finish (E_CREDENTIALS_PROMPTER (source_object), result, &source, &credentials, &error)) {
+ 		e_source_invoke_authenticate (source, credentials, shell->priv->cancellable,
+ 			shell_source_invoke_authenticate_cb, shell);
+-	} else if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
++	} else if (error && !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+ 		EAlert *alert;
+ 
+ 		g_return_if_fail (E_IS_SHELL (shell));
+@@ -1039,7 +1039,7 @@ shell_get_last_credentials_required_arguments_cb (GObject *source_object,
+ 	if (!e_source_get_last_credentials_required_arguments_finish (source, result, &reason,
+ 		&certificate_pem, &certificate_errors, &op_error, &error)) {
+ 		/* Can be cancelled only if the shell is disposing/disposed */
+-		if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
++		if (error && !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+ 			EAlert *alert;
+ 
+ 			g_return_if_fail (E_IS_SHELL (shell));
+-- 
+2.15.0
+

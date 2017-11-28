@@ -1,0 +1,25 @@
+From e1a2004ce6c771b0ca3da9d8a66c71fd5fa4c912 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 26 Mar 2015 13:48:09 +0100
+Subject: [PATCH 0386/1800] EWebView - Fix wrong indentation
+
+---
+ web-extensions/e-dom-utils.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/web-extensions/e-dom-utils.c b/web-extensions/e-dom-utils.c
+index aacbbd0537..8598deb040 100644
+--- a/web-extensions/e-dom-utils.c
++++ b/web-extensions/e-dom-utils.c
+@@ -1483,7 +1483,7 @@ element_has_tag (WebKitDOMElement *element,
+ 
+ gboolean
+ element_has_class (WebKitDOMElement *element,
+-                const gchar* class)
++                   const gchar* class)
+ {
+ 	gchar *element_class;
+ 
+-- 
+2.15.0
+

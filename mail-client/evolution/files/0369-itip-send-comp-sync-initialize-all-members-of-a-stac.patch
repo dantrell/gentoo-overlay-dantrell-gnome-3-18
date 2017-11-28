@@ -1,0 +1,26 @@
+From 3fbde869c2ce3ffadd13dd27a2fd8786214519ff Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 26 Feb 2015 08:40:05 +0100
+Subject: [PATCH 0369/1800] itip_send_comp_sync: Initialize all members of a
+ stack allocated structure
+
+---
+ calendar/gui/itip-utils.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/calendar/gui/itip-utils.c b/calendar/gui/itip-utils.c
+index 91ff5b074d..a043bd43b4 100644
+--- a/calendar/gui/itip-utils.c
++++ b/calendar/gui/itip-utils.c
+@@ -1982,6 +1982,8 @@ itip_send_comp_sync (ESourceRegistry *registry,
+ {
+ 	ItipSendComponentData isc;
+ 
++	memset (&isc, 0, sizeof (ItipSendComponentData));
++
+ 	isc.registry = registry;
+ 	isc.method = method;
+ 	isc.send_comp = send_comp;
+-- 
+2.15.0
+

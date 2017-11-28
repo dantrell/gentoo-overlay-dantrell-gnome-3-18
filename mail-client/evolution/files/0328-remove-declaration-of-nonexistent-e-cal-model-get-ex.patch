@@ -1,0 +1,25 @@
+From e06b3bc4307ac81e83158d133b5bdd1d1919edb6 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 19 Feb 2015 16:40:13 +0100
+Subject: [PATCH 0328/1800] Remove declaration of nonexistent
+ e_cal_model_get_extension_name()
+
+---
+ calendar/gui/e-cal-model.h | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/calendar/gui/e-cal-model.h b/calendar/gui/e-cal-model.h
+index 860c30214d..cecc20aebd 100644
+--- a/calendar/gui/e-cal-model.h
++++ b/calendar/gui/e-cal-model.h
+@@ -175,7 +175,6 @@ ESourceRegistry *
+ 		e_cal_model_get_registry	(ECalModel *model);
+ EShell *	e_cal_model_get_shell		(ECalModel *model);
+ EClientCache *	e_cal_model_get_client_cache	(ECalModel *model);
+-const gchar *	e_cal_model_get_extension_name	(ECalModel *model);
+ icalcomponent_kind
+ 		e_cal_model_get_component_kind	(ECalModel *model);
+ void		e_cal_model_set_component_kind	(ECalModel *model,
+-- 
+2.15.0
+

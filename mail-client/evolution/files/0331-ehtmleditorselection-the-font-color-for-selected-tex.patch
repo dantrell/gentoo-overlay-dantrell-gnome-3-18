@@ -1,0 +1,27 @@
+From e144e939012f95a84dbafac9f87205de1c3bdfef Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 16:39:51 +0100
+Subject: [PATCH 0331/1800] EHTMLEditorSelection - The font color for selected
+ text is wrong
+
+Chack if the returned value is not empty, otherwise set it to black.
+---
+ web-extensions/e-html-editor-selection-dom-functions.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index ee4fcbfdaa..fca8c54bfa 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -3797,7 +3797,7 @@ dom_selection_get_font_color (WebKitDOMDocument *document,
+ 		color = g_strdup (selection->priv->font_color);*/
+ 	} else {
+ 		color = get_font_property (document, "color");
+-		if (!color)
++		if (!(color && *color))
+ 			color = g_strdup ("#000000");
+ 	}
+ 
+-- 
+2.15.0
+

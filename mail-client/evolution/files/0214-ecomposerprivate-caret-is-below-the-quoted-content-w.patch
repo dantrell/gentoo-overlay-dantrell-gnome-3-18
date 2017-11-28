@@ -1,0 +1,38 @@
+From 2f0b6370fd3917f515e0384a78c96c51fd87589d Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 08:45:57 +0100
+Subject: [PATCH 0214/1800] EComposerPrivate - Caret is below the quoted
+ content when replying on HTML message with active signature and choosing the
+ Don't lose formatting option
+
+---
+ web-extensions/e-composer-private-dom-functions.c | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/web-extensions/e-composer-private-dom-functions.c b/web-extensions/e-composer-private-dom-functions.c
+index 4048ba3c93..365a51881f 100644
+--- a/web-extensions/e-composer-private-dom-functions.c
++++ b/web-extensions/e-composer-private-dom-functions.c
+@@ -226,11 +226,14 @@ composer_move_caret (WebKitDOMDocument *document,
+ 					NULL);
+ 			}
+ 		} else {
+-			webkit_dom_node_insert_before (
+-				WEBKIT_DOM_NODE (body),
+-				WEBKIT_DOM_NODE (element),
+-				WEBKIT_DOM_NODE (signature),
+-				NULL);
++			if (start_bottom)
++				webkit_dom_node_insert_before (
++					WEBKIT_DOM_NODE (body),
++					WEBKIT_DOM_NODE (element),
++					WEBKIT_DOM_NODE (signature),
++					NULL);
++			else
++				element = WEBKIT_DOM_ELEMENT (body);
+ 		}
+ 	} else {
+ 		if (!element && top_signature) {
+-- 
+2.15.0
+

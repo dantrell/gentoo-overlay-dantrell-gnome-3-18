@@ -1,0 +1,78 @@
+From 6e65fd2966415f5ee96f69fc865d984d3274c003 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 26 Feb 2016 11:32:48 +0100
+Subject: [PATCH 0885/1800] Bug 752199 - Do not require libgdata
+
+---
+ configure.ac                                         | 12 ------------
+ modules/cal-config-google/Makefile.am                |  2 --
+ modules/cal-config-google/module-cal-config-google.c |  2 --
+ 3 files changed, 16 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index fadc7956ba..3bc9e9d2db 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -51,7 +51,6 @@ m4_define([enchant_minimum_version], [1.1.7])
+ m4_define([gnome_desktop_minimum_version], [2.91.3])
+ m4_define([gsettings_desktop_schemas_minimum_version], [2.91.92])
+ m4_define([webkit2gtk_minimum_version], [2.11.2])
+-m4_define([libgdata_minimum_version], [0.10])
+ m4_define([libxml_minimum_version], [2.7.3])
+ m4_define([shared_mime_info_minimum_version], [0.22])
+ m4_define([libpst_minimum_version], [0.6.54])
+@@ -1154,17 +1153,6 @@ PKG_CHECK_MODULES([LIBSOUP], [libsoup-2.4 >= soup_minimum_version])
+ AC_SUBST(LIBSOUP_CFLAGS)
+ AC_SUBST(LIBSOUP_LIBS)
+ 
+-PKG_CHECK_MODULES([GDATA], [libgdata >= libgdata_minimum_version])
+-AC_SUBST(GDATA_CFLAGS)
+-AC_SUBST(GDATA_LIBS)
+-
+-dnl ***********************************
+-dnl GTasks require more latest libgdata
+-dnl ***********************************
+-if `$PKG_CONFIG --atleast-version=0.15.1 libgdata`; then
+-	AC_DEFINE(HAVE_GDATA_0_15_1, 1, [Define to 1 if you have the libgdata package >= 0.15.1])
+-fi
+-
+ dnl ****************************
+ dnl Check for ical_set_unknown_token_handling_setting function
+ dnl ****************************
+diff --git a/modules/cal-config-google/Makefile.am b/modules/cal-config-google/Makefile.am
+index bee9e4abb1..56e65f7585 100644
+--- a/modules/cal-config-google/Makefile.am
++++ b/modules/cal-config-google/Makefile.am
+@@ -6,7 +6,6 @@ module_cal_config_google_la_CPPFLAGS = \
+ 	-DG_LOG_DOMAIN=\"evolution-cal-config-google\"		\
+ 	$(EVOLUTION_DATA_SERVER_CFLAGS)				\
+ 	$(GNOME_PLATFORM_CFLAGS)				\
+-	$(GDATA_CFLAGS)						\
+ 	$(CODE_COVERAGE_CFLAGS)					\
+ 	$(NULL)
+ 
+@@ -22,7 +21,6 @@ module_cal_config_google_la_LIBADD = \
+ 	$(top_builddir)/e-util/libevolution-util.la		\
+ 	$(EVOLUTION_DATA_SERVER_LIBS)				\
+ 	$(GNOME_PLATFORM_LIBS)					\
+-	$(GDATA_LIBS)						\
+ 	$(NULL)
+ 
+ module_cal_config_google_la_LDFLAGS = \
+diff --git a/modules/cal-config-google/module-cal-config-google.c b/modules/cal-config-google/module-cal-config-google.c
+index 10b33ae929..9085843110 100644
+--- a/modules/cal-config-google/module-cal-config-google.c
++++ b/modules/cal-config-google/module-cal-config-google.c
+@@ -31,9 +31,7 @@ e_module_load (GTypeModule *type_module)
+ {
+ 	e_google_chooser_button_type_register (type_module);
+ 	e_cal_config_google_type_register (type_module);
+-#ifdef HAVE_GDATA_0_15_1
+ 	e_cal_config_gtasks_type_register (type_module);
+-#endif
+ }
+ 
+ G_MODULE_EXPORT void
+-- 
+2.15.0
+

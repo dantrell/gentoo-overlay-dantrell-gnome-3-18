@@ -74,9 +74,6 @@ pkg_setup() {
 }
 
 src_prepare() {
-	# Fix relink issues in src_install
-	ELTCONF="--reverse-deps"
-
 	use vala && vala_src_prepare
 	gnome2_src_prepare
 }

@@ -1,0 +1,36 @@
+From 5d293ba6af498bccd3b17f71db45feca803a40e0 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 12:10:13 +0100
+Subject: [PATCH 0735/1800] Composer - Undo initiated with shortcuts doesn't
+ stop
+
+---
+ composer/e-msg-composer.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index d3f7db8346..cd6067a112 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -2573,6 +2573,18 @@ msg_composer_key_press_event (GtkWidget *widget,
+ 			return TRUE;
+ 		}
+ 
++		if (((event)->state & GDK_CONTROL_MASK) &&
++		    ((event)->keyval == GDK_KEY_z)) {
++			e_html_editor_view_undo (view);
++			return TRUE;
++		}
++
++		if (((event)->state & (GDK_CONTROL_MASK | GDK_SHIFT_MASK)) &&
++		    ((event)->keyval == GDK_KEY_Z)) {
++			e_html_editor_view_redo (view);
++			return TRUE;
++		}
++
+ 		if (((event)->state & GDK_SHIFT_MASK) &&
+ 		    ((event)->keyval == GDK_KEY_Delete)) {
+ 			g_signal_emit_by_name (
+-- 
+2.15.0
+

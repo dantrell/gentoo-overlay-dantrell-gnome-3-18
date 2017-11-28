@@ -1,0 +1,34 @@
+From ae0742c98228e07476933eb8a900ff179ea52f8e Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 1 Mar 2016 11:44:08 +0100
+Subject: [PATCH 0986/1800] Bug 754329 - Runtime warning when pressing Delete
+ at the end of paragraph
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index aeccddc7cb..c8f5083938 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -7484,10 +7484,12 @@ save_history_for_delete_or_backspace (WebKitDOMDocument *document,
+ 
+ 					next_node = webkit_dom_node_get_next_sibling (
+ 						webkit_dom_node_get_next_sibling (next_sibling));
+-					webkit_dom_range_set_start (
+-						range_clone, next_node, 0, NULL);
+-					webkit_dom_range_set_end (
+-						range_clone, next_node, 1, NULL);
++					if (next_node) {
++						webkit_dom_range_set_start (
++							range_clone, next_node, 0, NULL);
++						webkit_dom_range_set_end (
++							range_clone, next_node, 1, NULL);
++					}
+ 				} else {
+ 					glong offset;
+ 
+-- 
+2.15.0
+

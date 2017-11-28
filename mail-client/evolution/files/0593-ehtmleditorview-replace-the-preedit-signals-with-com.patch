@@ -1,0 +1,264 @@
+From a3ff8c2cc38bb5e2e412a9d35725603dc8a4a5fc Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 9 Dec 2015 16:04:31 +0100
+Subject: [PATCH 0593/1800] EHTMLEditorView - Replace the preedit-* signals
+ with compositionstart and compositionend HTML events
+
+---
+ e-util/e-html-editor-view.c                        | 25 ------------
+ .../composer/e-html-editor-view-dom-functions.c    | 40 +++++++++++++++++-
+ .../composer/e-html-editor-web-extension.c         | 47 ++++++----------------
+ .../composer/e-html-editor-web-extension.h         | 18 ++++-----
+ 4 files changed, 60 insertions(+), 70 deletions(-)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index c009956715..cefe2b6cc8 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -1605,23 +1605,7 @@ html_editor_view_drag_end_cb (EHTMLEditorView *view,
+ {
+ 	e_html_editor_view_call_simple_extension_function (view, "DOMDragAndDropEnd");
+ }
+-/* FIXME WK2
+-static void
+-im_context_preedit_start_cb (GtkIMContext *context,
+-                             EHTMLEditorView *view)
+-{
+-	e_html_editor_view_call_simple_extension_function_sync (
+-		view, "DOMIMContextPreEditStart");
+-}
+ 
+-static void
+-im_context_preedit_end_cb (GtkIMContext *context,
+-                           EHTMLEditorView *view)
+-{
+-	e_html_editor_view_call_simple_extension_function_sync (
+-		view, "DOMIMContextPreEditEnd");
+-}
+-*/
+ static void
+ e_html_editor_view_init (EHTMLEditorView *view)
+ {
+@@ -1629,7 +1613,6 @@ e_html_editor_view_init (EHTMLEditorView *view)
+ 	GSettings *g_settings;
+ 	GSettingsSchema *settings_schema;
+ /* FIXME WK2
+-	GtkIMContext *im_context;
+ 	ESpellChecker *checker;
+ 	gchar **languages;
+ 	gchar *comma_separated;
+@@ -1710,14 +1693,6 @@ e_html_editor_view_init (EHTMLEditorView *view)
+ 	view->priv->convert_in_situ = FALSE;
+ 
+ 	view->priv->current_user_stylesheet = NULL;
+-/* FIXME WK2
+-	g_object_get (WEBKIT_WEB_VIEW (view), "im-context", &im_context, NULL);
+-	g_signal_connect (
+-		im_context, "preedit-start",
+-		G_CALLBACK (im_context_preedit_start_cb), view);
+-	g_signal_connect (
+-		im_context, "preedit-end",
+-		G_CALLBACK (im_context_preedit_end_cb), view);*/
+ }
+ 
+ void
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index eb25136411..49884ba94e 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -2514,7 +2514,7 @@ body_keyup_event_cb (WebKitDOMElement *element,
+ 	WebKitDOMDocument *document;
+ 
+ 	document = webkit_dom_node_get_owner_document (WEBKIT_DOM_NODE (element));
+-	if (!e_html_editor_web_extension_is_im_input_in_progress (extension))
++	if (!e_html_editor_web_extension_is_composition_in_progress (extension))
+ 		dom_register_input_event_listener_on_body (document, extension);
+ 
+ 	if (!dom_selection_is_collapsed (document))
+@@ -4252,6 +4252,30 @@ clear_attributes (WebKitDOMDocument *document)
+ 	g_object_unref (attributes);
+ }
+ 
++static void
++body_compositionstart_event_cb (WebKitDOMElement *element,
++                                WebKitDOMUIEvent *event,
++                                EHTMLEditorWebExtension *extension)
++{
++	WebKitDOMDocument *document;
++
++	document = webkit_dom_node_get_owner_document (WEBKIT_DOM_NODE (element));
++	e_html_editor_web_extension_set_composition_in_progress (extension, TRUE);
++	dom_remove_input_event_listener_from_body (document, extension);
++}
++
++static void
++body_compositionend_event_cb (WebKitDOMElement *element,
++                              WebKitDOMUIEvent *event,
++                              EHTMLEditorWebExtension *extension)
++{
++	WebKitDOMDocument *document;
++
++	document = webkit_dom_node_get_owner_document (WEBKIT_DOM_NODE (element));
++	e_html_editor_web_extension_set_composition_in_progress (extension, FALSE);
++	dom_remove_input_event_listener_from_body (document, extension);
++}
++
+ static void
+ register_html_events_handlers (WebKitDOMHTMLElement *body,
+                                EHTMLEditorWebExtension *extension)
+@@ -4276,6 +4300,20 @@ register_html_events_handlers (WebKitDOMHTMLElement *body,
+ 		G_CALLBACK (body_keyup_event_cb),
+ 		FALSE,
+ 		extension);
++
++	webkit_dom_event_target_add_event_listener (
++		WEBKIT_DOM_EVENT_TARGET (body),
++		"compositionstart",
++		G_CALLBACK (body_compositionstart_event_cb),
++		FALSE,
++		extension);
++
++	webkit_dom_event_target_add_event_listener (
++		WEBKIT_DOM_EVENT_TARGET (body),
++		"compositionend",
++		G_CALLBACK (body_compositionend_event_cb),
++		FALSE,
++		extension);
+ }
+ 
+ void
+diff --git a/web-extensions/composer/e-html-editor-web-extension.c b/web-extensions/composer/e-html-editor-web-extension.c
+index 2100ba4302..d1a6117515 100644
+--- a/web-extensions/composer/e-html-editor-web-extension.c
++++ b/web-extensions/composer/e-html-editor-web-extension.c
+@@ -92,7 +92,7 @@ struct _EHTMLEditorWebExtensionPrivate {
+ 	gboolean is_message_from_selection;
+ 	gboolean remove_initial_input_line;
+ 	gboolean dont_save_history_in_body_input;
+-	gboolean im_input_in_progress;
++	gboolean composition_in_progress;
+ 
+ 	GHashTable *inline_images;
+ 
+@@ -539,12 +539,6 @@ static const char introspection_xml[] =
+ "      <arg type='i' name='y' direction='in'/>"
+ "      <arg type='b' name='cancel_if_not_collapsed' direction='in'/>"
+ "    </method>"
+-"    <method name='DOMIMContextPreEditStart'>"
+-"      <arg type='t' name='page_id' direction='in'/>"
+-"    </method>"
+-"    <method name='DOMIMContextPreEditEnd'>"
+-"      <arg type='t' name='page_id' direction='in'/>"
+-"    </method>"
+ "    <method name='DOMInsertSmiley'>"
+ "      <arg type='t' name='page_id' direction='in'/>"
+ "      <arg type='s' name='smiley_name' direction='in'/>"
+@@ -2027,30 +2021,6 @@ handle_method_call (GDBusConnection *connection,
+ 		document = webkit_web_page_get_dom_document (web_page);
+ 		dom_drag_and_drop_end (document, extension);
+ 		g_dbus_method_invocation_return_value (invocation, NULL);
+-	} else if (g_strcmp0 (method_name, "DOMIMContextPreEditStart") == 0) {
+-		g_variant_get (parameters, "(t)", &page_id);
+-
+-		web_page = get_webkit_web_page_or_return_dbus_error (
+-			invocation, web_extension, page_id);
+-		if (!web_page)
+-			goto error;
+-
+-		extension->priv->im_input_in_progress = TRUE;
+-		document = webkit_web_page_get_dom_document (web_page);
+-		dom_remove_input_event_listener_from_body (document, extension);
+-		g_dbus_method_invocation_return_value (invocation, NULL);
+-	} else if (g_strcmp0 (method_name, "DOMIMContextPreEditEnd") == 0) {
+-		g_variant_get (parameters, "(t)", &page_id);
+-
+-		web_page = get_webkit_web_page_or_return_dbus_error (
+-			invocation, web_extension, page_id);
+-		if (!web_page)
+-			goto error;
+-
+-		extension->priv->im_input_in_progress = FALSE;
+-		document = webkit_web_page_get_dom_document (web_page);
+-		dom_register_input_event_listener_on_body (document, extension);
+-		g_dbus_method_invocation_return_value (invocation, NULL);
+ 	} else if (g_strcmp0 (method_name, "DOMInsertSmiley") == 0) {
+ 		const gchar *smiley_name;
+ 
+@@ -2828,7 +2798,6 @@ handle_set_property (GDBusConnection *connection,
+ 
+ 		extension->priv->node_under_mouse_click_flags = value;
+ 
+-		printf ("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa %d\n", value);
+ 		g_variant_builder_add (builder,
+ 			"{sv}",
+ 			"NodeUnderMouseClickFlags",
+@@ -2971,7 +2940,7 @@ e_html_editor_web_extension_init (EHTMLEditorWebExtension *extension)
+ 	extension->priv->is_message_from_selection = FALSE;
+ 	extension->priv->remove_initial_input_line = FALSE;
+ 	extension->priv->dont_save_history_in_body_input = FALSE;
+-	extension->priv->im_input_in_progress = FALSE;
++	extension->priv->composition_in_progress = FALSE;
+ 
+ 	extension->priv->node_under_mouse_click = NULL;
+ 
+@@ -3634,9 +3603,17 @@ e_html_editor_web_extension_get_undo_redo_manager (EHTMLEditorWebExtension *exte
+ }
+ 
+ gboolean
+-e_html_editor_web_extension_is_im_input_in_progress (EHTMLEditorWebExtension *extension)
++e_html_editor_web_extension_is_composition_in_progress (EHTMLEditorWebExtension *extension)
+ {
+-	return extension->priv->im_input_in_progress;
++	return extension->priv->composition_in_progress;
++}
++
++
++void
++e_html_editor_web_extension_set_composition_in_progress (EHTMLEditorWebExtension *extension,
++                                                         gboolean value)
++{
++	extension->priv->composition_in_progress = value;
+ }
+ 
+ guint
+diff --git a/web-extensions/composer/e-html-editor-web-extension.h b/web-extensions/composer/e-html-editor-web-extension.h
+index ff38c9fb4e..9c8c1cfb86 100644
+--- a/web-extensions/composer/e-html-editor-web-extension.h
++++ b/web-extensions/composer/e-html-editor-web-extension.h
+@@ -219,24 +219,24 @@ struct _EHTMLEditorUndoRedoManager *
+ 		e_html_editor_web_extension_get_undo_redo_manager
+ 						(EHTMLEditorWebExtension *extension);
+ 
+-gboolean	e_html_editor_web_extension_is_im_input_in_progress
++gboolean	e_html_editor_web_extension_is_composition_in_progress
+ 						(EHTMLEditorWebExtension *extension);
+ 
+-guint
+-e_html_editor_web_extension_get_spell_check_on_scroll_event_source_id
++void		e_html_editor_web_extension_set_composition_in_progress
++						(EHTMLEditorWebExtension *extension,
++						 gboolean value);
++
++guint		e_html_editor_web_extension_get_spell_check_on_scroll_event_source_id
+ 						(EHTMLEditorWebExtension *extension);
+ 
+-void
+-e_html_editor_web_extension_set_spell_check_on_scroll_event_source_id
++void		e_html_editor_web_extension_set_spell_check_on_scroll_event_source_id
+ 						(EHTMLEditorWebExtension *extension,
+ 						 guint value);
+ 
+-void
+-e_html_editor_web_extension_block_selection_changed_callback
++void		e_html_editor_web_extension_block_selection_changed_callback
+ 						(EHTMLEditorWebExtension *web_extension);
+ 
+-void
+-e_html_editor_web_extension_unblock_selection_changed_callback
++void		e_html_editor_web_extension_unblock_selection_changed_callback
+ 						(EHTMLEditorWebExtension *web_extension);
+ 
+ #endif /* E_HTML_EDITOR_WEB_EXTENSION_H */
+-- 
+2.15.0
+

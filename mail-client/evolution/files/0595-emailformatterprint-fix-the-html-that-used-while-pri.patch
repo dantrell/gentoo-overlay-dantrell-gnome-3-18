@@ -1,0 +1,26 @@
+From aeb38aed28a8e96db41e05014c9f35d4d78ad3be Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 9 Dec 2015 16:06:29 +0100
+Subject: [PATCH 0595/1800] EMailFormatterPrint - Fix the HTML that used while
+ printing
+
+---
+ em-format/e-mail-formatter-print.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/em-format/e-mail-formatter-print.c b/em-format/e-mail-formatter-print.c
+index d67743daf6..da074c7da3 100644
+--- a/em-format/e-mail-formatter-print.c
++++ b/em-format/e-mail-formatter-print.c
+@@ -122,7 +122,7 @@ mail_formatter_print_run (EMailFormatter *formatter,
+ 		"<meta name=\"generator\" content=\"Evolution Mail\" />\n"
+ 		"<title>Evolution Mail Display</title>\n"
+ 		"<link type=\"text/css\" rel=\"stylesheet\" "
+-		"      media=\"print\" href=\"" STYLESHEET_URI "/>\n"
++		"      media=\"print\" href=\"" STYLESHEET_URI "\"/>\n"
+ 		"</head>\n"
+ 		"<body style=\"background: #FFF; color: #000;\">";
+ 
+-- 
+2.15.0
+

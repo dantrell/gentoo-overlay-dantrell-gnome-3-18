@@ -1,0 +1,223 @@
+From 2d421e195c7873f82f441da171fefe1011ee4a4f Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 15 May 2015 12:07:48 +0200
+Subject: [PATCH 0751/1800] Bug 748683 - Unhelpful 'Failed to connect' message
+
+---
+ shell/e-shell.c       | 100 ++++++++++++++++++++++++++++++++++++++++++++++++--
+ shell/shell.error.xml |  62 ++++++++++++++++++++++++++++++-
+ 2 files changed, 158 insertions(+), 4 deletions(-)
+
+diff --git a/shell/e-shell.c b/shell/e-shell.c
+index ba45ba1b25..97d58dc84e 100644
+--- a/shell/e-shell.c
++++ b/shell/e-shell.c
+@@ -827,6 +827,100 @@ shell_connect_trust_error_alert_response_cb (EAlert *alert,
+ 		shell->priv->cancellable, shell_trust_prompt_done_cb, shell);
+ }
+ 
++static const gchar *
++shell_get_connection_error_tag_for_source (ESource *source)
++{
++	const gchar *tag = "shell:source-connection-error";
++	const gchar *override_tag = NULL;
++
++	g_return_val_if_fail (E_IS_SOURCE (source), tag);
++
++	if (e_source_has_extension (source, E_SOURCE_EXTENSION_ADDRESS_BOOK)) {
++		override_tag = "shell:addressbook-connection-error";
++	}
++
++	if (e_source_has_extension (source, E_SOURCE_EXTENSION_CALENDAR)) {
++		if (!override_tag)
++			override_tag = "shell:calendar-connection-error";
++		else
++			override_tag = "";
++	}
++
++	if (e_source_has_extension (source, E_SOURCE_EXTENSION_MAIL_ACCOUNT) ||
++	    e_source_has_extension (source, E_SOURCE_EXTENSION_MAIL_TRANSPORT)) {
++		if (!override_tag)
++			override_tag = "shell:mail-connection-error";
++		else
++			override_tag = "";
++	}
++
++	if (e_source_has_extension (source, E_SOURCE_EXTENSION_MEMO_LIST)) {
++		if (!override_tag)
++			override_tag = "shell:memo-list-connection-error";
++		else
++			override_tag = "";
++	}
++
++	if (e_source_has_extension (source, E_SOURCE_EXTENSION_TASK_LIST)) {
++		if (!override_tag)
++			override_tag = "shell:task-list-connection-error";
++		else
++			override_tag = "";
++	}
++
++	if (override_tag && *override_tag)
++		return override_tag;
++
++	return tag;
++}
++
++static const gchar *
++shell_get_connection_trust_error_tag_for_source (ESource *source)
++{
++	const gchar *tag = "shell:source-connection-trust-error";
++	const gchar *override_tag = NULL;
++
++	g_return_val_if_fail (E_IS_SOURCE (source), tag);
++
++	if (e_source_has_extension (source, E_SOURCE_EXTENSION_ADDRESS_BOOK)) {
++		override_tag = "shell:addressbook-connection-trust-error";
++	}
++
++	if (e_source_has_extension (source, E_SOURCE_EXTENSION_CALENDAR)) {
++		if (!override_tag)
++			override_tag = "shell:calendar-connection-trust-error";
++		else
++			override_tag = "";
++	}
++
++	if (e_source_has_extension (source, E_SOURCE_EXTENSION_MAIL_ACCOUNT) ||
++	    e_source_has_extension (source, E_SOURCE_EXTENSION_MAIL_TRANSPORT)) {
++		if (!override_tag)
++			override_tag = "shell:mail-connection-trust-error";
++		else
++			override_tag = "";
++	}
++
++	if (e_source_has_extension (source, E_SOURCE_EXTENSION_MEMO_LIST)) {
++		if (!override_tag)
++			override_tag = "shell:memo-list-connection-trust-error";
++		else
++			override_tag = "";
++	}
++
++	if (e_source_has_extension (source, E_SOURCE_EXTENSION_TASK_LIST)) {
++		if (!override_tag)
++			override_tag = "shell:task-list-connection-trust-error";
++		else
++			override_tag = "";
++	}
++
++	if (override_tag && *override_tag)
++		return override_tag;
++
++	return tag;
++}
++
+ static void
+ shell_process_credentials_required_errors (EShell *shell,
+ 					   ESource *source,
+@@ -862,7 +956,7 @@ shell_process_credentials_required_errors (EShell *shell,
+ 	if (reason == E_SOURCE_CREDENTIALS_REASON_ERROR) {
+ 		EAlert *alert;
+ 
+-		alert = e_alert_new ("shell:source-connection-error",
++		alert = e_alert_new (shell_get_connection_error_tag_for_source (source),
+ 				e_source_get_display_name (source),
+ 				op_error && *(op_error->message) ? op_error->message : _("Unknown error"),
+ 				NULL);
+@@ -882,7 +976,7 @@ shell_process_credentials_required_errors (EShell *shell,
+ 
+ 			cert_errors_str = e_trust_prompt_describe_certificate_errors (certificate_errors);
+ 
+-			alert = e_alert_new ("shell:source-connection-trust-error",
++			alert = e_alert_new (shell_get_connection_trust_error_tag_for_source (source),
+ 					e_source_get_display_name (source),
+ 					(cert_errors_str && *cert_errors_str) ? cert_errors_str :
+ 					op_error && *(op_error->message) ? op_error->message : _("Unknown error"),
+@@ -910,7 +1004,7 @@ shell_process_credentials_required_errors (EShell *shell,
+ 		   reason == E_SOURCE_CREDENTIALS_REASON_REJECTED) {
+ 		EAlert *alert;
+ 
+-		alert = e_alert_new ("shell:source-connection-error",
++		alert = e_alert_new (shell_get_connection_error_tag_for_source (source),
+ 				e_source_get_display_name (source),
+ 				op_error && *(op_error->message) ? op_error->message : _("Credentials are required to connect to the destination host."),
+ 				NULL);
+diff --git a/shell/shell.error.xml b/shell/shell.error.xml
+index 8ce679e2b9..a691880fd0 100644
+--- a/shell/shell.error.xml
++++ b/shell/shell.error.xml
+@@ -46,7 +46,37 @@ If you choose to continue, you may not have access to some of your old data.
+  </error>
+ 
+  <error id="source-connection-error" type="error">
+-  <_primary>Failed to connect to '{0}'</_primary>
++  <_primary>Failed to connect '{0}'</_primary>
++  <secondary>{1}</secondary>
++  <button _label="_Reconnect" response="GTK_RESPONSE_APPLY"/>
++ </error>
++
++ <error id="addressbook-connection-error" type="error">
++  <_primary>Failed to connect address book '{0}'</_primary>
++  <secondary>{1}</secondary>
++  <button _label="_Reconnect" response="GTK_RESPONSE_APPLY"/>
++ </error>
++
++ <error id="calendar-connection-error" type="error">
++  <_primary>Failed to connect calendar '{0}'</_primary>
++  <secondary>{1}</secondary>
++  <button _label="_Reconnect" response="GTK_RESPONSE_APPLY"/>
++ </error>
++
++ <error id="mail-connection-error" type="error">
++  <_primary>Failed to connect mail account '{0}'</_primary>
++  <secondary>{1}</secondary>
++  <button _label="_Reconnect" response="GTK_RESPONSE_APPLY"/>
++ </error>
++
++ <error id="memo-list-connection-error" type="error">
++  <_primary>Failed to connect memo list '{0}'</_primary>
++  <secondary>{1}</secondary>
++  <button _label="_Reconnect" response="GTK_RESPONSE_APPLY"/>
++ </error>
++
++ <error id="task-list-connection-error" type="error">
++  <_primary>Failed to connect task list '{0}'</_primary>
+   <secondary>{1}</secondary>
+   <button _label="_Reconnect" response="GTK_RESPONSE_APPLY"/>
+  </error>
+@@ -67,4 +97,34 @@ If you choose to continue, you may not have access to some of your old data.
+   <button _label="_View Certificate" response="GTK_RESPONSE_APPLY"/>
+  </error>
+ 
++ <error id="addressbook-connection-trust-error" type="error">
++  <_primary>SSL certificate for address book '{0}' is not trusted.</_primary>
++  <_secondary>Reason: {1}</_secondary>
++  <button _label="_View Certificate" response="GTK_RESPONSE_APPLY"/>
++ </error>
++
++ <error id="calendar-connection-trust-error" type="error">
++  <_primary>SSL certificate for calendar '{0}' is not trusted.</_primary>
++  <_secondary>Reason: {1}</_secondary>
++  <button _label="_View Certificate" response="GTK_RESPONSE_APPLY"/>
++ </error>
++
++ <error id="mail-connection-trust-error" type="error">
++  <_primary>SSL certificate for mail account '{0}' is not trusted.</_primary>
++  <_secondary>Reason: {1}</_secondary>
++  <button _label="_View Certificate" response="GTK_RESPONSE_APPLY"/>
++ </error>
++
++ <error id="memo-list-connection-trust-error" type="error">
++  <_primary>SSL certificate for memo list '{0}' is not trusted.</_primary>
++  <_secondary>Reason: {1}</_secondary>
++  <button _label="_View Certificate" response="GTK_RESPONSE_APPLY"/>
++ </error>
++
++ <error id="task-list-connection-trust-error" type="error">
++  <_primary>SSL certificate for task list '{0}' is not trusted.</_primary>
++  <_secondary>Reason: {1}</_secondary>
++  <button _label="_View Certificate" response="GTK_RESPONSE_APPLY"/>
++ </error>
++
+ </error-list>
+-- 
+2.15.0
+

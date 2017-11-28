@@ -1,0 +1,30 @@
+From 59d6c795628fe92ff3546d5beb321cf4faf7b525 Mon Sep 17 00:00:00 2001
+From: Andre Klapper <a9016009@gmx.de>
+Date: Mon, 9 Mar 2015 00:58:55 +0100
+Subject: [PATCH 0445/1800] Add comment about signature delimiter
+
+---
+ help/C/mail-composer-mail-signatures.page | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/help/C/mail-composer-mail-signatures.page b/help/C/mail-composer-mail-signatures.page
+index d3d65a693c..146751e3c1 100644
+--- a/help/C/mail-composer-mail-signatures.page
++++ b/help/C/mail-composer-mail-signatures.page
+@@ -6,7 +6,7 @@
+     
+     <link type="guide" xref="index#mail-composing" />
+ 
+-    <revision pkgversion="3.0.2" version="0.2" date="2011-07-30" status="final"/>
++    <revision pkgversion="3.13.90" version="0.3" date="2015-03-09" status="final"/>
+     <credit type="author">
+       <name its:translate="no">Andre Klapper</name>
+       <email its:translate="no">ak-47@gmx.net</email>
+@@ -24,3 +24,4 @@
+ <note style="tip"><p>The term "signature" is also differently used in terms of <link xref="mail-encryption">encryption</link>.</p></note>
+ </page>
+ 
++<!-- TODO: The two dashes and a space signature delimiter can be disabled via dconf in org.gnome.evolution.mail.composer-no-signature.delim but don't really want to advertise that -->
+-- 
+2.15.0
+

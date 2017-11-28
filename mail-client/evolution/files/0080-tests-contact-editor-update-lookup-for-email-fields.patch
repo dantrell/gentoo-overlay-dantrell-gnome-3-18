@@ -1,0 +1,28 @@
+From 064668b677e6349bf279ec2514dfac51800dd4fd Mon Sep 17 00:00:00 2001
+From: Vadim Rutkovsky <vrutkovs@redhat.com>
+Date: Fri, 14 Nov 2014 13:39:22 +0100
+Subject: [PATCH 0080/1800] tests: contact editor: update lookup for email
+ fields
+
+---
+ tests/steps/addressbook_steps.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/tests/steps/addressbook_steps.py b/tests/steps/addressbook_steps.py
+index 0c8ed70e1c..1ad130654d 100644
+--- a/tests/steps/addressbook_steps.py
++++ b/tests/steps/addressbook_steps.py
+@@ -233,8 +233,8 @@ def get_combobox_textbox_object(contact_editor, section, scroll_to_bottom=True):
+         'Phones': 'Telephone',
+         'Emails': 'Email'}
+     section = section_names[section.capitalize()]
+-    lbl = contact_editor.child(roleName='label', name=section)
+-    panel = lbl.findAncestor(GenericPredicate(roleName='panel'))
++    lbl = contact_editor.child(roleName='toggle button', name=section)
++    panel = lbl.findAncestor(GenericPredicate(roleName='filler'))
+     textboxes = panel.findChildren(GenericPredicate(roleName='text'))
+ 
+     # Scroll to the bottom of the page if needed
+-- 
+2.15.0
+

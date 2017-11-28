@@ -1,0 +1,27 @@
+From b515cfcf167bfee8f5aba8bbb0fa1dfb133a804a Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 14 Aug 2015 14:22:50 +0200
+Subject: [PATCH 0947/1800] e_calendar_item_set_selection can be called with
+ NULL dates
+
+This wasn't checked for and produced runtime warning when being done so.
+---
+ e-util/e-calendar-item.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/e-util/e-calendar-item.c b/e-util/e-calendar-item.c
+index 10e2a5d0b7..57a43dc183 100644
+--- a/e-util/e-calendar-item.c
++++ b/e-util/e-calendar-item.c
+@@ -3504,7 +3504,7 @@ e_calendar_item_set_selection (ECalendarItem *calitem,
+ 
+ 	if (e_calendar_item_get_selection (calitem, &current_start_date, &current_end_date)) {
+ 		/* No change, no need to recalculate anything */
+-		if (g_date_valid (start_date) && g_date_valid (end_date) &&
++		if (start_date && end_date && g_date_valid (start_date) && g_date_valid (end_date) &&
+ 		    g_date_compare (start_date, &current_start_date) == 0 &&
+ 		    g_date_compare (end_date, &current_end_date) == 0)
+ 			return;
+-- 
+2.15.0
+

@@ -1,0 +1,237 @@
+From f21891dae3345cccfbcc847397f04f192e7dd68a Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 3 Dec 2014 07:10:02 +0100
+Subject: [PATCH 0126/1800] Bug 686620 - Add an option to skip New Account
+ autodiscovery
+
+---
+ mail/e-mail-config-assistant.c     | 23 ++++++++++++
+ mail/e-mail-config-identity-page.c | 77 +++++++++++++++++++++++++++++++++++++-
+ mail/e-mail-config-identity-page.h |  7 ++++
+ 3 files changed, 106 insertions(+), 1 deletion(-)
+
+diff --git a/mail/e-mail-config-assistant.c b/mail/e-mail-config-assistant.c
+index 794eed91b1..be2aa5cfdf 100644
+--- a/mail/e-mail-config-assistant.c
++++ b/mail/e-mail-config-assistant.c
+@@ -55,6 +55,7 @@ struct _EMailConfigAssistantPrivate {
+ 	EMailConfigServicePage *receiving_page;
+ 	EMailConfigServicePage *sending_page;
+ 	EMailConfigSummaryPage *summary_page;
++	EMailConfigPage *identity_page;
+ 	EMailConfigPage *lookup_page;
+ 	GHashTable *visited_pages;
+ 	gboolean auto_configured;
+@@ -604,6 +605,11 @@ mail_config_assistant_dispose (GObject *object)
+ 		priv->lookup_page = NULL;
+ 	}
+ 
++	if (priv->identity_page != NULL) {
++		g_object_unref (priv->identity_page);
++		priv->identity_page = NULL;
++	}
++
+ 	g_ptr_array_set_size (priv->account_sources, 0);
+ 	g_ptr_array_set_size (priv->transport_sources, 0);
+ 
+@@ -641,6 +647,7 @@ mail_config_assistant_constructed (GObject *object)
+ 	ESourceMailSubmission *mail_submission_extension;
+ 	EMailSession *session;
+ 	EMailConfigPage *page;
++	GtkWidget *autodiscover_check;
+ 	GList *list, *link;
+ 	const gchar *extension_name;
+ 	const gchar *title;
+@@ -713,7 +720,12 @@ mail_config_assistant_constructed (GObject *object)
+ 		E_MAIL_CONFIG_IDENTITY_PAGE (page), FALSE);
+ 	e_mail_config_identity_page_set_show_signatures (
+ 		E_MAIL_CONFIG_IDENTITY_PAGE (page), FALSE);
++	e_mail_config_identity_page_set_show_autodiscover_check (
++		E_MAIL_CONFIG_IDENTITY_PAGE (page), TRUE);
++	autodiscover_check = e_mail_config_identity_page_get_autodiscover_check (
++		E_MAIL_CONFIG_IDENTITY_PAGE (page));
+ 	e_mail_config_assistant_add_page (assistant, page);
++	assistant->priv->identity_page = g_object_ref (page);
+ 
+ 	/*** Lookup Page ***/
+ 
+@@ -721,6 +733,11 @@ mail_config_assistant_constructed (GObject *object)
+ 	e_mail_config_assistant_add_page (assistant, page);
+ 	assistant->priv->lookup_page = g_object_ref (page);
+ 
++	g_object_bind_property (
++		autodiscover_check, "active",
++		page, "visible",
++		G_BINDING_SYNC_CREATE);
++
+ 	/*** Receiving Page ***/
+ 
+ 	page = e_mail_config_receiving_page_new (registry);
+@@ -982,6 +999,12 @@ mail_config_assistant_prepare (GtkAssistant *assistant,
+ 		email_address = e_source_mail_identity_get_address (extension);
+ 		e_source_set_display_name (source, email_address);
+ 	}
++
++	if (first_visit && (
++	    E_IS_MAIL_CONFIG_LOOKUP_PAGE (page) ||
++	    E_IS_MAIL_CONFIG_RECEIVING_PAGE (page)))
++		e_mail_config_identity_page_set_show_autodiscover_check (
++			E_MAIL_CONFIG_IDENTITY_PAGE (priv->identity_page), FALSE);
+ }
+ 
+ static void
+diff --git a/mail/e-mail-config-identity-page.c b/mail/e-mail-config-identity-page.c
+index 9bdc013c15..7ddbeb88aa 100644
+--- a/mail/e-mail-config-identity-page.c
++++ b/mail/e-mail-config-identity-page.c
+@@ -35,6 +35,8 @@ struct _EMailConfigIdentityPagePrivate {
+ 	gboolean show_email_address;
+ 	gboolean show_instructions;
+ 	gboolean show_signatures;
++	gboolean show_autodiscover_check;
++	GtkWidget *autodiscover_check; /* not referenced */
+ };
+ 
+ enum {
+@@ -44,7 +46,8 @@ enum {
+ 	PROP_SHOW_ACCOUNT_INFO,
+ 	PROP_SHOW_EMAIL_ADDRESS,
+ 	PROP_SHOW_INSTRUCTIONS,
+-	PROP_SHOW_SIGNATURES
++	PROP_SHOW_SIGNATURES,
++	PROP_SHOW_AUTODISCOVER_CHECK
+ };
+ 
+ /* Forward Declarations */
+@@ -148,6 +151,12 @@ mail_config_identity_page_set_property (GObject *object,
+ 				E_MAIL_CONFIG_IDENTITY_PAGE (object),
+ 				g_value_get_boolean (value));
+ 			return;
++
++		case PROP_SHOW_AUTODISCOVER_CHECK:
++			e_mail_config_identity_page_set_show_autodiscover_check (
++				E_MAIL_CONFIG_IDENTITY_PAGE (object),
++				g_value_get_boolean (value));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -201,6 +210,13 @@ mail_config_identity_page_get_property (GObject *object,
+ 				e_mail_config_identity_page_get_show_signatures (
+ 				E_MAIL_CONFIG_IDENTITY_PAGE (object)));
+ 			return;
++
++		case PROP_SHOW_AUTODISCOVER_CHECK:
++			g_value_set_boolean (
++				value,
++				e_mail_config_identity_page_get_show_autodiscover_check (
++				E_MAIL_CONFIG_IDENTITY_PAGE (object)));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -257,6 +273,8 @@ mail_config_identity_page_constructed (GObject *object)
+ 		GTK_ORIENTABLE (page), GTK_ORIENTATION_VERTICAL);
+ 
+ 	gtk_box_set_spacing (GTK_BOX (page), 12);
++	gtk_widget_set_valign (GTK_WIDGET (page), GTK_ALIGN_FILL);
++	gtk_widget_set_vexpand (GTK_WIDGET (page), TRUE);
+ 
+ 	/* This keeps all mnemonic labels the same width. */
+ 	size_group = gtk_size_group_new (GTK_SIZE_GROUP_HORIZONTAL);
+@@ -534,6 +552,22 @@ mail_config_identity_page_constructed (GObject *object)
+ 	g_object_unref (size_group);
+ 
+ 	e_extensible_load_extensions (E_EXTENSIBLE (page));
++
++	widget = gtk_check_button_new_with_mnemonic (_("Try _setup account automatically, based on Email Address"));
++	g_object_set (G_OBJECT (widget),
++		"valign", GTK_ALIGN_END,
++		"vexpand", TRUE,
++		"active", TRUE,
++		NULL);
++
++	g_object_bind_property (
++		page, "show-autodiscover-check",
++		widget, "visible",
++		G_BINDING_SYNC_CREATE);
++
++	page->priv->autodiscover_check = widget;
++
++	gtk_container_add (GTK_CONTAINER (page), widget);
+ }
+ 
+ static gboolean
+@@ -668,6 +702,18 @@ e_mail_config_identity_page_class_init (EMailConfigIdentityPageClass *class)
+ 			G_PARAM_READWRITE |
+ 			G_PARAM_CONSTRUCT |
+ 			G_PARAM_STATIC_STRINGS));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_SHOW_AUTODISCOVER_CHECK,
++		g_param_spec_boolean (
++			"show-autodiscover-check",
++			"Show Autodiscover Check",
++			"Show check button to allow autodiscover based on Email Address",
++			FALSE,
++			G_PARAM_READWRITE |
++			G_PARAM_CONSTRUCT |
++			G_PARAM_STATIC_STRINGS));
+ }
+ 
+ static void
+@@ -802,3 +848,32 @@ e_mail_config_identity_page_set_show_signatures (EMailConfigIdentityPage *page,
+ 	g_object_notify (G_OBJECT (page), "show-signatures");
+ }
+ 
++void
++e_mail_config_identity_page_set_show_autodiscover_check (EMailConfigIdentityPage *page,
++							 gboolean show_autodiscover)
++{
++	g_return_if_fail (E_IS_MAIL_CONFIG_IDENTITY_PAGE (page));
++
++	if ((page->priv->show_autodiscover_check ? 1 : 0) == (show_autodiscover ? 1 : 0))
++		return;
++
++	page->priv->show_autodiscover_check = show_autodiscover;
++
++	g_object_notify (G_OBJECT (page), "show-autodiscover-check");
++}
++
++gboolean
++e_mail_config_identity_page_get_show_autodiscover_check (EMailConfigIdentityPage *page)
++{
++	g_return_val_if_fail (E_IS_MAIL_CONFIG_IDENTITY_PAGE (page), FALSE);
++
++	return page->priv->show_autodiscover_check;
++}
++
++GtkWidget *
++e_mail_config_identity_page_get_autodiscover_check (EMailConfigIdentityPage *page)
++{
++	g_return_val_if_fail (E_IS_MAIL_CONFIG_IDENTITY_PAGE (page), NULL);
++
++	return page->priv->autodiscover_check;
++}
+diff --git a/mail/e-mail-config-identity-page.h b/mail/e-mail-config-identity-page.h
+index 636b8bb30e..bfa9d9f6fa 100644
+--- a/mail/e-mail-config-identity-page.h
++++ b/mail/e-mail-config-identity-page.h
+@@ -89,6 +89,13 @@ gboolean	e_mail_config_identity_page_get_show_signatures
+ void		e_mail_config_identity_page_set_show_signatures
+ 						(EMailConfigIdentityPage *page,
+ 						 gboolean show_signatures);
++void		e_mail_config_identity_page_set_show_autodiscover_check
++						(EMailConfigIdentityPage *page,
++						 gboolean show_autodiscover);
++gboolean	e_mail_config_identity_page_get_show_autodiscover_check
++						(EMailConfigIdentityPage *page);
++GtkWidget *	e_mail_config_identity_page_get_autodiscover_check
++						(EMailConfigIdentityPage *page);
+ 
+ G_END_DECLS
+ 
+-- 
+2.15.0
+

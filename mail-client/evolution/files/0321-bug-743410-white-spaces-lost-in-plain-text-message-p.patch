@@ -1,0 +1,25 @@
+From 5eb08decdce7764219d5a4efda0d8f0b585af830 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 18 Feb 2015 14:24:48 +0100
+Subject: [PATCH 0321/1800] Bug 743410 - White-spaces lost in plain text
+ message printouts
+
+---
+ em-format/e-mail-formatter-text-plain.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/em-format/e-mail-formatter-text-plain.c b/em-format/e-mail-formatter-text-plain.c
+index a314d52bf7..39ab2533d2 100644
+--- a/em-format/e-mail-formatter-text-plain.c
++++ b/em-format/e-mail-formatter-text-plain.c
+@@ -84,6 +84,7 @@ emfe_text_plain_format (EMailFormatterExtension *extension,
+ 		}
+ 
+ 		flags = e_mail_formatter_get_text_format_flags (formatter);
++		flags |= CAMEL_MIME_FILTER_TOHTML_CONVERT_SPACES;
+ 
+ 		mime_part = e_mail_part_ref_mime_part (part);
+ 		dw = camel_medium_get_content (CAMEL_MEDIUM (mime_part));
+-- 
+2.15.0
+

@@ -1,0 +1,3763 @@
+From e2e38417fdd80d5f2cc86534341693cb0babedac Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 23 Feb 2016 19:43:01 +0100
+Subject: [PATCH 0602/1800] Bug 236994 - Add option to load remote content for
+ specified site or sender
+
+---
+ e-util/e-alert-bar.c                               |  24 +-
+ e-util/e-alert-dialog.c                            |  34 +-
+ e-util/e-alert.c                                   |  31 +-
+ e-util/e-alert.h                                   |   3 +
+ mail/Makefile.am                                   |   2 +
+ mail/e-mail-backend.c                              |  42 +-
+ mail/e-mail-backend.h                              |   4 +
+ mail/e-mail-browser.c                              |   4 +-
+ mail/e-mail-display.c                              | 253 ++++++++-
+ mail/e-mail-display.h                              |  14 +-
+ mail/e-mail-paned-view.c                           |  11 +-
+ mail/e-mail-printer.c                              |  60 ++-
+ mail/e-mail-printer.h                              |   7 +-
+ mail/e-mail-reader-utils.c                         |   8 +-
+ mail/e-mail-reader.c                               | 393 ++++++++++++++
+ mail/e-mail-reader.h                               |   2 +
+ mail/e-mail-remote-content.c                       | 573 +++++++++++++++++++++
+ mail/e-mail-remote-content.h                       |  79 +++
+ mail/em-composer-utils.c                           |   6 +-
+ mail/em-utils.c                                    |   6 +-
+ mail/mail-config.ui                                | 253 ++++++++-
+ mail/mail.error.xml                                |   5 +
+ modules/mail/e-mail-shell-backend.c                |   6 +-
+ modules/mail/em-mailer-prefs.c                     | 572 +++++++++++++++-----
+ modules/mail/em-mailer-prefs.h                     |  38 +-
+ modules/prefer-plain/plugin/config-ui.c            |   2 +
+ .../composer/e-html-editor-web-extension.c         |   8 +
+ web-extensions/e-web-extension.c                   |  10 +-
+ 28 files changed, 2223 insertions(+), 227 deletions(-)
+ create mode 100644 mail/e-mail-remote-content.c
+ create mode 100644 mail/e-mail-remote-content.h
+
+diff --git a/e-util/e-alert-bar.c b/e-util/e-alert-bar.c
+index 66fbb34f4a..f5533fd1d8 100644
+--- a/e-util/e-alert-bar.c
++++ b/e-util/e-alert-bar.c
+@@ -62,7 +62,7 @@ alert_bar_show_alert (EAlertBar *alert_bar)
+ 	GtkWidget *action_area;
+ 	GtkWidget *widget;
+ 	EAlert *alert;
+-	GList *actions;
++	GList *link;
+ 	GList *children;
+ 	GtkMessageType message_type;
+ 	const gchar *primary_text;
+@@ -89,8 +89,10 @@ alert_bar_show_alert (EAlertBar *alert_bar)
+ 	}
+ 
+ 	/* Add alert-specific buttons. */
+-	actions = e_alert_peek_actions (alert);
+-	while (actions != NULL) {
++	link = e_alert_peek_actions (alert);
++	while (link != NULL) {
++		GtkAction *action = GTK_ACTION (link->data);
++
+ 		/* These actions are already wired to trigger an
+ 		 * EAlert::response signal when activated, which
+ 		 * will in turn call gtk_info_bar_response(), so
+@@ -99,14 +101,18 @@ alert_bar_show_alert (EAlertBar *alert_bar)
+ 
+ 		widget = gtk_button_new ();
+ 
+-		gtk_activatable_set_related_action (
+-			GTK_ACTIVATABLE (widget),
+-			GTK_ACTION (actions->data));
++		gtk_activatable_set_related_action (GTK_ACTIVATABLE (widget), action);
++		gtk_box_pack_end (GTK_BOX (action_area), widget, FALSE, FALSE, 0);
+ 
+-		gtk_box_pack_end (
+-			GTK_BOX (action_area), widget, FALSE, FALSE, 0);
++		link = g_list_next (link);
++	}
+ 
+-		actions = g_list_next (actions);
++	link = e_alert_peek_widgets (alert);
++	while (link != NULL) {
++		widget = link->data;
++
++		gtk_box_pack_end (GTK_BOX (action_area), widget, FALSE, FALSE, 0);
++		link = g_list_next (link);
+ 	}
+ 
+ 	/* Add a dismiss button. */
+diff --git a/e-util/e-alert-dialog.c b/e-util/e-alert-dialog.c
+index e072775309..3225827d85 100644
+--- a/e-util/e-alert-dialog.c
++++ b/e-util/e-alert-dialog.c
+@@ -121,7 +121,7 @@ alert_dialog_constructed (GObject *object)
+ 	GtkWidget *widget;
+ 	PangoAttribute *attr;
+ 	PangoAttrList *list;
+-	GList *actions;
++	GList *link;
+ 	const gchar *primary, *secondary;
+ 	gint default_response;
+ 
+@@ -154,8 +154,8 @@ alert_dialog_constructed (GObject *object)
+ 		G_CALLBACK (gtk_dialog_response), dialog);
+ 
+ 	/* Add buttons from actions. */
+-	actions = e_alert_peek_actions (alert);
+-	if (!actions) {
++	link = e_alert_peek_actions (alert);
++	if (!link && !e_alert_peek_widgets (alert)) {
+ 		GtkAction *action;
+ 
+ 		/* Make sure there is at least one action,
+@@ -165,11 +165,12 @@ alert_dialog_constructed (GObject *object)
+ 		e_alert_add_action (alert, action, GTK_RESPONSE_CLOSE);
+ 		g_object_unref (action);
+ 
+-		actions = e_alert_peek_actions (alert);
++		link = e_alert_peek_actions (alert);
+ 	}
+ 
+-	while (actions != NULL) {
++	while (link != NULL) {
+ 		GtkWidget *button;
++		GtkAction *action = GTK_ACTION (link->data);
+ 		gpointer data;
+ 
+ 		/* These actions are already wired to trigger an
+@@ -182,18 +183,11 @@ alert_dialog_constructed (GObject *object)
+ 		button = gtk_button_new ();
+ 
+ 		gtk_widget_set_can_default (button, TRUE);
+-
+-		gtk_activatable_set_related_action (
+-			GTK_ACTIVATABLE (button),
+-			GTK_ACTION (actions->data));
+-
+-		gtk_box_pack_end (
+-			GTK_BOX (action_area),
+-			button, FALSE, FALSE, 0);
++		gtk_activatable_set_related_action (GTK_ACTIVATABLE (button), action);
++		gtk_box_pack_end (GTK_BOX (action_area), button, FALSE, FALSE, 0);
+ 
+ 		/* This is set in e_alert_add_action(). */
+-		data = g_object_get_data (
+-			actions->data, "e-alert-response-id");
++		data = g_object_get_data (G_OBJECT (action), "e-alert-response-id");
+ 
+ 		/* Normally GtkDialog sets the initial focus widget to
+ 		 * the button corresponding to the default response, but
+@@ -205,7 +199,15 @@ alert_dialog_constructed (GObject *object)
+ 			gtk_widget_grab_focus (button);
+ 		}
+ 
+-		actions = g_list_next (actions);
++		link = g_list_next (link);
++	}
++
++	link = e_alert_peek_widgets (alert);
++	while (link != NULL) {
++		widget = link->data;
++
++		gtk_box_pack_end (GTK_BOX (action_area), widget, FALSE, FALSE, 0);
++		link = g_list_next (link);
+ 	}
+ 
+ 	widget = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
+diff --git a/e-util/e-alert.c b/e-util/e-alert.c
+index 438f523d52..f83f87c02f 100644
+--- a/e-util/e-alert.c
++++ b/e-util/e-alert.c
+@@ -100,6 +100,8 @@ struct _EAlertPrivate {
+ 	 * but we need to preserve the button order and GtkActionGroup
+ 	 * uses a hash table, which does not preserve order. */
+ 	GQueue actions;
++
++	GQueue widgets;
+ };
+ 
+ enum {
+@@ -543,6 +545,13 @@ alert_dispose (GObject *object)
+ 		g_object_unref (action);
+ 	}
+ 
++	while (!g_queue_is_empty (&alert->priv->widgets)) {
++		GtkWidget *widget;
++
++		widget = g_queue_pop_head (&alert->priv->widgets);
++		g_object_unref (widget);
++	}
++
+ 	/* Chain up to parent's dispose() method. */
+ 	G_OBJECT_CLASS (e_alert_parent_class)->dispose (object);
+ }
+@@ -701,6 +710,7 @@ e_alert_init (EAlert *alert)
+ 	alert->priv = E_ALERT_GET_PRIVATE (alert);
+ 
+ 	g_queue_init (&alert->priv->actions);
++	g_queue_init (&alert->priv->widgets);
+ }
+ 
+ /**
+@@ -912,7 +922,7 @@ e_alert_add_action (EAlert *alert,
+                     gint response_id)
+ {
+ 	g_return_if_fail (E_IS_ALERT (alert));
+-	g_return_if_fail (GTK_ACTION (action));
++	g_return_if_fail (GTK_IS_ACTION (action));
+ 
+ 	g_object_set_data (
+ 		G_OBJECT (action), "e-alert-response-id",
+@@ -933,6 +943,25 @@ e_alert_peek_actions (EAlert *alert)
+ 	return g_queue_peek_head_link (&alert->priv->actions);
+ }
+ 
++/* The widget is consumed by this function */
++void
++e_alert_add_widget (EAlert *alert,
++		    GtkWidget *widget)
++{
++	g_return_if_fail (E_IS_ALERT (alert));
++	g_return_if_fail (GTK_IS_WIDGET (widget));
++
++	g_queue_push_tail (&alert->priv->widgets, g_object_ref_sink (widget));
++}
++
++GList *
++e_alert_peek_widgets (EAlert *alert)
++{
++	g_return_val_if_fail (E_IS_ALERT (alert), NULL);
++
++	return g_queue_peek_head_link (&alert->priv->widgets);
++}
++
+ GtkWidget *
+ e_alert_create_image (EAlert *alert,
+                       GtkIconSize size)
+diff --git a/e-util/e-alert.h b/e-util/e-alert.h
+index 9d7cd3e03e..375b6f4061 100644
+--- a/e-util/e-alert.h
++++ b/e-util/e-alert.h
+@@ -103,6 +103,9 @@ void		e_alert_add_action		(EAlert *alert,
+ 						 GtkAction *action,
+ 						 gint response_id);
+ GList *		e_alert_peek_actions		(EAlert *alert);
++void		e_alert_add_widget		(EAlert *alert,
++						 GtkWidget *widget);
++GList *		e_alert_peek_widgets		(EAlert *alert);
+ GtkWidget *	e_alert_create_image		(EAlert *alert,
+ 						 GtkIconSize size);
+ void		e_alert_response		(EAlert *alert,
+diff --git a/mail/Makefile.am b/mail/Makefile.am
+index 58cd98d3fb..cc2094c9cb 100644
+--- a/mail/Makefile.am
++++ b/mail/Makefile.am
+@@ -100,6 +100,7 @@ mailinclude_HEADERS =					\
+ 	e-mail-printer.h				\
+ 	e-mail-reader-utils.h				\
+ 	e-mail-reader.h					\
++	e-mail-remote-content.h				\
+ 	e-mail-request.h				\
+ 	e-mail-send-account-override.h			\
+ 	e-mail-sidebar.h				\
+@@ -178,6 +179,7 @@ libevolution_mail_la_SOURCES =				\
+ 	e-mail-printer.c				\
+ 	e-mail-reader-utils.c				\
+ 	e-mail-reader.c					\
++	e-mail-remote-content.c				\
+ 	e-mail-request.c				\
+ 	e-mail-send-account-override.c			\
+ 	e-mail-sidebar.c				\
+diff --git a/mail/e-mail-backend.c b/mail/e-mail-backend.c
+index cfe28a680a..1ee0a1fb1c 100644
+--- a/mail/e-mail-backend.c
++++ b/mail/e-mail-backend.c
+@@ -57,12 +57,14 @@ struct _EMailBackendPrivate {
+ 	EMailSession *session;
+ 	GHashTable *jobs;
+ 	EMailSendAccountOverride *send_account_override;
++	EMailRemoteContent *remote_content;
+ };
+ 
+ enum {
+ 	PROP_0,
+ 	PROP_SESSION,
+-	PROP_SEND_ACCOUNT_OVERRIDE
++	PROP_SEND_ACCOUNT_OVERRIDE,
++	PROP_REMOTE_CONTENT
+ };
+ 
+ G_DEFINE_ABSTRACT_TYPE (
+@@ -949,6 +951,13 @@ mail_backend_get_property (GObject *object,
+ 				e_mail_backend_get_send_account_override (
+ 				E_MAIL_BACKEND (object)));
+ 			return;
++
++		case PROP_REMOTE_CONTENT:
++			g_value_set_object (
++				value,
++				e_mail_backend_get_remote_content (
++				E_MAIL_BACKEND (object)));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -989,6 +998,7 @@ mail_backend_finalize (GObject *object)
+ 
+ 	g_hash_table_destroy (priv->jobs);
+ 	g_clear_object (&priv->send_account_override);
++	g_clear_object (&priv->remote_content);
+ 
+ 	/* Chain up to parent's finalize() method. */
+ 	G_OBJECT_CLASS (e_mail_backend_parent_class)->finalize (object);
+@@ -1143,7 +1153,7 @@ mail_backend_constructed (GObject *object)
+ 	EShellBackend *shell_backend;
+ 	MailFolderCache *folder_cache;
+ 	ESourceRegistry *registry;
+-	gchar *send_overrides_ini;
++	gchar *config_filename;
+ 
+ 	priv = E_MAIL_BACKEND_GET_PRIVATE (object);
+ 
+@@ -1241,9 +1251,13 @@ mail_backend_constructed (GObject *object)
+ 	/* Chain up to parent's constructed() method. */
+ 	G_OBJECT_CLASS (e_mail_backend_parent_class)->constructed (object);
+ 
+-	send_overrides_ini = g_build_filename (e_shell_backend_get_config_dir (shell_backend), "send-overrides.ini", NULL);
+-	priv->send_account_override = e_mail_send_account_override_new (send_overrides_ini);
+-	g_free (send_overrides_ini);
++	config_filename = g_build_filename (e_shell_backend_get_config_dir (shell_backend), "send-overrides.ini", NULL);
++	priv->send_account_override = e_mail_send_account_override_new (config_filename);
++	g_free (config_filename);
++
++	config_filename = g_build_filename (e_shell_backend_get_config_dir (shell_backend), "remote-content.db", NULL);
++	priv->remote_content = e_mail_remote_content_new (config_filename);
++	g_free (config_filename);
+ }
+ 
+ static void
+@@ -1284,6 +1298,16 @@ e_mail_backend_class_init (EMailBackendClass *class)
+ 			NULL,
+ 			E_TYPE_MAIL_SEND_ACCOUNT_OVERRIDE,
+ 			G_PARAM_READABLE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_REMOTE_CONTENT,
++		g_param_spec_object (
++			"remote-content",
++			NULL,
++			NULL,
++			E_TYPE_MAIL_REMOTE_CONTENT,
++			G_PARAM_READABLE));
+ }
+ 
+ static void
+@@ -1382,3 +1406,11 @@ e_mail_backend_get_send_account_override (EMailBackend *backend)
+ 
+ 	return backend->priv->send_account_override;
+ }
++
++EMailRemoteContent *
++e_mail_backend_get_remote_content (EMailBackend *backend)
++{
++	g_return_val_if_fail (E_IS_MAIL_BACKEND (backend), NULL);
++
++	return backend->priv->remote_content;
++}
+diff --git a/mail/e-mail-backend.h b/mail/e-mail-backend.h
+index ff22c8e738..4426abfb9e 100644
+--- a/mail/e-mail-backend.h
++++ b/mail/e-mail-backend.h
+@@ -27,6 +27,7 @@
+ 
+ #include <shell/e-shell-backend.h>
+ #include <libemail-engine/libemail-engine.h>
++#include <mail/e-mail-remote-content.h>
+ #include <mail/e-mail-send-account-override.h>
+ 
+ /* Standard GObject macros */
+@@ -79,6 +80,9 @@ gboolean	e_mail_backend_empty_trash_policy_decision
+ EMailSendAccountOverride *
+ 		e_mail_backend_get_send_account_override
+ 						(EMailBackend *backend);
++EMailRemoteContent *
++		e_mail_backend_get_remote_content
++						(EMailBackend *backend);
+ 
+ G_END_DECLS
+ 
+diff --git a/mail/e-mail-browser.c b/mail/e-mail-browser.c
+index c281e9433f..e5d4095a1c 100644
+--- a/mail/e-mail-browser.c
++++ b/mail/e-mail-browser.c
+@@ -619,7 +619,7 @@ mail_browser_constructed (GObject *object)
+ 		browser->priv->message_list, "message-list-built",
+ 		G_CALLBACK (mail_browser_message_list_built_cb), object);
+ 
+-	display = e_mail_display_new ();
++	display = e_mail_display_new (e_mail_backend_get_remote_content (backend));
+ 
+ 	e_mail_display_set_mode (
+ 		E_MAIL_DISPLAY (display),
+@@ -676,6 +676,8 @@ mail_browser_constructed (GObject *object)
+ 		ui_manager, "connect-proxy",
+ 		G_CALLBACK (mail_browser_connect_proxy_cb), object);
+ 
++	e_mail_reader_connect_remote_content (reader);
++
+ 	/* Configure an EFocusTracker to manage selection actions. */
+ 
+ 	focus_tracker = e_focus_tracker_new (GTK_WINDOW (object));
+diff --git a/mail/e-mail-display.c b/mail/e-mail-display.c
+index d23efe81e9..ee603dd639 100644
+--- a/mail/e-mail-display.c
++++ b/mail/e-mail-display.c
+@@ -22,6 +22,7 @@
+ 
+ #include <config.h>
+ #include <glib/gi18n.h>
++#include <glib/gstdio.h>
+ 
+ #include <gdk/gdk.h>
+ #include <camel/camel.h>
+@@ -65,6 +66,10 @@ struct _EMailDisplayPrivate {
+ 
+ 	GHashTable *old_settings;
+ 
++	GMutex remote_content_lock;
++	EMailRemoteContent *remote_content;
++	GHashTable *skipped_remote_content_sites;
++
+ 	guint web_extension_headers_collapsed_signal_id;
+ };
+ 
+@@ -74,7 +79,8 @@ enum {
+ 	PROP_HEADERS_COLLAPSABLE,
+ 	PROP_HEADERS_COLLAPSED,
+ 	PROP_MODE,
+-	PROP_PART_LIST
++	PROP_PART_LIST,
++	PROP_REMOTE_CONTENT
+ };
+ 
+ static const gchar *ui =
+@@ -138,6 +144,102 @@ G_DEFINE_TYPE (
+ 	e_mail_display,
+ 	E_TYPE_WEB_VIEW);
+ 
++static void
++e_mail_display_claim_skipped_uri (EMailDisplay *mail_display,
++				  const gchar *uri)
++{
++	SoupURI *soup_uri;
++	const gchar *site;
++
++	g_return_if_fail (E_IS_MAIL_DISPLAY (mail_display));
++	g_return_if_fail (uri != NULL);
++
++	soup_uri = soup_uri_new (uri);
++	if (!soup_uri)
++		return;
++
++	site = soup_uri_get_host (soup_uri);
++	if (site && *site) {
++		g_mutex_lock (&mail_display->priv->remote_content_lock);
++
++		if (!g_hash_table_contains (mail_display->priv->skipped_remote_content_sites, site)) {
++			g_hash_table_insert (mail_display->priv->skipped_remote_content_sites, g_strdup (site), NULL);
++		}
++
++		g_mutex_unlock (&mail_display->priv->remote_content_lock);
++	}
++
++	soup_uri_free (soup_uri);
++}
++
++static void
++e_mail_display_cleanup_skipped_uris (EMailDisplay *mail_display)
++{
++	g_return_if_fail (E_IS_MAIL_DISPLAY (mail_display));
++
++	g_mutex_lock (&mail_display->priv->remote_content_lock);
++	g_hash_table_remove_all (mail_display->priv->skipped_remote_content_sites);
++	g_mutex_unlock (&mail_display->priv->remote_content_lock);
++}
++
++static gboolean
++e_mail_display_can_download_uri (EMailDisplay *mail_display,
++				 const gchar *uri)
++{
++	SoupURI *soup_uri;
++	const gchar *site;
++	gboolean can_download = FALSE;
++	EMailRemoteContent *remote_content;
++
++	g_return_val_if_fail (E_IS_MAIL_DISPLAY (mail_display), FALSE);
++	g_return_val_if_fail (uri != NULL, FALSE);
++
++	remote_content = e_mail_display_ref_remote_content (mail_display);
++	if (!remote_content)
++		return FALSE;
++
++	soup_uri = soup_uri_new (uri);
++	if (!soup_uri) {
++		g_object_unref (remote_content);
++		return FALSE;
++	}
++
++	site = soup_uri_get_host (soup_uri);
++	if (site && *site)
++		can_download = e_mail_remote_content_has_site (remote_content, site);
++
++	soup_uri_free (soup_uri);
++
++	if (!can_download && mail_display->priv->part_list) {
++		CamelMimeMessage *message;
++
++		message = e_mail_part_list_get_message (mail_display->priv->part_list);
++		if (message) {
++			CamelInternetAddress *from;
++
++			from = camel_mime_message_get_from (message);
++			if (from) {
++				gint ii, len;
++
++				len = camel_address_length (CAMEL_ADDRESS (from));
++				for (ii = 0; ii < len && !can_download; ii++) {
++					const gchar *mail = NULL;
++
++					if (!camel_internet_address_get	(from, ii, NULL, &mail))
++						break;
++
++					if (mail && *mail)
++						can_download = e_mail_remote_content_has_mail (remote_content, mail);
++				}
++			}
++		}
++	}
++
++	g_object_unref (remote_content);
++
++	return can_download;
++}
++
+ static void
+ formatter_image_loading_policy_changed_cb (GObject *object,
+                                            GParamSpec *pspec,
+@@ -1001,10 +1103,16 @@ mail_parts_bind_dom (WebKitWebView *web_view,
+ 	GList *head, *link;
+ 	GDBusProxy *web_extension;
+ 
+-	if (load_event != WEBKIT_LOAD_FINISHED)
+-		return;
+-
+ 	display = E_MAIL_DISPLAY (web_view);
++
++	if (load_event == WEBKIT_LOAD_STARTED) {
++		e_mail_display_cleanup_skipped_uris (display);
++		return;
++	}
++
++	if (load_event != WEBKIT_LOAD_FINISHED)
++		return;
++
+ 	if (display->priv->part_list == NULL)
+ 		return;
+ 
+@@ -1094,6 +1202,12 @@ mail_display_set_property (GObject *object,
+ 				E_MAIL_DISPLAY (object),
+ 				g_value_get_pointer (value));
+ 			return;
++
++		case PROP_REMOTE_CONTENT:
++			e_mail_display_set_remote_content (
++				E_MAIL_DISPLAY (object),
++				g_value_get_object (value));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -1140,6 +1254,13 @@ mail_display_get_property (GObject *object,
+ 				e_mail_display_get_part_list (
+ 				E_MAIL_DISPLAY (object)));
+ 			return;
++
++		case PROP_REMOTE_CONTENT:
++			g_value_take_object (
++				value,
++				e_mail_display_ref_remote_content (
++				E_MAIL_DISPLAY (object)));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -1198,6 +1319,16 @@ mail_display_finalize (GObject *object)
+ 		priv->old_settings = NULL;
+ 	}
+ 
++	g_mutex_lock (&priv->remote_content_lock);
++	if (priv->skipped_remote_content_sites) {
++		g_hash_table_destroy (priv->skipped_remote_content_sites);
++		priv->skipped_remote_content_sites = NULL;
++	}
++
++	g_clear_object (&priv->remote_content);
++	g_mutex_unlock (&priv->remote_content_lock);
++	g_mutex_clear (&priv->remote_content_lock);
++
+ 	/* Chain up to parent's finalize() method. */
+ 	G_OBJECT_CLASS (e_mail_display_parent_class)->finalize (object);
+ }
+@@ -1315,7 +1446,7 @@ chainup:
+ 	return GTK_WIDGET_CLASS (e_mail_display_parent_class)->
+ 		button_press_event (widget, event);
+ }
+-#if 0
++#if 0 /* FIXME WK2 */
+ static gchar *
+ mail_display_redirect_uri (EWebView *web_view,
+                            const gchar *uri)
+@@ -1344,19 +1475,23 @@ mail_display_redirect_uri (EWebView *web_view,
+ 		gchar *new_uri, *mail_uri, *enc;
+ 		SoupURI *soup_uri;
+ 		GHashTable *query;
+-		gboolean image_exists;
++		gboolean can_download_uri;
+ 		EImageLoadingPolicy image_policy;
+ 
+-		/* Check Evolution's cache */
+-		image_exists = mail_display_image_exists_in_cache (uri);
++		can_download_uri = e_mail_display_can_download_uri (display, uri);
++		if (!can_download_uri) {
++			/* Check Evolution's cache */
++			can_download_uri = mail_display_image_exists_in_cache (uri);
++		}
+ 
+ 		/* If the URI is not cached and we are not allowed to load it
+ 		 * then redirect to invalid URI, so that webkit would display
+ 		 * a native placeholder for it. */
+ 		image_policy = e_mail_formatter_get_image_loading_policy (
+ 			display->priv->formatter);
+-		if (!image_exists && !display->priv->force_image_load &&
++		if (!can_download_uri && !display->priv->force_image_load &&
+ 		    (image_policy == E_IMAGE_LOADING_POLICY_NEVER)) {
++			e_mail_display_claim_skipped_uri (display, uri);
+ 			return g_strdup ("about:blank");
+ 		}
+ 
+@@ -1377,11 +1512,13 @@ mail_display_redirect_uri (EWebView *web_view,
+ 		enc = soup_uri_encode (mail_uri, NULL);
+ 		g_hash_table_insert (query, g_strdup ("__evo-mail"), enc);
+ 
+-		if (display->priv->force_image_load) {
++		if (display->priv->force_image_load || can_download_uri) {
+ 			g_hash_table_insert (
+ 				query,
+ 				g_strdup ("__evo-load-images"),
+ 				g_strdup ("true"));
++		} else if (image_policy != E_IMAGE_LOADING_POLICY_ALWAYS) {
++			e_mail_display_claim_skipped_uri (display, uri);
+ 		}
+ 
+ 		g_free (mail_uri);
+@@ -2423,6 +2560,17 @@ e_mail_display_class_init (EMailDisplayClass *class)
+ 			NULL,
+ 			G_PARAM_READWRITE |
+ 			G_PARAM_STATIC_STRINGS));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_REMOTE_CONTENT,
++		g_param_spec_object (
++			"remote-content",
++			"Mail Remote Content",
++			NULL,
++			E_TYPE_MAIL_REMOTE_CONTENT,
++			G_PARAM_READWRITE |
++			G_PARAM_STATIC_STRINGS));
+ }
+ 
+ static void
+@@ -2494,6 +2642,10 @@ e_mail_display_init (EMailDisplay *display)
+ 		G_N_ELEMENTS (mailto_entries), display);
+ 	ui_manager = e_web_view_get_ui_manager (E_WEB_VIEW (display));
+ 	gtk_ui_manager_add_ui_from_string (ui_manager, ui, -1, NULL);
++
++	g_mutex_init (&display->priv->remote_content_lock);
++	display->priv->remote_content = NULL;
++	display->priv->skipped_remote_content_sites = g_hash_table_new_full (camel_strcase_hash, camel_strcase_equal, g_free, NULL);
+ }
+ 
+ static void
+@@ -2521,9 +2673,11 @@ e_mail_display_update_colors (EMailDisplay *display,
+ }
+ 
+ GtkWidget *
+-e_mail_display_new (void)
++e_mail_display_new (EMailRemoteContent *remote_content)
+ {
+-	return g_object_new (E_TYPE_MAIL_DISPLAY, NULL);
++	return g_object_new (E_TYPE_MAIL_DISPLAY,
++		"remote-content", remote_content,
++		NULL);
+ }
+ 
+ EMailFormatterMode
+@@ -2950,3 +3104,78 @@ e_mail_display_set_force_load_images (EMailDisplay *display,
+ 	}
+ }
+ 
++gboolean
++e_mail_display_has_skipped_remote_content_sites (EMailDisplay *display)
++{
++	gboolean has_any;
++
++	g_return_val_if_fail (E_IS_MAIL_DISPLAY (display), FALSE);
++
++	g_mutex_lock (&display->priv->remote_content_lock);
++
++	has_any = g_hash_table_size (display->priv->skipped_remote_content_sites) > 0;
++
++	g_mutex_unlock (&display->priv->remote_content_lock);
++
++	return has_any;
++}
++
++/* Free with g_list_free_full (uris, g_free); */
++GList *
++e_mail_display_get_skipped_remote_content_sites (EMailDisplay *display)
++{
++	GList *uris, *link;
++
++	g_return_val_if_fail (E_IS_MAIL_DISPLAY (display), NULL);
++
++	g_mutex_lock (&display->priv->remote_content_lock);
++
++	uris = g_hash_table_get_keys (display->priv->skipped_remote_content_sites);
++
++	for (link = uris; link; link = g_list_next (link)) {
++		link->data = g_strdup (link->data);
++	}
++
++	g_mutex_unlock (&display->priv->remote_content_lock);
++
++	return uris;
++}
++
++EMailRemoteContent *
++e_mail_display_ref_remote_content (EMailDisplay *display)
++{
++	EMailRemoteContent *remote_content;
++
++	g_return_val_if_fail (E_IS_MAIL_DISPLAY (display), NULL);
++
++	g_mutex_lock (&display->priv->remote_content_lock);
++
++	remote_content = display->priv->remote_content;
++	if (remote_content)
++		g_object_ref (remote_content);
++
++	g_mutex_unlock (&display->priv->remote_content_lock);
++
++	return remote_content;
++}
++
++void
++e_mail_display_set_remote_content (EMailDisplay *display,
++				   EMailRemoteContent *remote_content)
++{
++	g_return_if_fail (E_IS_MAIL_DISPLAY (display));
++	if (remote_content)
++		g_return_if_fail (E_IS_MAIL_REMOTE_CONTENT (remote_content));
++
++	g_mutex_lock (&display->priv->remote_content_lock);
++
++	if (display->priv->remote_content == remote_content) {
++		g_mutex_unlock (&display->priv->remote_content_lock);
++		return;
++	}
++
++	g_clear_object (&display->priv->remote_content);
++	display->priv->remote_content = remote_content ? g_object_ref (remote_content) : NULL;
++
++	g_mutex_unlock (&display->priv->remote_content_lock);
++}
+diff --git a/mail/e-mail-display.h b/mail/e-mail-display.h
+index 7deefd59d3..63d7a6bad2 100644
+--- a/mail/e-mail-display.h
++++ b/mail/e-mail-display.h
+@@ -24,6 +24,7 @@
+ #include <e-util/e-util.h>
+ 
+ #include <em-format/e-mail-formatter.h>
++#include <mail/e-mail-remote-content.h>
+ 
+ /* Standard GObject macros */
+ #define E_TYPE_MAIL_DISPLAY \
+@@ -57,11 +58,10 @@ struct _EMailDisplay {
+ 
+ struct _EMailDisplayClass {
+ 	EWebViewClass parent_class;
+-
+ };
+ 
+ GType		e_mail_display_get_type		(void) G_GNUC_CONST;
+-GtkWidget *	e_mail_display_new		(void);
++GtkWidget *	e_mail_display_new		(EMailRemoteContent *remote_content);
+ EMailFormatterMode
+ 		e_mail_display_get_mode		(EMailDisplay *display);
+ void		e_mail_display_set_mode		(EMailDisplay *display,
+@@ -96,6 +96,16 @@ void		e_mail_display_load_images	(EMailDisplay *display);
+ void		e_mail_display_set_force_load_images
+ 						(EMailDisplay *display,
+ 						 gboolean force_load_images);
++gboolean	e_mail_display_has_skipped_remote_content_sites
++						(EMailDisplay *display);
++GList *		e_mail_display_get_skipped_remote_content_sites
++						(EMailDisplay *display);
++EMailRemoteContent *
++		e_mail_display_ref_remote_content
++						(EMailDisplay *display);
++void		e_mail_display_set_remote_content
++						(EMailDisplay *display,
++						 EMailRemoteContent *remote_content);
+ 
+ G_END_DECLS
+ 
+diff --git a/mail/e-mail-paned-view.c b/mail/e-mail-paned-view.c
+index 3530ad08cb..bb32db85db 100644
+--- a/mail/e-mail-paned-view.c
++++ b/mail/e-mail-paned-view.c
+@@ -640,10 +640,6 @@ mail_paned_view_constructed (GObject *object)
+ 
+ 	priv = E_MAIL_PANED_VIEW_GET_PRIVATE (object);
+ 
+-	priv->display = g_object_new (
+-		E_TYPE_MAIL_DISPLAY,
+-		"headers-collapsable", TRUE, NULL);
+-
+ 	view = E_MAIL_VIEW (object);
+ 	shell_view = e_mail_view_get_shell_view (view);
+ 	shell_window = e_shell_view_get_shell_window (shell_view);
+@@ -652,6 +648,11 @@ mail_paned_view_constructed (GObject *object)
+ 	backend = E_MAIL_BACKEND (shell_backend);
+ 	session = e_mail_backend_get_session (backend);
+ 
++	priv->display = g_object_new (E_TYPE_MAIL_DISPLAY,
++		"headers-collapsable", TRUE,
++		"remote-content", e_mail_backend_get_remote_content (backend),
++		NULL);
++
+ 	/* FIXME This should be an EMailPanedView property, so
+ 	 *       it can be configured from the settings module. */
+ 
+@@ -737,6 +738,8 @@ mail_paned_view_constructed (GObject *object)
+ 	 * set_preview_visible() method relies on it. */
+ 	e_mail_view_set_preview_visible (view, TRUE);
+ 
++	e_mail_reader_connect_remote_content (reader);
++
+ 	e_extensible_load_extensions (E_EXTENSIBLE (object));
+ 
+ 	/* Chain up to parent's constructed() method. */
+diff --git a/mail/e-mail-printer.c b/mail/e-mail-printer.c
+index 90eb8bf0ec..575810d2f7 100644
+--- a/mail/e-mail-printer.c
++++ b/mail/e-mail-printer.c
+@@ -43,6 +43,7 @@ typedef struct _AsyncContext AsyncContext;
+ struct _EMailPrinterPrivate {
+ 	EMailFormatter *formatter;
+ 	EMailPartList *part_list;
++	EMailRemoteContent *remote_content;
+ 
+ 	gchar *export_filename;
+ 
+@@ -62,7 +63,8 @@ struct _AsyncContext {
+ 
+ enum {
+ 	PROP_0,
+-	PROP_PART_LIST
++	PROP_PART_LIST,
++	PROP_REMOTE_CONTENT
+ };
+ 
+ enum {
+@@ -382,6 +384,16 @@ mail_printer_set_part_list (EMailPrinter *printer,
+ 	printer->priv->part_list = g_object_ref (part_list);
+ }
+ 
++static void
++mail_printer_set_remote_content (EMailPrinter *printer,
++				 EMailRemoteContent *remote_content)
++{
++	g_return_if_fail (E_IS_MAIL_REMOTE_CONTENT (remote_content));
++	g_return_if_fail (printer->priv->remote_content == NULL);
++
++	printer->priv->remote_content = g_object_ref (remote_content);
++}
++
+ static void
+ mail_printer_set_property (GObject *object,
+                            guint property_id,
+@@ -394,6 +406,12 @@ mail_printer_set_property (GObject *object,
+ 				E_MAIL_PRINTER (object),
+ 				g_value_get_object (value));
+ 			return;
++
++		case PROP_REMOTE_CONTENT:
++			mail_printer_set_remote_content (
++				E_MAIL_PRINTER (object),
++				g_value_get_object (value));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -412,6 +430,13 @@ mail_printer_get_property (GObject *object,
+ 				e_mail_printer_ref_part_list (
+ 				E_MAIL_PRINTER (object)));
+ 			return;
++
++		case PROP_REMOTE_CONTENT:
++			g_value_take_object (
++				value,
++				e_mail_printer_ref_remote_content (
++				E_MAIL_PRINTER (object)));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -426,6 +451,7 @@ mail_printer_dispose (GObject *object)
+ 
+ 	g_clear_object (&priv->formatter);
+ 	g_clear_object (&priv->part_list);
++	g_clear_object (&priv->remote_content);
+ 
+ 	/* Chain up to parent's dispose() method. */
+ 	G_OBJECT_CLASS (e_mail_printer_parent_class)->dispose (object);
+@@ -453,6 +479,17 @@ e_mail_printer_class_init (EMailPrinterClass *class)
+ 			E_TYPE_MAIL_PART_LIST,
+ 			G_PARAM_READWRITE |
+ 			G_PARAM_CONSTRUCT_ONLY));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_REMOTE_CONTENT,
++		g_param_spec_object (
++			"remote-content",
++			"Remote Content",
++			NULL,
++			E_TYPE_MAIL_REMOTE_CONTENT,
++			G_PARAM_READWRITE |
++			G_PARAM_CONSTRUCT_ONLY));
+ }
+ 
+ static void
+@@ -464,13 +501,15 @@ e_mail_printer_init (EMailPrinter *printer)
+ }
+ 
+ EMailPrinter *
+-e_mail_printer_new (EMailPartList *part_list)
++e_mail_printer_new (EMailPartList *part_list,
++		    EMailRemoteContent *remote_content)
+ {
+ 	g_return_val_if_fail (E_IS_MAIL_PART_LIST (part_list), NULL);
+ 
+-	return g_object_new (
+-		E_TYPE_MAIL_PRINTER,
+-		"part-list", part_list, NULL);
++	return g_object_new (E_TYPE_MAIL_PRINTER,
++		"part-list", part_list,
++		"remote-content", remote_content,
++		NULL);
+ }
+ 
+ EMailPartList *
+@@ -481,6 +520,17 @@ e_mail_printer_ref_part_list (EMailPrinter *printer)
+ 	return g_object_ref (printer->priv->part_list);
+ }
+ 
++EMailRemoteContent *
++e_mail_printer_ref_remote_content (EMailPrinter *printer)
++{
++	g_return_val_if_fail (E_IS_MAIL_PRINTER (printer), NULL);
++
++	if (!printer->priv->remote_content)
++		return NULL;
++
++	return g_object_ref (printer->priv->remote_content);
++}
++
+ void
+ e_mail_printer_print (EMailPrinter *printer,
+                       GtkPrintOperationAction action,
+diff --git a/mail/e-mail-printer.h b/mail/e-mail-printer.h
+index 29f48a9782..7926fa9541 100644
+--- a/mail/e-mail-printer.h
++++ b/mail/e-mail-printer.h
+@@ -21,6 +21,7 @@
+ 
+ #include <em-format/e-mail-part-list.h>
+ #include <em-format/e-mail-formatter.h>
++#include <mail/e-mail-remote-content.h>
+ 
+ /* Standard GObject macros */
+ #define E_TYPE_MAIL_PRINTER \
+@@ -57,8 +58,12 @@ struct _EMailPrinterClass {
+ };
+ 
+ GType		e_mail_printer_get_type		(void) G_GNUC_CONST;
+-EMailPrinter *	e_mail_printer_new		(EMailPartList *source);
++EMailPrinter *	e_mail_printer_new		(EMailPartList *source,
++						 EMailRemoteContent *remote_content);
+ EMailPartList *	e_mail_printer_ref_part_list	(EMailPrinter *printer);
++EMailRemoteContent *
++		e_mail_printer_ref_remote_content
++						(EMailPrinter *printer);
+ void		e_mail_printer_print		(EMailPrinter *printer,
+ 						 GtkPrintOperationAction action,
+ 						 EMailFormatter *formatter,
+diff --git a/mail/e-mail-reader-utils.c b/mail/e-mail-reader-utils.c
+index d7c06bc9bd..45086c139e 100644
+--- a/mail/e-mail-reader-utils.c
++++ b/mail/e-mail-reader-utils.c
+@@ -1261,6 +1261,7 @@ mail_reader_print_parse_message_cb (GObject *source_object,
+ 	GCancellable *cancellable;
+ 	EMailPrinter *printer;
+ 	EMailPartList *part_list;
++	EMailRemoteContent *remote_content;
+ 	AsyncContext *async_context;
+ 	GError *local_error = NULL;
+ 
+@@ -1282,10 +1283,13 @@ mail_reader_print_parse_message_cb (GObject *source_object,
+ 		return;
+ 	}
+ 
+-	printer = e_mail_printer_new (part_list);
+-
+ 	mail_display = e_mail_reader_get_mail_display (reader);
+ 	formatter = e_mail_display_get_formatter (mail_display);
++	remote_content = e_mail_display_ref_remote_content (mail_display);
++
++	printer = e_mail_printer_new (part_list, remote_content);
++
++	g_clear_object (&remote_content);
+ 
+ 	e_activity_set_text (activity, _("Printing"));
+ 
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index 9b61826be1..c888f21be4 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -94,6 +94,8 @@ struct _EMailReaderPrivate {
+ 	 * the message is loaded into the EMailDisplay */
+ 	gboolean schedule_mark_seen;
+ 	guint schedule_mark_seen_interval;
++
++	gpointer remote_content_alert; /* EAlert */
+ };
+ 
+ enum {
+@@ -4900,3 +4902,394 @@ e_mail_reader_composer_created (EMailReader *reader,
+ 		reader, signals[COMPOSER_CREATED], 0, composer, message);
+ }
+ 
++static void
++e_mail_reader_load_remote_content_clicked_cb (GtkButton *button,
++					      EMailReader *reader)
++{
++	EMailDisplay *mail_display;
++
++	g_return_if_fail (E_IS_MAIL_READER (reader));
++
++	mail_display = e_mail_reader_get_mail_display (reader);
++
++	/* This causes reload, thus also alert removal */
++	e_mail_display_load_images (mail_display);
++}
++
++static GList *
++e_mail_reader_get_from_mails (EMailDisplay *mail_display)
++{
++	EMailPartList *part_list;
++	CamelMimeMessage *message;
++	CamelInternetAddress *from;
++	GList *mails = NULL;
++
++	g_return_val_if_fail (E_IS_MAIL_DISPLAY (mail_display), NULL);
++
++	part_list = e_mail_display_get_part_list (mail_display);
++	if (!part_list)
++		return NULL;
++
++	message = e_mail_part_list_get_message (part_list);
++	if (!message)
++		return NULL;
++
++	from = camel_mime_message_get_from (message);
++	if (from) {
++		GHashTable *domains;
++		GHashTableIter iter;
++		gpointer key, value;
++		gint ii, len;
++
++		domains = g_hash_table_new (camel_strcase_hash, camel_strcase_equal);
++
++		len = camel_address_length (CAMEL_ADDRESS (from));
++		for (ii = 0; ii < len; ii++) {
++			const gchar *mail = NULL;
++
++			if (!camel_internet_address_get	(from, ii, NULL, &mail))
++				break;
++
++			if (mail && *mail) {
++				const gchar *at;
++
++				mails = g_list_prepend (mails, g_strdup (mail));
++
++				at = strchr (mail, '@');
++				if (at && at != mail && at[1])
++					g_hash_table_insert (domains, (gpointer) at, NULL);
++			}
++		}
++
++		g_hash_table_iter_init (&iter, domains);
++		while (g_hash_table_iter_next (&iter, &key, &value)) {
++			const gchar *domain = key;
++
++			mails = g_list_prepend (mails, g_strdup (domain));
++		}
++
++		g_hash_table_destroy (domains);
++	}
++
++	return g_list_reverse (mails);
++}
++
++static void
++e_mail_reader_remote_content_menu_position (GtkMenu *menu,
++					    gint *x,
++					    gint *y,
++					    gboolean *push_in,
++					    gpointer user_data)
++{
++	GtkRequisition menu_requisition;
++	GtkTextDirection direction;
++	GtkAllocation allocation;
++	GdkRectangle monitor;
++	GdkScreen *screen;
++	GdkWindow *window;
++	GtkWidget *widget = user_data;
++	gint monitor_num;
++
++	gtk_widget_get_preferred_size (GTK_WIDGET (menu), &menu_requisition, NULL);
++
++	window = gtk_widget_get_parent_window (widget);
++	screen = gtk_widget_get_screen (GTK_WIDGET (menu));
++	monitor_num = gdk_screen_get_monitor_at_window (screen, window);
++	if (monitor_num < 0)
++		monitor_num = 0;
++	gdk_screen_get_monitor_geometry (screen, monitor_num, &monitor);
++
++	gtk_widget_get_allocation (widget, &allocation);
++
++	gdk_window_get_origin (window, x, y);
++	*x += allocation.x;
++	*y += allocation.y;
++
++	direction = gtk_widget_get_direction (widget);
++	if (direction == GTK_TEXT_DIR_LTR)
++		*x += MAX (allocation.width - menu_requisition.width, 0);
++	else if (menu_requisition.width > allocation.width)
++		*x -= menu_requisition.width - allocation.width;
++
++	gtk_widget_get_allocation (widget, &allocation);
++
++	if ((*y + allocation.height +
++		menu_requisition.height) <= monitor.y + monitor.height)
++		*y += allocation.height;
++	else if ((*y - menu_requisition.height) >= monitor.y)
++		*y -= menu_requisition.height;
++	else if (monitor.y + monitor.height -
++		(*y + allocation.height) > *y)
++		*y += allocation.height;
++	else
++		*y -= menu_requisition.height;
++
++	*push_in = FALSE;
++}
++
++static gboolean
++e_mail_reader_destroy_menu_idle_cb (gpointer user_data)
++{
++	gtk_widget_destroy (user_data);
++
++	return FALSE;
++}
++
++static void
++e_mail_reader_remote_content_menu_deactivate_cb (GtkMenuShell *popup_menu,
++						 GtkToggleButton *toggle_button)
++{
++	g_return_if_fail (GTK_IS_TOGGLE_BUTTON (toggle_button));
++
++	gtk_toggle_button_set_active (toggle_button, FALSE);
++
++	g_idle_add (e_mail_reader_destroy_menu_idle_cb, popup_menu);
++}
++
++#define REMOTE_CONTENT_KEY_IS_MAIL	"remote-content-key-is-mail"
++#define REMOTE_CONTENT_KEY_VALUE	"remote-content-key-value"
++
++static void
++e_mail_reader_remote_content_menu_activate_cb (GObject *item,
++					       EMailReader *reader)
++{
++	EMailDisplay *mail_display;
++	EMailRemoteContent *remote_content;
++	gboolean is_mail;
++	const gchar *value;
++
++	g_return_if_fail (GTK_IS_MENU_ITEM (item));
++	g_return_if_fail (E_IS_MAIL_READER (reader));
++
++	is_mail = GPOINTER_TO_INT (g_object_get_data (item, REMOTE_CONTENT_KEY_IS_MAIL)) == 1;
++	value = g_object_get_data (item, REMOTE_CONTENT_KEY_VALUE);
++
++	g_return_if_fail (value && *value);
++
++	mail_display = e_mail_reader_get_mail_display (reader);
++	if (!mail_display)
++		return;
++
++	remote_content = e_mail_display_ref_remote_content (mail_display);
++	if (!remote_content)
++		return;
++
++	if (is_mail)
++		e_mail_remote_content_add_mail (remote_content, value);
++	else
++		e_mail_remote_content_add_site (remote_content, value);
++
++	g_clear_object (&remote_content);
++
++	e_mail_display_reload (mail_display);
++}
++
++static void
++e_mail_reader_add_remote_content_menu_item (EMailReader *reader,
++					    GtkWidget *popup_menu,
++					    const gchar *label,
++					    gboolean is_mail,
++					    const gchar *value)
++{
++	GtkWidget *item;
++	GObject *object;
++
++	g_return_if_fail (E_IS_MAIL_READER (reader));
++	g_return_if_fail (GTK_IS_MENU (popup_menu));
++	g_return_if_fail (label != NULL);
++	g_return_if_fail (value != NULL);
++
++	item = gtk_menu_item_new_with_label (label);
++	object = G_OBJECT (item);
++
++	g_object_set_data (object, REMOTE_CONTENT_KEY_IS_MAIL, is_mail ? GINT_TO_POINTER (1) : NULL);
++	g_object_set_data_full (object, REMOTE_CONTENT_KEY_VALUE, g_strdup (value), g_free);
++
++	g_signal_connect (item, "activate", G_CALLBACK (e_mail_reader_remote_content_menu_activate_cb), reader);
++
++	gtk_menu_shell_append (GTK_MENU_SHELL (popup_menu), item);
++}
++
++static void
++e_mail_reader_show_remote_content_popup (EMailReader *reader,
++					 GdkEventButton *event,
++					 GtkToggleButton *toggle_button)
++{
++	EMailDisplay *mail_display;
++	GList *mails, *sites, *link;
++	GtkWidget *popup_menu = NULL;
++
++	g_return_if_fail (E_IS_MAIL_READER (reader));
++
++	mail_display = e_mail_reader_get_mail_display (reader);
++	mails = e_mail_reader_get_from_mails (mail_display);
++	sites = e_mail_display_get_skipped_remote_content_sites (mail_display);
++
++	for (link = mails; link; link = g_list_next (link)) {
++		const gchar *mail = link->data;
++		gchar *label;
++
++		if (!mail || !*mail)
++			continue;
++
++		if (!popup_menu)
++			popup_menu = gtk_menu_new ();
++
++		if (*mail == '@')
++			label = g_strdup_printf (_("Allow remote content for anyone from %s"), mail);
++		else
++			label = g_strdup_printf (_("Allow remote content for %s"), mail);
++
++		e_mail_reader_add_remote_content_menu_item (reader, popup_menu, label, TRUE, mail);
++
++		g_free (label);
++	}
++
++	for (link = sites; link; link = g_list_next (link)) {
++		const gchar *site = link->data;
++		gchar *label;
++
++		if (!site || !*site)
++			continue;
++
++		if (!popup_menu)
++			popup_menu = gtk_menu_new ();
++
++		label = g_strdup_printf (_("Allow remote content from %s"), site);
++
++		e_mail_reader_add_remote_content_menu_item (reader, popup_menu, label, FALSE, site);
++
++		g_free (label);
++	}
++
++	g_list_free_full (mails, g_free);
++	g_list_free_full (sites, g_free);
++
++	if (popup_menu) {
++		GtkWidget *box = gtk_widget_get_parent (GTK_WIDGET (toggle_button));
++
++		gtk_toggle_button_set_active (toggle_button, TRUE);
++
++		g_signal_connect (
++			popup_menu, "deactivate",
++			G_CALLBACK (e_mail_reader_remote_content_menu_deactivate_cb), toggle_button);
++
++		gtk_widget_show_all (popup_menu);
++
++		if (event)
++			gtk_menu_popup (GTK_MENU (popup_menu), NULL, NULL,
++				e_mail_reader_remote_content_menu_position,
++				box, event->button, event->time);
++		else
++			gtk_menu_popup (GTK_MENU (popup_menu), NULL, NULL,
++				e_mail_reader_remote_content_menu_position,
++				box, 0, gtk_get_current_event_time ());
++	}
++}
++
++static gboolean
++e_mail_reader_options_remote_content_button_press_cb (GtkToggleButton *toggle_button,
++						      GdkEventButton *event,
++						      EMailReader *reader)
++{
++	g_return_val_if_fail (E_IS_MAIL_READER (reader), FALSE);
++
++	if (event && event->button == 1) {
++		e_mail_reader_show_remote_content_popup (reader, event, toggle_button);
++		return TRUE;
++	}
++
++	return FALSE;
++}
++
++static GtkWidget *
++e_mail_reader_create_remote_content_alert_button (EMailReader *reader)
++{
++	GtkWidget *box, *button, *arrow;
++
++	box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
++
++	gtk_style_context_add_class (gtk_widget_get_style_context (box), "linked");
++
++	button = gtk_button_new_with_label (_("Load remote content"));
++	gtk_container_add (GTK_CONTAINER (box), button);
++
++	g_signal_connect (button, "clicked",
++		G_CALLBACK (e_mail_reader_load_remote_content_clicked_cb), reader);
++
++	button = gtk_toggle_button_new ();
++	gtk_box_pack_start (GTK_BOX (box), button, FALSE, FALSE, 0);
++
++	g_signal_connect (button, "button-press-event",
++		G_CALLBACK (e_mail_reader_options_remote_content_button_press_cb), reader);
++
++	arrow = gtk_arrow_new (GTK_ARROW_DOWN, GTK_SHADOW_NONE);
++	gtk_container_add (GTK_CONTAINER (button), arrow);
++
++	gtk_widget_show_all (box);
++
++	return box;
++}
++
++static void
++mail_reader_display_load_changed_cb (EMailDisplay *mail_display,
++				     WebKitLoadEvent load_event,
++				     EMailReader *reader)
++{
++	EMailReaderPrivate *priv;
++
++	g_return_if_fail (E_IS_MAIL_DISPLAY (mail_display));
++	g_return_if_fail (E_IS_MAIL_READER (reader));
++
++	priv = E_MAIL_READER_GET_PRIVATE (reader);
++	g_return_if_fail (priv != NULL);
++
++	if (load_event == WEBKIT_LOAD_STARTED) {
++		if (priv->remote_content_alert)
++			e_alert_response (priv->remote_content_alert, GTK_RESPONSE_CLOSE);
++		return;
++	}
++
++	if (load_event != WEBKIT_LOAD_FINISHED)
++		return;
++
++	if (!e_mail_display_has_skipped_remote_content_sites (mail_display))
++		return;
++
++	if (!priv->remote_content_alert) {
++		EPreviewPane *preview_pane;
++		GtkWidget *button;
++		EAlert *alert;
++
++		alert = e_alert_new ("mail:remote-content-info", NULL);
++		button = e_mail_reader_create_remote_content_alert_button (reader);
++		e_alert_add_widget (alert, button); /* button is consumed by the alert */
++		preview_pane = e_mail_reader_get_preview_pane (reader);
++		e_alert_sink_submit_alert (E_ALERT_SINK (preview_pane), alert);
++		g_object_unref (alert);
++
++		priv->remote_content_alert = alert;
++		g_object_add_weak_pointer (G_OBJECT (priv->remote_content_alert), &priv->remote_content_alert);
++	}
++}
++
++/**
++ * e_mail_reader_connect_remote_content:
++ * @reader: an #EMailReader
++ *
++ * Connects signal handlers to manage remote content download around
++ * the internal #EMailDisplay.
++ **/
++void
++e_mail_reader_connect_remote_content (EMailReader *reader)
++{
++	EMailDisplay *mail_display;
++
++	g_return_if_fail (E_IS_MAIL_READER (reader));
++
++	mail_display = e_mail_reader_get_mail_display (reader);
++	g_return_if_fail (E_IS_MAIL_DISPLAY (mail_display));
++
++	g_signal_connect (mail_display, "load-changed",
++		G_CALLBACK (mail_reader_display_load_changed_cb), reader);
++}
+diff --git a/mail/e-mail-reader.h b/mail/e-mail-reader.h
+index baae723fb5..7dab30badb 100644
+--- a/mail/e-mail-reader.h
++++ b/mail/e-mail-reader.h
+@@ -184,6 +184,8 @@ void		e_mail_reader_avoid_next_mark_as_seen
+ void		e_mail_reader_composer_created	(EMailReader *reader,
+ 						 EMsgComposer *composer,
+ 						 CamelMimeMessage *message);
++void		e_mail_reader_connect_remote_content
++						(EMailReader *reader);
+ 
+ G_END_DECLS
+ 
+diff --git a/mail/e-mail-remote-content.c b/mail/e-mail-remote-content.c
+new file mode 100644
+index 0000000000..b1bcd905ce
+--- /dev/null
++++ b/mail/e-mail-remote-content.c
+@@ -0,0 +1,573 @@
++/* -*- Mode: C; tab-width: 8; indent-tabs-mode: t; c-basic-offset: 8 -*- */
++/*
++ * Copyright (C) 2015 Red Hat Inc. (www.redhat.com)
++ *
++ * This library is free software: you can redistribute it and/or modify it
++ * under the terms of version 2.1. of the GNU Lesser General Public License
++ * as published by the Free Software Foundation.
++ *
++ * This library is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
++ * for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public License
++ * along with this library. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <stdio.h>
++#include <string.h>
++
++#include <camel/camel.h>
++
++#include "e-mail-remote-content.h"
++
++#define CURRENT_VERSION 1
++
++#define RECENT_CACHE_SIZE 10
++
++typedef struct _RecentData {
++	gchar *value;
++	gboolean result;
++} RecentData;
++
++struct _EMailRemoteContentPrivate {
++	CamelDB *db;
++
++	GMutex recent_lock;
++	RecentData recent_mails[RECENT_CACHE_SIZE];
++	RecentData recent_sites[RECENT_CACHE_SIZE];
++	guint recent_last_mails;
++	guint recent_last_sites;
++};
++
++G_DEFINE_TYPE (EMailRemoteContent, e_mail_remote_content, G_TYPE_OBJECT)
++
++static void
++e_mail_remote_content_add_to_recent_cache (EMailRemoteContent *content,
++					   const gchar *value,
++					   gboolean result,
++					   RecentData *recent_cache,
++					   guint *recent_last)
++{
++	gint ii, first_free = -1, index;
++
++	g_return_if_fail (E_IS_MAIL_REMOTE_CONTENT (content));
++	g_return_if_fail (value != NULL);
++	g_return_if_fail (recent_cache != NULL);
++	g_return_if_fail (recent_last != NULL);
++
++	g_mutex_lock (&content->priv->recent_lock);
++
++	for (ii = 0; ii < RECENT_CACHE_SIZE; ii++) {
++		index = (*recent_last + ii) % RECENT_CACHE_SIZE;
++
++		if (!recent_cache[index].value) {
++			if (first_free == -1)
++				first_free = index;
++		} else if (g_ascii_strcasecmp (recent_cache[index].value, value) == 0) {
++			recent_cache[index].result = result;
++			break;
++		}
++	}
++
++	if (ii == RECENT_CACHE_SIZE) {
++		if (first_free != -1) {
++			g_warn_if_fail (recent_cache[first_free].value == NULL);
++			recent_cache[first_free].value = g_strdup (value);
++			recent_cache[first_free].result = result;
++
++			if (first_free == (*recent_last + 1) % RECENT_CACHE_SIZE)
++				*recent_last = first_free;
++		} else {
++			index = (*recent_last + 1) % RECENT_CACHE_SIZE;
++
++			g_free (recent_cache[index].value);
++			recent_cache[index].value = g_strdup (value);
++			recent_cache[index].result = result;
++
++			*recent_last = index;
++		}
++	}
++
++	g_mutex_unlock (&content->priv->recent_lock);
++}
++
++static void
++e_mail_remote_content_add (EMailRemoteContent *content,
++			   const gchar *table,
++			   const gchar *value,
++			   RecentData *recent_cache,
++			   guint *recent_last)
++{
++	gchar *stmt;
++	GError *error = NULL;
++
++	g_return_if_fail (E_IS_MAIL_REMOTE_CONTENT (content));
++	g_return_if_fail (table != NULL);
++	g_return_if_fail (value != NULL);
++	g_return_if_fail (recent_cache != NULL);
++	g_return_if_fail (recent_last != NULL);
++
++	e_mail_remote_content_add_to_recent_cache (content, value, TRUE, recent_cache, recent_last);
++
++	if (!content->priv->db)
++		return;
++
++	stmt = sqlite3_mprintf ("INSERT OR IGNORE INTO %Q ('value') VALUES (lower(%Q))", table, value);
++	camel_db_command (content->priv->db, stmt, &error);
++	sqlite3_free (stmt);
++
++	if (error) {
++		g_warning ("%s: Failed to add to '%s' value '%s': %s", G_STRFUNC, table, value, error->message);
++		g_clear_error (&error);
++	}
++}
++
++static void
++e_mail_remote_content_remove (EMailRemoteContent *content,
++			      const gchar *table,
++			      const gchar *value,
++			      RecentData *recent_cache,
++			      guint *recent_last)
++{
++	gchar *stmt;
++	gint ii;
++	GError *error = NULL;
++
++	g_return_if_fail (E_IS_MAIL_REMOTE_CONTENT (content));
++	g_return_if_fail (table != NULL);
++	g_return_if_fail (value != NULL);
++	g_return_if_fail (recent_cache != NULL);
++	g_return_if_fail (recent_last != NULL);
++
++	g_mutex_lock (&content->priv->recent_lock);
++
++	for (ii = 0; ii < RECENT_CACHE_SIZE; ii++) {
++		gint index = (*recent_last + ii) % RECENT_CACHE_SIZE;
++
++		if (recent_cache[index].value && g_ascii_strcasecmp (recent_cache[index].value, value) == 0) {
++			g_free (recent_cache[index].value);
++			recent_cache[index].value = NULL;
++			break;
++		}
++	}
++
++	g_mutex_unlock (&content->priv->recent_lock);
++
++	if (!content->priv->db)
++		return;
++
++	stmt = sqlite3_mprintf ("DELETE FROM %Q WHERE value=lower(%Q)", table, value);
++	camel_db_command (content->priv->db, stmt, &error);
++	sqlite3_free (stmt);
++
++	if (error) {
++		g_warning ("%s: Failed to remove from '%s' value '%s': %s", G_STRFUNC, table, value, error->message);
++		g_clear_error (&error);
++	}
++}
++
++static gint
++e_mail_remote_content_check_found_cb (gpointer data,
++				      gint ncol,
++				      gchar **colvalues,
++				      gchar **colnames)
++{
++	gboolean *pfound = data;
++
++	if (pfound)
++		*pfound = TRUE;
++
++	return 0;
++}
++
++static gboolean
++e_mail_remote_content_has (EMailRemoteContent *content,
++			   const gchar *table,
++			   const GSList *values,
++			   RecentData *recent_cache,
++			   guint *recent_last)
++{
++	GString *stmt;
++	gint ii;
++	gchar *tmp;
++	const GSList *link;
++	gboolean found = FALSE;
++
++	g_return_val_if_fail (E_IS_MAIL_REMOTE_CONTENT (content), FALSE);
++	g_return_val_if_fail (table != NULL, FALSE);
++	g_return_val_if_fail (values != NULL, FALSE);
++	g_return_val_if_fail (recent_cache != NULL, FALSE);
++	g_return_val_if_fail (recent_last != NULL, FALSE);
++
++	g_mutex_lock (&content->priv->recent_lock);
++
++	for (link = values; link; link = g_slist_next (link)) {
++		const gchar *value = link->data;
++
++		for (ii = 0; ii < RECENT_CACHE_SIZE; ii++) {
++			gint index = (*recent_last + ii) % RECENT_CACHE_SIZE;
++
++			if (recent_cache[index].value && g_ascii_strcasecmp (recent_cache[index].value, value) == 0) {
++				found = recent_cache[index].result;
++				g_mutex_unlock (&content->priv->recent_lock);
++
++				return found;
++			}
++		}
++	}
++
++	g_mutex_unlock (&content->priv->recent_lock);
++
++	if (!content->priv->db)
++		return FALSE;
++
++	stmt = g_string_new ("");
++
++	for (link = values; link; link = g_slist_next (link)) {
++		const gchar *value = link->data;
++
++		if (!value || !*value)
++			continue;
++
++		if (stmt->len)
++			g_string_append (stmt, " OR ");
++
++		tmp = sqlite3_mprintf ("value=lower(%Q)", value);
++		g_string_append (stmt, tmp);
++		sqlite3_free (tmp);
++	}
++
++	if (stmt->len) {
++		tmp = sqlite3_mprintf ("SELECT value FROM %Q WHERE ", table);
++		g_string_prepend (stmt, tmp);
++		sqlite3_free (tmp);
++
++		g_string_append (stmt, " LIMIT 1");
++
++		camel_db_select (content->priv->db, stmt->str, e_mail_remote_content_check_found_cb, &found, NULL);
++	}
++
++	g_string_free (stmt, TRUE);
++
++	for (link = values; link; link = g_slist_next (link)) {
++		const gchar *value = link->data;
++
++		e_mail_remote_content_add_to_recent_cache (content, value, found, recent_cache, recent_last);
++	}
++
++	return found;
++}
++
++static gint
++e_mail_remote_content_get_values_cb (gpointer data,
++				     gint ncol,
++				     gchar **colvalues,
++				     gchar **colnames)
++{
++	GHashTable *values_hash = data;
++
++	if (values_hash && colvalues && colvalues[0])
++		g_hash_table_insert (values_hash, g_strdup (colvalues[0]), NULL);
++
++	return 0;
++}
++
++static GSList *
++e_mail_remote_content_get (EMailRemoteContent *content,
++			   const gchar *table,
++			   RecentData *recent_cache,
++			   guint *recent_last)
++{
++	GHashTable *values_hash;
++	GHashTableIter iter;
++	GSList *values = NULL;
++	gpointer itr_key, itr_value;
++	gint ii;
++
++	g_return_val_if_fail (E_IS_MAIL_REMOTE_CONTENT (content), NULL);
++	g_return_val_if_fail (table != NULL, NULL);
++	g_return_val_if_fail (recent_cache != NULL, NULL);
++	g_return_val_if_fail (recent_last != NULL, NULL);
++
++	values_hash = g_hash_table_new_full (camel_strcase_hash, camel_strcase_equal, g_free, NULL);
++
++	g_mutex_lock (&content->priv->recent_lock);
++
++	for (ii = 0; ii < RECENT_CACHE_SIZE; ii++) {
++		gint index = (*recent_last + ii) % RECENT_CACHE_SIZE;
++
++		if (recent_cache[index].value && recent_cache[index].result) {
++			g_hash_table_insert (values_hash, g_strdup (recent_cache[index].value), NULL);
++		}
++	}
++
++	g_mutex_unlock (&content->priv->recent_lock);
++
++	if (content->priv->db) {
++		gchar *stmt;
++
++		stmt = sqlite3_mprintf ("SELECT value FROM %Q ORDER BY value", table);
++		camel_db_select (content->priv->db, stmt, e_mail_remote_content_get_values_cb, values_hash, NULL);
++		sqlite3_free (stmt);
++	}
++
++	g_hash_table_iter_init (&iter, values_hash);
++
++	while (g_hash_table_iter_next (&iter, &itr_key, &itr_value)) {
++		const gchar *value = itr_key;
++
++		if (value && *value)
++			values = g_slist_prepend (values, g_strdup (value));
++	}
++
++	g_hash_table_destroy (values_hash);
++
++	return g_slist_reverse (values);
++}
++
++static gint
++e_mail_remote_content_get_version_cb (gpointer data,
++				      gint ncol,
++				      gchar **colvalues,
++				      gchar **colnames)
++{
++	gint *pversion = data;
++
++	if (pversion && ncol == 1 && colvalues && colvalues[0])
++		*pversion = (gint) g_ascii_strtoll (colvalues[0], NULL, 10);
++
++	return 0;
++}
++
++static void
++e_mail_remote_content_set_config_filename (EMailRemoteContent *content,
++					   const gchar *config_filename)
++{
++	GError *error = NULL;
++
++	g_return_if_fail (E_IS_MAIL_REMOTE_CONTENT (content));
++	g_return_if_fail (config_filename != NULL);
++	g_return_if_fail (content->priv->db == NULL);
++
++	content->priv->db = camel_db_open (config_filename, &error);
++
++	if (error) {
++		g_warning ("%s: Failed to open '%s': %s", G_STRFUNC, config_filename, error->message);
++		g_clear_error (&error);
++	}
++
++	if (content->priv->db) {
++		#define ctb(stmt) G_STMT_START { \
++			if (content->priv->db) { \
++				camel_db_command (content->priv->db, stmt, &error); \
++				if (error) { \
++					g_warning ("%s: Failed to execute '%s' on '%s': %s", \
++						G_STRFUNC, stmt, config_filename, error->message); \
++					g_clear_error (&error); \
++				} \
++			} \
++		} G_STMT_END
++
++		ctb ("CREATE TABLE IF NOT EXISTS version (current INT)");
++		ctb ("CREATE TABLE IF NOT EXISTS sites (value TEXT PRIMARY KEY)");
++		ctb ("CREATE TABLE IF NOT EXISTS mails (value TEXT PRIMARY KEY)");
++
++		#undef ctb
++	}
++
++	if (content->priv->db) {
++		gint version = -1;
++		gchar *stmt;
++
++		camel_db_select (content->priv->db, "SELECT 'current' FROM 'version'", e_mail_remote_content_get_version_cb, &version, NULL);
++
++		if (version != -1 && version < CURRENT_VERSION) {
++			/* Here will be added migration code, if needed in the future */
++		}
++
++		stmt = sqlite3_mprintf ("DELETE FROM %Q", "version");
++		camel_db_command (content->priv->db, stmt, NULL);
++		sqlite3_free (stmt);
++
++		stmt = sqlite3_mprintf ("INSERT INTO %Q ('current') VALUES (%d);", "version", CURRENT_VERSION);
++		camel_db_command (content->priv->db, stmt, NULL);
++		sqlite3_free (stmt);
++	}
++}
++
++static void
++mail_remote_content_finalize (GObject *object)
++{
++	EMailRemoteContent *content;
++	gint ii;
++
++	content = E_MAIL_REMOTE_CONTENT (object);
++
++	if (content->priv->db) {
++		GError *error = NULL;
++
++		camel_db_maybe_run_maintenance (content->priv->db, &error);
++
++		if (error) {
++			g_warning ("%s: Failed to tun maintenance: %s", G_STRFUNC, error->message);
++			g_clear_error (&error);
++		}
++
++		camel_db_close (content->priv->db);
++		content->priv->db = NULL;
++	}
++
++	g_mutex_lock (&content->priv->recent_lock);
++
++	for (ii = 0; ii < RECENT_CACHE_SIZE; ii++) {
++		g_free (content->priv->recent_sites[ii].value);
++		g_free (content->priv->recent_mails[ii].value);
++
++		content->priv->recent_sites[ii].value = NULL;
++		content->priv->recent_mails[ii].value = NULL;
++	}
++
++	g_mutex_unlock (&content->priv->recent_lock);
++	g_mutex_clear (&content->priv->recent_lock);
++
++	/* Chain up to parent's finalize() method. */
++	G_OBJECT_CLASS (e_mail_remote_content_parent_class)->finalize (object);
++}
++
++static void
++e_mail_remote_content_class_init (EMailRemoteContentClass *class)
++{
++	GObjectClass *object_class;
++
++	g_type_class_add_private (class, sizeof (EMailRemoteContentPrivate));
++
++	object_class = G_OBJECT_CLASS (class);
++	object_class->finalize = mail_remote_content_finalize;
++}
++
++static void
++e_mail_remote_content_init (EMailRemoteContent *content)
++{
++	content->priv = G_TYPE_INSTANCE_GET_PRIVATE (content, E_TYPE_MAIL_REMOTE_CONTENT, EMailRemoteContentPrivate);
++
++	g_mutex_init (&content->priv->recent_lock);
++}
++
++EMailRemoteContent *
++e_mail_remote_content_new (const gchar *config_filename)
++{
++	EMailRemoteContent *content;
++
++	content = g_object_new (E_TYPE_MAIL_REMOTE_CONTENT, NULL);
++
++	if (config_filename != NULL)
++		e_mail_remote_content_set_config_filename (content, config_filename);
++
++	return content;
++}
++
++void
++e_mail_remote_content_add_site (EMailRemoteContent *content,
++				const gchar *site)
++{
++	g_return_if_fail (E_IS_MAIL_REMOTE_CONTENT (content));
++	g_return_if_fail (site != NULL);
++
++	e_mail_remote_content_add (content, "sites", site, content->priv->recent_sites, &content->priv->recent_last_sites);
++}
++
++void
++e_mail_remote_content_remove_site (EMailRemoteContent *content,
++				   const gchar *site)
++{
++	g_return_if_fail (E_IS_MAIL_REMOTE_CONTENT (content));
++	g_return_if_fail (site != NULL);
++
++	e_mail_remote_content_remove (content, "sites", site, content->priv->recent_sites, &content->priv->recent_last_sites);
++}
++
++gboolean
++e_mail_remote_content_has_site (EMailRemoteContent *content,
++				const gchar *site)
++{
++	GSList *values = NULL;
++	gboolean result;
++
++	g_return_val_if_fail (E_IS_MAIL_REMOTE_CONTENT (content), FALSE);
++	g_return_val_if_fail (site != NULL, FALSE);
++
++	values = g_slist_prepend (values, (gpointer) site);
++
++	result = e_mail_remote_content_has (content, "sites", values, content->priv->recent_sites, &content->priv->recent_last_sites);
++
++	g_slist_free (values);
++
++	return result;
++}
++
++/* Free the result with g_slist_free_full (values, g_free); */
++GSList *
++e_mail_remote_content_get_sites (EMailRemoteContent *content)
++{
++	g_return_val_if_fail (E_IS_MAIL_REMOTE_CONTENT (content), NULL);
++
++	return e_mail_remote_content_get (content, "sites", content->priv->recent_sites, &content->priv->recent_last_sites);
++}
++
++void
++e_mail_remote_content_add_mail (EMailRemoteContent *content,
++				const gchar *mail)
++{
++	g_return_if_fail (E_IS_MAIL_REMOTE_CONTENT (content));
++	g_return_if_fail (mail != NULL);
++
++	e_mail_remote_content_add (content, "mails", mail, content->priv->recent_mails, &content->priv->recent_last_mails);
++}
++
++void
++e_mail_remote_content_remove_mail (EMailRemoteContent *content,
++				   const gchar *mail)
++{
++	g_return_if_fail (E_IS_MAIL_REMOTE_CONTENT (content));
++	g_return_if_fail (mail != NULL);
++
++	e_mail_remote_content_remove (content, "mails", mail, content->priv->recent_mails, &content->priv->recent_last_mails);
++}
++
++gboolean
++e_mail_remote_content_has_mail (EMailRemoteContent *content,
++				const gchar *mail)
++{
++	GSList *values = NULL;
++	const gchar *at;
++	gboolean result;
++
++	g_return_val_if_fail (E_IS_MAIL_REMOTE_CONTENT (content), FALSE);
++	g_return_val_if_fail (mail != NULL, FALSE);
++
++	values = g_slist_append (values, (gpointer) mail);
++	at = strchr (mail, '@');
++	if (at)
++		values = g_slist_prepend (values, (gpointer) at);
++
++	result = e_mail_remote_content_has (content, "mails", values, content->priv->recent_mails, &content->priv->recent_last_mails);
++
++	g_slist_free (values);
++
++	return result;
++}
++
++/* Free the result with g_slist_free_full (values, g_free); */
++GSList *
++e_mail_remote_content_get_mails (EMailRemoteContent *content)
++{
++	g_return_val_if_fail (E_IS_MAIL_REMOTE_CONTENT (content), NULL);
++
++	return e_mail_remote_content_get (content, "mails", content->priv->recent_mails, &content->priv->recent_last_mails);
++}
+diff --git a/mail/e-mail-remote-content.h b/mail/e-mail-remote-content.h
+new file mode 100644
+index 0000000000..a4fe4d95f1
+--- /dev/null
++++ b/mail/e-mail-remote-content.h
+@@ -0,0 +1,79 @@
++/* -*- Mode: C; tab-width: 8; indent-tabs-mode: t; c-basic-offset: 8 -*- */
++/*
++ * Copyright (C) 2015 Red Hat Inc. (www.redhat.com)
++ *
++ * This library is free software: you can redistribute it and/or modify it
++ * under the terms of version 2.1. of the GNU Lesser General Public License
++ * as published by the Free Software Foundation.
++ *
++ * This library is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
++ * for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public License
++ * along with this library. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifndef E_MAIL_REMOTE_CONTENT_H
++#define E_MAIL_REMOTE_CONTENT_H
++
++#include <glib-object.h>
++
++/* Standard GObject macros */
++#define E_TYPE_MAIL_REMOTE_CONTENT \
++	(e_mail_remote_content_get_type ())
++#define E_MAIL_REMOTE_CONTENT(obj) \
++	(G_TYPE_CHECK_INSTANCE_CAST \
++	((obj), E_TYPE_MAIL_REMOTE_CONTENT, EMailRemoteContent))
++#define E_MAIL_REMOTE_CONTENT_CLASS(cls) \
++	(G_TYPE_CHECK_CLASS_CAST \
++	((cls), E_TYPE_MAIL_REMOTE_CONTENT, EMailRemoteContentClass))
++#define E_IS_MAIL_REMOTE_CONTENT(obj) \
++	(G_TYPE_CHECK_INSTANCE_TYPE \
++	((obj), E_TYPE_MAIL_REMOTE_CONTENT))
++#define E_IS_MAIL_REMOTE_CONTENT_CLASS(cls) \
++	(G_TYPE_CHECK_CLASS_TYPE \
++	((cls), E_TYPE_MAIL_REMOTE_CONTENT))
++#define E_MAIL_REMOTE_CONTENT_GET_CLASS(obj) \
++	(G_TYPE_INSTANCE_GET_CLASS \
++	((obj), E_TYPE_MAIL_REMOTE_CONTENT, EMailRemoteContentClass))
++
++G_BEGIN_DECLS
++
++typedef struct _EMailRemoteContent EMailRemoteContent;
++typedef struct _EMailRemoteContentClass EMailRemoteContentClass;
++typedef struct _EMailRemoteContentPrivate EMailRemoteContentPrivate;
++
++struct _EMailRemoteContent {
++	GObject parent;
++	EMailRemoteContentPrivate *priv;
++};
++
++struct _EMailRemoteContentClass {
++	GObjectClass parent_class;
++};
++
++GType		e_mail_remote_content_get_type	(void) G_GNUC_CONST;
++EMailRemoteContent *
++		e_mail_remote_content_new	(const gchar *config_filename);
++void		e_mail_remote_content_add_site	(EMailRemoteContent *content,
++						 const gchar *site);
++void		e_mail_remote_content_remove_site
++						(EMailRemoteContent *content,
++						 const gchar *site);
++gboolean	e_mail_remote_content_has_site	(EMailRemoteContent *content,
++						 const gchar *site);
++GSList *	e_mail_remote_content_get_sites	(EMailRemoteContent *content);
++void		e_mail_remote_content_add_mail	(EMailRemoteContent *content,
++						 const gchar *mail);
++void		e_mail_remote_content_remove_mail
++						(EMailRemoteContent *content,
++						 const gchar *mail);
++gboolean	e_mail_remote_content_has_mail	(EMailRemoteContent *content,
++						 const gchar *mail);
++GSList *	e_mail_remote_content_get_mails	(EMailRemoteContent *content);
++
++G_END_DECLS
++
++#endif /* E_MAIL_REMOTE_CONTENT_H */
+diff --git a/mail/em-composer-utils.c b/mail/em-composer-utils.c
+index 48749959c7..f7180e4086 100644
+--- a/mail/em-composer-utils.c
++++ b/mail/em-composer-utils.c
+@@ -1090,12 +1090,16 @@ em_utils_composer_print_cb (EMsgComposer *composer,
+ 	EMailParser *parser;
+ 	EMailPartList *parts, *reserved_parts;
+ 	EMailPrinter *printer;
++	EMailBackend *mail_backend;
+ 	const gchar *message_id;
+ 	GCancellable *cancellable;
+ 	CamelObjectBag *parts_registry;
+ 	gchar *mail_uri;
+ 	PrintAsyncContext async_context;
+ 
++	mail_backend = E_MAIL_BACKEND (e_shell_get_backend_by_name (e_msg_composer_get_shell (composer), "mail"));
++	g_return_if_fail (mail_backend != NULL);
++
+ 	cancellable = e_activity_get_cancellable (activity);
+ 	parser = e_mail_parser_new (CAMEL_SESSION (session));
+ 
+@@ -1114,7 +1118,7 @@ em_utils_composer_print_cb (EMsgComposer *composer,
+ 
+ 	camel_object_bag_add (parts_registry, mail_uri, parts);
+ 
+-	printer = e_mail_printer_new (parts);
++	printer = e_mail_printer_new (parts, e_mail_backend_get_remote_content (mail_backend));
+ 
+ 	async_context.error = NULL;
+ 	async_context.main_loop = g_main_loop_new (NULL, FALSE);
+diff --git a/mail/em-utils.c b/mail/em-utils.c
+index 88b845bccd..30432bb48c 100644
+--- a/mail/em-utils.c
++++ b/mail/em-utils.c
+@@ -475,12 +475,16 @@ em_utils_print_messages_to_file (CamelFolder *folder,
+ 	parts_list = e_mail_parser_parse_sync (
+ 		parser, folder, uid, message, NULL);
+ 	if (parts_list != NULL) {
++		EMailBackend *mail_backend;
+ 		EAsyncClosure *closure;
+ 		GAsyncResult *result;
+ 		EMailPrinter *printer;
+ 		GtkPrintOperationResult print_result;
+ 
+-		printer = e_mail_printer_new (parts_list);
++		mail_backend = E_MAIL_BACKEND (e_shell_get_backend_by_name (e_shell_get_default (), "mail"));
++		g_return_val_if_fail (mail_backend != NULL, FALSE);
++
++		printer = e_mail_printer_new (parts_list, e_mail_backend_get_remote_content (mail_backend));
+ 		e_mail_printer_set_export_filename (printer, filename);
+ 
+ 		closure = e_async_closure_new ();
+diff --git a/mail/mail-config.ui b/mail/mail-config.ui
+index fff639a5ac..98d2e34ce6 100644
+--- a/mail/mail-config.ui
++++ b/mail/mail-config.ui
+@@ -1,6 +1,19 @@
+ <?xml version="1.0" encoding="UTF-8"?>
++<!-- Generated with glade 3.18.3 -->
+ <interface>
+-  <!-- interface-requires gtk+ 3.0 -->
++  <requires lib="gtk+" version="3.0"/>
++  <object class="GtkListStore" id="RCMailsListStore">
++    <columns>
++      <!-- column-name Mails -->
++      <column type="gchararray"/>
++    </columns>
++  </object>
++  <object class="GtkListStore" id="RCSitesListStore">
++    <columns>
++      <!-- column-name Site -->
++      <column type="gchararray"/>
++    </columns>
++  </object>
+   <object class="GtkDialog" id="add-custom-junk-header">
+     <property name="width_request">400</property>
+     <property name="can_focus">False</property>
+@@ -2254,7 +2267,7 @@
+                 <property name="visible">True</property>
+                 <property name="can_focus">False</property>
+                 <property name="xalign">0</property>
+-                <property name="label" translatable="yes">Loading Images</property>
++                <property name="label" translatable="yes">Loading Remote Content</property>
+                 <attributes>
+                   <attribute name="weight" value="bold"/>
+                 </attributes>
+@@ -2277,7 +2290,7 @@
+                     <property name="spacing">6</property>
+                     <child>
+                       <object class="GtkRadioButton" id="radImagesNever">
+-                        <property name="label" translatable="yes">_Never load images from the Internet</property>
++                        <property name="label" translatable="yes">_Never load remote content from the Internet</property>
+                         <property name="visible">True</property>
+                         <property name="can_focus">True</property>
+                         <property name="receives_default">False</property>
+@@ -2294,7 +2307,7 @@
+                     </child>
+                     <child>
+                       <object class="GtkRadioButton" id="radImagesSometimes">
+-                        <property name="label" translatable="yes">_Load images only in messages from contacts</property>
++                        <property name="label" translatable="yes">_Load remote content only in messages from contacts</property>
+                         <property name="visible">True</property>
+                         <property name="can_focus">True</property>
+                         <property name="receives_default">False</property>
+@@ -2312,7 +2325,7 @@
+                     </child>
+                     <child>
+                       <object class="GtkRadioButton" id="radImagesAlways">
+-                        <property name="label" translatable="yes">_Always load images from the Internet</property>
++                        <property name="label" translatable="yes">_Always load remote content from the Internet</property>
+                         <property name="visible">True</property>
+                         <property name="can_focus">True</property>
+                         <property name="receives_default">False</property>
+@@ -2344,6 +2357,216 @@
+             <property name="position">1</property>
+           </packing>
+         </child>
++        <child>
++          <object class="GtkBox" id="RCAllowBox">
++            <property name="visible">True</property>
++            <property name="can_focus">False</property>
++            <property name="margin_left">12</property>
++            <property name="hexpand">True</property>
++            <property name="vexpand">True</property>
++            <property name="baseline_position">top</property>
++            <child>
++              <object class="GtkGrid" id="RCSitesGrid">
++                <property name="visible">True</property>
++                <property name="can_focus">False</property>
++                <property name="hexpand">True</property>
++                <property name="vexpand">True</property>
++                <property name="row_spacing">2</property>
++                <child>
++                  <object class="GtkEntry" id="RCSitesEntry">
++                    <property name="visible">True</property>
++                    <property name="can_focus">True</property>
++                    <property name="hexpand">True</property>
++                  </object>
++                  <packing>
++                    <property name="left_attach">0</property>
++                    <property name="top_attach">1</property>
++                  </packing>
++                </child>
++                <child>
++                  <object class="GtkButton" id="RCSitesAddBtn">
++                    <property name="label" translatable="yes">Add</property>
++                    <property name="visible">True</property>
++                    <property name="can_focus">True</property>
++                    <property name="receives_default">True</property>
++                    <property name="halign">start</property>
++                  </object>
++                  <packing>
++                    <property name="left_attach">1</property>
++                    <property name="top_attach">1</property>
++                  </packing>
++                </child>
++                <child>
++                  <object class="GtkButton" id="RCSitesRemoveBtn">
++                    <property name="label" translatable="yes">Remove</property>
++                    <property name="visible">True</property>
++                    <property name="can_focus">True</property>
++                    <property name="receives_default">True</property>
++                  </object>
++                  <packing>
++                    <property name="left_attach">0</property>
++                    <property name="top_attach">3</property>
++                    <property name="width">2</property>
++                  </packing>
++                </child>
++                <child>
++                  <object class="GtkLabel" id="RCSitesLbl">
++                    <property name="visible">True</property>
++                    <property name="can_focus">False</property>
++                    <property name="xalign">0</property>
++                    <property name="label" translatable="yes">Allow for sites:</property>
++                  </object>
++                  <packing>
++                    <property name="left_attach">0</property>
++                    <property name="top_attach">0</property>
++                    <property name="width">2</property>
++                  </packing>
++                </child>
++                <child>
++                  <object class="GtkScrolledWindow" id="RCSitesScrWnd">
++                    <property name="visible">True</property>
++                    <property name="can_focus">True</property>
++                    <property name="hexpand">True</property>
++                    <property name="vexpand">True</property>
++                    <property name="shadow_type">in</property>
++                    <child>
++                      <object class="GtkTreeView" id="RCSitesTreeView">
++                        <property name="visible">True</property>
++                        <property name="can_focus">True</property>
++                        <property name="model">RCSitesListStore</property>
++                        <property name="headers_visible">False</property>
++                        <child internal-child="selection">
++                          <object class="GtkTreeSelection" id="treeview-selection10">
++                            <property name="mode">multiple</property>
++                          </object>
++                        </child>
++                      </object>
++                    </child>
++                  </object>
++                  <packing>
++                    <property name="left_attach">0</property>
++                    <property name="top_attach">2</property>
++                    <property name="width">2</property>
++                  </packing>
++                </child>
++              </object>
++              <packing>
++                <property name="expand">False</property>
++                <property name="fill">True</property>
++                <property name="position">0</property>
++              </packing>
++            </child>
++            <child>
++              <object class="GtkSeparator" id="RCAllowSeparator">
++                <property name="visible">True</property>
++                <property name="can_focus">False</property>
++                <property name="margin_left">2</property>
++                <property name="margin_right">2</property>
++              </object>
++              <packing>
++                <property name="expand">False</property>
++                <property name="fill">True</property>
++                <property name="position">1</property>
++              </packing>
++            </child>
++            <child>
++              <object class="GtkGrid" id="RCMailsGrid">
++                <property name="visible">True</property>
++                <property name="can_focus">False</property>
++                <property name="hexpand">True</property>
++                <property name="vexpand">True</property>
++                <property name="row_spacing">2</property>
++                <child>
++                  <object class="GtkEntry" id="RCMailsEntry">
++                    <property name="visible">True</property>
++                    <property name="can_focus">True</property>
++                    <property name="hexpand">True</property>
++                  </object>
++                  <packing>
++                    <property name="left_attach">0</property>
++                    <property name="top_attach">1</property>
++                  </packing>
++                </child>
++                <child>
++                  <object class="GtkButton" id="RCMailsAddBtn">
++                    <property name="label" translatable="yes">Add</property>
++                    <property name="visible">True</property>
++                    <property name="can_focus">True</property>
++                    <property name="receives_default">True</property>
++                    <property name="halign">start</property>
++                  </object>
++                  <packing>
++                    <property name="left_attach">1</property>
++                    <property name="top_attach">1</property>
++                  </packing>
++                </child>
++                <child>
++                  <object class="GtkButton" id="RCMailsRemoveBtn">
++                    <property name="label" translatable="yes">Remove</property>
++                    <property name="visible">True</property>
++                    <property name="can_focus">True</property>
++                    <property name="receives_default">True</property>
++                  </object>
++                  <packing>
++                    <property name="left_attach">0</property>
++                    <property name="top_attach">3</property>
++                    <property name="width">2</property>
++                  </packing>
++                </child>
++                <child>
++                  <object class="GtkLabel" id="RCMailsLbl">
++                    <property name="visible">True</property>
++                    <property name="can_focus">False</property>
++                    <property name="xalign">0</property>
++                    <property name="label" translatable="yes">Allow for senders:</property>
++                  </object>
++                  <packing>
++                    <property name="left_attach">0</property>
++                    <property name="top_attach">0</property>
++                    <property name="width">2</property>
++                  </packing>
++                </child>
++                <child>
++                  <object class="GtkScrolledWindow" id="RCMailsScrWnd">
++                    <property name="visible">True</property>
++                    <property name="can_focus">True</property>
++                    <property name="hexpand">True</property>
++                    <property name="vexpand">True</property>
++                    <property name="shadow_type">in</property>
++                    <child>
++                      <object class="GtkTreeView" id="RCMailsTreeView">
++                        <property name="visible">True</property>
++                        <property name="can_focus">True</property>
++                        <property name="model">RCMailsListStore</property>
++                        <property name="headers_visible">False</property>
++                        <child internal-child="selection">
++                          <object class="GtkTreeSelection" id="treeview-selection11">
++                            <property name="mode">multiple</property>
++                          </object>
++                        </child>
++                      </object>
++                    </child>
++                  </object>
++                  <packing>
++                    <property name="left_attach">0</property>
++                    <property name="top_attach">2</property>
++                    <property name="width">2</property>
++                  </packing>
++                </child>
++              </object>
++              <packing>
++                <property name="expand">False</property>
++                <property name="fill">True</property>
++                <property name="position">2</property>
++              </packing>
++            </child>
++          </object>
++          <packing>
++            <property name="expand">True</property>
++            <property name="fill">True</property>
++            <property name="position">2</property>
++          </packing>
++        </child>
+       </object>
+       <packing>
+         <property name="position">1</property>
+@@ -2988,13 +3211,13 @@
+                             <property name="position">1</property>
+                           </packing>
+                         </child>
+-                        </object>
+-                          <packing>
+-                            <property name="top_attach">6</property>
+-                            <property name="bottom_attach">7</property>
+-                            <property name="x_padding">12</property>
+-                          </packing>
+-                        </child>
++                      </object>
++                      <packing>
++                        <property name="top_attach">6</property>
++                        <property name="bottom_attach">7</property>
++                        <property name="x_padding">12</property>
++                      </packing>
++                    </child>
+                     <child>
+                       <object class="EMailJunkOptions" id="junk-module-options">
+                         <property name="visible">True</property>
+@@ -3021,11 +3244,15 @@
+                         <property name="top_attach">7</property>
+                         <property name="bottom_attach">8</property>
+                         <property name="y_options">GTK_FILL</property>
+-                        <property name="x_padding">0</property>
+                         <property name="y_padding">12</property>
+                       </packing>
+                     </child>
+                   </object>
++                  <packing>
++                    <property name="expand">True</property>
++                    <property name="fill">True</property>
++                    <property name="position">1</property>
++                  </packing>
+                 </child>
+               </object>
+               <packing>
+diff --git a/mail/mail.error.xml b/mail/mail.error.xml
+index 1535e83cc5..ec81430e23 100644
+--- a/mail/mail.error.xml
++++ b/mail/mail.error.xml
+@@ -568,5 +568,10 @@ in the folder will be available in offline mode.</_secondary>
+     <_primary>Failed to unmark subthread from being ignored in folder '{0}'</_primary>
+     <secondary>{1}</secondary>
+   </error>
++
++  <error id="remote-content-info" type="info">
++    <_primary>Remote content download had been blocked for this message.</_primary>
++    <_secondary>You can download remote content manually, or set to remember to download remote content for this sender or used sites.</_secondary>
++  </error>
+ </error-list>
+ 
+diff --git a/modules/mail/e-mail-shell-backend.c b/modules/mail/e-mail-shell-backend.c
+index 32abe63c99..18782833b3 100644
+--- a/modules/mail/e-mail-shell-backend.c
++++ b/modules/mail/e-mail-shell-backend.c
+@@ -81,11 +81,15 @@ mbox_create_preview_cb (GObject *preview,
+                         GtkWidget **preview_widget)
+ {
+ 	EMailDisplay *display;
++	EMailBackend *mail_backend;
+ 
+ 	g_return_if_fail (preview != NULL);
+ 	g_return_if_fail (preview_widget != NULL);
+ 
+-	display = g_object_new (E_TYPE_MAIL_DISPLAY, NULL);
++	mail_backend = E_MAIL_BACKEND (e_shell_get_backend_by_name (e_shell_get_default (), BACKEND_NAME));
++	g_return_if_fail (mail_backend != NULL);
++
++	display = E_MAIL_DISPLAY (e_mail_display_new (e_mail_backend_get_remote_content (mail_backend)));
+ 	g_object_set_data_full (
+ 		preview, "mbox-imp-display",
+ 		g_object_ref (display), g_object_unref);
+diff --git a/modules/mail/em-mailer-prefs.c b/modules/mail/em-mailer-prefs.c
+index 81284c1f8e..86894e60f5 100644
+--- a/modules/mail/em-mailer-prefs.c
++++ b/modules/mail/em-mailer-prefs.c
+@@ -83,6 +83,65 @@ static const struct {
+ 	{ N_("Immediately, on folder leave"), -1 }
+ };
+ 
++#define RC_SECTION_KEY	"evolution-rc-section-key"
++#define RC_ENTRY_KEY	"evolution-rc-entry-key"
++#define RC_TREEVIEW_KEY	"evolution-rc-treeview-key"
++
++enum {
++	RC_SECTION_SITES = 1,
++	RC_SECTION_MAILS = 2
++};
++
++struct _EMMailerPrefsPrivate {
++	GtkBuilder *builder;
++	GSettings *settings;
++	EMailBackend *mail_backend;
++
++	/* General tab */
++
++	/* Message Display */
++	GtkSpinButton *timeout;
++
++	/* HTML Mail tab */
++	GtkFontButton *font_variable;
++	GtkFontButton *font_fixed;
++	GtkToggleButton *font_share;
++
++	GtkToggleButton *autodetect_links;
++
++	/* Labels and Colours tab */
++	GtkWidget *label_add;
++	GtkWidget *label_edit;
++	GtkWidget *label_remove;
++	GtkWidget *label_tree;
++	GtkListStore *label_list_store;
++
++	/* Headers tab */
++	GtkButton *add_header;
++	GtkButton *remove_header;
++	GtkEntry *entry_header;
++	GtkTreeView *header_list;
++	GtkListStore *header_list_store;
++
++	GtkToggleButton *junk_header_check;
++	GtkTreeView *junk_header_tree;
++	GtkListStore *junk_header_list_store;
++	GtkButton *junk_header_add;
++	GtkButton *junk_header_remove;
++	GtkToggleButton *junk_book_lookup;
++	GtkToggleButton *junk_lookup_local_only;
++
++	/* Remote Content section */
++	GtkWidget *rc_sites_entry;
++	GtkWidget *rc_sites_add_btn;
++	GtkWidget *rc_sites_tree_view;
++	GtkWidget *rc_sites_remove_btn;
++	GtkWidget *rc_mails_entry;
++	GtkWidget *rc_mails_add_btn;
++	GtkWidget *rc_mails_tree_view;
++	GtkWidget *rc_mails_remove_btn;
++};
++
+ G_DEFINE_TYPE (
+ 	EMMailerPrefs,
+ 	em_mailer_prefs,
+@@ -93,8 +152,8 @@ em_mailer_prefs_finalize (GObject *object)
+ {
+ 	EMMailerPrefs *prefs = (EMMailerPrefs *) object;
+ 
+-	g_object_unref (prefs->builder);
+-	g_object_unref (prefs->settings);
++	g_object_unref (prefs->priv->builder);
++	g_object_unref (prefs->priv->settings);
+ 
+ 	/* Chain up to parent's finalize() method. */
+ 	G_OBJECT_CLASS (em_mailer_prefs_parent_class)->finalize (object);
+@@ -105,6 +164,8 @@ em_mailer_prefs_class_init (EMMailerPrefsClass *class)
+ {
+ 	GObjectClass *object_class;
+ 
++	g_type_class_add_private (class, sizeof (EMMailerPrefsPrivate));
++
+ 	object_class = G_OBJECT_CLASS (class);
+ 	object_class->finalize = em_mailer_prefs_finalize;
+ }
+@@ -112,7 +173,8 @@ em_mailer_prefs_class_init (EMMailerPrefsClass *class)
+ static void
+ em_mailer_prefs_init (EMMailerPrefs *preferences)
+ {
+-	preferences->settings = e_util_ref_settings ("org.gnome.evolution.mail");
++	preferences->priv = G_TYPE_INSTANCE_GET_PRIVATE (preferences, EM_TYPE_MAILER_PREFS, EMMailerPrefsPrivate);
++	preferences->priv->settings = e_util_ref_settings ("org.gnome.evolution.mail");
+ }
+ 
+ static gboolean
+@@ -197,11 +259,11 @@ enum {
+ static void
+ jh_tree_refill (EMMailerPrefs *prefs)
+ {
+-	GtkListStore *store = prefs->junk_header_list_store;
++	GtkListStore *store = prefs->priv->junk_header_list_store;
+ 	gchar **strv;
+ 	gint ii;
+ 
+-	strv = g_settings_get_strv (prefs->settings, "junk-custom-header");
++	strv = g_settings_get_strv (prefs->priv->settings, "junk-custom-header");
+ 
+ 	gtk_list_store_clear (store);
+ 
+@@ -273,14 +335,14 @@ jh_add_cb (GtkWidget *widget,
+ 		name = gtk_entry_get_text (GTK_ENTRY (e_builder_get_widget (builder, "junk-header-name")));
+ 		value = gtk_entry_get_text (GTK_ENTRY (e_builder_get_widget (builder, "junk-header-content")));
+ 
+-		strv = g_settings_get_strv (prefs->settings, "junk-custom-header");
++		strv = g_settings_get_strv (prefs->priv->settings, "junk-custom-header");
+ 		array = g_ptr_array_new ();
+ 		for (ii = 0; strv[ii] != NULL; ii++)
+ 			g_ptr_array_add (array, strv[ii]);
+ 		tok = g_strdup_printf ("%s=%s", name, value);
+ 		g_ptr_array_add (array, tok);
+ 		g_ptr_array_add (array, NULL);
+-		g_settings_set_strv (prefs->settings, "junk-custom-header", (const gchar * const *) array->pdata);
++		g_settings_set_strv (prefs->priv->settings, "junk-custom-header", (const gchar * const *) array->pdata);
+ 
+ 		g_ptr_array_free (array, TRUE);
+ 		g_strfreev (strv);
+@@ -303,14 +365,14 @@ jh_remove_cb (GtkWidget *widget,
+ 
+ 	g_return_if_fail (prefs != NULL);
+ 
+-	selection = gtk_tree_view_get_selection (GTK_TREE_VIEW (prefs->junk_header_tree));
++	selection = gtk_tree_view_get_selection (GTK_TREE_VIEW (prefs->priv->junk_header_tree));
+ 	if (gtk_tree_selection_get_selected (selection, &model, &iter)) {
+ 		GPtrArray *array = g_ptr_array_new ();
+ 		gchar *name = NULL, *value = NULL;
+ 		gchar **strv;
+ 		gint ii;
+ 
+-		strv = g_settings_get_strv (prefs->settings, "junk-custom-header");
++		strv = g_settings_get_strv (prefs->priv->settings, "junk-custom-header");
+ 		gtk_tree_model_get (model, &iter, JH_LIST_COLUMN_NAME, &name, JH_LIST_COLUMN_VALUE, &value, -1);
+ 		for (ii = 0; strv[ii] != NULL; ii++) {
+ 			gchar *test;
+@@ -328,7 +390,7 @@ jh_remove_cb (GtkWidget *widget,
+ 
+ 		g_ptr_array_add (array, NULL);
+ 
+-		g_settings_set_strv (prefs->settings, "junk-custom-header", (const gchar * const *) array->pdata);
++		g_settings_set_strv (prefs->priv->settings, "junk-custom-header", (const gchar * const *) array->pdata);
+ 
+ 		g_strfreev (strv);
+ 		g_ptr_array_free (array, TRUE);
+@@ -367,7 +429,7 @@ static void
+ emmp_header_remove_sensitivity (EMMailerPrefs *prefs)
+ {
+ 	GtkTreeIter iter;
+-	GtkTreeSelection *selection = gtk_tree_view_get_selection (prefs->header_list);
++	GtkTreeSelection *selection = gtk_tree_view_get_selection (prefs->priv->header_list);
+ 	gboolean is_default;
+ 
+ 	/* remove button should be sensitive if the currenlty selected entry in the list view
+@@ -376,15 +438,15 @@ emmp_header_remove_sensitivity (EMMailerPrefs *prefs)
+ 	*/
+ 	if (gtk_tree_selection_get_selected (selection, NULL, &iter)) {
+ 		gtk_tree_model_get (
+-			GTK_TREE_MODEL (prefs->header_list_store), &iter,
++			GTK_TREE_MODEL (prefs->priv->header_list_store), &iter,
+ 			HEADER_LIST_IS_DEFAULT_COLUMN, &is_default,
+ 			-1);
+ 		if (is_default)
+-			gtk_widget_set_sensitive (GTK_WIDGET (prefs->remove_header), FALSE);
++			gtk_widget_set_sensitive (GTK_WIDGET (prefs->priv->remove_header), FALSE);
+ 		else
+-			gtk_widget_set_sensitive (GTK_WIDGET (prefs->remove_header), TRUE);
++			gtk_widget_set_sensitive (GTK_WIDGET (prefs->priv->remove_header), TRUE);
+ 	} else {
+-		gtk_widget_set_sensitive (GTK_WIDGET (prefs->remove_header), FALSE);
++		gtk_widget_set_sensitive (GTK_WIDGET (prefs->priv->remove_header), FALSE);
+ 	}
+ }
+ 
+@@ -412,33 +474,33 @@ emmp_header_add_sensitivity (EMMailerPrefs *prefs)
+ 	 * a valid header string, that is not a duplicate with something already
+ 	 * in the list view
+ 	*/
+-	entry_contents = gtk_entry_get_text (GTK_ENTRY (prefs->entry_header));
++	entry_contents = gtk_entry_get_text (GTK_ENTRY (prefs->priv->entry_header));
+ 	if (!emmp_header_is_valid (entry_contents)) {
+-		gtk_widget_set_sensitive (GTK_WIDGET (prefs->add_header), FALSE);
++		gtk_widget_set_sensitive (GTK_WIDGET (prefs->priv->add_header), FALSE);
+ 		return;
+ 	}
+ 
+ 	/* check if this is a duplicate */
+-	valid = gtk_tree_model_get_iter_first (GTK_TREE_MODEL (prefs->header_list_store), &iter);
++	valid = gtk_tree_model_get_iter_first (GTK_TREE_MODEL (prefs->priv->header_list_store), &iter);
+ 	while (valid) {
+ 		gchar *header_name;
+ 
+ 		gtk_tree_model_get (
+-			GTK_TREE_MODEL (prefs->header_list_store), &iter,
++			GTK_TREE_MODEL (prefs->priv->header_list_store), &iter,
+ 			HEADER_LIST_HEADER_COLUMN, &header_name,
+ 			-1);
+ 		if (g_ascii_strcasecmp (header_name, entry_contents) == 0) {
+-			gtk_widget_set_sensitive (GTK_WIDGET (prefs->add_header), FALSE);
++			gtk_widget_set_sensitive (GTK_WIDGET (prefs->priv->add_header), FALSE);
+ 			g_free (header_name);
+ 			return;
+ 		}
+ 
+ 		g_free (header_name);
+ 
+-		valid = gtk_tree_model_iter_next (GTK_TREE_MODEL (prefs->header_list_store), &iter);
++		valid = gtk_tree_model_iter_next (GTK_TREE_MODEL (prefs->priv->header_list_store), &iter);
+ 	}
+ 
+-	gtk_widget_set_sensitive (GTK_WIDGET (prefs->add_header), TRUE);
++	gtk_widget_set_sensitive (GTK_WIDGET (prefs->priv->add_header), TRUE);
+ }
+ 
+ static void
+@@ -452,7 +514,7 @@ emmp_save_headers (EMMailerPrefs *prefs)
+ 
+ 	g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(sb)"));
+ 
+-	model = GTK_TREE_MODEL (prefs->header_list_store);
++	model = GTK_TREE_MODEL (prefs->priv->header_list_store);
+ 	valid = gtk_tree_model_get_iter_first (model, &iter);
+ 
+ 	while (valid) {
+@@ -475,7 +537,7 @@ emmp_save_headers (EMMailerPrefs *prefs)
+ 	}
+ 
+ 	variant = g_variant_builder_end (&builder);
+-	g_settings_set_value (prefs->settings, "show-headers", variant);
++	g_settings_set_value (prefs->priv->settings, "show-headers", variant);
+ }
+ 
+ static void
+@@ -483,7 +545,7 @@ emmp_header_list_enabled_toggled (GtkCellRendererToggle *cell,
+                                   const gchar *path_string,
+                                   EMMailerPrefs *prefs)
+ {
+-	GtkTreeModel *model = GTK_TREE_MODEL (prefs->header_list_store);
++	GtkTreeModel *model = GTK_TREE_MODEL (prefs->priv->header_list_store);
+ 	GtkTreePath *path = gtk_tree_path_new_from_string (path_string);
+ 	GtkTreeIter iter;
+ 	gint enabled;
+@@ -505,9 +567,9 @@ static void
+ emmp_header_add_header (GtkWidget *widget,
+                         EMMailerPrefs *prefs)
+ {
+-	GtkTreeModel *model = GTK_TREE_MODEL (prefs->header_list_store);
++	GtkTreeModel *model = GTK_TREE_MODEL (prefs->priv->header_list_store);
+ 	GtkTreeIter iter;
+-	const gchar *text = gtk_entry_get_text (prefs->entry_header);
++	const gchar *text = gtk_entry_get_text (prefs->priv->entry_header);
+ 
+ 	g_strstrip ((gchar *) text);
+ 
+@@ -520,7 +582,7 @@ emmp_header_add_header (GtkWidget *widget,
+ 			HEADER_LIST_HEADER_COLUMN, text,
+ 			HEADER_LIST_IS_DEFAULT_COLUMN, FALSE,
+ 			-1);
+-		gtk_entry_set_text (prefs->entry_header, "");
++		gtk_entry_set_text (prefs->priv->entry_header, "");
+ 		emmp_header_remove_sensitivity (prefs);
+ 		emmp_header_add_sensitivity (prefs);
+ 
+@@ -533,11 +595,11 @@ emmp_header_remove_header (GtkWidget *button,
+                            gpointer user_data)
+ {
+ 	EMMailerPrefs *prefs = (EMMailerPrefs *) user_data;
+-	GtkTreeModel *model = GTK_TREE_MODEL (prefs->header_list_store);
++	GtkTreeModel *model = GTK_TREE_MODEL (prefs->priv->header_list_store);
+ 	GtkTreeSelection *selection;
+ 	GtkTreeIter iter;
+ 
+-	selection = gtk_tree_view_get_selection (prefs->header_list);
++	selection = gtk_tree_view_get_selection (prefs->priv->header_list);
+ 
+ 	if (!gtk_tree_selection_get_selected (selection, NULL, &iter))
+ 		return;
+@@ -574,7 +636,7 @@ toggle_button_toggled (GtkToggleButton *toggle,
+ 
+ 	key = g_object_get_data ((GObject *) toggle, "key");
+ 	g_settings_set_boolean (
+-		prefs->settings, key,
++		prefs->priv->settings, key,
+ 		gtk_toggle_button_get_active (toggle));
+ }
+ 
+@@ -584,7 +646,7 @@ junk_book_lookup_button_toggled (GtkToggleButton *toggle,
+ {
+ 	toggle_button_toggled (toggle, prefs);
+ 	gtk_widget_set_sensitive (
+-		GTK_WIDGET (prefs->junk_lookup_local_only),
++		GTK_WIDGET (prefs->priv->junk_lookup_local_only),
+ 		gtk_toggle_button_get_active (toggle));
+ }
+ 
+@@ -594,13 +656,13 @@ custom_junk_button_toggled (GtkToggleButton *toggle,
+ {
+ 	toggle_button_toggled (toggle, prefs);
+ 	if (gtk_toggle_button_get_active (toggle)) {
+-		gtk_widget_set_sensitive ((GtkWidget *) prefs->junk_header_remove, TRUE);
+-		gtk_widget_set_sensitive ((GtkWidget *) prefs->junk_header_add, TRUE);
+-		gtk_widget_set_sensitive ((GtkWidget *) prefs->junk_header_tree, TRUE);
++		gtk_widget_set_sensitive ((GtkWidget *) prefs->priv->junk_header_remove, TRUE);
++		gtk_widget_set_sensitive ((GtkWidget *) prefs->priv->junk_header_add, TRUE);
++		gtk_widget_set_sensitive ((GtkWidget *) prefs->priv->junk_header_tree, TRUE);
+ 	} else {
+-		gtk_widget_set_sensitive ((GtkWidget *) prefs->junk_header_tree, FALSE);
+-		gtk_widget_set_sensitive ((GtkWidget *) prefs->junk_header_add, FALSE);
+-		gtk_widget_set_sensitive ((GtkWidget *) prefs->junk_header_remove, FALSE);
++		gtk_widget_set_sensitive ((GtkWidget *) prefs->priv->junk_header_tree, FALSE);
++		gtk_widget_set_sensitive ((GtkWidget *) prefs->priv->junk_header_add, FALSE);
++		gtk_widget_set_sensitive ((GtkWidget *) prefs->priv->junk_header_remove, FALSE);
+ 	}
+ 
+ }
+@@ -614,7 +676,7 @@ toggle_button_init (EMMailerPrefs *prefs,
+ {
+ 	gboolean v_bool;
+ 
+-	v_bool = g_settings_get_boolean (prefs->settings, key);
++	v_bool = g_settings_get_boolean (prefs->priv->settings, key);
+ 	gtk_toggle_button_set_active (toggle, not ? !v_bool : v_bool);
+ 
+ 	if (toggled) {
+@@ -623,7 +685,7 @@ toggle_button_init (EMMailerPrefs *prefs,
+ 			toggle, "toggled", toggled, prefs);
+ 	}
+ 
+-	if (!g_settings_is_writable (prefs->settings, key))
++	if (!g_settings_is_writable (prefs->priv->settings, key))
+ 		gtk_widget_set_sensitive (GTK_WIDGET (toggle), FALSE);
+ }
+ 
+@@ -638,7 +700,7 @@ trash_days_changed (GtkComboBox *combo_box,
+ 	g_return_if_fail (index < G_N_ELEMENTS (empty_trash_frequency));
+ 
+ 	g_settings_set_int (
+-		prefs->settings,
++		prefs->priv->settings,
+ 		"trash-empty-on-exit-days",
+ 		empty_trash_frequency[index].days);
+ }
+@@ -652,7 +714,7 @@ emmp_empty_trash_init (EMMailerPrefs *prefs,
+ 	GtkTreeIter iter;
+ 
+ 	days = g_settings_get_int (
+-		prefs->settings,
++		prefs->priv->settings,
+ 		"trash-empty-on-exit-days");
+ 
+ 	store = GTK_LIST_STORE (gtk_combo_box_get_model (combo_box));
+@@ -688,7 +750,7 @@ junk_days_changed (GtkComboBox *combo_box,
+ 	g_return_if_fail (index < G_N_ELEMENTS (empty_trash_frequency));
+ 
+ 	g_settings_set_int (
+-		prefs->settings,
++		prefs->priv->settings,
+ 		"junk-empty-on-exit-days",
+ 		empty_trash_frequency[index].days);
+ }
+@@ -702,7 +764,7 @@ emmp_empty_junk_init (EMMailerPrefs *prefs,
+ 	GtkTreeIter iter;
+ 
+ 	days = g_settings_get_int (
+-		prefs->settings,
++		prefs->priv->settings,
+ 		"junk-empty-on-exit-days");
+ 
+ 	store = GTK_LIST_STORE (gtk_combo_box_get_model (combo_box));
+@@ -785,7 +847,7 @@ emmp_widget_glade (EConfig *ec,
+ {
+ 	EMMailerPrefs *prefs = data;
+ 
+-	return e_builder_get_widget (prefs->builder, item->label);
++	return e_builder_get_widget (prefs->priv->builder, item->label);
+ }
+ 
+ /* plugin meta-data */
+@@ -816,10 +878,263 @@ emmp_free (EConfig *ec,
+ 	g_slist_free (items);
+ }
+ 
++static void
++rc_entry_changed_cb (GtkEntry *entry,
++		     GtkWidget *add_btn)
++{
++	const gchar *text;
++
++	text = gtk_entry_get_text (entry);
++
++	if (text && *text) {
++		gint ii;
++
++		for (ii = 0; text[ii]; ii++) {
++			if (text[ii] > 0 && text[ii] <= 32) {
++				/* It contains invalid letter */
++				text = NULL;
++				break;
++			}
++		}
++	}
++
++	gtk_widget_set_sensitive (add_btn, text && *text);
++}
++
++static void
++rc_add_btn_clicked_cb (GObject *button,
++		       EMMailerPrefs *prefs)
++{
++	gint rc_section;
++	GtkEntry *entry;
++	GtkTreeView *tree_view;
++	GtkTreeModel *model;
++	GtkTreeIter iter;
++	gboolean done, found = FALSE;
++	gchar *text;
++
++	g_return_if_fail (GTK_IS_BUTTON (button));
++	g_return_if_fail (EM_IS_MAILER_PREFS (prefs));
++
++	rc_section = GPOINTER_TO_INT (g_object_get_data (button, RC_SECTION_KEY));
++	entry = g_object_get_data (button, RC_ENTRY_KEY);
++	tree_view = g_object_get_data (button, RC_TREEVIEW_KEY);
++
++	g_return_if_fail (GTK_IS_ENTRY (entry));
++	g_return_if_fail (GTK_IS_TREE_VIEW (tree_view));
++
++	text = g_strdup (gtk_entry_get_text (entry));
++	if (!text || !*text) {
++		g_free (text);
++		gtk_entry_set_text (entry, "");
++		return;
++	}
++
++	model = gtk_tree_view_get_model (tree_view);
++	done = !gtk_tree_model_get_iter_first (model, &iter);
++	while (!done && !found) {
++		gchar *stored = NULL;
++
++		gtk_tree_model_get (model, &iter, 0, &stored, -1);
++		if (stored && *stored) {
++			found = g_ascii_strcasecmp (stored, text) == 0;
++		}
++
++		g_free (stored);
++
++		done = !gtk_tree_model_iter_next (model, &iter);
++	}
++
++	if (!found) {
++		EMailRemoteContent *remote_content;
++
++		remote_content = e_mail_backend_get_remote_content (prefs->priv->mail_backend);
++
++		if (rc_section == RC_SECTION_SITES)
++			e_mail_remote_content_add_site (remote_content, text);
++		else
++			e_mail_remote_content_add_mail (remote_content, text);
++
++		gtk_list_store_append (GTK_LIST_STORE (model), &iter);
++		gtk_list_store_set (GTK_LIST_STORE (model), &iter, 0, text, -1);
++	}
++
++	g_free (text);
++	gtk_entry_set_text (entry, "");
++}
++
++static void
++rc_tree_view_selection_changed_cb (GtkTreeSelection *selection,
++				   GtkWidget *remove_btn)
++{
++	gtk_widget_set_sensitive (remove_btn, gtk_tree_selection_count_selected_rows (selection) > 0);
++}
++
++static void
++rc_remove_btn_clicked_cb (GObject *button,
++			  EMMailerPrefs *prefs)
++{
++	gint rc_section;
++	EMailRemoteContent *remote_content;
++	GtkTreeView *tree_view;
++	GtkTreeSelection *selection;
++	GtkTreeModel *model;
++	GtkTreeIter iter;
++	GList *selected, *link, *references = NULL;
++
++	g_return_if_fail (GTK_IS_BUTTON (button));
++	g_return_if_fail (EM_IS_MAILER_PREFS (prefs));
++
++	rc_section = GPOINTER_TO_INT (g_object_get_data (button, RC_SECTION_KEY));
++	tree_view = g_object_get_data (button, RC_TREEVIEW_KEY);
++
++	g_return_if_fail (GTK_IS_TREE_VIEW (tree_view));
++
++	model = gtk_tree_view_get_model (tree_view);
++	selection = gtk_tree_view_get_selection (tree_view);
++	remote_content = e_mail_backend_get_remote_content (prefs->priv->mail_backend);
++
++	selected = gtk_tree_selection_get_selected_rows (selection, NULL);
++	for (link = selected; link; link = g_list_next (link)) {
++		GtkTreePath *path = link->data;
++
++		references = g_list_prepend (references, gtk_tree_row_reference_new (model, path));
++	}
++
++	g_list_free_full (selected, (GDestroyNotify) gtk_tree_path_free);
++
++	for (link = references; link; link = g_list_next (link)) {
++		GtkTreeRowReference *reference = link->data;
++		gchar *value = NULL;
++
++		if (!gtk_tree_row_reference_valid (reference) ||
++		    !gtk_tree_model_get_iter (model, &iter, gtk_tree_row_reference_get_path (reference)))
++			continue;
++
++		gtk_tree_model_get (model, &iter, 0, &value, -1);
++
++		if (!value)
++			continue;
++
++		if (rc_section == RC_SECTION_SITES)
++			e_mail_remote_content_remove_site (remote_content, value);
++		else
++			e_mail_remote_content_remove_mail (remote_content, value);
++
++		g_free (value);
++
++		gtk_list_store_remove (GTK_LIST_STORE (model), &iter);
++	}
++
++	g_list_free_full (references, (GDestroyNotify) gtk_tree_row_reference_free);
++}
++
++static void
++em_mailer_prefs_fill_remote_content_section (EMMailerPrefs *prefs,
++					     gint rc_section)
++{
++	EMailRemoteContent *remote_content;
++	GtkTreeView *tree_view;
++	GtkTreeModel *model;
++	GtkTreeIter iter;
++	GtkListStore *list_store;
++	GSList *values, *link;
++
++	g_return_if_fail (EM_IS_MAILER_PREFS (prefs));
++	g_return_if_fail (rc_section == RC_SECTION_SITES || rc_section == RC_SECTION_MAILS);
++
++	remote_content = e_mail_backend_get_remote_content (prefs->priv->mail_backend);
++
++	if (rc_section == RC_SECTION_SITES) {
++		values = e_mail_remote_content_get_sites (remote_content);
++		tree_view = GTK_TREE_VIEW (prefs->priv->rc_sites_tree_view);
++	} else {
++		values = e_mail_remote_content_get_mails (remote_content);
++		tree_view = GTK_TREE_VIEW (prefs->priv->rc_mails_tree_view);
++	}
++
++	model = gtk_tree_view_get_model (tree_view);
++	list_store = GTK_LIST_STORE (model);
++
++	gtk_list_store_clear (list_store);
++
++	for (link = values; link; link = g_slist_next (link)) {
++		const gchar *value = link->data;
++
++		if (!value)
++			continue;
++
++		gtk_list_store_append (list_store, &iter);
++		gtk_list_store_set (list_store, &iter, 0, value, -1);
++	}
++
++	g_slist_free_full (values, g_free);
++}
++
++static void
++em_mailer_prefs_setup_remote_content_section (EMMailerPrefs *prefs,
++					      gint rc_section,
++					      GtkWidget *entry,
++					      GtkWidget *add_btn,
++					      GtkWidget *tree_view,
++					      GtkWidget *remove_btn)
++{
++	GtkTreeSelection *selection;
++	GtkCellRenderer *renderer;
++
++	g_return_if_fail (EM_IS_MAILER_PREFS (prefs));
++	g_return_if_fail (rc_section == RC_SECTION_SITES || rc_section == RC_SECTION_MAILS);
++	g_return_if_fail (GTK_IS_ENTRY (entry));
++	g_return_if_fail (GTK_IS_BUTTON (add_btn));
++	g_return_if_fail (GTK_IS_TREE_VIEW (tree_view));
++	g_return_if_fail (GTK_IS_BUTTON (remove_btn));
++
++	g_object_set_data (G_OBJECT (add_btn), RC_SECTION_KEY, GINT_TO_POINTER (rc_section));
++	g_object_set_data (G_OBJECT (add_btn), RC_ENTRY_KEY, entry);
++	g_object_set_data (G_OBJECT (add_btn), RC_TREEVIEW_KEY, tree_view);
++	g_object_set_data (G_OBJECT (remove_btn), RC_SECTION_KEY, GINT_TO_POINTER (rc_section));
++	g_object_set_data (G_OBJECT (remove_btn), RC_TREEVIEW_KEY, tree_view);
++
++	em_mailer_prefs_fill_remote_content_section (prefs, rc_section);
++
++	rc_entry_changed_cb (GTK_ENTRY (entry), add_btn);
++	g_signal_connect (entry, "changed", G_CALLBACK (rc_entry_changed_cb), add_btn);
++	g_signal_connect (add_btn, "clicked", G_CALLBACK (rc_add_btn_clicked_cb), prefs);
++
++	selection = gtk_tree_view_get_selection (GTK_TREE_VIEW (tree_view));
++
++	rc_tree_view_selection_changed_cb (selection, remove_btn);
++	g_signal_connect (selection, "changed", G_CALLBACK (rc_tree_view_selection_changed_cb), remove_btn);
++	g_signal_connect (remove_btn, "clicked", G_CALLBACK (rc_remove_btn_clicked_cb), prefs);
++
++	renderer = gtk_cell_renderer_text_new ();
++	gtk_tree_view_insert_column_with_attributes (
++		GTK_TREE_VIEW (tree_view), -1, "Value", renderer,
++		"text", 0,
++		NULL);
++}
++
++static void
++em_mailer_prefs_window_notify_visible_cb (EPreferencesWindow *preferences,
++					  GParamSpec *param,
++					  EMMailerPrefs *prefs)
++{
++	g_return_if_fail (EM_IS_MAILER_PREFS (prefs));
++
++	if (!gtk_widget_get_visible (GTK_WIDGET (preferences)))
++		return;
++
++	/* The EMailRemoteContent doesn't have any 'changed' signal, thus update
++	   the inner tree view content on the preferences window show. */
++	em_mailer_prefs_fill_remote_content_section (prefs, RC_SECTION_SITES);
++	em_mailer_prefs_fill_remote_content_section (prefs, RC_SECTION_MAILS);
++}
++
+ static void
+ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+                            EMailSession *session,
+-                           EShell *shell)
++                           EShell *shell,
++			   EMailBackend *backend)
+ {
+ 	GSettings *settings;
+ 	GHashTable *default_header_hash;
+@@ -845,8 +1160,9 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 	 * GType before we load the GtkBuilder definition file. */
+ 	g_type_ensure (E_TYPE_MAIL_JUNK_OPTIONS);
+ 
+-	prefs->builder = gtk_builder_new ();
+-	e_load_ui_builder_definition (prefs->builder, "mail-config.ui");
++	prefs->priv->mail_backend = backend;
++	prefs->priv->builder = gtk_builder_new ();
++	e_load_ui_builder_definition (prefs->priv->builder, "mail-config.ui");
+ 
+ 	/** @HookPoint-EMConfig: Mail Preferences Page
+ 	 * @Id: org.gnome.evolution.mail.prefs
+@@ -863,13 +1179,13 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 
+ 	/* General tab */
+ 
+-	widget = e_builder_get_widget (prefs->builder, "chkCheckMailOnStart");
++	widget = e_builder_get_widget (prefs->priv->builder, "chkCheckMailOnStart");
+ 	g_settings_bind (
+ 		settings, "send-recv-on-start",
+ 		widget, "active",
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
+-	widget = e_builder_get_widget (prefs->builder, "chkCheckMailInAllOnStart");
++	widget = e_builder_get_widget (prefs->priv->builder, "chkCheckMailInAllOnStart");
+ 	g_settings_bind (
+ 		settings, "send-recv-all-on-start",
+ 		widget, "active",
+@@ -881,7 +1197,7 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 
+ 	/* Message Display */
+ 
+-	widget = e_builder_get_widget (prefs->builder, "chkMarkTimeout");
++	widget = e_builder_get_widget (prefs->priv->builder, "chkMarkTimeout");
+ 	g_settings_bind (
+ 		settings, "mark-seen",
+ 		widget, "active",
+@@ -890,7 +1206,7 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 	/* The "mark seen" timeout requires special transform functions
+ 	 * because we display the timeout value to the user in seconds
+ 	 * but store the settings value in milliseconds. */
+-	widget = e_builder_get_widget (prefs->builder, "spinMarkTimeout");
++	widget = e_builder_get_widget (prefs->priv->builder, "spinMarkTimeout");
+ 	g_settings_bind_with_mapping (
+ 		settings, "mark-seen-timeout",
+ 		widget, "value",
+@@ -903,17 +1219,17 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 		widget, "sensitive",
+ 		G_SETTINGS_BIND_GET);
+ 
+-	widget = e_builder_get_widget (prefs->builder, "view-check");
++	widget = e_builder_get_widget (prefs->priv->builder, "view-check");
+ 	g_settings_bind (
+ 		settings, "global-view-setting",
+ 		widget, "active",
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
+ 	widget = e_charset_combo_box_new ();
+-	container = e_builder_get_widget (prefs->builder, "hboxDefaultCharset");
++	container = e_builder_get_widget (prefs->priv->builder, "hboxDefaultCharset");
+ 	gtk_label_set_mnemonic_widget (
+ 		GTK_LABEL (e_builder_get_widget (
+-		prefs->builder, "lblDefaultCharset")), widget);
++		prefs->priv->builder, "lblDefaultCharset")), widget);
+ 	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+ 	gtk_widget_show (widget);
+ 	g_settings_bind (
+@@ -921,13 +1237,13 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 		widget, "charset",
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
+-	widget = e_builder_get_widget (prefs->builder, "chkHighlightCitations");
++	widget = e_builder_get_widget (prefs->priv->builder, "chkHighlightCitations");
+ 	g_settings_bind (
+ 		settings, "mark-citations",
+ 		widget, "active",
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
+-	widget = e_builder_get_widget (prefs->builder, "colorButtonHighlightCitations");
++	widget = e_builder_get_widget (prefs->priv->builder, "colorButtonHighlightCitations");
+ 	g_settings_bind_with_mapping (
+ 		settings, "citation-color",
+ 		widget, "rgba",
+@@ -940,41 +1256,41 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 		widget, "sensitive",
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
+-	widget = e_builder_get_widget (prefs->builder, "thread-by-subject");
++	widget = e_builder_get_widget (prefs->priv->builder, "thread-by-subject");
+ 	g_settings_bind (
+ 		settings, "thread-subject",
+ 		widget, "active",
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
+ 	/* Deleting Mail */
+-	widget = e_builder_get_widget (prefs->builder, "chkEmptyTrashOnExit");
++	widget = e_builder_get_widget (prefs->priv->builder, "chkEmptyTrashOnExit");
+ 	g_settings_bind (
+ 		settings, "trash-empty-on-exit",
+ 		widget, "active",
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
+-	widget = e_builder_get_widget (prefs->builder, "comboboxEmptyTrashDays");
++	widget = e_builder_get_widget (prefs->priv->builder, "comboboxEmptyTrashDays");
+ 	g_settings_bind (
+ 		settings, "trash-empty-on-exit",
+ 		widget, "sensitive",
+ 		G_SETTINGS_BIND_GET);
+ 	emmp_empty_trash_init (prefs, GTK_COMBO_BOX (widget));
+ 
+-	widget = e_builder_get_widget (prefs->builder, "chkConfirmExpunge");
++	widget = e_builder_get_widget (prefs->priv->builder, "chkConfirmExpunge");
+ 	g_settings_bind (
+ 		settings, "prompt-on-expunge",
+ 		widget, "active",
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
+ 	/* Mail Fonts */
+-	widget = e_builder_get_widget (prefs->builder, "radFontUseSame");
++	widget = e_builder_get_widget (prefs->priv->builder, "radFontUseSame");
+ 	g_settings_bind (
+ 		settings, "use-custom-font",
+ 		widget, "active",
+ 		G_SETTINGS_BIND_DEFAULT |
+ 		G_SETTINGS_BIND_INVERT_BOOLEAN);
+ 
+-	widget = e_builder_get_widget (prefs->builder, "FontFixed");
++	widget = e_builder_get_widget (prefs->priv->builder, "FontFixed");
+ 	g_settings_bind (
+ 		settings, "monospace-font",
+ 		widget, "font-name",
+@@ -984,7 +1300,7 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 		widget, "sensitive",
+ 		G_SETTINGS_BIND_GET);
+ 
+-	widget = e_builder_get_widget (prefs->builder, "FontVariable");
++	widget = e_builder_get_widget (prefs->priv->builder, "FontVariable");
+ 	g_settings_bind (
+ 		settings, "variable-width-font",
+ 		widget, "font-name",
+@@ -998,11 +1314,11 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 
+ 	/* Loading Images */
+ 	writable = g_settings_is_writable (
+-		prefs->settings, "image-loading-policy");
++		prefs->priv->settings, "image-loading-policy");
+ 
+-	val = g_settings_get_enum (prefs->settings, "image-loading-policy");
++	val = g_settings_get_enum (prefs->priv->settings, "image-loading-policy");
+ 	widget = e_builder_get_widget (
+-		prefs->builder, "radImagesNever");
++		prefs->priv->builder, "radImagesNever");
+ 	gtk_toggle_button_set_active (
+ 		GTK_TOGGLE_BUTTON (widget),
+ 		val == E_IMAGE_LOADING_POLICY_NEVER);
+@@ -1013,7 +1329,7 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 		G_CALLBACK (image_loading_policy_never_cb), NULL);
+ 
+ 	widget = e_builder_get_widget (
+-		prefs->builder, "radImagesSometimes");
++		prefs->priv->builder, "radImagesSometimes");
+ 	gtk_toggle_button_set_active (
+ 		GTK_TOGGLE_BUTTON (widget),
+ 		val == E_IMAGE_LOADING_POLICY_SOMETIMES);
+@@ -1024,7 +1340,7 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 		G_CALLBACK (image_loading_policy_sometimes_cb), NULL);
+ 
+ 	widget = e_builder_get_widget (
+-		prefs->builder, "radImagesAlways");
++		prefs->priv->builder, "radImagesAlways");
+ 	gtk_toggle_button_set_active (
+ 		GTK_TOGGLE_BUTTON (widget),
+ 		val == E_IMAGE_LOADING_POLICY_ALWAYS);
+@@ -1034,19 +1350,19 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 		widget, "toggled",
+ 		G_CALLBACK (image_loading_policy_always_cb), NULL);
+ 
+-	widget = e_builder_get_widget (prefs->builder, "chkShowAnimatedImages");
++	widget = e_builder_get_widget (prefs->priv->builder, "chkShowAnimatedImages");
+ 	g_settings_bind (
+ 		settings, "show-animated-images",
+ 		widget, "active",
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
+-	widget = e_builder_get_widget (prefs->builder, "chkPromptWantHTML");
++	widget = e_builder_get_widget (prefs->priv->builder, "chkPromptWantHTML");
+ 	g_settings_bind (
+ 		settings, "prompt-on-unwanted-html",
+ 		widget, "active",
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
+-	container = e_builder_get_widget (prefs->builder, "labels-alignment");
++	container = e_builder_get_widget (prefs->priv->builder, "labels-alignment");
+ 	widget = e_mail_label_manager_new ();
+ 	gtk_container_add (GTK_CONTAINER (container), widget);
+ 	gtk_widget_show (widget);
+@@ -1057,15 +1373,15 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 		G_BINDING_SYNC_CREATE);
+ 
+ 	/* headers */
+-	locked = !g_settings_is_writable (prefs->settings, "headers");
++	locked = !g_settings_is_writable (prefs->priv->settings, "headers");
+ 
+-	widget = e_builder_get_widget (prefs->builder, "photo_show");
++	widget = e_builder_get_widget (prefs->priv->builder, "photo_show");
+ 	g_settings_bind (
+ 		settings, "show-sender-photo",
+ 		widget, "active",
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
+-	widget = e_builder_get_widget (prefs->builder, "search_gravatar");
++	widget = e_builder_get_widget (prefs->priv->builder, "search_gravatar");
+ 	g_settings_bind (
+ 		settings, "search-gravatar-for-photo",
+ 		widget, "active",
+@@ -1075,10 +1391,10 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 		widget, "sensitive",
+ 		G_SETTINGS_BIND_GET);
+ 
+-	container = e_builder_get_widget (prefs->builder, "archive-mail-hbox");
++	container = e_builder_get_widget (prefs->priv->builder, "archive-mail-hbox");
+ 	widget = em_folder_selection_button_new (session, "", _("Choose a folder to archive messages to."));
+ 	gtk_widget_set_hexpand (widget, FALSE);
+-	gtk_label_set_mnemonic_widget (GTK_LABEL (e_builder_get_widget (prefs->builder, "lblArchiveMailFolder")), widget);
++	gtk_label_set_mnemonic_widget (GTK_LABEL (e_builder_get_widget (prefs->priv->builder, "lblArchiveMailFolder")), widget);
+ 	gtk_container_add (GTK_CONTAINER (container), widget);
+ 	gtk_widget_show (widget);
+ 
+@@ -1088,38 +1404,38 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
+ 	/* always de-sensitised until the user types something in the entry */
+-	prefs->add_header = GTK_BUTTON (e_builder_get_widget (prefs->builder, "cmdHeadersAdd"));
+-	gtk_widget_set_sensitive ((GtkWidget *) prefs->add_header, FALSE);
++	prefs->priv->add_header = GTK_BUTTON (e_builder_get_widget (prefs->priv->builder, "cmdHeadersAdd"));
++	gtk_widget_set_sensitive ((GtkWidget *) prefs->priv->add_header, FALSE);
+ 
+ 	/* always de-sensitised until the user selects a header in the list */
+-	prefs->remove_header = GTK_BUTTON (e_builder_get_widget (prefs->builder, "cmdHeadersRemove"));
+-	gtk_widget_set_sensitive ((GtkWidget *) prefs->remove_header, FALSE);
++	prefs->priv->remove_header = GTK_BUTTON (e_builder_get_widget (prefs->priv->builder, "cmdHeadersRemove"));
++	gtk_widget_set_sensitive ((GtkWidget *) prefs->priv->remove_header, FALSE);
+ 
+-	prefs->entry_header = GTK_ENTRY (e_builder_get_widget (prefs->builder, "txtHeaders"));
+-	gtk_widget_set_sensitive ((GtkWidget *) prefs->entry_header, !locked);
++	prefs->priv->entry_header = GTK_ENTRY (e_builder_get_widget (prefs->priv->builder, "txtHeaders"));
++	gtk_widget_set_sensitive ((GtkWidget *) prefs->priv->entry_header, !locked);
+ 
+-	prefs->header_list = GTK_TREE_VIEW (e_builder_get_widget (prefs->builder, "treeHeaders"));
+-	gtk_widget_set_sensitive ((GtkWidget *) prefs->header_list, !locked);
++	prefs->priv->header_list = GTK_TREE_VIEW (e_builder_get_widget (prefs->priv->builder, "treeHeaders"));
++	gtk_widget_set_sensitive ((GtkWidget *) prefs->priv->header_list, !locked);
+ 
+-	selection = gtk_tree_view_get_selection (prefs->header_list);
++	selection = gtk_tree_view_get_selection (prefs->priv->header_list);
+ 	g_signal_connect (
+ 		selection, "changed",
+ 		G_CALLBACK (emmp_header_list_row_selected), prefs);
+ 	g_signal_connect (
+-		prefs->entry_header, "changed",
++		prefs->priv->entry_header, "changed",
+ 		G_CALLBACK (emmp_header_entry_changed), prefs);
+ 	g_signal_connect (
+-		prefs->entry_header,
++		prefs->priv->entry_header,
+ 		"activate", G_CALLBACK (emmp_header_add_header), prefs);
+ 	/* initialise the tree with appropriate headings */
+-	prefs->header_list_store = gtk_list_store_newv (HEADER_LIST_N_COLUMNS, col_types);
++	prefs->priv->header_list_store = gtk_list_store_newv (HEADER_LIST_N_COLUMNS, col_types);
+ 	g_signal_connect (
+-		prefs->add_header, "clicked",
++		prefs->priv->add_header, "clicked",
+ 		G_CALLBACK (emmp_header_add_header), prefs);
+ 	g_signal_connect (
+-		prefs->remove_header, "clicked",
++		prefs->priv->remove_header, "clicked",
+ 		G_CALLBACK (emmp_header_remove_header), prefs);
+-	gtk_tree_view_set_model (prefs->header_list, GTK_TREE_MODEL (prefs->header_list_store));
++	gtk_tree_view_set_model (prefs->priv->header_list, GTK_TREE_MODEL (prefs->priv->header_list_store));
+ 
+ 	renderer = gtk_cell_renderer_toggle_new ();
+ 	g_object_set (renderer, "activatable", TRUE, NULL);
+@@ -1127,13 +1443,13 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 		renderer, "toggled",
+ 		G_CALLBACK (emmp_header_list_enabled_toggled), prefs);
+ 	gtk_tree_view_insert_column_with_attributes (
+-		GTK_TREE_VIEW (prefs->header_list), -1,
++		GTK_TREE_VIEW (prefs->priv->header_list), -1,
+ 		"Enabled", renderer,
+ 		"active", HEADER_LIST_ENABLED_COLUMN,
+ 		NULL);
+ 	renderer = gtk_cell_renderer_text_new ();
+ 	gtk_tree_view_insert_column_with_attributes (
+-		GTK_TREE_VIEW (prefs->header_list), -1,
++		GTK_TREE_VIEW (prefs->priv->header_list), -1,
+ 		"Name", renderer,
+ 		"text", HEADER_LIST_NAME_COLUMN,
+ 		NULL);
+@@ -1153,7 +1469,7 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 		(GDestroyNotify) g_free,
+ 		(GDestroyNotify) gtk_tree_path_free);
+ 
+-	tree_model = GTK_TREE_MODEL (prefs->header_list_store);
++	tree_model = GTK_TREE_MODEL (prefs->priv->header_list_store);
+ 
+ 	for (ii = 0; ii < G_N_ELEMENTS (default_headers); ii++) {
+ 		GtkTreeIter iter;
+@@ -1186,7 +1502,7 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 			gtk_tree_model_get_path (tree_model, &iter));
+ 	}
+ 
+-	variant = g_settings_get_value (prefs->settings, "show-headers");
++	variant = g_settings_get_value (prefs->priv->settings, "show-headers");
+ 	n_children = g_variant_n_children (variant);
+ 
+ 	for (ii = 0; ii < n_children; ii++) {
+@@ -1229,7 +1545,7 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 	g_hash_table_destroy (default_header_hash);
+ 
+ 	/* date/time format */
+-	table = e_builder_get_widget (prefs->builder, "datetime-format-table");
++	table = e_builder_get_widget (prefs->priv->builder, "datetime-format-table");
+ 	/* To Translators: 'Table column' is a label for configurable date/time format for table columns showing a date in message list */
+ 	e_datetime_format_add_setup_widget (table, 0, "mail", "table",  DTFormatKindDateTime, _("_Table column:"));
+ 	/* To Translators: 'Date header' is a label for configurable date/time format for 'Date' header in mail message window/preview */
+@@ -1243,61 +1559,83 @@ em_mailer_prefs_construct (EMMailerPrefs *prefs,
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
+ 	/* Junk prefs */
+-	widget = e_builder_get_widget (prefs->builder, "chkCheckIncomingMail");
++	widget = e_builder_get_widget (prefs->priv->builder, "chkCheckIncomingMail");
+ 	g_settings_bind (
+ 		settings, "junk-check-incoming",
+ 		widget, "active",
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
+-	widget = e_builder_get_widget (prefs->builder, "junk_empty_check");
++	widget = e_builder_get_widget (prefs->priv->builder, "junk_empty_check");
+ 	g_settings_bind (
+ 		settings, "junk-empty-on-exit",
+ 		widget, "active",
+ 		G_SETTINGS_BIND_DEFAULT);
+ 
+-	widget = e_builder_get_widget (prefs->builder, "junk_empty_combobox");
++	widget = e_builder_get_widget (prefs->priv->builder, "junk_empty_combobox");
+ 	emmp_empty_junk_init (prefs, GTK_COMBO_BOX (widget));
+ 	g_settings_bind (
+ 		settings, "junk-empty-on-exit",
+ 		widget, "sensitive",
+ 		G_SETTINGS_BIND_GET);
+ 
+-	widget = e_builder_get_widget (prefs->builder, "junk-module-options");
++	widget = e_builder_get_widget (prefs->priv->builder, "junk-module-options");
+ 	e_mail_junk_options_set_session (E_MAIL_JUNK_OPTIONS (widget), session);
+ 
+-	prefs->junk_header_check = (GtkToggleButton *) e_builder_get_widget (prefs->builder, "junk_header_check");
+-	prefs->junk_header_tree = (GtkTreeView *) e_builder_get_widget (prefs->builder, "junk_header_tree");
+-	prefs->junk_header_add = (GtkButton *) e_builder_get_widget (prefs->builder, "junk_header_add");
+-	prefs->junk_header_remove = (GtkButton *) e_builder_get_widget (prefs->builder, "junk_header_remove");
+-	prefs->junk_book_lookup = (GtkToggleButton *) e_builder_get_widget (prefs->builder, "lookup_book");
+-	prefs->junk_lookup_local_only = (GtkToggleButton *) e_builder_get_widget (prefs->builder, "junk_lookup_local_only");
++	prefs->priv->junk_header_check = (GtkToggleButton *) e_builder_get_widget (prefs->priv->builder, "junk_header_check");
++	prefs->priv->junk_header_tree = (GtkTreeView *) e_builder_get_widget (prefs->priv->builder, "junk_header_tree");
++	prefs->priv->junk_header_add = (GtkButton *) e_builder_get_widget (prefs->priv->builder, "junk_header_add");
++	prefs->priv->junk_header_remove = (GtkButton *) e_builder_get_widget (prefs->priv->builder, "junk_header_remove");
++	prefs->priv->junk_book_lookup = (GtkToggleButton *) e_builder_get_widget (prefs->priv->builder, "lookup_book");
++	prefs->priv->junk_lookup_local_only = (GtkToggleButton *) e_builder_get_widget (prefs->priv->builder, "junk_lookup_local_only");
+ 	toggle_button_init (
+-		prefs, prefs->junk_book_lookup,
++		prefs, prefs->priv->junk_book_lookup,
+ 		FALSE, "junk-lookup-addressbook",
+ 		G_CALLBACK (junk_book_lookup_button_toggled));
+ 
+ 	toggle_button_init (
+-		prefs, prefs->junk_lookup_local_only,
++		prefs, prefs->priv->junk_lookup_local_only,
+ 		FALSE, "junk-lookup-addressbook-local-only",
+ 		G_CALLBACK (toggle_button_toggled));
+ 
+-	junk_book_lookup_button_toggled (prefs->junk_book_lookup, prefs);
++	junk_book_lookup_button_toggled (prefs->priv->junk_book_lookup, prefs);
+ 
+-	prefs->junk_header_list_store = init_junk_tree ((GtkWidget *) prefs->junk_header_tree, prefs);
++	prefs->priv->junk_header_list_store = init_junk_tree ((GtkWidget *) prefs->priv->junk_header_tree, prefs);
+ 	toggle_button_init (
+-		prefs, prefs->junk_header_check,
++		prefs, prefs->priv->junk_header_check,
+ 		FALSE, "junk-check-custom-header",
+ 		G_CALLBACK (custom_junk_button_toggled));
+ 
+-	custom_junk_button_toggled (prefs->junk_header_check, prefs);
++	custom_junk_button_toggled (prefs->priv->junk_header_check, prefs);
+ 	jh_tree_refill (prefs);
+ 	g_signal_connect (
+-		prefs->junk_header_add, "clicked",
++		prefs->priv->junk_header_add, "clicked",
+ 		G_CALLBACK (jh_add_cb), prefs);
+ 	g_signal_connect (
+-		prefs->junk_header_remove, "clicked",
++		prefs->priv->junk_header_remove, "clicked",
+ 		G_CALLBACK (jh_remove_cb), prefs);
+ 
++	/* Remote Content section */
++	prefs->priv->rc_sites_entry = e_builder_get_widget (prefs->priv->builder, "RCSitesEntry");
++	prefs->priv->rc_sites_add_btn = e_builder_get_widget (prefs->priv->builder, "RCSitesAddBtn");
++	prefs->priv->rc_sites_tree_view = e_builder_get_widget (prefs->priv->builder, "RCSitesTreeView");
++	prefs->priv->rc_sites_remove_btn = e_builder_get_widget (prefs->priv->builder, "RCSitesRemoveBtn");
++	prefs->priv->rc_mails_entry = e_builder_get_widget (prefs->priv->builder, "RCMailsEntry");
++	prefs->priv->rc_mails_add_btn = e_builder_get_widget (prefs->priv->builder, "RCMailsAddBtn");
++	prefs->priv->rc_mails_tree_view = e_builder_get_widget (prefs->priv->builder, "RCMailsTreeView");
++	prefs->priv->rc_mails_remove_btn = e_builder_get_widget (prefs->priv->builder, "RCMailsRemoveBtn");
++
++	em_mailer_prefs_setup_remote_content_section (prefs, RC_SECTION_SITES,
++		prefs->priv->rc_sites_entry,
++		prefs->priv->rc_sites_add_btn,
++		prefs->priv->rc_sites_tree_view,
++		prefs->priv->rc_sites_remove_btn);
++
++	em_mailer_prefs_setup_remote_content_section (prefs, RC_SECTION_MAILS,
++		prefs->priv->rc_mails_entry,
++		prefs->priv->rc_mails_add_btn,
++		prefs->priv->rc_mails_tree_view,
++		prefs->priv->rc_mails_remove_btn);
++
+ 	/* get our toplevel widget */
+ 	target = em_config_target_new_prefs (ec);
+ 	e_config_set_target ((EConfig *) ec, (EConfigTarget *) target);
+@@ -1326,7 +1664,9 @@ em_mailer_prefs_new (EPreferencesWindow *window)
+ 	new = g_object_new (EM_TYPE_MAILER_PREFS, NULL);
+ 
+ 	/* FIXME Kill this function. */
+-	em_mailer_prefs_construct (new, session, shell);
++	em_mailer_prefs_construct (new, session, shell, backend);
++
++	g_signal_connect (window, "notify::visible", G_CALLBACK (em_mailer_prefs_window_notify_visible_cb), new);
+ 
+ 	return GTK_WIDGET (new);
+ }
+diff --git a/modules/mail/em-mailer-prefs.h b/modules/mail/em-mailer-prefs.h
+index 6aa8b31656..9ce6f23df5 100644
+--- a/modules/mail/em-mailer-prefs.h
++++ b/modules/mail/em-mailer-prefs.h
+@@ -49,46 +49,12 @@ G_BEGIN_DECLS
+ 
+ typedef struct _EMMailerPrefs EMMailerPrefs;
+ typedef struct _EMMailerPrefsClass EMMailerPrefsClass;
++typedef struct _EMMailerPrefsPrivate EMMailerPrefsPrivate;
+ 
+ struct _EMMailerPrefs {
+ 	GtkBox parent_object;
+ 
+-	GtkBuilder *builder;
+-	GSettings *settings;
+-
+-	/* General tab */
+-
+-	/* Message Display */
+-	GtkSpinButton *timeout;
+-
+-	/* HTML Mail tab */
+-	GtkFontButton *font_variable;
+-	GtkFontButton *font_fixed;
+-	GtkToggleButton *font_share;
+-
+-	GtkToggleButton *autodetect_links;
+-
+-	/* Labels and Colours tab */
+-	GtkWidget *label_add;
+-	GtkWidget *label_edit;
+-	GtkWidget *label_remove;
+-	GtkWidget *label_tree;
+-	GtkListStore *label_list_store;
+-
+-	/* Headers tab */
+-	GtkButton *add_header;
+-	GtkButton *remove_header;
+-	GtkEntry *entry_header;
+-	GtkTreeView *header_list;
+-	GtkListStore *header_list_store;
+-
+-	GtkToggleButton *junk_header_check;
+-	GtkTreeView *junk_header_tree;
+-	GtkListStore *junk_header_list_store;
+-	GtkButton *junk_header_add;
+-	GtkButton *junk_header_remove;
+-	GtkToggleButton *junk_book_lookup;
+-	GtkToggleButton *junk_lookup_local_only;
++	EMMailerPrefsPrivate *priv;
+ };
+ 
+ struct _EMMailerPrefsClass {
+diff --git a/modules/prefer-plain/plugin/config-ui.c b/modules/prefer-plain/plugin/config-ui.c
+index 9d8b73046a..b8424b97b3 100644
+--- a/modules/prefer-plain/plugin/config-ui.c
++++ b/modules/prefer-plain/plugin/config-ui.c
+@@ -130,6 +130,8 @@ prefer_plain_page_factory (EPlugin *epl,
+ 	info = gtk_label_new (NULL);
+ 	gtk_misc_set_alignment (GTK_MISC (info), 0.0, 0.5);
+ 	gtk_label_set_line_wrap (GTK_LABEL (info), TRUE);
++	gtk_label_set_width_chars (GTK_LABEL (info), 40);
++	gtk_label_set_max_width_chars (GTK_LABEL (info), 60);
+ 
+ 	gtk_widget_show (info);
+ 	update_info_label (info, epp_mode);
+diff --git a/web-extensions/composer/e-html-editor-web-extension.c b/web-extensions/composer/e-html-editor-web-extension.c
+index d1a6117515..cdd3bc5373 100644
+--- a/web-extensions/composer/e-html-editor-web-extension.c
++++ b/web-extensions/composer/e-html-editor-web-extension.c
+@@ -39,6 +39,7 @@
+ 
+ #include <string.h>
+ 
++#include <glib/gstdio.h>
+ #include <gio/gio.h>
+ #include <gtk/gtk.h>
+ #include <webkit2/webkit-web-extension.h>
+@@ -2984,7 +2985,14 @@ image_exists_in_cache (const gchar *image_uri)
+ 		emd_global_http_cache, "http", hash);
+ 
+ 	if (filename != NULL) {
++		struct stat st;
++
+ 		exists = g_file_test (filename, G_FILE_TEST_EXISTS);
++		if (exists && g_stat (filename, &st) == 0) {
++			exists = st.st_size != 0;
++		} else {
++			exists = FALSE;
++		}
+ 		g_free (filename);
+ 	}
+ 
+diff --git a/web-extensions/e-web-extension.c b/web-extensions/e-web-extension.c
+index c13bbd5761..7e1e32eac9 100644
+--- a/web-extensions/e-web-extension.c
++++ b/web-extensions/e-web-extension.c
+@@ -23,6 +23,7 @@
+ #include "e-web-extension-names.h"
+ 
+ #include <gio/gio.h>
++#include <glib/gstdio.h>
+ #include <gtk/gtk.h>
+ 
+ #include <string.h>
+@@ -52,7 +53,7 @@ static CamelDataCache *emd_global_http_cache = NULL;
+ 
+ static const char introspection_xml[] =
+ "<node>"
+-"  <interface name='"E_WEB_EXTENSION_INTERFACE"'>"
++"  <interface name='" E_WEB_EXTENSION_INTERFACE "'>"
+ "    <signal name='HeadersCollapsed'>"
+ "      <arg type='b' name='expanded' direction='out'/>"
+ "    </signal>"
+@@ -543,7 +544,14 @@ image_exists_in_cache (const gchar *image_uri)
+ 		emd_global_http_cache, "http", hash);
+ 
+ 	if (filename != NULL) {
++		struct stat st;
++
+ 		exists = g_file_test (filename, G_FILE_TEST_EXISTS);
++		if (exists && g_stat (filename, &st) == 0) {
++			exists = st.st_size != 0;
++		} else {
++			exists = FALSE;
++		}
+ 		g_free (filename);
+ 	}
+ 
+-- 
+2.15.0
+

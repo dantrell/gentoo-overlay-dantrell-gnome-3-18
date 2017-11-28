@@ -1,0 +1,53 @@
+From 79ac3c2413f83e2c1415df8f0b05191caf3a4452 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 13:06:40 +0100
+Subject: [PATCH 0273/1800] Bug 744218 - Cannot move with arrow keys from top
+ to bottom
+
+Insert BR that is used for wrapping after the long link just in case
+there is some node after it.
+---
+ web-extensions/e-html-editor-selection-dom-functions.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index 844b69f878..7c460a5c20 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -2158,6 +2158,7 @@ wrap_lines (WebKitDOMDocument *document,
+ 			/* If element is ANCHOR we wrap it separately */
+ 			if (WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (node)) {
+ 				glong anchor_length;
++				WebKitDOMNode *next_sibling;
+ 
+ 				text_content = webkit_dom_node_get_text_content (node);
+ 				anchor_length = g_utf8_strlen (text_content, -1);
+@@ -2175,21 +2176,22 @@ wrap_lines (WebKitDOMDocument *document,
+ 				} else
+ 					len += anchor_length;
+ 
++				next_sibling = webkit_dom_node_get_next_sibling (node);
+ 				/* If the anchor doesn't fit on the line wrap after it */
+-				if (anchor_length > word_wrap_length) {
++				if (anchor_length > word_wrap_length && next_sibling) {
+ 					element = webkit_dom_document_create_element (
+ 						document, "BR", NULL);
+ 					element_add_class (element, "-x-evo-wrap-br");
+ 					node = webkit_dom_node_insert_before (
+ 						webkit_dom_node_get_parent_node (node),
+ 						WEBKIT_DOM_NODE (element),
+-						webkit_dom_node_get_next_sibling (node),
++						next_sibling,
+ 						NULL);
+ 					len = 0;
+ 				}
+ 				/* If there is space after the anchor don't try to
+ 				 * wrap before it */
+-				node = webkit_dom_node_get_next_sibling (node);
++				node = next_sibling;
+ 				if (WEBKIT_DOM_IS_TEXT (node)) {
+ 					text_content = webkit_dom_node_get_text_content (node);
+ 					if (g_str_has_prefix (text_content, " ")) {
+-- 
+2.15.0
+

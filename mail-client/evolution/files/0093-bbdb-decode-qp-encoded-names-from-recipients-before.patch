@@ -1,0 +1,77 @@
+From 33c86b25f4b072399c0baead4f9ad2214f74c763 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 20 Nov 2014 14:18:35 +0100
+Subject: [PATCH 0093/1800] [BBDB] Decode QP encoded names from recipients
+ before adding them to a book
+
+Otherwise a raw QP encoded string would be used as a newly created
+contact's name, which is not what it should do here.
+---
+ plugins/bbdb/Makefile.am |  1 +
+ plugins/bbdb/bbdb.c      | 23 +++++++++++++++++------
+ 2 files changed, 18 insertions(+), 6 deletions(-)
+
+diff --git a/plugins/bbdb/Makefile.am b/plugins/bbdb/Makefile.am
+index 48d8796712..6bf9988897 100644
+--- a/plugins/bbdb/Makefile.am
++++ b/plugins/bbdb/Makefile.am
+@@ -30,6 +30,7 @@ liborg_gnome_evolution_bbdb_la_LIBADD =		\
+ 	$(top_builddir)/composer/libevolution-mail-composer.la \
+ 	$(top_builddir)/addressbook/gui/contact-editor/libecontacteditor.la \
+ 	$(top_builddir)/addressbook/gui/contact-list-editor/libecontactlisteditor.la \
++	$(top_builddir)/addressbook/util/libeabutil.la \
+ 	$(EVOLUTION_DATA_SERVER_LIBS)		\
+ 	$(GNOME_PLATFORM_LIBS)			\
+ 	$(NULL)
+diff --git a/plugins/bbdb/bbdb.c b/plugins/bbdb/bbdb.c
+index 1213586d32..201c77d290 100644
+--- a/plugins/bbdb/bbdb.c
++++ b/plugins/bbdb/bbdb.c
+@@ -28,6 +28,7 @@
+ #include <string.h>
+ 
+ #include <addressbook/gui/widgets/eab-config.h>
++#include <addressbook/util/eab-book-util.h>
+ #include <mail/em-event.h>
+ #include <composer/e-msg-composer.h>
+ 
+@@ -224,8 +225,8 @@ handle_destination (EDestination *destination)
+ 			handle_destination (E_DESTINATION (link->data));
+ 
+ 	} else {
+-		const gchar *name;
+-		const gchar *email;
++		gchar *tname = NULL, *temail = NULL;
++		const gchar *textrep;
+ 		EContact *contact;
+ 
+ 		contact = e_destination_get_contact (destination);
+@@ -234,11 +235,21 @@ handle_destination (EDestination *destination)
+ 		if (contact != NULL)
+ 			return;
+ 
+-		name = e_destination_get_name (destination);
+-		email = e_destination_get_email (destination);
++		textrep = e_destination_get_textrep (destination, TRUE);
++		if (eab_parse_qp_email (textrep, &tname, &temail)) {
++			if (tname != NULL || temail != NULL)
++				todo_queue_process (tname, temail);
++			g_free (tname);
++			g_free (temail);
++		} else {
++			const gchar *cname, *cemail;
+ 
+-		if (name != NULL || email != NULL)
+-			todo_queue_process (name, email);
++			cname = e_destination_get_name (destination);
++			cemail = e_destination_get_email (destination);
++
++			if (cname != NULL || cemail != NULL)
++				todo_queue_process (cname, cemail);
++		}
+ 	}
+ }
+ 
+-- 
+2.15.0
+

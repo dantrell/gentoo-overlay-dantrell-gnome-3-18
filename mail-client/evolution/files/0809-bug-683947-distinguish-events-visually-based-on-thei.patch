@@ -1,0 +1,229 @@
+From 16fde62a80b0154cd7f5a8dbaadee0982ed04bd9 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 15 Jun 2015 14:12:41 +0200
+Subject: [PATCH 0809/1800] Bug 683947 - Distinguish events visually based on
+ their accept status
+
+---
+ calendar/gui/e-day-view.c  | 20 ++++++++++++--------
+ calendar/gui/e-week-view.c | 21 +++++++++++++--------
+ e-util/e-text.c            | 35 +++++++++++++++++++++++++++++++++--
+ e-util/e-text.h            |  1 +
+ 4 files changed, 59 insertions(+), 18 deletions(-)
+
+diff --git a/calendar/gui/e-day-view.c b/calendar/gui/e-day-view.c
+index a6f888ceff..2682daeaff 100644
+--- a/calendar/gui/e-day-view.c
++++ b/calendar/gui/e-day-view.c
+@@ -3196,8 +3196,8 @@ e_day_view_remove_event_cb (EDayView *day_view,
+ 
+ /* Checks if the users participation status is NEEDS-ACTION and shows the summary as bold text */
+ static void
+-set_text_as_bold (EDayViewEvent *event,
+-                  ESourceRegistry *registry)
++set_style_from_attendee (EDayViewEvent *event,
++			 ESourceRegistry *registry)
+ {
+ 	ECalComponent *comp;
+ 	GSList *attendees = NULL, *l;
+@@ -3227,6 +3227,12 @@ set_text_as_bold (EDayViewEvent *event,
+ 	 * In that case, we never show the meeting as bold even if it is unaccepted. */
+ 	if (at && (at->status == ICAL_PARTSTAT_NEEDSACTION))
+ 		gnome_canvas_item_set (event->canvas_item, "bold", TRUE, NULL);
++	else if (at && at->status == ICAL_PARTSTAT_DECLINED)
++		gnome_canvas_item_set (event->canvas_item, "strikeout", TRUE, NULL);
++	else if (at && at->status == ICAL_PARTSTAT_TENTATIVE)
++		gnome_canvas_item_set (event->canvas_item, "italic", TRUE, NULL);
++	else if (at && at->status == ICAL_PARTSTAT_DELEGATED)
++		gnome_canvas_item_set (event->canvas_item, "italic", TRUE, "strikeout", TRUE, NULL);
+ 
+ 	e_cal_component_free_attendee_list (attendees);
+ 	g_free (address);
+@@ -3306,9 +3312,8 @@ e_day_view_update_event_label (EDayView *day_view,
+ 		"text", text,
+ 		NULL);
+ 
+-	if (e_client_check_capability (E_CLIENT (event->comp_data->client), CAL_STATIC_CAPABILITY_HAS_UNACCEPTED_MEETING)
+-				&& e_cal_util_component_has_attendee (event->comp_data->icalcomp))
+-		set_text_as_bold (event, registry);
++	if (e_cal_util_component_has_attendee (event->comp_data->icalcomp))
++		set_style_from_attendee (event, registry);
+ 
+ 	if (free_text)
+ 		g_free (text);
+@@ -3350,9 +3355,8 @@ e_day_view_update_long_event_label (EDayView *day_view,
+ 	if (free_text)
+ 		g_free ((gchar *) summary);
+ 
+-	if (e_client_check_capability (E_CLIENT (event->comp_data->client), CAL_STATIC_CAPABILITY_HAS_UNACCEPTED_MEETING)
+-				&& e_cal_util_component_has_attendee (event->comp_data->icalcomp))
+-		set_text_as_bold (event, registry);
++	if (e_cal_util_component_has_attendee (event->comp_data->icalcomp))
++		set_style_from_attendee (event, registry);
+ }
+ 
+ /* Finds the day and index of the event with the given canvas item.
+diff --git a/calendar/gui/e-week-view.c b/calendar/gui/e-week-view.c
+index caed18a965..18b411297e 100644
+--- a/calendar/gui/e-week-view.c
++++ b/calendar/gui/e-week-view.c
+@@ -2492,9 +2492,9 @@ e_week_view_recalc_display_start_day (EWeekView *week_view)
+ 
+ /* Checks if the users participation status is NEEDS-ACTION and shows the summary as bold text */
+ static void
+-set_text_as_bold (EWeekViewEvent *event,
+-                  EWeekViewEventSpan *span,
+-                  ESourceRegistry *registry)
++set_style_from_attendee (EWeekViewEvent *event,
++			 EWeekViewEventSpan *span,
++			 ESourceRegistry *registry)
+ {
+ 	ECalComponent *comp;
+ 	GSList *attendees = NULL, *l;
+@@ -2522,8 +2522,14 @@ set_text_as_bold (EWeekViewEvent *event,
+ 	/* The attendee has not yet accepted the meeting, display the summary as bolded.
+ 	 * If the attendee is not present, it might have come through a mailing list.
+ 	 * In that case, we never show the meeting as bold even if it is unaccepted. */
+-	if (at && (at->status == ICAL_PARTSTAT_NEEDSACTION))
++	if (at && at->status == ICAL_PARTSTAT_NEEDSACTION)
+ 		gnome_canvas_item_set (span->text_item, "bold", TRUE, NULL);
++	else if (at && at->status == ICAL_PARTSTAT_DECLINED)
++		gnome_canvas_item_set (span->text_item, "strikeout", TRUE, NULL);
++	else if (at && at->status == ICAL_PARTSTAT_TENTATIVE)
++		gnome_canvas_item_set (span->text_item, "italic", TRUE, NULL);
++	else if (at && at->status == ICAL_PARTSTAT_DELEGATED)
++		gnome_canvas_item_set (span->text_item, "italic", TRUE, "strikeout", TRUE, NULL);
+ 
+ 	e_cal_component_free_attendee_list (attendees);
+ 	g_free (address);
+@@ -3647,10 +3653,9 @@ e_week_view_reshape_event_span (EWeekView *week_view,
+ 		if (free_text)
+ 			g_free ((gchar *) summary);
+ 
+-		if (e_client_check_capability (E_CLIENT (event->comp_data->client), CAL_STATIC_CAPABILITY_HAS_UNACCEPTED_MEETING)
+-				&& e_cal_util_component_has_attendee (event->comp_data->icalcomp)) {
+-			set_text_as_bold (event, span, registry);
+-		}
++		if (e_cal_util_component_has_attendee (event->comp_data->icalcomp))
++			set_style_from_attendee (event, span, registry);
++
+ 		g_signal_connect (
+ 			span->text_item, "event",
+ 			G_CALLBACK (e_week_view_on_text_item_event), week_view);
+diff --git a/e-util/e-text.c b/e-util/e-text.c
+index e341cd9ca2..34ad317292 100644
+--- a/e-util/e-text.c
++++ b/e-util/e-text.c
+@@ -75,6 +75,7 @@ enum {
+ 	PROP_TEXT,
+ 	PROP_BOLD,
+ 	PROP_STRIKEOUT,
++	PROP_ITALIC,
+ 	PROP_ANCHOR,
+ 	PROP_JUSTIFICATION,
+ 	PROP_CLIP_WIDTH,
+@@ -307,7 +308,7 @@ reset_layout_attrs (EText *text)
+ 
+ 	object_count = e_text_model_object_count (text->model);
+ 
+-	if (text->bold || text->strikeout || object_count > 0) {
++	if (text->bold || text->strikeout || text->italic || object_count > 0) {
+ 		gint length = 0;
+ 		gint i;
+ 
+@@ -330,7 +331,7 @@ reset_layout_attrs (EText *text)
+ 			pango_attr_list_insert (attrs, attr);
+ 		}
+ 
+-		if (text->bold || text->strikeout)
++		if (text->bold || text->strikeout || text->italic)
+ 			length = strlen (text->text);
+ 
+ 		if (text->bold) {
+@@ -340,6 +341,7 @@ reset_layout_attrs (EText *text)
+ 
+ 			pango_attr_list_insert_before (attrs, attr);
+ 		}
++
+ 		if (text->strikeout) {
+ 			PangoAttribute *attr = pango_attr_strikethrough_new (TRUE);
+ 			attr->start_index = 0;
+@@ -347,6 +349,14 @@ reset_layout_attrs (EText *text)
+ 
+ 			pango_attr_list_insert_before (attrs, attr);
+ 		}
++
++		if (text->italic) {
++			PangoAttribute *attr = pango_attr_style_new (PANGO_STYLE_ITALIC);
++			attr->start_index = 0;
++			attr->end_index = length;
++
++			pango_attr_list_insert_before (attrs, attr);
++		}
+ 	}
+ 
+ 	pango_layout_set_attributes (text->layout, attrs);
+@@ -668,6 +678,12 @@ e_text_set_property (GObject *object,
+ 		needs_update = 1;
+ 		break;
+ 
++	case PROP_ITALIC:
++		text->italic = g_value_get_boolean (value);
++		text->needs_redraw = 1;
++		needs_update = 1;
++		break;
++
+ 	case PROP_JUSTIFICATION:
+ 		text->justification = g_value_get_enum (value);
+ 		text->needs_redraw = 1;
+@@ -916,6 +932,10 @@ e_text_get_property (GObject *object,
+ 		g_value_set_boolean (value, text->strikeout);
+ 		break;
+ 
++	case PROP_ITALIC:
++		g_value_set_boolean (value, text->italic);
++		break;
++
+ 	case PROP_JUSTIFICATION:
+ 		g_value_set_enum (value, text->justification);
+ 		break;
+@@ -3034,6 +3054,16 @@ e_text_class_init (ETextClass *class)
+ 			FALSE,
+ 			G_PARAM_READWRITE));
+ 
++	g_object_class_install_property (
++		gobject_class,
++		PROP_ITALIC,
++		g_param_spec_boolean (
++			"italic",
++			"Italic",
++			"Italic",
++			FALSE,
++			G_PARAM_READWRITE));
++
+ 	g_object_class_install_property (
+ 		gobject_class,
+ 		PROP_JUSTIFICATION,
+@@ -3343,6 +3373,7 @@ e_text_init (EText *text)
+ 
+ 	text->bold = FALSE;
+ 	text->strikeout = FALSE;
++	text->italic = FALSE;
+ 
+ 	text->allow_newlines = TRUE;
+ 
+diff --git a/e-util/e-text.h b/e-util/e-text.h
+index 49b8fd0bb0..4ff99bdd96 100644
+--- a/e-util/e-text.h
++++ b/e-util/e-text.h
+@@ -186,6 +186,7 @@ struct _EText {
+ 
+ 	guint bold : 1;
+ 	guint strikeout : 1;
++	guint italic : 1;
+ 
+ 	guint tooltip_owner : 1;
+ 	guint allow_newlines : 1;
+-- 
+2.15.0
+

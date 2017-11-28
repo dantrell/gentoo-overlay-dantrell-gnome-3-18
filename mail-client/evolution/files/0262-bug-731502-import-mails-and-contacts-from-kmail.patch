@@ -1,0 +1,1200 @@
+From b75c5dd7e9c91269c854d63663f702ac9f8bea38 Mon Sep 17 00:00:00 2001
+From: David Liang <dliang@suse.com>
+Date: Fri, 6 Feb 2015 11:02:32 +0100
+Subject: [PATCH 0262/1800] Bug 731502 - Import mails and contacts from KMail
+
+---
+ mail/importers/Makefile.am      |   3 +
+ mail/importers/kmail-importer.c | 358 ++++++++++++++++++++++++++++++++++
+ mail/importers/kmail-libs.c     | 413 ++++++++++++++++++++++++++++++++++++++++
+ mail/importers/kmail-libs.h     |  52 +++++
+ mail/importers/mail-importer.c  | 227 +++++++++++++++++++++-
+ mail/importers/mail-importer.h  |  13 ++
+ po/POTFILES.in                  |   2 +
+ 7 files changed, 1066 insertions(+), 2 deletions(-)
+ create mode 100644 mail/importers/kmail-importer.c
+ create mode 100644 mail/importers/kmail-libs.c
+ create mode 100644 mail/importers/kmail-libs.h
+
+diff --git a/mail/importers/Makefile.am b/mail/importers/Makefile.am
+index d9beee985f..78d1e5f4eb 100644
+--- a/mail/importers/Makefile.am
++++ b/mail/importers/Makefile.am
+@@ -13,6 +13,9 @@ libevolution_mail_importers_la_CPPFLAGS = \
+ 	$(NULL)
+ 
+ libevolution_mail_importers_la_SOURCES =	\
++	kmail-libs.c				\
++	kmail-libs.h				\
++	kmail-importer.c			\
+ 	mail-importer.c				\
+ 	mail-importer.h				\
+ 	elm-importer.c				\
+diff --git a/mail/importers/kmail-importer.c b/mail/importers/kmail-importer.c
+new file mode 100644
+index 0000000000..0e35bee666
+--- /dev/null
++++ b/mail/importers/kmail-importer.c
+@@ -0,0 +1,358 @@
++/*
++ * Copyright (C) 2015 SUSE (www.suse.com)
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) version 3.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with the program; if not, see <http://www.gnu.org/licenses/>
++ *
++ * Authors:
++ *           David Liang <dliang@suse.com>
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <stdio.h>
++#include <errno.h>
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#include <dirent.h>
++#include <string.h>
++
++#include <gtk/gtk.h>
++#include <glib/gi18n-lib.h>
++
++#include "kmail-libs.h"
++#include "mail-importer.h"
++
++#include "libemail-engine/libemail-engine.h"
++#include "e-util/e-util.h"
++#include "shell/e-shell.h"
++#include "shell/e-shell-window.h"
++#include "shell/e-shell-view.h"
++#include "shell/e-shell-sidebar.h"
++
++#include "mail/e-mail-backend.h"
++#include "mail/em-folder-selection-button.h"
++#include "mail/em-folder-tree-model.h"
++#include "mail/em-folder-tree.h"
++
++#define ENABLE_SELECT 0
++#define d(x)
++
++typedef struct {
++	EImport *import;
++	EImportTarget *target;
++
++	GMutex status_lock;
++	gchar *status_what;
++	gint status_pc;
++	gint status_timeout_id;
++	GCancellable *cancellable;      /* cancel/status port */
++
++	gchar *uri;
++} KMailImporter;
++
++static gboolean
++kmail_supported (EImport *ei,
++                 EImportTarget *target,
++                 EImportImporter *im)
++{
++	return kmail_is_supported ();
++}
++
++static void
++kmail_import_done (gpointer data,
++                   GError **error)
++{
++	KMailImporter *importer = data;
++
++	g_source_remove (importer->status_timeout_id);
++	if (importer->status_what)
++		g_free (importer->status_what);
++
++	g_mutex_clear (&importer->status_lock);
++	g_object_unref (importer->cancellable);
++
++	e_import_complete (importer->import, importer->target);
++	g_free (importer);
++}
++
++static void
++kmail_status (CamelOperation *op,
++              const gchar *what,
++              gint pc,
++              gpointer data)
++{
++	KMailImporter *importer = data;
++	g_mutex_lock (&importer->status_lock);
++	g_free (importer->status_what);
++	importer->status_what = g_strdup (what);
++	importer->status_pc = pc;
++	g_mutex_unlock (&importer->status_lock);
++}
++
++static gboolean
++kmail_status_timeout (gpointer data)
++{
++	KMailImporter *importer = data;
++	gint pc;
++	gchar *what;
++	if (importer->status_what) {
++		g_mutex_lock (&importer->status_lock);
++		what = importer->status_what;
++		importer->status_what = NULL;
++		pc = importer->status_pc;
++		g_mutex_unlock (&importer->status_lock);
++
++		e_import_status (
++			importer->import, (EImportTarget *)
++			importer->target, what, pc);
++	}
++
++	return TRUE;
++}
++
++static void
++checkbox_toggle_cb (GtkToggleButton *tb,
++                    EImportTarget *target)
++{
++	g_datalist_set_data (
++		&target->data, "kmail-do-mail",
++		GINT_TO_POINTER (gtk_toggle_button_get_active (tb)));
++}
++
++#if ENABLE_SELECT
++static void
++folder_selected (EMFolderSelectionButton *button,
++                 EImportTargetURI *target)
++{
++	if (target->uri_dest)
++		g_free (target->uri_dest);
++	target->uri_dest = g_strdup (em_folder_selection_button_get_folder_uri (button));
++}
++
++static GtkWidget *
++import_folder_getwidget (EImport *ei,
++                         EImportTarget *target,
++                         EImportImporter *im)
++{
++	EShell *shell;
++	EShellBackend *shell_backend;
++	EMailBackend *backend;
++	EMailSession *session;
++	GtkWindow *window;
++	GtkWidget *hbox, *w;
++	GtkLabel *label;
++	gchar *select_uri = NULL;
++
++	/* XXX Dig up the mail backend from the default EShell.
++	 *     Since the EImport framework doesn't allow for user
++	 *     data, I don't see how else to get to it. */
++	shell = e_shell_get_default ();
++	shell_backend = e_shell_get_backend_by_name (shell, "mail");
++
++	backend = E_MAIL_BACKEND (shell_backend);
++	session = e_mail_backend_get_session (backend);
++
++	/* preselect the folder selected in a mail view */
++	window = e_shell_get_active_window (shell);
++	if (E_IS_SHELL_WINDOW (window)) {
++		EShellWindow *shell_window;
++		const gchar *view;
++
++		shell_window = E_SHELL_WINDOW (window);
++		view = e_shell_window_get_active_view (shell_window);
++
++		if (view && g_str_equal (view, "mail")) {
++			EShellView *shell_view;
++			EShellSidebar *shell_sidebar;
++			EMFolderTree *folder_tree = NULL;
++
++			shell_view = e_shell_window_get_shell_view (
++				shell_window, view);
++
++			shell_sidebar =
++				e_shell_view_get_shell_sidebar (shell_view);
++
++			g_object_get (
++				shell_sidebar, "folder-tree",
++				&folder_tree, NULL);
++
++			select_uri =
++				em_folder_tree_get_selected_uri (folder_tree);
++
++			g_object_unref (folder_tree);
++		}
++	}
++
++	if (!select_uri) {
++		const gchar *uri;
++		uri = e_mail_session_get_local_folder_uri (
++			session, E_MAIL_LOCAL_FOLDER_INBOX);
++		select_uri = g_strdup (uri);
++	}
++
++	hbox = gtk_hbox_new (FALSE, 0);
++
++	w = gtk_label_new_with_mnemonic (_("_Destination folder:"));
++	gtk_box_pack_start ((GtkBox *) hbox, w, FALSE, TRUE, 6);
++
++	label = GTK_LABEL (w);
++
++	w = em_folder_selection_button_new (
++		session, _("Select folder"),
++		_("Select folder to import into"));
++	gtk_label_set_mnemonic_widget (label, w);
++	em_folder_selection_button_set_folder_uri (
++		EM_FOLDER_SELECTION_BUTTON (w), select_uri);
++	folder_selected (
++		EM_FOLDER_SELECTION_BUTTON (w), (EImportTargetURI *) target);
++	g_signal_connect (
++		w, "selected",
++		G_CALLBACK (folder_selected), target);
++	gtk_box_pack_start ((GtkBox *) hbox, w, FALSE, TRUE, 6);
++
++	w = gtk_vbox_new (FALSE, 0);
++	gtk_box_pack_start ((GtkBox *) w, hbox, FALSE, FALSE, 0);
++	gtk_widget_show_all (w);
++
++	g_free (select_uri);
++
++	return w;
++}
++#endif
++
++static GtkWidget *
++kmail_getwidget (EImport *ei,
++                 EImportTarget *target,
++                 EImportImporter *im)
++{
++	GtkWidget *box, *w;
++	GSList *contact_list;
++	gint count;
++	gchar *contact_str;
++
++
++	g_datalist_set_data (
++		&target->data, "kmail-do-mail", GINT_TO_POINTER (TRUE));
++
++	box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 2);
++	w = gtk_check_button_new_with_label (_("Mail"));
++	gtk_toggle_button_set_active ((GtkToggleButton *) w, TRUE);
++	g_signal_connect (
++		w, "toggled",
++		G_CALLBACK (checkbox_toggle_cb), target);
++
++	gtk_box_pack_start ((GtkBox *) box, w, FALSE, FALSE, 0);
++
++	contact_list = kcontact_get_list ();
++	count = g_slist_length (contact_list);
++	contact_str = g_strdup_printf (_("%d Address"), count);
++	w = gtk_check_button_new_with_label (contact_str);
++	gtk_toggle_button_set_active ((GtkToggleButton *) w, TRUE);
++	g_signal_connect (
++		w, "toggled",
++		G_CALLBACK (checkbox_toggle_cb), target);
++
++	gtk_box_pack_start ((GtkBox *) box, w, FALSE, FALSE, 0);
++
++	/* for now, we don't allow to select a folder */
++	#if ENABLE_SELECT
++	w = import_folder_getwidget (ei, target, im);
++	gtk_box_pack_start ((GtkBox *) box, w, FALSE, FALSE, 0);
++	#endif
++
++	gtk_widget_show_all (box);
++	g_slist_free_full (contact_list, g_free);
++	g_free (contact_str);
++
++	return box;
++}
++
++static void
++kmail_import (EImport *ei,
++              EImportTarget *target,
++              EImportImporter *im)
++{
++	EShell *shell;
++	EShellBackend *shell_backend;
++	EMailSession *session;
++	KMailImporter *importer;
++	gchar *path;
++	GSList *contact_list;
++
++	/* XXX Dig up the EMailSession from the default EShell.
++	 *     Since the EImport framework doesn't allow for user
++	 *     data, I don't see how else to get to it. */
++	shell = e_shell_get_default ();
++	shell_backend = e_shell_get_backend_by_name (shell, "mail");
++	session = e_mail_backend_get_session (E_MAIL_BACKEND (shell_backend));
++
++	importer = g_malloc0 (sizeof (*importer));
++	g_datalist_set_data (&target->data, "kmail-data", importer);
++	importer->status_what = NULL;
++	importer->import = ei;
++	importer->target = target;
++	importer->cancellable = camel_operation_new ();
++	g_mutex_init (&importer->status_lock);
++	importer->status_timeout_id = g_timeout_add (100, kmail_status_timeout, importer);
++
++	g_signal_connect (
++		importer->cancellable, "status",
++		G_CALLBACK (kmail_status), importer);
++
++	/* import emails */
++	path = kmail_get_base_dir ();
++	mail_importer_import_kmail (
++		session, path, NULL,
++		importer->cancellable, kmail_import_done, importer);
++	g_free (path);
++
++	/* import contacts */
++	contact_list = kcontact_get_list ();
++	kcontact_load (contact_list);
++	g_slist_free_full (contact_list, g_free);
++}
++
++static void
++kmail_cancel (EImport *ei,
++              EImportTarget *target,
++              EImportImporter *im)
++{
++	KMailImporter *m = g_datalist_get_data (&target->data, "kmail-data");
++
++	if (m)
++		g_cancellable_cancel (m->cancellable);
++}
++
++static EImportImporter kmail_importer = {
++	E_IMPORT_TARGET_HOME,
++	0,
++	kmail_supported,
++	kmail_getwidget,
++	kmail_import,
++	kmail_cancel,
++	NULL, /* get_preview */
++};
++
++EImportImporter *
++kmail_importer_peek (void)
++{
++	kmail_importer.name = _("Evolution KMail importer");
++	kmail_importer.description = _("Import mail and contact from KMail.");
++
++	return &kmail_importer;
++}
+diff --git a/mail/importers/kmail-libs.c b/mail/importers/kmail-libs.c
+new file mode 100644
+index 0000000000..607954168c
+--- /dev/null
++++ b/mail/importers/kmail-libs.c
+@@ -0,0 +1,413 @@
++/*
++ * Copyright (C) 2015 SUSE (www.suse.com)
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) version 3.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with the program; if not, see <http://www.gnu.org/licenses/>
++ *
++ * Authors:
++ *           David Liang <dliang@suse.com>
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#include <string.h>
++#include <stdio.h>
++#include <stdlib.h>
++
++#include <glib.h>
++#include <glib/gi18n-lib.h>
++#include <glib/gstdio.h>
++#include <gio/gio.h>
++
++#include <libebook/libebook.h>
++
++#include "shell/e-shell.h"
++#include "mail/e-mail-backend.h"
++
++#include "kmail-libs.h"
++
++static GSList  *kmail_read_folder (const gchar *path, GSList *list);
++
++const CamelStore *
++evolution_get_local_store (void)
++{
++	EShell *shell;
++	EShellBackend *shell_backend;
++	EMailBackend *backend;
++	EMailSession *session;
++	static CamelStore *local_store = NULL;
++
++	if (local_store)
++		return local_store;
++	/* XXX Dig up the mail backend from the default EShell.
++	 *     Since the EImport framework doesn't allow for user
++	 *     data, I don't see how else to get to it. */
++	shell = e_shell_get_default ();
++	shell_backend = e_shell_get_backend_by_name (shell, "mail");
++
++	backend = E_MAIL_BACKEND (shell_backend);
++	session = e_mail_backend_get_session (backend);
++
++	local_store = e_mail_session_get_local_store (session);
++
++	return local_store;
++}
++
++static gboolean
++is_kmail_box (const gchar *k_folder)
++{
++	const gchar *special_folders []= {"cur", "tmp", "new", NULL};
++	gchar *source_dir;
++	GDir *dir;
++	gint i;
++
++	for (i = 0; special_folders[i]; i++) {
++		source_dir = g_build_filename (k_folder, special_folders[i], NULL);
++		dir = g_dir_open (source_dir, 0, NULL);
++		if (!dir) {
++			/* If we did not find the subdir with 'cur' 'tmp' and 'new',
++			   we don't take it as the kmail box. */
++			g_free (source_dir);
++			return FALSE;
++		}
++		g_dir_close (dir);
++		g_free (source_dir);
++	}
++
++	/* No matter whether the folder was empty, we return it to the importer */
++	return TRUE;
++}
++
++static gboolean
++is_kmail_directory (const gchar *folder)
++{
++	if (g_str_has_prefix (folder, ".") && g_str_has_suffix (folder, ".directory"))
++		return TRUE;
++	else
++		return FALSE;
++}
++
++gchar *
++kmail_get_base_dir (void)
++{
++	gchar *base_dir;
++
++	base_dir = g_build_filename (g_get_home_dir (), KMAIL_4_3_DIR, NULL);
++
++	return base_dir;
++}
++
++gchar *
++kuri_to_euri (const gchar *k_uri)
++{
++	gchar *base_dir;
++	gchar *p;
++	gchar **folders;
++	GString *e_folder = NULL;
++	gchar *val;
++	gint i;
++	gboolean dropped = FALSE;
++
++	e_folder = g_string_new (EVOLUTION_LOCAL_BASE);
++	base_dir = g_build_filename (g_get_home_dir (), KMAIL_4_3_DIR, NULL);
++	p = (gchar *) k_uri + strlen (base_dir) + 1;
++	folders = g_strsplit (p, "/", -1);
++
++	for (i = 0; folders[i]; i++) {
++		gchar *folder = folders[i];
++		if (g_str_has_prefix (folder, ".") && g_str_has_suffix (folder, ".directory")) {
++			folder ++;
++			p = g_strrstr (folder, ".directory");
++			*p = '\0';
++		}
++		if (i == 0) {
++			/* Some local folders */
++			if ((strcasecmp (folder, "Inbox") == 0) || (strcmp (folder, _("Inbox")) == 0)) {
++				folder = (gchar *)"Inbox";
++			} else if ((strcasecmp (folder, "Outbox") == 0) || (strcmp (folder, _("Outbox")) == 0)) {
++				folder = (gchar *)"Outbox";
++			} else if ((strcasecmp (folder, "sent-mail") == 0) || (strcmp (folder, _("Sent")) == 0)) {
++				folder = (gchar *)"Sent";
++			} else if ((strcasecmp (folder, "drafts") == 0) || (strcmp (folder, _("Drafts")) == 0)) {
++				folder = (gchar *)"Drafts";
++			} else if ((strcasecmp (folder, "templates") == 0) || (strcmp (folder, _("Templates")) == 0)) {
++				folder = (gchar *)"Templates";
++				break;
++			} else if ((strcasecmp (folder, "trash") == 0) || (strcmp (folder, _("Trash")) == 0)) {
++				dropped = TRUE;
++				break;
++			}
++		}
++		g_string_append_printf (e_folder, "/%s", folder);
++	}
++
++	if (dropped) {
++		val = NULL;
++		g_string_free (e_folder, TRUE);
++	} else {
++		val = e_folder->str;
++		g_string_free (e_folder, FALSE);
++	}
++	g_strfreev (folders);
++	return val;
++}
++
++static GSList *
++kmail_read_folder (const gchar *path, GSList *kmail_list)
++{
++	GDir *dir;
++	gchar *filename;
++	const gchar *d;
++	struct stat st;
++
++	dir = g_dir_open (path, 0, NULL);
++
++	while ((d = g_dir_read_name (dir))) {
++		if ((strcmp (d, ".") == 0) || (strcmp (d, "..") == 0)) {
++			continue;
++		}
++
++		filename = g_build_filename (path, d, NULL);
++		/* skip non files and directories, and skip directories in mozilla mode */
++		if (g_stat (filename, &st) == -1) {
++			g_free (filename);
++			continue;
++		}
++		if (S_ISDIR (st.st_mode)) {
++			if (is_kmail_directory (d)) {
++				kmail_list = kmail_read_folder (filename, kmail_list);
++			} else if (is_kmail_box (filename)) {
++				kmail_list = g_slist_prepend (kmail_list, g_strdup (filename));
++			}
++		}
++		g_free (filename);
++	}
++	g_dir_close (dir);
++
++	return kmail_list;
++}
++
++GSList *
++kmail_get_folders (gchar *path)
++{
++	GSList *list = NULL;
++
++	list = kmail_read_folder (path, list);
++
++	return list;
++}
++
++/* Copied from addressbook/util/eab-book-util.c:eab_contact_list_from_string */
++static GSList *
++get_contact_list_from_string (const gchar *str)
++{
++	GSList *contacts = NULL;
++	GString *gstr = g_string_new (NULL);
++	gchar *str_stripped;
++	gchar *p = (gchar *) str;
++	gchar *q;
++	if (!p)
++		return NULL;
++
++	if (!strncmp (p, "Book: ", 6)) {
++		p = strchr (p, '\n');
++		if (!p) {
++			g_warning (G_STRLOC ": Got book but no newline!");
++			return NULL;
++		}
++		p++;
++	}
++
++	while (*p) {
++		if (*p != '\r') g_string_append_c (gstr, *p);
++
++		p++;
++	}
++
++	p = str_stripped = g_string_free (gstr, FALSE);
++
++	for (p = camel_strstrcase (p, "BEGIN:VCARD"); p; p = camel_strstrcase (q, "\nBEGIN:VCARD")) {
++		gchar *card_str;
++
++		if (*p == '\n')
++			p++;
++
++		for (q = camel_strstrcase (p, "END:VCARD"); q; q = camel_strstrcase (q, "END:VCARD")) {
++			gchar *temp;
++
++			q += 9;
++			temp = q;
++			if (*temp)
++				temp += strspn (temp, "\r\n\t ");
++
++			if (*temp == '\0' || !g_ascii_strncasecmp (temp, "BEGIN:VCARD", 11))
++				break;  /* Found the outer END:VCARD */
++		}
++
++		if (!q)
++			break;
++		card_str = g_strndup (p, q - p);
++		contacts = g_slist_prepend (contacts, e_contact_new_from_vcard (card_str));
++		g_free (card_str);
++	}
++
++	g_free (str_stripped);
++
++	return g_slist_reverse (contacts);
++}
++
++static gchar *
++get_kcontact_folder (void)
++{
++	gchar *folder;
++
++	folder = g_build_filename (g_get_home_dir (), KCONTACT_4_3_DIR, NULL);
++
++	return folder;
++}
++
++GSList *
++kcontact_get_list (void)
++{
++	GSList *list = NULL;
++	gchar *foldername = NULL;
++	gchar *filename;
++	const gchar *d;
++	GDir *dir;
++	struct stat st;
++
++	foldername = get_kcontact_folder ();
++	if (!foldername)
++		return NULL;
++	dir = g_dir_open (foldername, 0, NULL);
++
++	while ((d = g_dir_read_name (dir))) {
++		if ((strcmp (d, ".") == 0) || (strcmp (d, "..") == 0)) {
++			continue;
++		}
++		if (!g_str_has_suffix (d, ".vcf")) {
++			continue;
++		}
++		filename = g_build_filename (foldername, d, NULL);
++		if (g_stat (filename, &st) == -1) {
++			g_free (filename);
++			continue;
++		}
++		if (S_ISREG (st.st_mode)) {
++			list = g_slist_prepend (list, filename);
++		}
++	}
++
++	g_free (foldername);
++	g_dir_close (dir);
++
++	return list;
++}
++
++void
++kcontact_load (GSList *files)
++{
++	GSList *contactlist = NULL;
++	GSList *l;
++
++	GError *error = NULL;
++	GString *vcards = NULL;
++	EBookClient *book_client;
++	EClient *client;
++	EShell *shell;
++	ESourceRegistry *registry;
++	EClientCache *client_cache;
++	ESource *primary;
++
++	if (!files)
++		return;
++
++	shell = e_shell_get_default ();
++	registry = e_shell_get_registry (shell);
++
++	primary = e_source_registry_ref_default_address_book (registry);
++	if (!primary) {
++		printf ("%s: No default address book found\n", G_STRFUNC);
++		return;
++	}
++
++	client_cache = e_shell_get_client_cache (shell);
++	client = e_client_cache_get_client_sync (client_cache, primary, E_SOURCE_EXTENSION_ADDRESS_BOOK, 15, NULL, &error);
++
++	if (!client) {
++		printf ("%s: Failed to open address book '%s': %s\n", G_STRFUNC, e_source_get_display_name (primary), error ? error->message : "Unknown error");
++		g_clear_object (&primary);
++		g_clear_error (&error);
++		return;
++	}
++	g_clear_object (&primary);
++
++	book_client = E_BOOK_CLIENT (client);
++
++	for (l = files; l; l = l->next) {
++		const gchar *filename;
++		gchar *contents = NULL;
++
++		filename = (gchar *) l->data;
++		if (g_file_get_contents (filename, &contents, NULL, NULL)) {
++			if (vcards == NULL) {
++				vcards = g_string_new (contents);
++			} else {
++				g_string_append_c (vcards, '\n');
++				g_string_append (vcards, contents);
++			}
++			g_free (contents);
++		}
++	}
++
++	if (vcards) {
++		contactlist = get_contact_list_from_string (vcards->str);
++	}
++
++	if (contactlist) {
++		e_book_client_add_contacts_sync (book_client, contactlist, NULL, NULL, &error);
++
++		if (error) {
++			printf ("%s: Failed to add contacts: %s\n", G_STRFUNC, error->message);
++			g_error_free (error);
++		}
++	}
++
++	if (vcards)
++		g_string_free (vcards, TRUE);
++	if (contactlist)
++		g_slist_free_full (contactlist, g_object_unref);
++	g_object_unref (book_client);
++}
++
++gboolean
++kmail_is_supported (void)
++{
++	gchar *kmaildir;
++	gboolean exists;
++
++	kmaildir = g_build_filename (g_get_home_dir (), KMAIL_4_3_DIR, NULL);
++	exists = g_file_test (kmaildir, G_FILE_TEST_IS_DIR);
++	g_free (kmaildir);
++
++	if (!exists)
++		return FALSE;
++
++	return TRUE;
++}
+diff --git a/mail/importers/kmail-libs.h b/mail/importers/kmail-libs.h
+new file mode 100644
+index 0000000000..c82bb7bc45
+--- /dev/null
++++ b/mail/importers/kmail-libs.h
+@@ -0,0 +1,52 @@
++/*
++ * Copyright (C) 2015 SUSE (www.suse.com)
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) version 3.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with the program; if not, see <http://www.gnu.org/licenses/>
++ *
++ * Authors:
++ *           David Liang <dliang@suse.com>
++ *
++ */
++#ifndef __KMAIL_LIBS_H__
++#define __KMAIL_LIBS_H__
++
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#include <string.h>
++#include <stdio.h>
++#include <glib/gstdio.h>
++
++#include <glib.h>
++#include <gio/gio.h>
++#include <stdlib.h>
++#include <camel/camel.h>
++
++#include "libemail-engine/libemail-engine.h"
++
++#define EVOLUTION_LOCAL_BASE "folder://local"
++#define EVOLUTION_DIR ".local/share/evolution/mail/local/"
++#define KMAIL_4_10_DIR ".local/share/local-mail"
++#define KMAIL_4_3_DIR ".kde4/share/apps/kmail/mail"
++#define KCONTACT_4_3_DIR ".kde4/share/apps/kabc"
++
++const CamelStore *		evolution_get_local_store (void);
++gboolean 			kmail_is_supported (void);
++gchar	*			kmail_get_base_dir (void);
++GSList	*			kmail_get_folders (gchar *path);
++gchar	*			kuri_to_euri (const gchar *k_uri);
++GSList	*			kcontact_get_list (void);
++void 				kcontact_load (GSList *files);
++
++#endif
+diff --git a/mail/importers/mail-importer.c b/mail/importers/mail-importer.c
+index aad275483f..e1de752e20 100644
+--- a/mail/importers/mail-importer.c
++++ b/mail/importers/mail-importer.c
+@@ -21,6 +21,7 @@
+  */
+ 
+ #include "mail-importer.h"
++#include "kmail-libs.h"
+ 
+ #include <config.h>
+ #include <errno.h>
+@@ -54,6 +55,12 @@ import_mbox_desc (struct _import_mbox_msg *m)
+ 	return g_strdup (_("Importing mailbox"));
+ }
+ 
++static gchar *
++import_kmail_desc (struct _import_mbox_msg *m)
++{
++       return g_strdup (_("Importing mail and contact from KMail"));
++}
++
+ static struct {
+ 	gchar tag;
+ 	guint32 mozflag;
+@@ -190,7 +197,7 @@ import_mbox_exec (struct _import_mbox_msg *m,
+ 
+ 			camel_mime_parser_step (mp, NULL, NULL);
+ 		}
+-		/* FIXME Not passing a GCancellable or GError here. */
++		/* Not passing a GCancellable or GError here. */
+ 		camel_folder_synchronize_sync (folder, FALSE, NULL, NULL);
+ 		camel_folder_thaw (folder);
+ 		camel_operation_pop_message (m->cancellable);
+@@ -198,7 +205,7 @@ import_mbox_exec (struct _import_mbox_msg *m,
+ 		g_object_unref (mp);
+ 	}
+ fail1:
+-	/* FIXME Not passing a GCancellable or GError here. */
++	/* Not passing a GCancellable or GError here. */
+ 	camel_folder_synchronize_sync (folder, FALSE, NULL, NULL);
+ 	g_object_unref (folder);
+ 	/* 'fd' is freed together with 'mp' */
+@@ -222,6 +229,163 @@ import_mbox_free (struct _import_mbox_msg *m)
+ 	g_free (m->path);
+ }
+ 
++static void
++import_kmail_folder (struct _import_mbox_msg *m,
++                     gchar *k_path_in,
++                     GCancellable *cancellable,
++                     GError **error)
++{
++	const gchar *special_folders []= {"cur", "tmp", "new", NULL};
++	gchar *special_path;
++	const CamelStore *store;
++	CamelFolder *folder;
++	CamelMimeParser *mp = NULL;
++	CamelMessageInfo *info;
++	CamelMimeMessage *msg;
++	guint32 flags = 0;
++
++	gchar *e_uri, *e_path;
++	gchar *k_path;
++	const gchar *d;
++	gchar *mail_url;
++	GDir *dir;
++	struct stat st;
++	gint fd, i;
++
++	e_uri = kuri_to_euri (k_path_in);
++	/* we need to drop some folders, like: Trash */
++	if (!e_uri)
++		return;
++
++	/* In case we using async way in the future */
++	k_path = g_strdup (k_path_in);
++	store = evolution_get_local_store ();
++	e_path = e_uri + strlen (EVOLUTION_LOCAL_BASE) + 1;
++	e_mail_store_create_folder_sync ((CamelStore *)store, e_path, NULL, NULL);
++	folder = e_mail_session_uri_to_folder_sync (
++			m->session, e_uri, CAMEL_STORE_FOLDER_CREATE,
++			cancellable, NULL);
++
++	if (folder == NULL) {
++		g_free (k_path);
++		g_warning ("evolution error: cannot get the folder\n");
++		return;
++	}
++
++	camel_operation_push_message (
++			m->cancellable, _("Importing '%s'"),
++			camel_folder_get_display_name (folder));
++	camel_folder_freeze (folder);
++
++	for (i = 0; special_folders [i]; i++) {
++		camel_operation_progress (m->cancellable, 100*i/3);
++		special_path = g_build_filename (k_path, special_folders[i], NULL);
++		dir = g_dir_open (special_path, 0, NULL);
++		while ((d = g_dir_read_name (dir))) {
++			if ((strcmp (d, ".") == 0) || (strcmp (d, "..") == 0)) {
++				continue;
++			}
++			mail_url = g_build_filename (special_path, d, NULL);
++			if (g_stat (mail_url, &st) == -1) {
++				g_free (mail_url);
++				continue;
++			}
++			if (S_ISREG (st.st_mode)) {
++				fd = g_open (mail_url, O_RDONLY | O_BINARY, 0);
++				g_free (mail_url);
++				if (fd == -1) {
++					continue;
++				}
++				mp = camel_mime_parser_new ();
++				camel_mime_parser_scan_from (mp, FALSE);
++				if (camel_mime_parser_init_with_fd (mp, fd) == -1) {
++					/* will never happen - 0 is unconditionally returned */
++					g_object_unref (mp);
++					continue;
++				}
++				msg = camel_mime_message_new ();
++				if (!camel_mime_part_construct_from_parser_sync (
++						(CamelMimePart *) msg, mp, NULL, NULL)) {
++					/* set exception? */
++					g_object_unref (mp);
++					g_object_unref (msg);
++					continue;
++				}
++				info = camel_message_info_new (NULL);
++				if (strcmp (special_folders[i], "cur") == 0) {
++					flags |= CAMEL_MESSAGE_SEEN;
++				} else if (strcmp (special_folders[i], "tmp") == 0) {
++					flags |= CAMEL_MESSAGE_DELETED; /* Mark the 'tmp' mails as 'deleted' */
++				}
++				camel_message_info_set_flags (info, flags, ~0);
++				camel_folder_append_message_sync (
++					folder, msg, info, NULL,
++					cancellable, error);
++				camel_message_info_unref (info);
++				g_object_unref (msg);
++				g_object_unref (mp);
++			} else {
++				g_free (mail_url);
++			}
++		}
++	}
++	camel_operation_progress (m->cancellable, 100);
++	camel_folder_synchronize_sync (folder, FALSE, NULL, NULL);
++	camel_folder_thaw (folder);
++	camel_operation_pop_message (m->cancellable);
++
++	g_free (k_path);
++}
++
++static void
++import_kmail_exec (struct _import_mbox_msg *m,
++                   GCancellable *cancellable,
++                   GError **error)
++{
++	GSList *list, *l;
++	gchar *folder;
++	struct stat st;
++
++	if (g_stat (m->path, &st) == -1) {
++		g_warning (
++			"cannot find source file to import '%s': %s",
++			m->path, g_strerror (errno));
++		return;
++	}
++
++	if (!S_ISDIR (st.st_mode)) {
++		g_warning (
++			"the source path '%s' is not a directory.",
++			m->path);
++		return;
++	}
++
++	list = kmail_get_folders (m->path);
++	for (l = list; l; l = l->next) {
++		folder = (gchar *) l->data;
++		import_kmail_folder (m, folder, cancellable, NULL);
++	}
++	if (list)
++		g_slist_free_full (list, g_free);
++}
++
++static void
++import_kmail_done (struct _import_mbox_msg *m)
++{
++	if (m->done)
++		m->done (m->done_data, &m->base.error);
++}
++
++static void
++import_kmail_free (struct _import_mbox_msg *m)
++{
++	g_object_unref (m->session);
++	if (m->cancellable)
++		g_object_unref (m->cancellable);
++	g_free (m->uri);
++	g_free (m->path);
++}
++
+ static MailMsgInfo import_mbox_info = {
+ 	sizeof (struct _import_mbox_msg),
+ 	(MailMsgDescFunc) import_mbox_desc,
+@@ -230,6 +394,16 @@ static MailMsgInfo import_mbox_info = {
+ 	(MailMsgFreeFunc) import_mbox_free
+ };
+ 
++/* Only difference with mbox_info is: _exec
++   but I put it into to different info. */
++static MailMsgInfo import_kmail_info = {
++	sizeof (struct _import_mbox_msg),
++	(MailMsgDescFunc) import_kmail_desc,
++	(MailMsgExecFunc) import_kmail_exec,
++	(MailMsgDoneFunc) import_kmail_done,
++	(MailMsgFreeFunc) import_kmail_free
++};
++
+ gint
+ mail_importer_import_mbox (EMailSession *session,
+                            const gchar *path,
+@@ -279,6 +453,55 @@ mail_importer_import_mbox_sync (EMailSession *session,
+ 	mail_msg_unref (m);
+ }
+ 
++gint
++mail_importer_import_kmail (EMailSession *session,
++                            const gchar *path,          /* path is basedir */
++                            const gchar *folderuri,     /* not used now, use it when the user want to port to a certain folder */
++                            GCancellable *cancellable,
++                            void (*done) (gpointer data,
++			                 GError **error),
++                            gpointer data)
++{
++	struct _import_mbox_msg *m;
++	gint id;
++
++	m = mail_msg_new (&import_kmail_info);
++	m->session = g_object_ref (session);
++	m->path = g_strdup (path);
++	m->uri = g_strdup (folderuri);
++	m->done = done;
++	m->done_data = data;
++	if (cancellable)
++		m->cancellable = g_object_ref (cancellable);
++	id = m->base.seq;
++	mail_msg_fast_ordered_push (m);
++
++	return id;
++}
++
++void
++mail_importer_import_kmail_sync (EMailSession *session,
++                                 const gchar *path,
++                                 const gchar *folderuri,
++                                 GCancellable *cancellable)
++{
++	struct _import_mbox_msg *m;
++
++	m = mail_msg_new (&import_kmail_info);
++	m->session = g_object_ref (session);
++	m->path = g_strdup (path);
++	if (folderuri)
++		m->uri = g_strdup (folderuri);
++	else
++		m->uri = NULL;
++	if (cancellable)
++		m->base.cancellable = cancellable;
++	cancellable = m->base.cancellable;
++	import_kmail_exec (m, cancellable, &m->base.error);
++	import_kmail_done (m);
++	mail_msg_unref (m);
++}
++
+ struct _import_folders_data {
+ 	MailImporterSpecial *special_folders;
+ 	EMailSession *session;
+diff --git a/mail/importers/mail-importer.h b/mail/importers/mail-importer.h
+index fe2a1e3ca2..f5d2edfc9e 100644
+--- a/mail/importers/mail-importer.h
++++ b/mail/importers/mail-importer.h
+@@ -38,6 +38,7 @@ void mbox_importer_set_preview_funcs (MboxImporterCreatePreviewFunc create_func,
+ 
+ EImportImporter *elm_importer_peek (void);
+ EImportImporter *pine_importer_peek (void);
++EImportImporter *kmail_importer_peek (void);
+ 
+ /* Defines copied from nsMsgMessageFlags.h in Mozilla source. */
+ /* Evolution only cares about these headers I think */
+@@ -57,6 +58,18 @@ void		mail_importer_import_mbox_sync	(EMailSession *session,
+ 						 const gchar *folderuri,
+ 						 GCancellable *cancellable);
+ 
++gint		mail_importer_import_kmail      (EMailSession *session,
++						 const gchar *path,
++						 const gchar *folderuri,
++						 GCancellable *cancellable,
++						 void (*done)(gpointer data, GError **),
++						 gpointer data);
++
++void		mail_importer_import_kmail_sync (EMailSession *session,
++						 const gchar *path,
++						 const gchar *folderuri,
++						 GCancellable *cancellable);
++
+ struct _MailImporterSpecial {
+ 	const gchar *orig, *new;
+ };
+diff --git a/po/POTFILES.in b/po/POTFILES.in
+index 4c22ce323f..30075b27b5 100644
+--- a/po/POTFILES.in
++++ b/po/POTFILES.in
+@@ -377,6 +377,8 @@ mail/em-vfolder-editor-rule.c
+ mail/filtertypes.xml.in
+ mail/importers/elm-importer.c
+ mail/importers/evolution-mbox-importer.c
++mail/importers/kmail-importer.c
++mail/importers/kmail-libs.c
+ mail/importers/mail-importer.c
+ mail/importers/pine-importer.c
+ mail/mail-autofilter.c
+-- 
+2.15.0
+

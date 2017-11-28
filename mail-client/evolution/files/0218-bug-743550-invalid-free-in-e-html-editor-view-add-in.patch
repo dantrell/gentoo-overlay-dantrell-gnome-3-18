@@ -1,0 +1,26 @@
+From b883cb4e51a2cdd56efcbae0f7406ece9605f26b Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 08:49:22 +0100
+Subject: [PATCH 0218/1800] Bug 743550 - Invalid free in
+ e_html_editor_view_add_inline_image_from_element()
+
+---
+ e-util/e-html-editor-view.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 82c5c388ac..9c244faa5c 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -2531,7 +2531,7 @@ create_part_for_inline_image_from_element_data (const gchar *element_src,
+ 	gssize size;
+ 	gchar *mime_type = NULL;
+ 	const gchar *base64_encoded_data;
+-	guchar *base64_decoded_data;
++	guchar *base64_decoded_data = NULL;
+ 
+ 	base64_encoded_data = strstr (element_src, ";base64,");
+ 	if (!base64_encoded_data)
+-- 
+2.15.0
+

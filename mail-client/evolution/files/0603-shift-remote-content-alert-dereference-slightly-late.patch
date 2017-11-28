@@ -1,0 +1,30 @@
+From a9bab84e24581618dc4bddec0bbeaab5d4c03f34 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 30 Mar 2015 16:47:24 +0200
+Subject: [PATCH 0603/1800] Shift remote content alert dereference slightly
+ later in the code
+
+---
+ mail/e-mail-reader.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index c888f21be4..a183bc1db4 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -5266,10 +5266,11 @@ mail_reader_display_load_changed_cb (EMailDisplay *mail_display,
+ 		e_alert_add_widget (alert, button); /* button is consumed by the alert */
+ 		preview_pane = e_mail_reader_get_preview_pane (reader);
+ 		e_alert_sink_submit_alert (E_ALERT_SINK (preview_pane), alert);
+-		g_object_unref (alert);
+ 
+ 		priv->remote_content_alert = alert;
+ 		g_object_add_weak_pointer (G_OBJECT (priv->remote_content_alert), &priv->remote_content_alert);
++
++		g_object_unref (alert);
+ 	}
+ }
+ 
+-- 
+2.15.0
+

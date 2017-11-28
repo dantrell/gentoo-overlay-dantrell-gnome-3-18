@@ -1,0 +1,55 @@
+From 29c3a604dd45901cf7ac781e3bb89eae9d9de10c Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 26 Feb 2016 12:28:42 +0100
+Subject: [PATCH 0905/1800] EHTMLEditorSelection - Wrapping of a block can
+ leave the block unwrapped
+
+---
+ .../e-html-editor-selection-dom-functions.c        | 28 +++++++++++++++++++---
+ 1 file changed, 25 insertions(+), 3 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 19b953dbe9..755ce90b39 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -2748,12 +2748,34 @@ wrap_lines (WebKitDOMDocument *document,
+ 		} else if (webkit_dom_node_get_next_sibling (node)) {
+ 			node = webkit_dom_node_get_next_sibling (node);
+ 		} else {
++			WebKitDOMNode *tmp_parent;
++
+ 			if (webkit_dom_node_is_equal_node (node, start_node))
+ 				break;
+ 
+-			node = webkit_dom_node_get_parent_node (node);
+-			if (node)
+-				node = webkit_dom_node_get_next_sibling (node);
++			/* Find a next node that we can process. */
++			tmp_parent = webkit_dom_node_get_parent_node (node);
++			if (tmp_parent && webkit_dom_node_get_next_sibling (tmp_parent))
++				node = webkit_dom_node_get_next_sibling (tmp_parent);
++			else {
++				WebKitDOMNode *tmp;
++
++				tmp = tmp_parent;
++				/* Find a node that is not a start node (that would mean
++				 * that we already processed the whole block) and it has
++				 * a sibling that we can process. */
++				while (tmp && !webkit_dom_node_is_equal_node (tmp, start_node) &&
++				       !webkit_dom_node_get_next_sibling (tmp)) {
++					tmp = webkit_dom_node_get_parent_node (tmp);
++				}
++
++				/* If we found a node to process, let's process its
++				 * sibling, otherwise give up. */
++				if (tmp)
++					node = webkit_dom_node_get_next_sibling (tmp);
++				else
++					break;
++			}
+ 		}
+ 	}
+ 
+-- 
+2.15.0
+

@@ -1,0 +1,76 @@
+From bf5431aee312bfd31e7dc60345bffb2d5a3075a4 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 9 Feb 2015 15:49:43 +0100
+Subject: [PATCH 0268/1800] Bug 742607 - Pick identity from recipients with
+ 'Edit as New Message'
+
+Also unset internal flag to 'set_signature_from_message', to make sure
+that the user's changes in the signature combo will be reflected from
+the beginning, not for the second and more tries.
+---
+ composer/e-composer-private.c |  7 +++++--
+ composer/e-msg-composer.c     | 10 +++++++++-
+ 2 files changed, 14 insertions(+), 3 deletions(-)
+
+diff --git a/composer/e-composer-private.c b/composer/e-composer-private.c
+index 735cf5a2f9..9db3bc6a00 100644
+--- a/composer/e-composer-private.c
++++ b/composer/e-composer-private.c
+@@ -931,14 +931,14 @@ insert:
+ 		NULL,
+ 		NULL);
+ 
+-	if (is_message_from_edit_as_new && composer->priv->set_signature_from_message && result) {
++	if (is_message_from_edit_as_new && composer->priv->set_signature_from_message && extension_result) {
+ 		const gchar *id;
+ 		gsize length = 0;
+ 
+ 		id = g_variant_get_string (extension_result, &length);
+ 		if (length > 0 && id && *id) {
+-			gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo_box), id);
+ 			composer->priv->set_signature_from_message = FALSE;
++			gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo_box), id);
+ 		}
+ 		g_object_unref (extension_result);
+ 	}
+@@ -967,6 +967,9 @@ insert:
+ 			view, "size-allocate",
+ 			G_CALLBACK (composer_size_allocate_cb), NULL);
+ exit:
++	/* Make sure the flag will be unset and won't influence user's choice */
++	composer->priv->set_signature_from_message = FALSE;
++
+ 	g_object_unref (composer);
+ }
+ 
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 77948778d0..945e5fb87a 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -45,6 +45,8 @@
+ 
+ #include <shell/e-shell.h>
+ 
++#include <libemail-engine/libemail-engine.h>
++
+ typedef struct _AsyncContext AsyncContext;
+ 
+ struct _AsyncContext {
+@@ -3292,7 +3294,13 @@ e_msg_composer_new_with_message (EShell *shell,
+ 		identity_uid = (gchar *) camel_medium_get_header (
+ 			CAMEL_MEDIUM (message), "X-Evolution-Account");
+ 	}
+-	if (identity_uid != NULL) {
++	if (!identity_uid) {
++		source = em_utils_guess_mail_identity_with_recipients (
++			e_shell_get_registry (shell), message, NULL, NULL);
++		if (source)
++			identity_uid = e_source_dup_uid (source);
++	}
++	if (identity_uid != NULL && !source) {
+ 		identity_uid = g_strstrip (g_strdup (identity_uid));
+ 		source = e_composer_header_table_ref_source (
+ 			table, identity_uid);
+-- 
+2.15.0
+

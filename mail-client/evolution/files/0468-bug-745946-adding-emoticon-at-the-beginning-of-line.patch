@@ -1,0 +1,44 @@
+From 00871cf4a2bfa3ca4103eb61e36e81d48731fbf8 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 30 Mar 2015 11:39:13 +0200
+Subject: [PATCH 0468/1800] Bug 745946 - Adding emoticon at the beginning of
+ line adds a line break too
+
+When saving the selection start marker on the end of block always put
+it before the BR element if presented.
+---
+ web-extensions/e-html-editor-selection-dom-functions.c | 18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index 3415bdccf0..092008ed14 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -1567,10 +1567,20 @@ dom_selection_save (WebKitDOMDocument *document)
+ 				NULL);
+ 			goto insert_end_marker;
+ 		} else if (!webkit_dom_node_get_next_sibling (container)) {
+-			marker_node = webkit_dom_node_append_child (
+-				container,
+-				WEBKIT_DOM_NODE (start_marker),
+-				NULL);
++			WebKitDOMNode *tmp;
++
++			tmp = webkit_dom_node_get_last_child (container);
++			if (tmp && WEBKIT_DOM_IS_HTML_BR_ELEMENT (tmp))
++				marker_node = webkit_dom_node_insert_before (
++					container,
++					WEBKIT_DOM_NODE (start_marker),
++					tmp,
++					NULL);
++			else
++				marker_node = webkit_dom_node_append_child (
++					container,
++					WEBKIT_DOM_NODE (start_marker),
++					NULL);
+ 			goto insert_end_marker;
+ 		} else {
+ 			if (webkit_dom_node_get_first_child (container)) {
+-- 
+2.15.0
+

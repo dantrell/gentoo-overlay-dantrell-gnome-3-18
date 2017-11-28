@@ -1,0 +1,25 @@
+From 034894c7d1a7f92d238da0da5f4cfce67b1d44d0 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marek=20=C4=8Cernock=C3=BD?= <marek@manet.cz>
+Date: Thu, 12 Mar 2015 11:22:07 +0100
+Subject: [PATCH 0499/1800] Updated Czech translation
+
+---
+ po/cs.po | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/po/cs.po b/po/cs.po
+index 2a47d26b0f..ffaf6455be 100644
+--- a/po/cs.po
++++ b/po/cs.po
+@@ -22090,7 +22090,7 @@ msgstr "_Automaticky spustit, když je upravován nový e-mail"
+ #: ../plugins/external-editor/external-editor.c:469
+ #: ../plugins/external-editor/external-editor.c:471
+ msgid "Compose in External Editor"
+-msgstr "Tvořit zprávu v externím editoru"
++msgstr "Psát zprávu v externím editoru"
+ 
+ #: ../plugins/external-editor/org-gnome-external-editor.eplug.xml.h:1
+ msgid "External Editor"
+-- 
+2.15.0
+

@@ -1,0 +1,27 @@
+From 1d9c3bb5860f4e867457057713df7f6439c38b78 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 26 Nov 2014 16:00:39 +0100
+Subject: [PATCH 0110/1800] Bug 740754 - Opening just Draft with attachments
+ shows HTML code
+
+Ask for content type of part otherwise we will pass the HTML code as
+a plain text one.
+---
+ composer/e-msg-composer.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 3604f2902e..1c66275dd1 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -3078,6 +3078,7 @@ handle_multipart (EMsgComposer *composer,
+ 			editor = e_msg_composer_get_editor (composer);
+ 			is_message_from_draft = e_html_editor_view_is_message_from_draft (
+ 				e_html_editor_get_view (editor));
++			is_html = camel_content_type_is (content_type, "text", "html");
+ 
+ 			/* Since the first part is not multipart/alternative,
+ 			 * this must be the body. */
+-- 
+2.15.0
+

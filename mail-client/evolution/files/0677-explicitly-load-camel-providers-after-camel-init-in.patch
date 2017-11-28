@@ -1,0 +1,40 @@
+From b7d2055c44fcf04512614beda7447aa90484a1ff Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 16 Apr 2015 15:19:58 +0200
+Subject: [PATCH 0677/1800] Explicitly load camel providers after camel_init()
+ in mail_backend_constructed()
+
+---
+ mail/e-mail-backend.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/mail/e-mail-backend.c b/mail/e-mail-backend.c
+index 1ee0a1fb1c..701e202b88 100644
+--- a/mail/e-mail-backend.c
++++ b/mail/e-mail-backend.c
+@@ -1154,6 +1154,7 @@ mail_backend_constructed (GObject *object)
+ 	MailFolderCache *folder_cache;
+ 	ESourceRegistry *registry;
+ 	gchar *config_filename;
++	GList *providers;
+ 
+ 	priv = E_MAIL_BACKEND_GET_PRIVATE (object);
+ 
+@@ -1163,6 +1164,14 @@ mail_backend_constructed (GObject *object)
+ 	if (camel_init (e_get_user_data_dir (), TRUE) != 0)
+ 		exit (0);
+ 
++	providers = camel_provider_list (TRUE);
++	if (!providers) {
++		g_warning ("%s: No camel providers loaded, exiting...", G_STRFUNC);
++		exit (1);
++	}
++
++	g_list_free (providers);
++
+ 	registry = e_shell_get_registry (shell);
+ 	priv->session = e_mail_ui_session_new (registry);
+ 
+-- 
+2.15.0
+

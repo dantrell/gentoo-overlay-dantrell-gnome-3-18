@@ -1,0 +1,24 @@
+From 24d710a0a5d8a5d29db480b03937d240e0f0ba8d Mon Sep 17 00:00:00 2001
+From: Andre Klapper <a9016009@gmx.de>
+Date: Tue, 10 Mar 2015 21:48:21 +0100
+Subject: [PATCH 0483/1800] ...and add another new user doc files to Makefile
+
+---
+ help/Makefile.am | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/help/Makefile.am b/help/Makefile.am
+index 60c1dc1514..8a67ebdd85 100644
+--- a/help/Makefile.am
++++ b/help/Makefile.am
+@@ -139,6 +139,7 @@ HELP_FILES = \
+ 	mail-composer-priority.page \
+ 	mail-composer-reply.page \
+ 	mail-composer-search.page \
++	mail-composer-send-account-overrides.page \
+ 	mail-composer-several-recipients.page \
+ 	mail-composer-spellcheck.page \
+ 	mail-composer-write-new-message.page \
+-- 
+2.15.0
+

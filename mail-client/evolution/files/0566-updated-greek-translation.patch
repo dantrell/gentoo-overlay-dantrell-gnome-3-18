@@ -1,0 +1,2771 @@
+From 0d2118d4d59983d49901d1496572e20c39837b55 Mon Sep 17 00:00:00 2001
+From: Tom Tryfonidis <tomtryf@gmail.com>
+Date: Mon, 23 Mar 2015 12:25:23 +0200
+Subject: [PATCH 0566/1800] Updated Greek translation
+
+---
+ po/el.po | 1009 ++++++++++++++++++++++++++++++++------------------------------
+ 1 file changed, 513 insertions(+), 496 deletions(-)
+
+diff --git a/po/el.po b/po/el.po
+index f5aed6906e..7e46fe8062 100644
+--- a/po/el.po
++++ b/po/el.po
+@@ -46,8 +46,8 @@ msgstr ""
+ "Project-Id-Version: evolution.HEAD\n"
+ "Report-Msgid-Bugs-To: http://bugzilla.gnome.org/enter_bug.cgi?product=evolution&keywords=I18N"
+ "+L10N&component=Miscellaneous\n"
+-"POT-Creation-Date: 2015-03-11 05:20+0000\n"
+-"PO-Revision-Date: 2015-03-11 14:16+0200\n"
++"POT-Creation-Date: 2015-03-23 09:47+0000\n"
++"PO-Revision-Date: 2015-03-23 12:20+0200\n"
+ "Last-Translator: Tom Tryfonidis <tomtryf@gmail.com>\n"
+ "Language-Team: team@gnome.gr\n"
+ "Language: el\n"
+@@ -566,13 +566,13 @@ msgstr "Επιλογές"
+ #: ../calendar/gui/dialogs/alarm-list-dialog.ui.h:2
+ #: ../calendar/gui/dialogs/e-delegate-dialog.ui.h:2
+ #: ../calendar/gui/dialogs/goto-dialog.ui.h:15 ../calendar/gui/dialogs/recurrence-page.c:2322
+-#: ../composer/e-composer-actions.c:267 ../e-util/e-activity-bar.c:340
++#: ../composer/e-composer-actions.c:214 ../e-util/e-activity-bar.c:340
+ #: ../e-util/e-attachment-dialog.c:311 ../e-util/e-attachment-store.c:491
+ #: ../e-util/e-attachment-store.c:635 ../e-util/e-attachment-view.c:370
+ #: ../e-util/e-categories-dialog.c:82 ../e-util/e-category-editor.c:138
+ #: ../e-util/e-category-editor.c:208 ../e-util/e-charset-combo-box.c:101
+ #: ../e-util/e-color-chooser-widget.c:127 ../e-util/e-filter-datespec.c:291
+-#: ../e-util/e-html-editor-actions.c:484 ../e-util/e-html-editor-actions.c:578
++#: ../e-util/e-html-editor-actions.c:607 ../e-util/e-html-editor-actions.c:701
+ #: ../e-util/e-image-chooser-dialog.c:171 ../e-util/e-mail-signature-script-dialog.c:365
+ #: ../e-util/e-passwords.c:470 ../e-util/e-rule-context.c:815 ../e-util/e-rule-editor.c:180
+ #: ../e-util/e-rule-editor.c:282 ../e-util/e-rule-editor.c:776
+@@ -602,8 +602,8 @@ msgstr "Άκ_υρο"
+ #: ../addressbook/gui/contact-editor/contact-editor.ui.h:55
+ #: ../addressbook/gui/contact-list-editor/contact-list-editor.ui.h:18
+ #: ../addressbook/gui/widgets/eab-contact-merging.c:721 ../calendar/calendar.error.xml.h:47
+-#: ../calendar/gui/dialogs/comp-editor.c:1277 ../composer/e-composer-actions.c:268
+-#: ../composer/e-composer-actions.c:408 ../e-util/e-attachment-store.c:636
++#: ../calendar/gui/dialogs/comp-editor.c:1277 ../composer/e-composer-actions.c:215
++#: ../composer/e-composer-actions.c:355 ../e-util/e-attachment-store.c:636
+ #: ../e-util/e-mail-signature-script-dialog.c:369 ../e-util/e-web-view.c:3132
+ #: ../e-util/gal-view-instance-save-as-dialog.c:270 ../shell/e-shell-content.c:660
+ #: ../shell/e-shell-utils.c:135 ../smime/gui/certificate-manager.c:653
+@@ -652,7 +652,7 @@ msgid "Show Notes"
+ msgstr "Εμφάνιση σημειώσεων"
+ 
+ #: ../addressbook/gui/contact-editor/e-contact-editor.c:257
+-#: ../calendar/gui/dialogs/comp-editor.c:1298 ../e-util/e-html-editor-actions.c:999
++#: ../calendar/gui/dialogs/comp-editor.c:1298 ../e-util/e-html-editor-actions.c:1122
+ msgid "_Undo"
+ msgstr "Α_ναίρεση"
+ 
+@@ -662,7 +662,7 @@ msgid "Undo"
+ msgstr "Αναίρεση"
+ 
+ #: ../addressbook/gui/contact-editor/e-contact-editor.c:264
+-#: ../calendar/gui/dialogs/comp-editor.c:1305 ../e-util/e-html-editor-actions.c:985
++#: ../calendar/gui/dialogs/comp-editor.c:1305 ../e-util/e-html-editor-actions.c:1108
+ msgid "_Redo"
+ msgstr "Ακύ_ρωση αναίρεσης"
+ 
+@@ -696,7 +696,7 @@ msgstr "Παρακαλώ επιλέξτε μια εικόνα για αυτή τ
+ 
+ #: ../addressbook/gui/contact-editor/e-contact-editor.c:3684
+ #: ../e-util/e-attachment-store.c:489 ../e-util/e-category-editor.c:146
+-#: ../e-util/e-html-editor-actions.c:485 ../e-util/e-html-editor-actions.c:579
++#: ../e-util/e-html-editor-actions.c:608 ../e-util/e-html-editor-actions.c:702
+ #: ../e-util/e-image-chooser-dialog.c:174 ../plugins/face/face.c:292
+ #: ../shell/e-shell-utils.c:71 ../smime/gui/certificate-manager.c:954
+ msgid "_Open"
+@@ -1384,7 +1384,7 @@ msgstr "Είστε βέβαιοι ότι θέλετε να διαγραφεί η
+ #: ../modules/calendar/e-cal-shell-view-actions.c:1434
+ #: ../modules/calendar/e-memo-shell-view-actions.c:635
+ #: ../modules/calendar/e-task-shell-view-actions.c:788
+-#: ../modules/mail/e-mail-shell-view-actions.c:1621 ../shell/e-shell-window-actions.c:943
++#: ../modules/mail/e-mail-shell-view-actions.c:1622 ../shell/e-shell-window-actions.c:943
+ #: ../smime/gui/certificate-manager.c:1659 ../smime/gui/smime-ui.ui.h:10
+ msgid "_Delete"
+ msgstr "_Διαγραφή"
+@@ -1586,7 +1586,7 @@ msgstr "Σ_μίκρυνση"
+ 
+ #. Search button
+ #: ../addressbook/gui/widgets/e-contact-map-window.c:450
+-#: ../e-util/e-html-editor-actions.c:1978 ../e-util/e-html-editor-find-dialog.c:195
++#: ../e-util/e-html-editor-actions.c:2101 ../e-util/e-html-editor-find-dialog.c:195
+ #: ../shell/e-shell-window-actions.c:1020
+ msgid "_Find"
+ msgstr "Ανεύ_ρεση"
+@@ -1907,7 +1907,7 @@ msgstr "Χρονική _μετάθεση υπενθύμισης"
+ #: ../calendar/alarm-notify/alarm-notify.ui.h:4
+ #: ../calendar/gui/dialogs/alarm-list-dialog.ui.h:6 ../calendar/gui/dialogs/comp-editor.c:1321
+ #: ../calendar/gui/dialogs/event-page.ui.h:24 ../calendar/gui/dialogs/recurrence-page.ui.h:20
+-#: ../calendar/gui/dialogs/task-page.ui.h:32 ../e-util/e-html-editor-actions.c:1008
++#: ../calendar/gui/dialogs/task-page.ui.h:32 ../e-util/e-html-editor-actions.c:1131
+ #: ../e-util/e-mail-signature-manager.c:357 ../e-util/filter.ui.h:17
+ #: ../mail/e-mail-account-manager.c:727 ../mail/e-mail-browser.c:170
+ #: ../mail/e-mail-label-manager.c:382 ../mail/mail-config.ui.h:59
+@@ -2693,7 +2693,7 @@ msgstr "Ιδιωτικό"
+ #: ../calendar/gui/caltypes.xml.h:11 ../calendar/gui/dialogs/task-page.ui.h:6
+ #: ../calendar/gui/e-cal-list-view.c:248 ../calendar/gui/e-cal-model.c:289
+ #: ../calendar/gui/e-task-table.c:500 ../calendar/gui/memotypes.xml.h:12
+-#: ../e-util/e-html-editor-page-dialog.c:114 ../e-util/e-send-options.ui.h:7
++#: ../e-util/e-html-editor-page-dialog.c:116 ../e-util/e-send-options.ui.h:7
+ msgid "Confidential"
+ msgstr "Εμπιστευτικό"
+ 
+@@ -2975,7 +2975,7 @@ msgstr "Αδύνατος ο συγχρονισμός με τον διακομι
+ #. == Button box ==
+ #: ../calendar/gui/dialogs/comp-editor.c:1221 ../calendar/gui/dialogs/event-editor.c:116
+ #: ../calendar/gui/dialogs/event-editor.c:310 ../calendar/gui/dialogs/event-page.ui.h:29
+-#: ../composer/e-composer-actions.c:387 ../e-util/e-html-editor-dialog.c:196
++#: ../composer/e-composer-actions.c:334 ../e-util/e-html-editor-dialog.c:196
+ #: ../e-util/e-mail-signature-editor.c:295 ../e-util/e-name-selector-dialog.c:551
+ #: ../e-util/e-preferences-window.c:388 ../e-util/e-table-field-chooser-dialog.c:207
+ #: ../mail/e-mail-browser.c:126 ../mail/em-folder-properties.c:418
+@@ -2992,7 +2992,7 @@ msgstr "Κλείσιμο του τρέχοντος παραθύρου"
+ 
+ #. copy menu item
+ #: ../calendar/gui/dialogs/comp-editor.c:1228 ../e-util/e-focus-tracker.c:775
+-#: ../e-util/e-html-editor-actions.c:964 ../e-util/e-text.c:2089 ../e-util/e-web-view.c:339
++#: ../e-util/e-html-editor-actions.c:1087 ../e-util/e-text.c:2089 ../e-util/e-web-view.c:339
+ #: ../mail/e-mail-browser.c:133 ../shell/e-shell-window-actions.c:929
+ msgid "_Copy"
+ msgstr "Αντι_γραφή"
+@@ -3006,7 +3006,7 @@ msgstr "Αντιγραφή της επιλογής"
+ 
+ #. cut menu item
+ #: ../calendar/gui/dialogs/comp-editor.c:1235 ../e-util/e-focus-tracker.c:770
+-#: ../e-util/e-html-editor-actions.c:971 ../e-util/e-text.c:2075 ../mail/e-mail-browser.c:140
++#: ../e-util/e-html-editor-actions.c:1094 ../e-util/e-text.c:2075 ../mail/e-mail-browser.c:140
+ #: ../shell/e-shell-window-actions.c:936
+ msgid "Cu_t"
+ msgstr "_Αποκοπή"
+@@ -3030,7 +3030,7 @@ msgstr "Προβολή βοήθειας"
+ 
+ #. paste menu item
+ #: ../calendar/gui/dialogs/comp-editor.c:1256 ../e-util/e-focus-tracker.c:780
+-#: ../e-util/e-html-editor-actions.c:978 ../e-util/e-text.c:2101 ../mail/e-mail-browser.c:147
++#: ../e-util/e-html-editor-actions.c:1101 ../e-util/e-text.c:2101 ../mail/e-mail-browser.c:147
+ #: ../shell/e-shell-window-actions.c:964
+ msgid "_Paste"
+ msgstr "Επι_κόλληση"
+@@ -3042,7 +3042,7 @@ msgstr "Επι_κόλληση"
+ msgid "Paste the clipboard"
+ msgstr "Επικόλληση του προχείρου"
+ 
+-#: ../calendar/gui/dialogs/comp-editor.c:1263 ../composer/e-composer-actions.c:441
++#: ../calendar/gui/dialogs/comp-editor.c:1263 ../composer/e-composer-actions.c:388
+ #: ../mail/e-mail-reader.c:2262 ../modules/addressbook/e-book-shell-view-actions.c:1205
+ #: ../modules/addressbook/e-book-shell-view-actions.c:1219
+ msgid "_Print..."
+@@ -3069,7 +3069,7 @@ msgid "Save current changes and close editor"
+ msgstr "Αποθήκευση τρεχουσών αλλαγών και κλείσιμο επεξεργαστή"
+ 
+ #: ../calendar/gui/dialogs/comp-editor.c:1291 ../e-util/e-focus-tracker.c:790
+-#: ../e-util/e-html-editor-actions.c:992 ../e-util/e-web-view.c:349
++#: ../e-util/e-html-editor-actions.c:1115 ../e-util/e-web-view.c:349
+ #: ../mail/e-mail-browser.c:154 ../shell/e-shell-window-actions.c:1041
+ msgid "Select _All"
+ msgstr "Επιλογή ό_λων"
+@@ -3084,31 +3084,31 @@ msgstr "Επιλογή όλου του κειμένου"
+ msgid "_Classification"
+ msgstr "Δια_βάθμιση"
+ 
+-#: ../calendar/gui/dialogs/comp-editor.c:1328 ../e-util/e-html-editor-actions.c:1015
++#: ../calendar/gui/dialogs/comp-editor.c:1328 ../e-util/e-html-editor-actions.c:1138
+ #: ../e-util/e-mail-signature-editor.c:309 ../mail/e-mail-browser.c:163
+ #: ../shell/e-shell-window-actions.c:1078
+ msgid "_File"
+ msgstr "_Αρχείο"
+ 
+-#: ../calendar/gui/dialogs/comp-editor.c:1342 ../e-util/e-html-editor-actions.c:1036
++#: ../calendar/gui/dialogs/comp-editor.c:1342 ../e-util/e-html-editor-actions.c:1159
+ msgid "_Insert"
+ msgstr "_Εισαγωγή"
+ 
+-#: ../calendar/gui/dialogs/comp-editor.c:1349 ../composer/e-composer-actions.c:431
++#: ../calendar/gui/dialogs/comp-editor.c:1349 ../composer/e-composer-actions.c:378
+ msgid "_Options"
+ msgstr "Επι_λογές"
+ 
+-#: ../calendar/gui/dialogs/comp-editor.c:1356 ../e-util/e-html-editor-actions.c:1057
++#: ../calendar/gui/dialogs/comp-editor.c:1356 ../e-util/e-html-editor-actions.c:1180
+ #: ../mail/e-mail-browser.c:177 ../shell/e-shell-window-actions.c:1121
+ #: ../smime/gui/certificate-manager.c:1649 ../smime/gui/smime-ui.ui.h:5
+ msgid "_View"
+ msgstr "_Προβολή"
+ 
+-#: ../calendar/gui/dialogs/comp-editor.c:1366 ../composer/e-composer-actions.c:380
++#: ../calendar/gui/dialogs/comp-editor.c:1366 ../composer/e-composer-actions.c:327
+ msgid "_Attachment..."
+ msgstr "_Συνημμένο..."
+ 
+-#: ../calendar/gui/dialogs/comp-editor.c:1368 ../composer/e-composer-actions.c:382
++#: ../calendar/gui/dialogs/comp-editor.c:1368 ../composer/e-composer-actions.c:329
+ #: ../e-util/e-attachment-view.c:412
+ msgid "Attach a file"
+ msgstr "Επισύναψη αρχείου"
+@@ -3185,7 +3185,7 @@ msgstr "Πεδίο _τύπου"
+ msgid "Toggles whether the Attendee Type is displayed"
+ msgstr "Εναλλαγή της προβολής του πεδίου τύπου παρευρισκομένου"
+ 
+-#: ../calendar/gui/dialogs/comp-editor.c:2232 ../composer/e-composer-actions.c:665
++#: ../calendar/gui/dialogs/comp-editor.c:2232 ../composer/e-composer-actions.c:612
+ msgid "Attach"
+ msgstr "Επισύναψη"
+ 
+@@ -3441,7 +3441,7 @@ msgstr "_Τοποθεσία:"
+ 
+ #: ../calendar/gui/dialogs/event-page.ui.h:12 ../calendar/gui/dialogs/memo-page.ui.h:2
+ #: ../calendar/gui/dialogs/task-page.ui.h:29 ../e-util/e-attachment-dialog.c:356
+-#: ../e-util/e-html-editor-image-dialog.c:514 ../e-util/e-html-editor-link-dialog.c:367
++#: ../e-util/e-html-editor-image-dialog.c:558 ../e-util/e-html-editor-link-dialog.c:367
+ msgid "_Description:"
+ msgstr "_Περιγραφή:"
+ 
+@@ -7134,170 +7134,165 @@ msgstr "Ειρηνικός/Γουάλις"
+ msgid "Pacific/Yap"
+ msgstr "Ειρηνικός/ Γιάπ"
+ 
+-#: ../composer/e-composer-actions.c:63 ../mail/em-utils.c:131
+-#: ../modules/mailto-handler/evolution-mailto-handler.c:148
+-msgid "_Do not show this message again"
+-msgstr "Να μην εμφανιστεί _ξανά αυτό το μήνυμα"
+-
+-#: ../composer/e-composer-actions.c:265
++#: ../composer/e-composer-actions.c:212
+ msgid "Save as..."
+ msgstr "Αποθήκευση ως..."
+ 
+-#: ../composer/e-composer-actions.c:389
++#: ../composer/e-composer-actions.c:336
+ msgid "Close the current file"
+ msgstr "Κλείσιμο του τρέχοντος αρχείου"
+ 
+-#: ../composer/e-composer-actions.c:394
++#: ../composer/e-composer-actions.c:341
+ msgid "New _Message"
+ msgstr "Νέο _Μήνυμα"
+ 
+-#: ../composer/e-composer-actions.c:396
++#: ../composer/e-composer-actions.c:343
+ msgid "Open New Message window"
+ msgstr "Άνοιγμα παραθύρου νέου μηνύματος"
+ 
+-#: ../composer/e-composer-actions.c:401 ../shell/e-shell-window-actions.c:978
++#: ../composer/e-composer-actions.c:348 ../shell/e-shell-window-actions.c:978
+ msgid "_Preferences"
+ msgstr "_Προτιμήσεις"
+ 
+-#: ../composer/e-composer-actions.c:403 ../shell/e-shell-window-actions.c:980
++#: ../composer/e-composer-actions.c:350 ../shell/e-shell-window-actions.c:980
+ msgid "Configure Evolution"
+ msgstr "Ρύθμιση Evolution"
+ 
+-#: ../composer/e-composer-actions.c:410
++#: ../composer/e-composer-actions.c:357
+ msgid "Save the current file"
+ msgstr "Αποθήκευση του τρέχοντος αρχείου"
+ 
+-#: ../composer/e-composer-actions.c:415
++#: ../composer/e-composer-actions.c:362
+ msgid "Save _As..."
+ msgstr "Αποθήκευση _ως..."
+ 
+-#: ../composer/e-composer-actions.c:417
++#: ../composer/e-composer-actions.c:364
+ msgid "Save the current file with a different name"
+ msgstr "Αποθήκευση του τρέχοντος αρχείου με διαφορετικό όνομα"
+ 
+-#: ../composer/e-composer-actions.c:424
++#: ../composer/e-composer-actions.c:371
+ msgid "Character _Encoding"
+ msgstr "_Κωδικοποίηση χαρακτήρων"
+ 
+-#: ../composer/e-composer-actions.c:448
++#: ../composer/e-composer-actions.c:395
+ msgid "Print Pre_view"
+ msgstr "_Προεπισκόπηση εκτύπωσης"
+ 
+-#: ../composer/e-composer-actions.c:455
++#: ../composer/e-composer-actions.c:402
+ msgid "Save as _Draft"
+ msgstr "Αποθήκευση ως πρό_χειρο"
+ 
+-#: ../composer/e-composer-actions.c:457
++#: ../composer/e-composer-actions.c:404
+ msgid "Save as draft"
+ msgstr "Αποθήκευση ως πρόχειρο"
+ 
+-#: ../composer/e-composer-actions.c:462
++#: ../composer/e-composer-actions.c:409
+ msgid "S_end"
+ msgstr "Απο_στολή"
+ 
+-#: ../composer/e-composer-actions.c:464
++#: ../composer/e-composer-actions.c:411
+ msgid "Send this message"
+ msgstr "Αποστολή του μηνύματος"
+ 
+-#: ../composer/e-composer-actions.c:472
++#: ../composer/e-composer-actions.c:419
+ msgid "PGP _Encrypt"
+ msgstr "_Κρυπτογράφηση PGP"
+ 
+-#: ../composer/e-composer-actions.c:474
++#: ../composer/e-composer-actions.c:421
+ msgid "Encrypt this message with PGP"
+ msgstr "Κρυπτογραφήστε αυτό το μήνυμα με PGP"
+ 
+-#: ../composer/e-composer-actions.c:480
++#: ../composer/e-composer-actions.c:427
+ msgid "PGP _Sign"
+ msgstr "Υπογρα_φή PGP"
+ 
+-#: ../composer/e-composer-actions.c:482
++#: ../composer/e-composer-actions.c:429
+ msgid "Sign this message with your PGP key"
+ msgstr "Υπογράψτε αυτό το μήνυμα με το κλειδί PGP"
+ 
+-#: ../composer/e-composer-actions.c:488
++#: ../composer/e-composer-actions.c:435
+ msgid "_Picture Gallery"
+ msgstr "_Συλλογή εικόνων"
+ 
+-#: ../composer/e-composer-actions.c:490
++#: ../composer/e-composer-actions.c:437
+ msgid "Show a collection of pictures that you can drag to your message"
+ msgstr "Εμφανίζει μια συλλογή εικόνων που μπορείτε να σύρετε στο μήνυμά σας"
+ 
+-#: ../composer/e-composer-actions.c:496
++#: ../composer/e-composer-actions.c:443
+ msgid "_Prioritize Message"
+ msgstr "Αλλαγή _προτεραιότητας μηνύματος"
+ 
+-#: ../composer/e-composer-actions.c:498
++#: ../composer/e-composer-actions.c:445
+ msgid "Set the message priority to high"
+ msgstr "Ορισμός της προτεραιότητας του μηνύματος σε υψηλή"
+ 
+-#: ../composer/e-composer-actions.c:504
++#: ../composer/e-composer-actions.c:451
+ msgid "Re_quest Read Receipt"
+ msgstr "Αίτηση _βεβαίωσης ανάγνωσης"
+ 
+-#: ../composer/e-composer-actions.c:506
++#: ../composer/e-composer-actions.c:453
+ msgid "Get delivery notification when your message is read"
+ msgstr "Έλεγχος για λήψη ειδοποίησης παράδοσης όταν διαβαστεί το μήνυμα σας"
+ 
+-#: ../composer/e-composer-actions.c:512
++#: ../composer/e-composer-actions.c:459
+ msgid "S/MIME En_crypt"
+ msgstr "Κρυπτογρά_φηση S/MIME"
+ 
+-#: ../composer/e-composer-actions.c:514
++#: ../composer/e-composer-actions.c:461
+ msgid "Encrypt this message with your S/MIME Encryption Certificate"
+ msgstr "Κρυπτογραφήστε αυτό το μήνυμα με την πιστοποιημένη κρυπτογράφηση S/MIME"
+ 
+-#: ../composer/e-composer-actions.c:520
++#: ../composer/e-composer-actions.c:467
+ msgid "S/MIME Sig_n"
+ msgstr "Υπογρα_φή S/MIME"
+ 
+-#: ../composer/e-composer-actions.c:522
++#: ../composer/e-composer-actions.c:469
+ msgid "Sign this message with your S/MIME Signature Certificate"
+ msgstr "Υπογράψτε αυτό το μήνυμα με την πιστοποιημένη υπογραφή S/MIME"
+ 
+-#: ../composer/e-composer-actions.c:576 ../data/org.gnome.evolution.mail.gschema.xml.in.h:13
++#: ../composer/e-composer-actions.c:523 ../data/org.gnome.evolution.mail.gschema.xml.in.h:13
+ msgid "Unicode smileys"
+ msgstr "Μειδιάματα Unicode"
+ 
+-#: ../composer/e-composer-actions.c:578 ../data/org.gnome.evolution.mail.gschema.xml.in.h:14
++#: ../composer/e-composer-actions.c:525 ../data/org.gnome.evolution.mail.gschema.xml.in.h:14
+ msgid "Use Unicode characters for smileys."
+ msgstr "Χρήση χαρακτήρων Unicode για μειδιάματα."
+ 
+-#: ../composer/e-composer-actions.c:584
++#: ../composer/e-composer-actions.c:531
+ msgid "_Bcc Field"
+ msgstr "_Πεδίο Κρυφής κοινοποίησης"
+ 
+-#: ../composer/e-composer-actions.c:586
++#: ../composer/e-composer-actions.c:533
+ msgid "Toggles whether the BCC field is displayed"
+ msgstr "Εναλλαγή της προβολής του πεδίου ιδιαίτερης κοινοποίησης"
+ 
+-#: ../composer/e-composer-actions.c:592
++#: ../composer/e-composer-actions.c:539
+ msgid "_Cc Field"
+ msgstr "_Πεδίο Κοινοποίησης"
+ 
+-#: ../composer/e-composer-actions.c:594
++#: ../composer/e-composer-actions.c:541
+ msgid "Toggles whether the CC field is displayed"
+ msgstr "Εναλλαγή της προβολής του πεδίου κοινοποίησης"
+ 
+-#: ../composer/e-composer-actions.c:600
++#: ../composer/e-composer-actions.c:547
+ msgid "_From Override Field"
+ msgstr "Πεδίο αντικατάστασης _Από"
+ 
+-#: ../composer/e-composer-actions.c:602
++#: ../composer/e-composer-actions.c:549
+ msgid "Toggles whether the From override field to change name or email address is displayed"
+ msgstr ""
+ "Εναλλαγή της εμφάνισης του πεδίου αντικατάστασης Από σε αλλαγή ονόματος ή διεύθυνσης "
+ "ηλεκτρονικής αλληλογγραφίας"
+ 
+-#: ../composer/e-composer-actions.c:608
++#: ../composer/e-composer-actions.c:555
+ msgid "_Reply-To Field"
+ msgstr "_Πεδίο Απάντησης"
+ 
+-#: ../composer/e-composer-actions.c:610
++#: ../composer/e-composer-actions.c:557
+ msgid "Toggles whether the Reply-To field is displayed"
+ msgstr "Εναλλαγή της προβολής του πεδίου Απάντησης"
+ 
+-#: ../composer/e-composer-actions.c:671
++#: ../composer/e-composer-actions.c:618
+ msgid "Save Draft"
+ msgstr "Αποθήκευση προχείρου"
+ 
+@@ -7323,35 +7318,35 @@ msgstr ""
+ "Εισάγετε τις διευθύνσεις όπου θα σταλεί αντίγραφο του μηνύματος χωρίς αυτές να εμφανιστούν "
+ "στον κατάλογο παραληπτών του μηνύματος"
+ 
+-#: ../composer/e-composer-header-table.c:793
++#: ../composer/e-composer-header-table.c:829
+ msgid "Fr_om:"
+ msgstr "Α_πό:"
+ 
+-#: ../composer/e-composer-header-table.c:800
++#: ../composer/e-composer-header-table.c:836
+ msgid "_Reply-To:"
+ msgstr "_Απάντηση σε:"
+ 
+-#: ../composer/e-composer-header-table.c:805
++#: ../composer/e-composer-header-table.c:841
+ msgid "_To:"
+ msgstr "Πρ_ος:"
+ 
+-#: ../composer/e-composer-header-table.c:811
++#: ../composer/e-composer-header-table.c:847
+ msgid "_Cc:"
+ msgstr "_Κοινοποίηση:"
+ 
+-#: ../composer/e-composer-header-table.c:817
++#: ../composer/e-composer-header-table.c:853
+ msgid "_Bcc:"
+ msgstr "Κρ_υφή κοινοποίηση:"
+ 
+-#: ../composer/e-composer-header-table.c:822
++#: ../composer/e-composer-header-table.c:858
+ msgid "_Post To:"
+ msgstr "Απο_στολή Σε:"
+ 
+-#: ../composer/e-composer-header-table.c:826
++#: ../composer/e-composer-header-table.c:862
+ msgid "S_ubject:"
+ msgstr "_Θέμα:"
+ 
+-#: ../composer/e-composer-header-table.c:834 ../mail/e-mail-config-identity-page.c:505
++#: ../composer/e-composer-header-table.c:870 ../mail/e-mail-config-identity-page.c:505
+ msgid "Si_gnature:"
+ msgstr "_Υπογραφή:"
+ 
+@@ -7381,7 +7376,7 @@ msgstr ""
+ msgid "Compose Message"
+ msgstr "Συγγραφή νέου μηνύματος"
+ 
+-#: ../composer/e-msg-composer.c:4568
++#: ../composer/e-msg-composer.c:4579
+ msgid "The composer contains a non-text message body, which cannot be edited."
+ msgstr ""
+ "Ο επεξεργαστής περιέχει ένα σώμα μηνύματος που δεν είναι κείμενο, στο οποίο δεν είναι δυνατή "
+@@ -7555,6 +7550,24 @@ msgstr ""
+ "Ένας επιταχυντής πληκτρολογίου για αποστολή μηνύματος έχει πατηθεί. Είτε ακυρώστε την "
+ "αποστολή του μηνύματος, αν συνέβη τυχαία, ή στείλτε το μήνυμα."
+ 
++#: ../composer/mail-composer.error.xml.h:39
++msgid "Are you sure you want to change the composer mode?"
++msgstr "Είστε βέβαιος ότι θέλετε να αλλάξετε τη λειτουργία του επεξεργαστή;"
++
++#: ../composer/mail-composer.error.xml.h:40
++msgid ""
++"Turning HTML mode off will cause the text to lose all formatting. Do you want to continue?"
++msgstr ""
++"Κλείνοντας την κατάσταση HTML το κείμενο θα χάσει όλη τη μορφοποίηση. Θέλετε να συνεχίσετε;"
++
++#: ../composer/mail-composer.error.xml.h:41
++msgid "_Don't lose formatting"
++msgstr "_Να μην χαθεί η μορφοποίηση"
++
++#: ../composer/mail-composer.error.xml.h:42
++msgid "Lose _formatting"
++msgstr "Να _χαθεί η μορφοποίηση"
++
+ #: ../data/evolution-alarm-notify.desktop.in.in.h:1
+ msgid "Evolution Alarm Notify"
+ msgstr "Evolution Alarm Notify"
+@@ -9304,6 +9317,20 @@ msgstr ""
+ "μία απάντηση σε πολλά άτομα."
+ 
+ #: ../data/org.gnome.evolution.mail.gschema.xml.in.h:167
++msgid "Prompt when switching composer mode and the content needs to lose its formatting"
++msgstr ""
++"Ειδοποίηση όταν αλλάζετε τη λειτουργία του επεξεργαστή και το περιεχόμενο χρειάζεται να "
++"χάσει τη μορφοποίηση του."
++
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:168
++msgid ""
++"It disables/enables the repeated prompts to warn that you are switching composer mode and "
++"the content needs to lose its formatting."
++msgstr ""
++"Ενεργοποιεί/απενεργοποιεί τις επαναλαμβανόμενες ειδοποιήσεις όταν αλλάζετε τη λειτουργία του "
++"επεξεργαστή και το περιεχόμενο χρειάζεται να χάσει τη μορφοποίηση του."
++
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:169
+ msgid ""
+ "Policy for automatically closing the message browser window when forwarding or replying to "
+ "the displayed message."
+@@ -9311,41 +9338,41 @@ msgstr ""
+ "Πολιτική για αυτόματο κλείσιμο του παραθύρου περιηγητή μηνύματος κατά την προώθηση ή "
+ "απάντηση σε εμφανιζόμενο μήνυμα."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:168
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:170
+ msgid "Empty Trash folders on exit"
+ msgstr "Άδειασμα Φακέλων Απορριμμάτων στην έξοδο"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:169
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:171
+ msgid "Empty all Trash folders when exiting Evolution."
+ msgstr "Άδειασμα όλων των φακέλων Απορριμμάτων κατά την έξοδο από το Evolution."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:170
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:172
+ msgid "Minimum days between emptying the trash on exit"
+ msgstr "Ελάχιστο όριο ημερών μεταξύ το άδειασμα του κάδου κατά την έξοδο"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:171
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:173
+ msgid "Minimum time between emptying the trash on exit, in days."
+ msgstr "Ελάχιστο όριο μεταξύ το άδειασμα του κάδου κατά την έξοδο, σε ημέρες."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:172
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:174
+ msgid "Last time Empty Trash was run"
+ msgstr "Η τελευταία φορά που έγινε άδειασμα απορριμμάτων"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:173
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:175
+ msgid "The last time Empty Trash was run, in days since January 1st, 1970 (Epoch)."
+ msgstr ""
+ "Η τελευταία φορά που έγινε άδειασμα απορριμάτων, σε ημέρες από την (εποχή της) 1η Ιανουαρίου "
+ "του 1970."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:174
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:176
+ msgid "Amount of time in seconds the error should be shown on the status bar."
+ msgstr "Ο χρόνος σε δευτερόλεπτα που θα εμφανίζεται το σφάλμα στη γραμμή κατάστασης."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:175
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:177
+ msgid "Level beyond which the message should be logged."
+ msgstr "Επίπεδο μετά το οποίο θα γίνεται καταγραφή του μηνύματος."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:176
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:178
+ msgid ""
+ "This can have three possible values. \"0\" for errors. \"1\" for warnings. \"2\" for debug "
+ "messages."
+@@ -9353,11 +9380,11 @@ msgstr ""
+ "Αυτό μπορεί να έχει τρεις πιθανές τιμές. \"0\" για σφάλματα. \"1\" για προειδοποιήσεις. "
+ "\"2\" για μηνύματα αποσφαλμάτωσης."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:177
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:179
+ msgid "Show original \"Date\" header value."
+ msgstr "Εμφάνιση αρχικής τιμής \"Ημερομηνία\" της κεφαλίδας."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:178
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:180
+ msgid ""
+ "Show the original \"Date\" header (with a local time only if the time zone differs). "
+ "Otherwise always show \"Date\" header value in a user preferred format and local time zone."
+@@ -9366,11 +9393,11 @@ msgstr ""
+ "Διαφορετικά να προβάλλεται η τιμή καφαλίδας \"Ημερομηνία\" στην μορφή που προτιμά ο χρήστης "
+ "και στην τοπική ζώνη ώρας."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:179
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:181
+ msgid "List of Labels and their associated colors"
+ msgstr "Λίστα από Ετικέτες και από τα συσχετιζόμενα χρώματα τους"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:180
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:182
+ msgid ""
+ "List of labels known to the mail component of Evolution. The list contains strings "
+ "containing name:color where color uses the HTML hex encoding."
+@@ -9378,45 +9405,45 @@ msgstr ""
+ "Λίστα ετικετών που είναι γνωστές στο Evolution. Η λίστα περιέχει αλφαριθμητικά που περιέχουν "
+ "name:color όπου το χρώμα χρησιμοποιεί το HTML hex encoding."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:181
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:183
+ msgid "Check incoming mail being junk"
+ msgstr "Έλεγχος εισερχόμενης αλληλογραφίας για ανεπιθύμητα μηνύματα"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:182
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:184
+ msgid "Run junk test on incoming mail."
+ msgstr "Εκτέλεση δοκιμής ανεπιθύμητης αλληλογραφίας στην εισερχόμενη αλληλογραφία."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:183
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:185
+ msgid "Empty Junk folders on exit"
+ msgstr "Άδειασμα φακέλων ανεπιθύμητων στην έξοδο"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:184
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:186
+ msgid "Empty all Junk folders when exiting Evolution."
+ msgstr "Άδειασμα όλων των φακέλων Ανεπιθύμητων κατά την έξοδο από το Evolution."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:185
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:187
+ msgid "Minimum days between emptying the junk on exit"
+ msgstr "Ελάχιστο όριο ημερών μεταξύ το άδειασμα των ανεπιθύμητων κατά την έξοδο"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:186
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:188
+ msgid "Minimum time between emptying the junk on exit, in days."
+ msgstr "Ελάχιστο όριο μεταξύ το άδειασμα των ανεπιθύμητων κατά την έξοδο, σε ημέρες."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:187
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:189
+ msgid "Last time Empty Junk was run"
+ msgstr "Η τελευταία φορά που έγινε άδειασμα ανεπιθύμητων"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:188
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:190
+ msgid "The last time Empty Junk was run, in days since January 1st, 1970 (Epoch)."
+ msgstr ""
+ "Η τελευταία φορά που έγινε άδειασμα ανεπιθύμητων, σε ημέρες από την (εποχή της) 1η "
+ "Ιανουαρίου του 1970."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:189
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:191
+ msgid "The default plugin for Junk hook"
+ msgstr "Η προεπιλεγμένη πρόσθετη λειτουργία ανεπιθύμητης αλληλογραφίας"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:190
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:192
+ msgid ""
+ "This is the default junk plugin, even though there are multiple plugins enabled. If the "
+ "default listed plugin is disabled, then it won't fall back to the other available plugins."
+@@ -9425,12 +9452,12 @@ msgstr ""
+ "ενεργές και άλλες. Αν η προεπιλεγμένη πρόσθετη λειτουργία είναι απενεργοποιημένη, τότε δεν "
+ "θα χρησιμοποιηθούν και οι άλλες."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:191
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:193
+ msgid "Determines whether to lookup in address book for sender email"
+ msgstr ""
+ "Καθορίζει το αν θα γίνεται αναζήτηση στο βιβλίο διευθύνσεων για την διεύθυνση του αποστολέα"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:192
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:194
+ msgid ""
+ "Determines whether to lookup the sender email in address book. If found, it shouldn't be a "
+ "spam. It looks up in the books marked for autocompletion. It can be slow, if remote address "
+@@ -9441,13 +9468,13 @@ msgstr ""
+ "για αυτόματη συμπλήρωση διεύθυνσης. Αν έχουν σημειωθεί απομακρυσμένα ευρετήρια διευθύνσεων "
+ "(π.χ LDAP) αυτή η λειτουργία θα έχει καθυστέρηση."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:193
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:195
+ msgid "Determines whether to look up addresses for junk filtering in local address book only"
+ msgstr ""
+ "Καθορίζει το αν θα γίνεται αναζήτηση στο βιβλίο διευθύνσεων για φιλτράρισμα ανεπιθύμητων "
+ "μηνυμάτων"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:194
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:196
+ msgid ""
+ "This option is related to the key lookup_addressbook and is used to determine whether to "
+ "look up addresses in local address book only to exclude mail sent by known contacts from "
+@@ -9457,13 +9484,13 @@ msgstr ""
+ "καθοριστεί εάν οι διευθύνσεις θα αναζητούνται στο τοπικό βιβλίο διευθύνσεων μόνο για να μη "
+ "υποστούν έλεγχο ανεπιθύμητων τα μηνύματα από γνωστές επαφές."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:195
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:197
+ msgid "Determines whether to use custom headers to check for junk"
+ msgstr ""
+ "Καθορίζει αν θα χρησιμοποιούνται προσαρμοσμένες κεφαλίδες στον έλεγχο για ανεπιθύμητα "
+ "μηνύματα"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:196
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:198
+ msgid ""
+ "Determines whether to use custom headers to check for junk. If this option is enabled and "
+ "the headers are mentioned, it will be improve the junk checking speed."
+@@ -9472,11 +9499,11 @@ msgstr ""
+ "μηνύματα. Αν αυτή η επιλογή είναι ενεργή και οι κεφαλίδες αναφέρονται, θα βελτιωθεί η "
+ "ταχύτητα ελέγχου ανεπιθυμητων."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:197
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:199
+ msgid "Custom headers to use while checking for junk."
+ msgstr "Καθορίζει την κεφαλίδα για τον έλεγχο για ανεπιθύμητα."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:198
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:200
+ msgid ""
+ "Custom headers to use while checking for junk. The list elements are string in the format "
+ "\"headername=value\"."
+@@ -9484,31 +9511,31 @@ msgstr ""
+ "Προσαρμοσμένες κεφαλίδες για χρήση στον έλεγχο για ανεπιθύμητα. Η λίστα στοιχείων είναι "
+ "συμβολοσειρά στη μορφή \"headername=value\"."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:199
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:201
+ msgid "UID string of the default account."
+ msgstr "Αλφαριθμητικό UID του προεπιλεγμένου λογαριασμού."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:200
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:202
+ msgid "Save directory"
+ msgstr "Αποθήκευση καταλόγου"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:201
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:203
+ msgid "Directory for saving mail component files."
+ msgstr "Κατάλογος για αποθήκευση στοιχείων αλληλογραφίας."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:202
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:204
+ msgid "Composer load/attach directory"
+ msgstr "Κατάλογος φόρτωσης/επισύναψης"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:203
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:205
+ msgid "Directory for loading/attaching files to composer."
+ msgstr "Κατάλογος για φόρτωση/αποθήκευση αρχείων στη σύνταξη μηνύματος."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:204
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:206
+ msgid "Check for new messages on start"
+ msgstr "Έλεγχος για νέα μηνύματα κατά την εκκίνηση"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:205
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:207
+ msgid ""
+ "Whether to check for new messages when Evolution is started. This includes also sending "
+ "messages from Outbox."
+@@ -9516,11 +9543,11 @@ msgstr ""
+ "Αν θα γίνεται έλεγχος για νέα μηνύματα όταν εκκινεί το Evolution. Αυτό περιλαμβάνει επίσης "
+ "την αποστολή των μηνυμάτων από τα εξερχόμενα."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:206
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:208
+ msgid "Check for new messages in all active accounts"
+ msgstr "Έλεγχος για νέα μηνύματα σε όλους τους ενεργούς λογαριασμούς"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:207
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:209
+ msgid ""
+ "Whether to check for new messages in all active accounts regardless of the account \"Check "
+ "for new messages every X minutes\" option when Evolution is started. This option is used "
+@@ -9530,11 +9557,11 @@ msgstr ""
+ "επιλογή του λογαριασμού \"έλεγχος για νέα μηνύματα κάθε Χ λεπτά\" όταν εκκινεί το Evolution. "
+ "Αυτή η επιλογή χρησιμοποιείται μόνο μαζί με την επιλογή 'send_recv_on_start'."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:208
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:210
+ msgid "Server synchronization interval"
+ msgstr "Χρονικό διάστημα μεταξύ συγχρονισμών με εξυπηρετητή"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:209
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:211
+ msgid ""
+ "Controls how frequently local changes are synchronized with the remote mail server. The "
+ "interval must be at least 30 seconds."
+@@ -9542,11 +9569,11 @@ msgstr ""
+ "Ελέγχει πόσο συχνά οι τοπικές αλλαγές συγχρονίζονται με τον εξυπηρετητή μηνυμάτων. Το "
+ "χρονικό διάστημα πρέπει να είναι τουλάχιστον 30 δευτερόλεπτα."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:210
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:212
+ msgid "Allow expunge in virtual folders"
+ msgstr "Να επιτρέπεται η εκκαθάριση σε εικονικούς φακέλους"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:211
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:213
+ msgid ""
+ "Enables Expunge in virtual folders, which means that the Folder->Expunge will be callable in "
+ "virtual folders, while the expunge itself will be done in all folders for all deleted "
+@@ -9558,22 +9585,22 @@ msgstr ""
+ "φακέλους για όλα τα διαγραμμένα μηνύματα μέσα στον εικονικό φάκελο, όχι μόνο για τα "
+ "διαγραμμένα μηνύματα που ανήκουν στον εικονικό φάκελο."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:212
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:214
+ msgid "An Archive folder for On This Computer folders."
+ msgstr "Ένας φάκελος αρχειοθέτησης για τους φακέλους αυτού του υπολογιστή."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:213
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:215
+ msgid ""
+ "An Archive folder to use for Messages|Archive... feature when in an On This Computer folder."
+ msgstr ""
+ "Ένας φάκελος αρχειοθέτησης προς χρήση για μηνύματα|αρχειοθήκες... όταν είναι σε έναν φάκελο "
+ "αυτού του υπολογιστή."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:214
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:216
+ msgid "(Deprecated) Default forward style"
+ msgstr "(Παρωχημένο) Προεπιλεγμένη τεχνοτροπία προώθησης"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:215
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:217
+ msgid ""
+ "This key was deprecated in version 3.10 and should no longer be used. Use \"forward-style-"
+ "name\" instead."
+@@ -9581,11 +9608,11 @@ msgstr ""
+ "Αυτό το κλειδί καταργήθηκε στην έκδοση 3.10 και δεν θα πρέπει να χρησιμοποιείται πια. "
+ "Χρησιμοποιήστε στη θέση του το \"όνομα τεχνοτροπίας προώθησης (forward-style-name)\"."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:216
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:218
+ msgid "(Deprecated) Default reply style"
+ msgstr "(Παρωχημένο) Προεπιλεγμένη τεχνοτροπία απάντησης"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:217
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:219
+ msgid ""
+ "This key was deprecated in version 3.10 and should no longer be used. Use \"reply-style-name"
+ "\" instead."
+@@ -9593,11 +9620,11 @@ msgstr ""
+ "Αυτό το κλειδί καταργήθηκε στην έκδοση 3.10 και δεν θα πρέπει να χρησιμοποιείται πια. "
+ "Χρησιμοποιήστε στη θέση του το \"όνομα τεχνοτροπίας απάντησης (reply-style-name)\"."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:218
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:220
+ msgid "(Deprecated) List of custom headers and whether they are enabled."
+ msgstr "(Παρωχημένο) Λίστα προσαρμοσμένων κεφαλίδων και αν θα είναι ενεργοποιημένες."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:219
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:221
+ msgid ""
+ "This key was deprecated in version 3.10 and should no longer be used. Use \"show-headers\" "
+ "instead."
+@@ -9605,11 +9632,11 @@ msgstr ""
+ "Αυτό το κλειδί καταργήθηκε στην έκδοση 3.10 και δεν θα πρέπει να χρησιμοποιείται πια. "
+ "Χρησιμοποιήστε στη θέση του το \"εμφάνιση κεφαλίδων (show-headers)\"."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:220
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:222
+ msgid "(Deprecated) Load images for HTML messages over HTTP"
+ msgstr "(Παρωχημένο) Φόρτωση εικόνων για μηνύματα HTML μέσω HTTP"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:221
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:223
+ msgid ""
+ "This key was deprecated in version 3.10 and should no longer be used. Use \"image-loading-"
+ "policy\" instead."
+@@ -9617,7 +9644,7 @@ msgstr ""
+ "Αυτό το κλειδί καταργήθηκε στην έκδοση 3.10 και δεν θα πρέπει να χρησιμοποιείται πια. "
+ "Χρησιμοποιήστε στη θέση του το \"πολιτική φόρτωσης εικόνας (image-loading-policy)\"."
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:222
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:224
+ msgid ""
+ "(Deprecated) Asks whether to close the message window when the user forwards or replies to "
+ "the message shown in the window"
+@@ -9625,7 +9652,7 @@ msgstr ""
+ "(Παρωχημένο) Ερωτά αν θα κλείσει το παράθυρο μηνύματος όταν ο χρήστης προωθεί ή απαντά στο "
+ "μήνυμα που εμφανίζεται στο παράθυρο"
+ 
+-#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:223
++#: ../data/org.gnome.evolution.mail.gschema.xml.in.h:225
+ msgid ""
+ "This key was deprecated in version 3.10 and should no longer be used. Use \"browser-close-on-"
+ "reply-policy\" instead."
+@@ -10123,7 +10150,7 @@ msgid "Format part as HTML"
+ msgstr "Μορφοποίηση τμήματος ως HTML"
+ 
+ #: ../em-format/e-mail-formatter-quote-text-plain.c:123
+-#: ../em-format/e-mail-formatter-text-plain.c:198 ../e-util/e-html-editor-actions.c:1414
++#: ../em-format/e-mail-formatter-text-plain.c:198 ../e-util/e-html-editor-actions.c:1537
+ msgid "Plain Text"
+ msgstr "Απλό κειμένο"
+ 
+@@ -10423,7 +10450,7 @@ msgstr "%s"
+ msgid "%s (%d%% complete)"
+ msgstr "%s (%d%% έχει ολοκληρωθεί)"
+ 
+-#: ../e-util/e-activity-proxy.c:352 ../modules/mail/e-mail-shell-view-actions.c:1785
++#: ../e-util/e-activity-proxy.c:352 ../modules/mail/e-mail-shell-view-actions.c:1786
+ msgid "Cancel"
+ msgstr "Άκυρο"
+ 
+@@ -10599,8 +10626,8 @@ msgstr "_Προσθήκη συνημμένου..."
+ #: ../modules/calendar/e-cal-shell-view-actions.c:1240
+ #: ../modules/calendar/e-memo-shell-view-actions.c:571
+ #: ../modules/calendar/e-task-shell-view-actions.c:696
+-#: ../modules/mail/e-mail-shell-view-actions.c:1586
+-#: ../modules/mail/e-mail-shell-view-actions.c:1657
++#: ../modules/mail/e-mail-shell-view-actions.c:1587
++#: ../modules/mail/e-mail-shell-view-actions.c:1658
+ msgid "_Properties"
+ msgstr "_Ιδιότητες"
+ 
+@@ -11465,7 +11492,7 @@ msgstr "Βρείτε αντικείμενα που πληρούν τα παρα
+ #. * part of "Include threads: None"
+ #. protocol:
+ #. name:
+-#: ../e-util/e-filter-rule.c:846 ../e-util/e-html-editor-page-dialog.c:60
++#: ../e-util/e-filter-rule.c:846 ../e-util/e-html-editor-page-dialog.c:62
+ #: ../e-util/e-mail-identity-combo-box.c:476 ../e-util/e-mail-signature-combo-box.c:367
+ #: ../e-util/e-proxy-editor.c:560 ../libemail-engine/camel-null-store.c:27
+ #: ../mail/e-mail-config-summary-page.c:138
+@@ -11497,506 +11524,506 @@ msgstr "_Συμπερίληψη νημάτων:"
+ msgid "A_dd Condition"
+ msgstr "_Προσθήκη κριτηρίου"
+ 
+-#: ../e-util/e-filter-rule.c:1244 ../e-util/filter.ui.h:1 ../mail/em-utils.c:229
++#: ../e-util/e-filter-rule.c:1244 ../e-util/filter.ui.h:1 ../mail/em-utils.c:164
+ msgid "Incoming"
+ msgstr "Εισερχόμενα"
+ 
+-#: ../e-util/e-filter-rule.c:1244 ../mail/em-utils.c:230
++#: ../e-util/e-filter-rule.c:1244 ../mail/em-utils.c:165
+ msgid "Outgoing"
+ msgstr "Εξερχόμενα"
+ 
+-#: ../e-util/e-html-editor-actions.c:57
++#: ../e-util/e-html-editor-actions.c:58
+ msgid "Failed to insert HTML file."
+ msgstr "Αποτυχία εισαγωγής αρχείου HTML."
+ 
+-#: ../e-util/e-html-editor-actions.c:94
++#: ../e-util/e-html-editor-actions.c:95
+ msgid "Failed to insert text file."
+ msgstr "Αποτυχία εισαγωγής αρχείου κειμένου."
+ 
+-#: ../e-util/e-html-editor-actions.c:482
++#: ../e-util/e-html-editor-actions.c:605
+ msgid "Insert HTML File"
+ msgstr "Εισαγωγή αρχείου HTML"
+ 
+-#: ../e-util/e-html-editor-actions.c:488
++#: ../e-util/e-html-editor-actions.c:611
+ msgid "HTML file"
+ msgstr "Αρχείο HTML"
+ 
+-#: ../e-util/e-html-editor-actions.c:515
++#: ../e-util/e-html-editor-actions.c:638
+ msgctxt "dialog-title"
+ msgid "Insert Image"
+ msgstr "Εισαγωγή εικόνας"
+ 
+-#: ../e-util/e-html-editor-actions.c:576
++#: ../e-util/e-html-editor-actions.c:699
+ msgid "Insert text file"
+ msgstr "Εισαγωγή αρχείου κειμένου"
+ 
+-#: ../e-util/e-html-editor-actions.c:582
++#: ../e-util/e-html-editor-actions.c:705
+ msgid "Text file"
+ msgstr "Αρχείο κειμένου"
+ 
+-#: ../e-util/e-html-editor-actions.c:966
++#: ../e-util/e-html-editor-actions.c:1089
+ msgid "Copy selected text to the clipboard"
+ msgstr "Αντιγραφή επιλεγμένου κειμένου στο πρόχειρο"
+ 
+-#: ../e-util/e-html-editor-actions.c:973
++#: ../e-util/e-html-editor-actions.c:1096
+ msgid "Cut selected text to the clipboard"
+ msgstr "Αποκοπή επιλεγμένου κειμένου στο πρόχειρο"
+ 
+ #. Widgets are treating Ctrl + v shortcut themselves
+-#: ../e-util/e-html-editor-actions.c:980
++#: ../e-util/e-html-editor-actions.c:1103
+ msgid "Paste text from the clipboard"
+ msgstr "Επικόλληση κειμένου από το πρόχειρο"
+ 
+-#: ../e-util/e-html-editor-actions.c:987
++#: ../e-util/e-html-editor-actions.c:1110
+ msgid "Redo the last undone action"
+ msgstr "Ακύρωση της τελευταίας αναίρεσης"
+ 
+-#: ../e-util/e-html-editor-actions.c:1001
++#: ../e-util/e-html-editor-actions.c:1124
+ msgid "Undo the last action"
+ msgstr "Αναίρεση της τελευταίας ενέργειας"
+ 
+-#: ../e-util/e-html-editor-actions.c:1022
++#: ../e-util/e-html-editor-actions.c:1145
+ msgid "For_mat"
+ msgstr "Μορ_φή"
+ 
+-#: ../e-util/e-html-editor-actions.c:1029
++#: ../e-util/e-html-editor-actions.c:1152
+ msgid "_Paragraph Style"
+ msgstr "Τεχνοτροπία παρα_γράφου"
+ 
+-#: ../e-util/e-html-editor-actions.c:1043 ../e-util/e-html-editor-image-dialog.c:591
++#: ../e-util/e-html-editor-actions.c:1166 ../e-util/e-html-editor-image-dialog.c:635
+ msgid "_Alignment"
+ msgstr "Στοί_χιση"
+ 
+-#: ../e-util/e-html-editor-actions.c:1050
++#: ../e-util/e-html-editor-actions.c:1173
+ msgid "Current _Languages"
+ msgstr "Τρέχουσες _γλώσσες"
+ 
+-#: ../e-util/e-html-editor-actions.c:1067
++#: ../e-util/e-html-editor-actions.c:1190
+ msgid "_Increase Indent"
+ msgstr "_Αύξηση εσοχής"
+ 
+-#: ../e-util/e-html-editor-actions.c:1069
++#: ../e-util/e-html-editor-actions.c:1192
+ msgid "Increase Indent"
+ msgstr "Αύξηση εσοχής"
+ 
+-#: ../e-util/e-html-editor-actions.c:1074
++#: ../e-util/e-html-editor-actions.c:1197
+ msgid "_HTML File..."
+ msgstr "Αρχείο _HTML..."
+ 
+-#: ../e-util/e-html-editor-actions.c:1081
++#: ../e-util/e-html-editor-actions.c:1204
+ msgid "Te_xt File..."
+ msgstr "Αρχείο _κειμένου..."
+ 
+-#: ../e-util/e-html-editor-actions.c:1088
++#: ../e-util/e-html-editor-actions.c:1211
+ msgid "Paste _Quotation"
+ msgstr "Επικόλληση _παράθεσης"
+ 
+-#: ../e-util/e-html-editor-actions.c:1095
++#: ../e-util/e-html-editor-actions.c:1218
+ msgid "_Find..."
+ msgstr "_Εύρεση..."
+ 
+-#: ../e-util/e-html-editor-actions.c:1097
++#: ../e-util/e-html-editor-actions.c:1220
+ msgid "Search for text"
+ msgstr "Αναζήτηση κειμένου"
+ 
+-#: ../e-util/e-html-editor-actions.c:1102
++#: ../e-util/e-html-editor-actions.c:1225
+ msgid "Find A_gain"
+ msgstr "Εύρεση πά_λι"
+ 
+-#: ../e-util/e-html-editor-actions.c:1109
++#: ../e-util/e-html-editor-actions.c:1232
+ msgid "Re_place..."
+ msgstr "Α_ντικατάσταση..."
+ 
+-#: ../e-util/e-html-editor-actions.c:1111
++#: ../e-util/e-html-editor-actions.c:1234
+ msgid "Search for and replace text"
+ msgstr "Αναζήτηση και αντικατάσταση κειμένου"
+ 
+-#: ../e-util/e-html-editor-actions.c:1116
++#: ../e-util/e-html-editor-actions.c:1239
+ msgid "Check _Spelling..."
+ msgstr "Ορ_θογραφικός έλεγχος..."
+ 
+-#: ../e-util/e-html-editor-actions.c:1123
++#: ../e-util/e-html-editor-actions.c:1246
+ msgid "_Decrease Indent"
+ msgstr "_Μείωση εσοχής"
+ 
+-#: ../e-util/e-html-editor-actions.c:1125
++#: ../e-util/e-html-editor-actions.c:1248
+ msgid "Decrease Indent"
+ msgstr "Μείωση εσοχής"
+ 
+-#: ../e-util/e-html-editor-actions.c:1130
++#: ../e-util/e-html-editor-actions.c:1253
+ msgid "_Wrap Lines"
+ msgstr "Ανα_δίπλωση γραμμών"
+ 
+-#: ../e-util/e-html-editor-actions.c:1137
++#: ../e-util/e-html-editor-actions.c:1260
+ msgid "Open Inspector"
+ msgstr "Άνοιγμα επιθεωρητή"
+ 
+ #. Center
+-#: ../e-util/e-html-editor-actions.c:1147 ../e-util/e-html-editor-paragraph-dialog.c:110
++#: ../e-util/e-html-editor-actions.c:1270 ../e-util/e-html-editor-paragraph-dialog.c:110
+ msgid "_Center"
+ msgstr "_Κέντρο"
+ 
+-#: ../e-util/e-html-editor-actions.c:1149
++#: ../e-util/e-html-editor-actions.c:1272
+ msgid "Center Alignment"
+ msgstr "Στοίχιση στο κέντρο"
+ 
+ #. Left
+-#: ../e-util/e-html-editor-actions.c:1154 ../e-util/e-html-editor-paragraph-dialog.c:101
++#: ../e-util/e-html-editor-actions.c:1277 ../e-util/e-html-editor-paragraph-dialog.c:101
+ msgid "_Left"
+ msgstr "Α_ριστερά"
+ 
+-#: ../e-util/e-html-editor-actions.c:1156
++#: ../e-util/e-html-editor-actions.c:1279
+ msgid "Left Alignment"
+ msgstr "Στοίχιση αριστερά"
+ 
+ #. Right
+-#: ../e-util/e-html-editor-actions.c:1161 ../e-util/e-html-editor-paragraph-dialog.c:119
++#: ../e-util/e-html-editor-actions.c:1284 ../e-util/e-html-editor-paragraph-dialog.c:119
+ msgid "_Right"
+ msgstr "_Δεξιά"
+ 
+-#: ../e-util/e-html-editor-actions.c:1163
++#: ../e-util/e-html-editor-actions.c:1286
+ msgid "Right Alignment"
+ msgstr "Στοίχιση δεξιά"
+ 
+-#: ../e-util/e-html-editor-actions.c:1171 ../modules/text-highlight/languages.c:72
++#: ../e-util/e-html-editor-actions.c:1294 ../modules/text-highlight/languages.c:72
+ msgid "_HTML"
+ msgstr "_HTML"
+ 
+-#: ../e-util/e-html-editor-actions.c:1173
++#: ../e-util/e-html-editor-actions.c:1296
+ msgid "HTML editing mode"
+ msgstr "Κατάσταση επεξεργασίας HTML"
+ 
+-#: ../e-util/e-html-editor-actions.c:1178
++#: ../e-util/e-html-editor-actions.c:1301
+ msgid "Plain _Text"
+ msgstr "Απλό _κειμένο"
+ 
+-#: ../e-util/e-html-editor-actions.c:1180
++#: ../e-util/e-html-editor-actions.c:1303
+ msgid "Plain text editing mode"
+ msgstr "Λειτουργία επεξεργασίας απλού κειμένου"
+ 
+-#: ../e-util/e-html-editor-actions.c:1188
++#: ../e-util/e-html-editor-actions.c:1311
+ msgid "_Normal"
+ msgstr "_Κανονική"
+ 
+-#: ../e-util/e-html-editor-actions.c:1195
++#: ../e-util/e-html-editor-actions.c:1318
+ msgid "Header _1"
+ msgstr "Επικεφαλίδα _1"
+ 
+-#: ../e-util/e-html-editor-actions.c:1202
++#: ../e-util/e-html-editor-actions.c:1325
+ msgid "Header _2"
+ msgstr "Επικεφαλίδα _2"
+ 
+-#: ../e-util/e-html-editor-actions.c:1209
++#: ../e-util/e-html-editor-actions.c:1332
+ msgid "Header _3"
+ msgstr "Επικεφαλίδα _3"
+ 
+-#: ../e-util/e-html-editor-actions.c:1216
++#: ../e-util/e-html-editor-actions.c:1339
+ msgid "Header _4"
+ msgstr "Επικεφαλίδα _4"
+ 
+-#: ../e-util/e-html-editor-actions.c:1223
++#: ../e-util/e-html-editor-actions.c:1346
+ msgid "Header _5"
+ msgstr "Επικεφαλίδα _5"
+ 
+-#: ../e-util/e-html-editor-actions.c:1230
++#: ../e-util/e-html-editor-actions.c:1353
+ msgid "Header _6"
+ msgstr "Επικεφαλίδα _6"
+ 
+-#: ../e-util/e-html-editor-actions.c:1237
++#: ../e-util/e-html-editor-actions.c:1360
+ msgid "_Preformatted"
+ msgstr "_Προμορφοποιημένο"
+ 
+-#: ../e-util/e-html-editor-actions.c:1244
++#: ../e-util/e-html-editor-actions.c:1367
+ msgid "A_ddress"
+ msgstr "Διεύ_θυνση"
+ 
+-#: ../e-util/e-html-editor-actions.c:1251
++#: ../e-util/e-html-editor-actions.c:1374
+ msgid "_Blockquote"
+ msgstr "Με_γάλη παράθεση"
+ 
+-#: ../e-util/e-html-editor-actions.c:1258
++#: ../e-util/e-html-editor-actions.c:1381
+ msgid "_Bulleted List"
+ msgstr "_Κατάλογος με κουκκίδες"
+ 
+-#: ../e-util/e-html-editor-actions.c:1265
++#: ../e-util/e-html-editor-actions.c:1388
+ msgid "_Roman Numeral List"
+ msgstr "Αριθμημένος κατάλογος με _ρωμαικούς αριθμούς"
+ 
+-#: ../e-util/e-html-editor-actions.c:1272
++#: ../e-util/e-html-editor-actions.c:1395
+ msgid "Numbered _List"
+ msgstr "Αρι_θμημένος κατάλογος"
+ 
+-#: ../e-util/e-html-editor-actions.c:1279
++#: ../e-util/e-html-editor-actions.c:1402
+ msgid "_Alphabetical List"
+ msgstr "Αλ_φαβητικός κατάλογος"
+ 
+-#: ../e-util/e-html-editor-actions.c:1295 ../e-util/e-html-editor-actions.c:1333
++#: ../e-util/e-html-editor-actions.c:1418 ../e-util/e-html-editor-actions.c:1456
+ msgid "_Image..."
+ msgstr "_Εικόνα..."
+ 
+ #. Translators: This is an action tooltip
+-#: ../e-util/e-html-editor-actions.c:1298
++#: ../e-util/e-html-editor-actions.c:1421
+ msgid "Insert Image"
+ msgstr "Εισαγωγή εικόνας"
+ 
+-#: ../e-util/e-html-editor-actions.c:1303 ../e-util/e-html-editor-actions.c:1340
++#: ../e-util/e-html-editor-actions.c:1426 ../e-util/e-html-editor-actions.c:1463
+ msgid "_Link..."
+ msgstr "_Σύνδεσμος..."
+ 
+-#: ../e-util/e-html-editor-actions.c:1305
++#: ../e-util/e-html-editor-actions.c:1428
+ msgid "Insert Link"
+ msgstr "Εισαγωγή συνδέσμου"
+ 
+ #. Translators: 'Rule' here means a horizontal line in an HTML text
+-#: ../e-util/e-html-editor-actions.c:1311 ../e-util/e-html-editor-actions.c:1355
++#: ../e-util/e-html-editor-actions.c:1434 ../e-util/e-html-editor-actions.c:1478
+ msgid "_Rule..."
+ msgstr "_Κανόνας..."
+ 
+ #. Translators: 'Rule' here means a horizontal line in an HTML text
+-#: ../e-util/e-html-editor-actions.c:1314
++#: ../e-util/e-html-editor-actions.c:1437
+ msgid "Insert Rule"
+ msgstr "Εισαγωγή κανόνα"
+ 
+-#: ../e-util/e-html-editor-actions.c:1319 ../e-util/e-html-editor-actions.c:1362
++#: ../e-util/e-html-editor-actions.c:1442 ../e-util/e-html-editor-actions.c:1485
+ msgid "_Table..."
+ msgstr "_Πίνακας..."
+ 
+-#: ../e-util/e-html-editor-actions.c:1321
++#: ../e-util/e-html-editor-actions.c:1444
+ msgid "Insert Table"
+ msgstr "Εισαγωγή πίνακα"
+ 
+-#: ../e-util/e-html-editor-actions.c:1326
++#: ../e-util/e-html-editor-actions.c:1449
+ msgid "_Cell..."
+ msgstr "Κε_λί..."
+ 
+-#: ../e-util/e-html-editor-actions.c:1347
++#: ../e-util/e-html-editor-actions.c:1470
+ msgid "Pa_ge..."
+ msgstr "_Σελίδα..."
+ 
+-#: ../e-util/e-html-editor-actions.c:1371
++#: ../e-util/e-html-editor-actions.c:1494
+ msgid "Font _Size"
+ msgstr "Μέγε_θος γραμματοσειράς"
+ 
+-#: ../e-util/e-html-editor-actions.c:1378
++#: ../e-util/e-html-editor-actions.c:1501
+ msgid "_Font Style"
+ msgstr "Τε_χνοτροπία γραμματοσειράς"
+ 
+-#: ../e-util/e-html-editor-actions.c:1385
++#: ../e-util/e-html-editor-actions.c:1508
+ msgid "Paste As _Text"
+ msgstr "Επικόλληση ως _κείμενο"
+ 
+-#: ../e-util/e-html-editor-actions.c:1396 ../e-util/e-html-editor-text-dialog.c:214
++#: ../e-util/e-html-editor-actions.c:1519 ../e-util/e-html-editor-text-dialog.c:214
+ msgid "_Bold"
+ msgstr "Έν_τονα"
+ 
+-#: ../e-util/e-html-editor-actions.c:1398
++#: ../e-util/e-html-editor-actions.c:1521
+ msgid "Bold"
+ msgstr "Έντονα"
+ 
+-#: ../e-util/e-html-editor-actions.c:1404 ../e-util/e-html-editor-text-dialog.c:225
++#: ../e-util/e-html-editor-actions.c:1527 ../e-util/e-html-editor-text-dialog.c:225
+ msgid "_Italic"
+ msgstr "_Πλάγια"
+ 
+-#: ../e-util/e-html-editor-actions.c:1406
++#: ../e-util/e-html-editor-actions.c:1529
+ msgid "Italic"
+ msgstr "Πλάγια"
+ 
+-#: ../e-util/e-html-editor-actions.c:1412
++#: ../e-util/e-html-editor-actions.c:1535
+ msgid "_Plain Text"
+ msgstr "Απ_λό κείμενο"
+ 
+-#: ../e-util/e-html-editor-actions.c:1420 ../e-util/e-html-editor-text-dialog.c:246
++#: ../e-util/e-html-editor-actions.c:1543 ../e-util/e-html-editor-text-dialog.c:246
+ msgid "_Strikethrough"
+ msgstr "Επιγρά_μμιση"
+ 
+-#: ../e-util/e-html-editor-actions.c:1422
++#: ../e-util/e-html-editor-actions.c:1545
+ msgid "Strikethrough"
+ msgstr "Επιγράμμιση"
+ 
+-#: ../e-util/e-html-editor-actions.c:1428 ../e-util/e-html-editor-text-dialog.c:236
++#: ../e-util/e-html-editor-actions.c:1551 ../e-util/e-html-editor-text-dialog.c:236
+ msgid "_Underline"
+ msgstr "_Υπογράμμιση"
+ 
+-#: ../e-util/e-html-editor-actions.c:1430
++#: ../e-util/e-html-editor-actions.c:1553
+ msgid "Underline"
+ msgstr "Υπογράμμιση"
+ 
+ #. Translators: This is a font size level. It is shown on a tool bar. Please keep it as short as possible.
+-#: ../e-util/e-html-editor-actions.c:1440
++#: ../e-util/e-html-editor-actions.c:1563
+ msgid "-2"
+ msgstr "-2"
+ 
+ #. Translators: This is a font size level. It is shown on a tool bar. Please keep it as short as possible.
+-#: ../e-util/e-html-editor-actions.c:1448
++#: ../e-util/e-html-editor-actions.c:1571
+ msgid "-1"
+ msgstr "-1"
+ 
+ #. Translators: This is a font size level. It is shown on a tool bar. Please keep it as short as possible.
+-#: ../e-util/e-html-editor-actions.c:1456
++#: ../e-util/e-html-editor-actions.c:1579
+ msgid "+0"
+ msgstr "+0"
+ 
+ #. Translators: This is a font size level. It is shown on a tool bar. Please keep it as short as possible.
+-#: ../e-util/e-html-editor-actions.c:1464
++#: ../e-util/e-html-editor-actions.c:1587
+ msgid "+1"
+ msgstr "+1"
+ 
+ #. Translators: This is a font size level. It is shown on a tool bar. Please keep it as short as possible.
+-#: ../e-util/e-html-editor-actions.c:1472
++#: ../e-util/e-html-editor-actions.c:1595
+ msgid "+2"
+ msgstr "+2"
+ 
+ #. Translators: This is a font size level. It is shown on a tool bar. Please keep it as short as possible.
+-#: ../e-util/e-html-editor-actions.c:1480
++#: ../e-util/e-html-editor-actions.c:1603
+ msgid "+3"
+ msgstr "+3"
+ 
+ #. Translators: This is a font size level. It is shown on a tool bar. Please keep it as short as possible.
+-#: ../e-util/e-html-editor-actions.c:1488
++#: ../e-util/e-html-editor-actions.c:1611
+ msgid "+4"
+ msgstr "+4"
+ 
+-#: ../e-util/e-html-editor-actions.c:1507
++#: ../e-util/e-html-editor-actions.c:1630
+ msgid "Cell Contents"
+ msgstr "Περιεχόμενα κελιού"
+ 
+-#: ../e-util/e-html-editor-actions.c:1514
++#: ../e-util/e-html-editor-actions.c:1637
+ msgid "Column"
+ msgstr "Στήλη"
+ 
+-#: ../e-util/e-html-editor-actions.c:1521
++#: ../e-util/e-html-editor-actions.c:1644
+ msgid "Row"
+ msgstr "Γραμμή"
+ 
+-#: ../e-util/e-html-editor-actions.c:1528 ../e-util/e-html-editor-actions.c:1613
++#: ../e-util/e-html-editor-actions.c:1651 ../e-util/e-html-editor-actions.c:1736
+ msgid "Table"
+ msgstr "Πίνακας"
+ 
+ #. Translators: Popup menu item caption, containing all the Delete options for a table
+-#: ../e-util/e-html-editor-actions.c:1538
++#: ../e-util/e-html-editor-actions.c:1661
+ msgid "Table Delete"
+ msgstr "Διαγραφή πίνακα"
+ 
+-#: ../e-util/e-html-editor-actions.c:1545 ../e-util/e-text.c:2127
++#: ../e-util/e-html-editor-actions.c:1668 ../e-util/e-text.c:2127
+ msgid "Input Methods"
+ msgstr "Μέθοδοι εισαγωγής"
+ 
+ #. Translators: Popup menu item caption, containing all the Insert options for a table
+-#: ../e-util/e-html-editor-actions.c:1553
++#: ../e-util/e-html-editor-actions.c:1676
+ msgid "Table Insert"
+ msgstr "Εισαγωγή πίνακα"
+ 
+-#: ../e-util/e-html-editor-actions.c:1560
++#: ../e-util/e-html-editor-actions.c:1683
+ msgid "Properties"
+ msgstr "Ιδιότητες"
+ 
+-#: ../e-util/e-html-editor-actions.c:1578
++#: ../e-util/e-html-editor-actions.c:1701
+ msgid "Column After"
+ msgstr "Στήλη μετά"
+ 
+-#: ../e-util/e-html-editor-actions.c:1585
++#: ../e-util/e-html-editor-actions.c:1708
+ msgid "Column Before"
+ msgstr "Στήλη πριν"
+ 
+-#: ../e-util/e-html-editor-actions.c:1592
++#: ../e-util/e-html-editor-actions.c:1715
+ msgid "Insert _Link"
+ msgstr "Εισαγωγή _συνδέσμου"
+ 
+-#: ../e-util/e-html-editor-actions.c:1599
++#: ../e-util/e-html-editor-actions.c:1722
+ msgid "Row Above"
+ msgstr "Γραμμή πάνω"
+ 
+-#: ../e-util/e-html-editor-actions.c:1606
++#: ../e-util/e-html-editor-actions.c:1729
+ msgid "Row Below"
+ msgstr "Γραμμή κάτω"
+ 
+-#: ../e-util/e-html-editor-actions.c:1620
++#: ../e-util/e-html-editor-actions.c:1743
+ msgid "Cell..."
+ msgstr "Κελί..."
+ 
+-#: ../e-util/e-html-editor-actions.c:1627
++#: ../e-util/e-html-editor-actions.c:1750
+ msgid "Image..."
+ msgstr "Εικόνα..."
+ 
+-#: ../e-util/e-html-editor-actions.c:1634
++#: ../e-util/e-html-editor-actions.c:1757
+ msgid "Link..."
+ msgstr "Σύνδεσμος..."
+ 
+-#: ../e-util/e-html-editor-actions.c:1641
++#: ../e-util/e-html-editor-actions.c:1764
+ msgid "Page..."
+ msgstr "Σελίδα..."
+ 
+-#: ../e-util/e-html-editor-actions.c:1648
++#: ../e-util/e-html-editor-actions.c:1771
+ msgid "Paragraph..."
+ msgstr "Παράγραφος..."
+ 
+ #. Translators: 'Rule' here means a horizontal line in an HTML text
+-#: ../e-util/e-html-editor-actions.c:1656
++#: ../e-util/e-html-editor-actions.c:1779
+ msgid "Rule..."
+ msgstr "Κανόνας..."
+ 
+-#: ../e-util/e-html-editor-actions.c:1663
++#: ../e-util/e-html-editor-actions.c:1786
+ msgid "Table..."
+ msgstr "Πίνακας..."
+ 
+-#: ../e-util/e-html-editor-actions.c:1670
++#: ../e-util/e-html-editor-actions.c:1793
+ msgid "Text..."
+ msgstr "Κείμενο..."
+ 
+-#: ../e-util/e-html-editor-actions.c:1677
++#: ../e-util/e-html-editor-actions.c:1800
+ msgid "Remove Link"
+ msgstr "Διαγραφή συνδέσμου"
+ 
+-#: ../e-util/e-html-editor-actions.c:1694
++#: ../e-util/e-html-editor-actions.c:1817
+ msgid "Add Word to Dictionary"
+ msgstr "Προσθήκη λέξης στο λεξικό"
+ 
+-#: ../e-util/e-html-editor-actions.c:1701
++#: ../e-util/e-html-editor-actions.c:1824
+ msgid "Ignore Misspelled Word"
+ msgstr "Παράβλεψη λανθασμένης λέξης"
+ 
+-#: ../e-util/e-html-editor-actions.c:1708
++#: ../e-util/e-html-editor-actions.c:1831
+ msgid "Add Word To"
+ msgstr "Προσθήκη λέξης σε"
+ 
+-#: ../e-util/e-html-editor-actions.c:1717
++#: ../e-util/e-html-editor-actions.c:1840
+ msgid "More Suggestions"
+ msgstr "Περισσότερες προτάσεις"
+ 
+ #. Translators: %s will be replaced with the actual dictionary
+ #. * name, where a user can add a word to. This is part of an
+ #. * "Add Word To" submenu.
+-#: ../e-util/e-html-editor-actions.c:1825
++#: ../e-util/e-html-editor-actions.c:1948
+ #, c-format
+ msgid "%s Dictionary"
+ msgstr "%s Λεξικό"
+ 
+-#: ../e-util/e-html-editor-actions.c:1912
++#: ../e-util/e-html-editor-actions.c:2035
+ msgid "_Emoticon"
+ msgstr "Ε_ικονίδιο διάθεσης"
+ 
+-#: ../e-util/e-html-editor-actions.c:1913
++#: ../e-util/e-html-editor-actions.c:2036
+ msgid "Insert Emoticon"
+ msgstr "Εισαγωγή εικονιδίου διάθεσης"
+ 
+-#: ../e-util/e-html-editor-actions.c:1981
++#: ../e-util/e-html-editor-actions.c:2104
+ msgid "Re_place"
+ msgstr "Α_ντικατάσταση"
+ 
+-#: ../e-util/e-html-editor-actions.c:1984
++#: ../e-util/e-html-editor-actions.c:2107
+ msgid "_Image"
+ msgstr "_Εικόνα"
+ 
+-#: ../e-util/e-html-editor-actions.c:1987
++#: ../e-util/e-html-editor-actions.c:2110
+ msgid "_Link"
+ msgstr "_Σύνδεσμος"
+ 
+ #. Translators: 'Rule' here means a horizontal line in an HTML text
+-#: ../e-util/e-html-editor-actions.c:1991
++#: ../e-util/e-html-editor-actions.c:2114
+ msgid "_Rule"
+ msgstr "_Κανόνας"
+ 
+-#: ../e-util/e-html-editor-actions.c:1994 ../e-util/e-html-editor-cell-dialog.c:668
++#: ../e-util/e-html-editor-actions.c:2117 ../e-util/e-html-editor-cell-dialog.c:732
+ msgid "_Table"
+ msgstr "_Πίνακας"
+ 
+@@ -12016,121 +12043,121 @@ msgstr "Χρώμα γραμματοσειράς"
+ msgid "Font Size"
+ msgstr "Μέγεθος γραμματοσειράς"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:628
++#: ../e-util/e-html-editor-cell-dialog.c:692
+ msgid "<b>Scope</b>"
+ msgstr "<b>Εύρος</b>"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:642
++#: ../e-util/e-html-editor-cell-dialog.c:706
+ msgid "C_ell"
+ msgstr "Κ_ελί"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:655
++#: ../e-util/e-html-editor-cell-dialog.c:719
+ msgid "_Row"
+ msgstr "_Γραμμή"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:681
++#: ../e-util/e-html-editor-cell-dialog.c:745
+ msgid "Col_umn"
+ msgstr "Στή_λη"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:691
++#: ../e-util/e-html-editor-cell-dialog.c:755
+ msgid "<b>Alignment &amp; Behavior</b>"
+ msgstr "<b>Στοίχιση &amp; συμπεριφορά</b>"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:704 ../e-util/e-html-editor-hrule-dialog.c:365
+-#: ../e-util/e-html-editor-table-dialog.c:850
++#: ../e-util/e-html-editor-cell-dialog.c:768 ../e-util/e-html-editor-hrule-dialog.c:407
++#: ../e-util/e-html-editor-table-dialog.c:890
+ msgid "Left"
+ msgstr "Αριστερά"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:705 ../e-util/e-html-editor-hrule-dialog.c:367
+-#: ../e-util/e-html-editor-table-dialog.c:851
++#: ../e-util/e-html-editor-cell-dialog.c:769 ../e-util/e-html-editor-hrule-dialog.c:409
++#: ../e-util/e-html-editor-table-dialog.c:891
+ msgid "Center"
+ msgstr "Κέντρο"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:706 ../e-util/e-html-editor-hrule-dialog.c:369
+-#: ../e-util/e-html-editor-table-dialog.c:852
++#: ../e-util/e-html-editor-cell-dialog.c:770 ../e-util/e-html-editor-hrule-dialog.c:411
++#: ../e-util/e-html-editor-table-dialog.c:892
+ msgid "Right"
+ msgstr "Δεξιά"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:714
++#: ../e-util/e-html-editor-cell-dialog.c:778
+ msgid "_Horizontal:"
+ msgstr "_Οριζόντια:"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:722 ../e-util/e-html-editor-image-dialog.c:581
++#: ../e-util/e-html-editor-cell-dialog.c:786 ../e-util/e-html-editor-image-dialog.c:625
+ msgid "Top"
+ msgstr "Πάνω"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:723 ../e-util/e-html-editor-image-dialog.c:582
++#: ../e-util/e-html-editor-cell-dialog.c:787 ../e-util/e-html-editor-image-dialog.c:626
+ msgid "Middle"
+ msgstr "Μέση"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:724 ../e-util/e-html-editor-image-dialog.c:583
++#: ../e-util/e-html-editor-cell-dialog.c:788 ../e-util/e-html-editor-image-dialog.c:627
+ msgid "Bottom"
+ msgstr "Κάτω"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:732
++#: ../e-util/e-html-editor-cell-dialog.c:796
+ msgid "_Vertical:"
+ msgstr "_Κάθετα:"
+ 
+ #. Wrap Text
+-#: ../e-util/e-html-editor-cell-dialog.c:738
++#: ../e-util/e-html-editor-cell-dialog.c:802
+ msgid "_Wrap Text"
+ msgstr "Ανα_δίπλωση κειμένου"
+ 
+ #. Header Style
+-#: ../e-util/e-html-editor-cell-dialog.c:746
++#: ../e-util/e-html-editor-cell-dialog.c:810
+ msgid "_Header Style"
+ msgstr "Τεχνοτροπία ε_πικεφαλίδας"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:760 ../e-util/e-html-editor-image-dialog.c:521
+-#: ../e-util/e-html-editor-table-dialog.c:762
++#: ../e-util/e-html-editor-cell-dialog.c:824 ../e-util/e-html-editor-image-dialog.c:565
++#: ../e-util/e-html-editor-table-dialog.c:802
+ msgid "<b>Layout</b>"
+ msgstr "<b>Διάταξη</b>"
+ 
+ #. Width
+-#: ../e-util/e-html-editor-cell-dialog.c:771
++#: ../e-util/e-html-editor-cell-dialog.c:835
+ msgid "_Width"
+ msgstr "_Πλάτος"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:810
++#: ../e-util/e-html-editor-cell-dialog.c:874
+ msgid "Row S_pan:"
+ msgstr "Κάλυ_ψη γραμμής:"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:824
++#: ../e-util/e-html-editor-cell-dialog.c:888
+ msgid "Co_lumn Span:"
+ msgstr "Κά_λυψη στήλης:"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:831 ../e-util/e-html-editor-table-dialog.c:866
++#: ../e-util/e-html-editor-cell-dialog.c:895 ../e-util/e-html-editor-table-dialog.c:906
+ msgid "<b>Background</b>"
+ msgstr "<b>Παρασκήνιο</b>"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:844 ../e-util/e-html-editor-table-dialog.c:879
++#: ../e-util/e-html-editor-cell-dialog.c:908 ../e-util/e-html-editor-table-dialog.c:919
+ msgid "Transparent"
+ msgstr "Διαφανές"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:852
++#: ../e-util/e-html-editor-cell-dialog.c:916
+ msgid "C_olor:"
+ msgstr "Χ_ρώμα:"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:860 ../e-util/e-html-editor-image-dialog.c:483
+-#: ../e-util/e-html-editor-table-dialog.c:895
++#: ../e-util/e-html-editor-cell-dialog.c:924 ../e-util/e-html-editor-image-dialog.c:527
++#: ../e-util/e-html-editor-table-dialog.c:935
+ msgid "Choose Background Image"
+ msgstr "Επιλογή εικόνας παρασκηνίου"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:865 ../e-util/e-html-editor-image-dialog.c:489
+-#: ../e-util/e-html-editor-table-dialog.c:900
++#: ../e-util/e-html-editor-cell-dialog.c:929 ../e-util/e-html-editor-image-dialog.c:533
++#: ../e-util/e-html-editor-table-dialog.c:940
+ msgid "Images"
+ msgstr "Εικόνες"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:878
++#: ../e-util/e-html-editor-cell-dialog.c:942
+ msgid "_Image:"
+ msgstr "Ει_κόνα:"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:885 ../e-util/e-html-editor-page-dialog.c:527
+-#: ../e-util/e-html-editor-table-dialog.c:920
++#: ../e-util/e-html-editor-cell-dialog.c:949 ../e-util/e-html-editor-page-dialog.c:579
++#: ../e-util/e-html-editor-table-dialog.c:960
+ msgid "_Remove image"
+ msgstr "Α_φαίρεση εικόνας"
+ 
+-#: ../e-util/e-html-editor-cell-dialog.c:905
++#: ../e-util/e-html-editor-cell-dialog.c:969
+ msgid "Cell Properties"
+ msgstr "Ιδιότητες κελιού"
+ 
+@@ -12139,7 +12166,7 @@ msgstr "Ιδιότητες κελιού"
+ msgid "No match found"
+ msgstr "Δεν βρέθηκε αντιστοιχία"
+ 
+-#: ../e-util/e-html-editor-find-dialog.c:160 ../e-util/e-html-editor-replace-dialog.c:232
++#: ../e-util/e-html-editor-find-dialog.c:160 ../e-util/e-html-editor-replace-dialog.c:247
+ msgid "Search _backwards"
+ msgstr "Αναζήτηση προς τα _πίσω"
+ 
+@@ -12155,75 +12182,75 @@ msgstr "Αναζήτηση ανα_δίπλωσης"
+ msgid "Find"
+ msgstr "Εύρεση"
+ 
+-#: ../e-util/e-html-editor-hrule-dialog.c:300
++#: ../e-util/e-html-editor-hrule-dialog.c:342
+ msgid "<b>Size</b>"
+ msgstr "<b>Μέγεθος</b>"
+ 
+ #. Width
+-#: ../e-util/e-html-editor-hrule-dialog.c:320 ../e-util/e-html-editor-image-dialog.c:539
+-#: ../e-util/e-html-editor-table-dialog.c:773
++#: ../e-util/e-html-editor-hrule-dialog.c:362 ../e-util/e-html-editor-image-dialog.c:583
++#: ../e-util/e-html-editor-table-dialog.c:813
+ msgid "_Width:"
+ msgstr "_Πλάτος:"
+ 
+-#: ../e-util/e-html-editor-hrule-dialog.c:345
++#: ../e-util/e-html-editor-hrule-dialog.c:387
+ msgid "_Size:"
+ msgstr "_Μέγεθος:"
+ 
+-#: ../e-util/e-html-editor-hrule-dialog.c:352
++#: ../e-util/e-html-editor-hrule-dialog.c:394
+ msgid "<b>Style</b>"
+ msgstr "<b>Τεχνοτροπία</b>"
+ 
+-#: ../e-util/e-html-editor-hrule-dialog.c:377 ../e-util/e-html-editor-table-dialog.c:859
++#: ../e-util/e-html-editor-hrule-dialog.c:419 ../e-util/e-html-editor-table-dialog.c:899
+ msgid "_Alignment:"
+ msgstr "Στοί_χιση:"
+ 
+ #. Shaded
+-#: ../e-util/e-html-editor-hrule-dialog.c:383
++#: ../e-util/e-html-editor-hrule-dialog.c:425
+ msgid "S_haded"
+ msgstr "Σκιασμέ_νο"
+ 
+-#: ../e-util/e-html-editor-hrule-dialog.c:400
++#: ../e-util/e-html-editor-hrule-dialog.c:442
+ msgid "Rule properties"
+ msgstr "Ιδιότητες χάρακα"
+ 
+-#: ../e-util/e-html-editor-image-dialog.c:471 ../e-util/e-html-editor-paragraph-dialog.c:66
+-#: ../e-util/e-html-editor-table-dialog.c:716
++#: ../e-util/e-html-editor-image-dialog.c:515 ../e-util/e-html-editor-paragraph-dialog.c:66
++#: ../e-util/e-html-editor-table-dialog.c:756
+ msgid "<b>General</b>"
+ msgstr "<b>Γενικά</b>"
+ 
+-#: ../e-util/e-html-editor-image-dialog.c:500
++#: ../e-util/e-html-editor-image-dialog.c:544
+ msgid "_Source:"
+ msgstr "_Πηγή:"
+ 
+-#: ../e-util/e-html-editor-image-dialog.c:563
++#: ../e-util/e-html-editor-image-dialog.c:607
+ msgid "_Height:"
+ msgstr "Ύ_ψος:"
+ 
+-#: ../e-util/e-html-editor-image-dialog.c:604
++#: ../e-util/e-html-editor-image-dialog.c:648
+ msgid "_X-Padding:"
+ msgstr "Γέμισμα _X:"
+ 
+-#: ../e-util/e-html-editor-image-dialog.c:620
++#: ../e-util/e-html-editor-image-dialog.c:664
+ msgid "_Y-Padding:"
+ msgstr "Γέμισμα _Y:"
+ 
+-#: ../e-util/e-html-editor-image-dialog.c:636 ../e-util/e-html-editor-table-dialog.c:840
++#: ../e-util/e-html-editor-image-dialog.c:680 ../e-util/e-html-editor-table-dialog.c:880
+ msgid "_Border:"
+ msgstr "_Περίγραμμα:"
+ 
+-#: ../e-util/e-html-editor-image-dialog.c:646
++#: ../e-util/e-html-editor-image-dialog.c:690
+ msgid "<b>Link</b>"
+ msgstr "<b>Σύνδεσμος</b>"
+ 
+-#: ../e-util/e-html-editor-image-dialog.c:664 ../e-util/e-html-editor-link-dialog.c:345
++#: ../e-util/e-html-editor-image-dialog.c:708 ../e-util/e-html-editor-link-dialog.c:345
+ msgid "_URL:"
+ msgstr "_URL:"
+ 
+-#: ../e-util/e-html-editor-image-dialog.c:669 ../e-util/e-html-editor-link-dialog.c:350
++#: ../e-util/e-html-editor-image-dialog.c:713 ../e-util/e-html-editor-link-dialog.c:350
+ msgid "_Test URL..."
+ msgstr "_Δοκιμή URL..."
+ 
+-#: ../e-util/e-html-editor-image-dialog.c:686
++#: ../e-util/e-html-editor-image-dialog.c:730
+ msgid "Image Properties"
+ msgstr "Ιδιότητες εικόνας"
+ 
+@@ -12235,68 +12262,68 @@ msgstr "Διαγ_ραφή συνδέσμου"
+ msgid "Link Properties"
+ msgstr "Ιδιότητες συνδέσμου"
+ 
+-#: ../e-util/e-html-editor-page-dialog.c:69
++#: ../e-util/e-html-editor-page-dialog.c:71
+ msgid "Perforated Paper"
+ msgstr "Διάτρητο χαρτί"
+ 
+-#: ../e-util/e-html-editor-page-dialog.c:78
++#: ../e-util/e-html-editor-page-dialog.c:80
+ msgid "Blue Ink"
+ msgstr "Γαλάζιο μελάνι"
+ 
+-#: ../e-util/e-html-editor-page-dialog.c:87
++#: ../e-util/e-html-editor-page-dialog.c:89
+ msgid "Paper"
+ msgstr "Χαρτί"
+ 
+-#: ../e-util/e-html-editor-page-dialog.c:96
++#: ../e-util/e-html-editor-page-dialog.c:98
+ msgid "Ribbon"
+ msgstr "Ταινία"
+ 
+-#: ../e-util/e-html-editor-page-dialog.c:105
++#: ../e-util/e-html-editor-page-dialog.c:107
+ msgid "Midnight"
+ msgstr "Μεσάνυχτα"
+ 
+-#: ../e-util/e-html-editor-page-dialog.c:123 ../mail/filtertypes.xml.in.h:36
++#: ../e-util/e-html-editor-page-dialog.c:125 ../mail/filtertypes.xml.in.h:36
+ #: ../mail/searchtypes.xml.in.h:39 ../mail/vfoldertypes.xml.in.h:39
+ msgid "Draft"
+ msgstr "Πρόχειρο"
+ 
+-#: ../e-util/e-html-editor-page-dialog.c:132
++#: ../e-util/e-html-editor-page-dialog.c:134
+ msgid "Graph Paper"
+ msgstr "Χαρτί γραφημάτων"
+ 
+-#: ../e-util/e-html-editor-page-dialog.c:426
++#: ../e-util/e-html-editor-page-dialog.c:478
+ msgid "<b>Colors</b>"
+ msgstr "<b>Χρώματα</b>"
+ 
+-#: ../e-util/e-html-editor-page-dialog.c:445
++#: ../e-util/e-html-editor-page-dialog.c:497
+ msgid "_Text:"
+ msgstr "_Κείμενο:"
+ 
+-#: ../e-util/e-html-editor-page-dialog.c:460
++#: ../e-util/e-html-editor-page-dialog.c:512
+ msgid "_Link:"
+ msgstr "Σύνδεσ_μος:"
+ 
+-#: ../e-util/e-html-editor-page-dialog.c:475
++#: ../e-util/e-html-editor-page-dialog.c:527
+ msgid "_Background:"
+ msgstr "_Παρασκήνιο:"
+ 
+-#: ../e-util/e-html-editor-page-dialog.c:483
++#: ../e-util/e-html-editor-page-dialog.c:535
+ msgid "<b>Background Image</b>"
+ msgstr "<b>Εικόνα παρασκηνίου</b>"
+ 
+-#: ../e-util/e-html-editor-page-dialog.c:505
++#: ../e-util/e-html-editor-page-dialog.c:557
+ msgid "_Template:"
+ msgstr "_Πρότυπο:"
+ 
+-#: ../e-util/e-html-editor-page-dialog.c:513 ../e-util/e-import-assistant.c:283
++#: ../e-util/e-html-editor-page-dialog.c:565 ../e-util/e-import-assistant.c:283
+ msgid "Select a file"
+ msgstr "Επιλογή ενός αρχείου"
+ 
+-#: ../e-util/e-html-editor-page-dialog.c:520
++#: ../e-util/e-html-editor-page-dialog.c:572
+ msgid "_Custom:"
+ msgstr "_Προσαρμοσμένο:"
+ 
+-#: ../e-util/e-html-editor-page-dialog.c:547
++#: ../e-util/e-html-editor-page-dialog.c:599
+ msgid "Page Properties"
+ msgstr "Ιδιότητες σελίδας"
+ 
+@@ -12312,42 +12339,42 @@ msgstr "<b>Στοίχισης</b>"
+ msgid "Paragraph Properties"
+ msgstr "Ιδιότητες παραγράφου"
+ 
+-#: ../e-util/e-html-editor-replace-dialog.c:148
++#: ../e-util/e-html-editor-replace-dialog.c:163
+ #, c-format
+ msgid "%d occurence replaced"
+ msgid_plural "%d occurences replaced"
+ msgstr[0] "αντικαταστάθηκε %d εμφάνιση"
+ msgstr[1] "αντικαταστάθηκαν %d εμφανίσεις"
+ 
+-#: ../e-util/e-html-editor-replace-dialog.c:212
++#: ../e-util/e-html-editor-replace-dialog.c:227
+ msgid "R_eplace:"
+ msgstr "Α_ντικατάσταση:"
+ 
+-#: ../e-util/e-html-editor-replace-dialog.c:224
++#: ../e-util/e-html-editor-replace-dialog.c:239
+ msgid "_With:"
+ msgstr "_Με:"
+ 
+-#: ../e-util/e-html-editor-replace-dialog.c:236
++#: ../e-util/e-html-editor-replace-dialog.c:251
+ msgid "_Case sensitive"
+ msgstr "_Διάκριση πεζών/κεφαλαίων"
+ 
+-#: ../e-util/e-html-editor-replace-dialog.c:240
++#: ../e-util/e-html-editor-replace-dialog.c:255
+ msgid "Wra_p search"
+ msgstr "Αναζήτηση ανα_δίπλωσης"
+ 
+-#: ../e-util/e-html-editor-replace-dialog.c:250
++#: ../e-util/e-html-editor-replace-dialog.c:265
+ msgid "_Skip"
+ msgstr "Παράλει_ψη"
+ 
+-#: ../e-util/e-html-editor-replace-dialog.c:258 ../e-util/e-system.error.xml.h:3
++#: ../e-util/e-html-editor-replace-dialog.c:273 ../e-util/e-system.error.xml.h:3
+ msgid "_Replace"
+ msgstr "Α_ντικατάσταση"
+ 
+-#: ../e-util/e-html-editor-replace-dialog.c:266
++#: ../e-util/e-html-editor-replace-dialog.c:281
+ msgid "Replace _All"
+ msgstr "Αντικ_ατάσταση όλων"
+ 
+-#: ../e-util/e-html-editor-replace-dialog.c:286
++#: ../e-util/e-html-editor-replace-dialog.c:301
+ msgctxt "dialog-title"
+ msgid "Replace"
+ msgstr "Αντικατάσταση"
+@@ -12399,31 +12426,31 @@ msgstr "Προσθήκη λέξης"
+ msgid "Spell Checking"
+ msgstr "Έλεγχος ορθογραφίας"
+ 
+-#: ../e-util/e-html-editor-table-dialog.c:738
++#: ../e-util/e-html-editor-table-dialog.c:778
+ msgid "_Rows:"
+ msgstr "Γ_ραμμές:"
+ 
+-#: ../e-util/e-html-editor-table-dialog.c:755
++#: ../e-util/e-html-editor-table-dialog.c:795
+ msgid "C_olumns:"
+ msgstr "Σ_τήλες:"
+ 
+-#: ../e-util/e-html-editor-table-dialog.c:806
++#: ../e-util/e-html-editor-table-dialog.c:846
+ msgid "_Spacing:"
+ msgstr "_Διάστιχο:"
+ 
+-#: ../e-util/e-html-editor-table-dialog.c:823
++#: ../e-util/e-html-editor-table-dialog.c:863
+ msgid "_Padding:"
+ msgstr "Γέ_μισμα:"
+ 
+-#: ../e-util/e-html-editor-table-dialog.c:887 ../e-util/e-html-editor-text-dialog.c:261
++#: ../e-util/e-html-editor-table-dialog.c:927 ../e-util/e-html-editor-text-dialog.c:261
+ msgid "_Color:"
+ msgstr "_Χρώμα:"
+ 
+-#: ../e-util/e-html-editor-table-dialog.c:913
++#: ../e-util/e-html-editor-table-dialog.c:953
+ msgid "Image:"
+ msgstr "Εικόνα:"
+ 
+-#: ../e-util/e-html-editor-table-dialog.c:940
++#: ../e-util/e-html-editor-table-dialog.c:980
+ msgid "Table Properties"
+ msgstr "Ιδιότητες πίνακα"
+ 
+@@ -12435,28 +12462,14 @@ msgstr "Μέ_γεθος:"
+ msgid "Text Properties"
+ msgstr "Ιδιότητες κειμένου"
+ 
+-#: ../e-util/e-html-editor-view.c:3705
++#: ../e-util/e-html-editor-view.c:4851
+ msgid "Changed property"
+ msgstr "Αλλαγμένη ιδιότητα"
+ 
+-#: ../e-util/e-html-editor-view.c:3706
++#: ../e-util/e-html-editor-view.c:4852
+ msgid "Whether editor changed"
+ msgstr "Αν η επεξεργασία άλλαξε"
+ 
+-#: ../e-util/e-html-editor-view.c:7567
+-msgid ""
+-"Turning HTML mode off will cause the text to lose all formatting. Do you want to continue?"
+-msgstr ""
+-"Κλείνοντας την κατάσταση HTML το κείμενο θα χάσει όλη τη μορφοποίηση. Θέλετε να συνεχίσετε;"
+-
+-#: ../e-util/e-html-editor-view.c:7571
+-msgid "_Don't lose formatting"
+-msgstr "_Να μην χαθεί η μορφοποίηση"
+-
+-#: ../e-util/e-html-editor-view.c:7572
+-msgid "_Lose formatting"
+-msgstr "Να _χαθεί η μορφοποίηση"
+-
+ #: ../e-util/e-import-assistant.c:256
+ msgid ""
+ "Choose the file that you want to import into Evolution, and select what type of file it is "
+@@ -12625,34 +12638,38 @@ msgstr ""
+ "Διαδραστικός χάρτης ποντικού για την επιλογή ζώνης ώρας. Οι χρήστες πληκτρολογίου μπορούν να "
+ "επιλέξουν τη ζώνη ώρας από το παρακάτω κουτί επιλογών."
+ 
+-#: ../e-util/e-misc-utils.c:248
++#: ../e-util/e-misc-utils.c:249
+ msgid "Could not open the link."
+ msgstr "Δεν ήταν δυνατό το άνοιγμα του συνδέσμου."
+ 
+-#: ../e-util/e-misc-utils.c:295
++#: ../e-util/e-misc-utils.c:331
+ msgid "Could not display help for Evolution."
+ msgstr "Δεν ήταν δυνατή η εμφάνιση βοήθειας για το Evolution."
+ 
+-#: ../e-util/e-misc-utils.c:2348
++#: ../e-util/e-misc-utils.c:2384
+ #, c-format
+ msgid "Opening calendar '%s'"
+ msgstr "Άνοιγμα ημερολογίου '%s'"
+ 
+-#: ../e-util/e-misc-utils.c:2351
++#: ../e-util/e-misc-utils.c:2387
+ #, c-format
+ msgid "Opening memo list '%s'"
+ msgstr "Άνοιγμα λίστας υπενθυμίσεων '%s'"
+ 
+-#: ../e-util/e-misc-utils.c:2354
++#: ../e-util/e-misc-utils.c:2390
+ #, c-format
+ msgid "Opening task list '%s'"
+ msgstr "Άνοιγμα της λίστας εργασιών '%s'"
+ 
+-#: ../e-util/e-misc-utils.c:2357
++#: ../e-util/e-misc-utils.c:2393
+ #, c-format
+ msgid "Opening address book '%s'"
+ msgstr "Άνοιγμα βιβλίου διευθύνσεων '%s'"
+ 
++#: ../e-util/e-misc-utils.c:3127 ../modules/mailto-handler/evolution-mailto-handler.c:148
++msgid "_Do not show this message again"
++msgstr "Να μην εμφανιστεί _ξανά αυτό το μήνυμα"
++
+ #: ../e-util/e-name-selector-dialog.c:277
+ msgid "Show Contacts"
+ msgstr "Εμφάνιση επαφών"
+@@ -13906,8 +13923,8 @@ msgstr "Απεσταλμένα"
+ #: ../libemail-engine/e-mail-session.c:128 ../mail/em-folder-tree-model.c:1170
+ #: ../mail/importers/kmail-libs.c:149 ../modules/mail/e-mail-shell-view-private.c:1080
+ #: ../plugins/templates/org-gnome-templates.eplug.xml.h:1
+-#: ../plugins/templates/templates.c:1147 ../plugins/templates/templates.c:1449
+-#: ../plugins/templates/templates.c:1459
++#: ../plugins/templates/templates.c:1176 ../plugins/templates/templates.c:1478
++#: ../plugins/templates/templates.c:1488
+ msgid "Templates"
+ msgstr "Πρότυπα"
+ 
+@@ -14674,7 +14691,7 @@ msgstr "Προς _Τακτοποίηση"
+ msgid "_Later"
+ msgstr "Α_ργότερα"
+ 
+-#: ../mail/e-mail-label-manager.c:171 ../modules/mail/e-mail-shell-view-actions.c:1084
++#: ../mail/e-mail-label-manager.c:171 ../modules/mail/e-mail-shell-view-actions.c:1085
+ msgid "Add Label"
+ msgstr "Προσθήκη ετικέτας"
+ 
+@@ -15348,7 +15365,7 @@ msgstr "Να μη ξαναγίνει η ερώτηση"
+ 
+ #: ../mail/e-mail-reader-utils.c:556 ../modules/cal-config-caldav/e-caldav-chooser.c:1806
+ #: ../modules/cal-config-google/e-google-chooser.c:1843 ../plugins/face/face.c:170
+-#: ../shell/e-shell.c:861 ../shell/e-shell.c:882 ../smime/gui/certificate-manager.c:346
++#: ../shell/e-shell.c:867 ../shell/e-shell.c:888 ../smime/gui/certificate-manager.c:346
+ msgid "Unknown error"
+ msgstr "Άγνωστο σφάλμα"
+ 
+@@ -15427,7 +15444,7 @@ msgstr "Δεν βρέθηκε πηγή δεδομένων για το UID '%s'"
+ #. * when quoting messages.  Each ${Variable} gets replaced
+ #. * with a value.  To see a full list of available variables,
+ #. * see mail/em-composer-utils.c:attribvars array.
+-#: ../mail/em-composer-utils.c:1507
++#: ../mail/em-composer-utils.c:1538
+ msgid ""
+ "On ${AbbrevWeekdayName}, ${Year}-${Month}-${Day} at ${24Hour}:${Minute} ${TimeZone}, "
+ "${Sender} wrote:"
+@@ -15435,24 +15452,24 @@ msgstr ""
+ "Στις ${Day}-${Month}-${Year}, ημέρα ${AbbrevWeekdayName}, και ώρα ${24Hour}:${Minute} "
+ "${TimeZone}, ο/η ${Sender} έγραψε:"
+ 
+-#: ../mail/em-composer-utils.c:1513
++#: ../mail/em-composer-utils.c:1544
+ msgid "-------- Forwarded Message --------"
+ msgstr "-------- Προωθημένο μήνυμα --------"
+ 
+-#: ../mail/em-composer-utils.c:1518
++#: ../mail/em-composer-utils.c:1549
+ msgid "-----Original Message-----"
+ msgstr "-----Αρχικό μήνυμα-----"
+ 
+-#: ../mail/em-composer-utils.c:2668
++#: ../mail/em-composer-utils.c:2702
+ msgid "an unknown sender"
+ msgstr "ένας άγνωστος αποστολέας"
+ 
+ #. FIXME GTK_WINDOW (composer)
+-#: ../mail/em-composer-utils.c:3107
++#: ../mail/em-composer-utils.c:3141
+ msgid "Posting destination"
+ msgstr "Προορισμός αποστολής"
+ 
+-#: ../mail/em-composer-utils.c:3112
++#: ../mail/em-composer-utils.c:3146
+ msgid "Choose folders to post the message to."
+ msgstr "Επιλέξτε τους φακέλους για να αποστείλετε μήνυμα σε αυτούς."
+ 
+@@ -15578,7 +15595,7 @@ msgid "Subscribe To _All"
+ msgstr "Εγγραφή σε ό_λους"
+ 
+ #: ../mail/em-subscription-editor.c:969 ../mail/em-subscription-editor.c:1867
+-#: ../modules/mail/e-mail-shell-view-actions.c:1692
++#: ../modules/mail/e-mail-shell-view-actions.c:1693
+ msgid "_Unsubscribe"
+ msgstr "_Κατάργηση συνδρομής"
+ 
+@@ -15614,7 +15631,7 @@ msgstr "Συνδρομή στον επιλεγμένο φακέλο"
+ msgid "Su_bscribe"
+ msgstr "Συν_δρομή"
+ 
+-#: ../mail/em-subscription-editor.c:1866 ../modules/mail/e-mail-shell-view-actions.c:1694
++#: ../mail/em-subscription-editor.c:1866 ../modules/mail/e-mail-shell-view-actions.c:1695
+ msgid "Unsubscribe from the selected folder"
+ msgstr "Κατάργηση συνδρομής στον επιλεγμένο φακέλο"
+ 
+@@ -15638,8 +15655,8 @@ msgstr "Α_νάπτυξη όλων"
+ msgid "Refresh the folder list"
+ msgstr "Ανανέωση της λίστας φακέλων"
+ 
+-#: ../mail/em-subscription-editor.c:1929 ../modules/mail/e-mail-shell-view-actions.c:1593
+-#: ../modules/mail/e-mail-shell-view-actions.c:1664
++#: ../mail/em-subscription-editor.c:1929 ../modules/mail/e-mail-shell-view-actions.c:1594
++#: ../modules/mail/e-mail-shell-view-actions.c:1665
+ msgid "_Refresh"
+ msgstr "_Ανανέωση"
+ 
+@@ -15663,11 +15680,11 @@ msgid_plural "Are you sure you want to open %d messages at once?"
+ msgstr[0] "Είστε βέβαιος ότι θέλετε να ανοίξετε ταυτόχρονα %d μηνύματα;"
+ msgstr[1] "Είστε βέβαιοi ότι θέλετε να ανοίξετε ταυτόχρονα %d μηνύματα;"
+ 
+-#: ../mail/em-utils.c:241
++#: ../mail/em-utils.c:176
+ msgid "Message Filters"
+ msgstr "Φίλτρα Μηνυμάτων"
+ 
+-#: ../mail/em-utils.c:983
++#: ../mail/em-utils.c:918
+ #, c-format
+ msgid "Messages from %s"
+ msgstr "Μήνυμα από %s"
+@@ -16835,7 +16852,7 @@ msgstr ""
+ "Είστε σίγουροι ότι θέλετε να απομακρύνετε οριστικά όλα τα μηνύματα που έχουν διαγραφεί σε "
+ "όλους τους φακέλους;"
+ 
+-#: ../mail/mail.error.xml.h:39 ../modules/mail/e-mail-shell-view-actions.c:1579
++#: ../mail/mail.error.xml.h:39 ../modules/mail/e-mail-shell-view-actions.c:1580
+ msgid "_Empty Trash"
+ msgstr "Ά_δειασμα Απορριμμάτων"
+ 
+@@ -17599,27 +17616,27 @@ msgstr "Οποιαδήποτε κεφαλίδα"
+ msgid "Subject or Addresses contains"
+ msgstr "Θέμα ή διεύθυνση περιέχει"
+ 
+-#: ../mail/searchtypes.xml.in.h:56 ../modules/mail/e-mail-shell-view-actions.c:2070
++#: ../mail/searchtypes.xml.in.h:56 ../modules/mail/e-mail-shell-view-actions.c:2071
+ msgid "Recipients contain"
+ msgstr "Παραλήπτες περιέχουν"
+ 
+-#: ../mail/searchtypes.xml.in.h:57 ../modules/mail/e-mail-shell-view-actions.c:2063
++#: ../mail/searchtypes.xml.in.h:57 ../modules/mail/e-mail-shell-view-actions.c:2064
+ msgid "Message contains"
+ msgstr "Μήνυμα περιέχει"
+ 
+-#: ../mail/searchtypes.xml.in.h:58 ../modules/mail/e-mail-shell-view-actions.c:2084
++#: ../mail/searchtypes.xml.in.h:58 ../modules/mail/e-mail-shell-view-actions.c:2085
+ msgid "Subject contains"
+ msgstr "Θέμα περιέχει"
+ 
+-#: ../mail/searchtypes.xml.in.h:59 ../modules/mail/e-mail-shell-view-actions.c:2077
++#: ../mail/searchtypes.xml.in.h:59 ../modules/mail/e-mail-shell-view-actions.c:2078
+ msgid "Sender contains"
+ msgstr "Αποστολέας περιέχει"
+ 
+-#: ../mail/searchtypes.xml.in.h:60 ../modules/mail/e-mail-shell-view-actions.c:2049
++#: ../mail/searchtypes.xml.in.h:60 ../modules/mail/e-mail-shell-view-actions.c:2050
+ msgid "Body contains"
+ msgstr "Το σώμα περιέχει"
+ 
+-#: ../mail/searchtypes.xml.in.h:61 ../modules/mail/e-mail-shell-view-actions.c:2056
++#: ../mail/searchtypes.xml.in.h:61 ../modules/mail/e-mail-shell-view-actions.c:2057
+ msgid "Free form expression"
+ msgstr "Έκφραση ελεύθερης μορφής"
+ 
+@@ -17772,7 +17789,7 @@ msgstr "Εμφάνιση χάρτη με όλες τις επαφές από ε
+ #: ../modules/calendar/e-cal-shell-view-actions.c:1261
+ #: ../modules/calendar/e-memo-shell-view-actions.c:585
+ #: ../modules/calendar/e-task-shell-view-actions.c:710
+-#: ../modules/mail/e-mail-shell-view-actions.c:1671
++#: ../modules/mail/e-mail-shell-view-actions.c:1672
+ msgid "_Rename..."
+ msgstr "_Μετονομασία..."
+ 
+@@ -17853,7 +17870,7 @@ msgstr "Ε_νέργειες"
+ #: ../modules/addressbook/e-book-shell-view-actions.c:1058
+ #: ../modules/calendar/e-memo-shell-view-actions.c:622
+ #: ../modules/calendar/e-task-shell-view-actions.c:775
+-#: ../modules/mail/e-mail-shell-view-actions.c:1836
++#: ../modules/mail/e-mail-shell-view-actions.c:1837
+ msgid "_Preview"
+ msgstr "_Προεπισκόπηση"
+ 
+@@ -17880,7 +17897,7 @@ msgstr "Εμφάνιση χαρτών σε παράθυρο προεπισκόπ
+ #: ../modules/addressbook/e-book-shell-view-actions.c:1140
+ #: ../modules/calendar/e-memo-shell-view-actions.c:692
+ #: ../modules/calendar/e-task-shell-view-actions.c:857
+-#: ../modules/mail/e-mail-shell-view-actions.c:1966
++#: ../modules/mail/e-mail-shell-view-actions.c:1967
+ msgid "_Classic View"
+ msgstr "_Κλασσική προβολή"
+ 
+@@ -17891,7 +17908,7 @@ msgstr "Εμφάνιση προεπισκόπησης επαφής κάτω απ
+ #: ../modules/addressbook/e-book-shell-view-actions.c:1147
+ #: ../modules/calendar/e-memo-shell-view-actions.c:699
+ #: ../modules/calendar/e-task-shell-view-actions.c:864
+-#: ../modules/mail/e-mail-shell-view-actions.c:1973
++#: ../modules/mail/e-mail-shell-view-actions.c:1974
+ msgid "_Vertical View"
+ msgstr "Κά_θετη προβολή"
+ 
+@@ -17910,7 +17927,7 @@ msgstr "Αταίριαστο"
+ #: ../modules/calendar/e-cal-shell-view-actions.c:1604
+ #: ../modules/calendar/e-memo-shell-view-actions.c:726
+ #: ../modules/calendar/e-task-shell-view-actions.c:926
+-#: ../modules/mail/e-mail-shell-view-actions.c:2042 ../shell/e-shell-content.c:657
++#: ../modules/mail/e-mail-shell-view-actions.c:2043 ../shell/e-shell-content.c:657
+ msgid "Advanced Search"
+ msgstr "Προχωρημένη αναζήτηση"
+ 
+@@ -20393,359 +20410,359 @@ msgid_plural "%d attached messages"
+ msgstr[0] "%d συνημμένο μήνυμα"
+ msgstr[1] "%d συνημμένα μηνύματα"
+ 
+-#: ../modules/mail/e-mail-shell-backend.c:350
++#: ../modules/mail/e-mail-shell-backend.c:349
+ msgctxt "New"
+ msgid "_Mail Message"
+ msgstr "_Μήνυμα αλληλογραφίας"
+ 
+-#: ../modules/mail/e-mail-shell-backend.c:352
++#: ../modules/mail/e-mail-shell-backend.c:351
+ msgid "Compose a new mail message"
+ msgstr "Συγγραφή νέου μηνύματος"
+ 
+-#: ../modules/mail/e-mail-shell-backend.c:360
++#: ../modules/mail/e-mail-shell-backend.c:359
+ msgctxt "New"
+ msgid "Mail Acco_unt"
+ msgstr "Λογαρ_ιασμός ταχυδρομείου"
+ 
+-#: ../modules/mail/e-mail-shell-backend.c:362
++#: ../modules/mail/e-mail-shell-backend.c:361
+ msgid "Create a new mail account"
+ msgstr "Δημιουργία νέου λογαριασμού αλληλογραφίας"
+ 
+-#: ../modules/mail/e-mail-shell-backend.c:367
++#: ../modules/mail/e-mail-shell-backend.c:366
+ msgctxt "New"
+ msgid "Mail _Folder"
+ msgstr "_Φάκελος αλληλογραφίας"
+ 
+-#: ../modules/mail/e-mail-shell-backend.c:369
++#: ../modules/mail/e-mail-shell-backend.c:368
+ msgid "Create a new mail folder"
+ msgstr "Δημιουργία νέου φακέλου αλληλογραφίας"
+ 
+-#: ../modules/mail/e-mail-shell-backend.c:684
++#: ../modules/mail/e-mail-shell-backend.c:683
+ msgid "Mail Accounts"
+ msgstr "Λογαριασμοί αλληλογραφίας"
+ 
+-#: ../modules/mail/e-mail-shell-backend.c:693
++#: ../modules/mail/e-mail-shell-backend.c:692
+ msgid "Mail Preferences"
+ msgstr "Προτιμήσεις αλληλογραφίας"
+ 
+-#: ../modules/mail/e-mail-shell-backend.c:702
++#: ../modules/mail/e-mail-shell-backend.c:701
+ msgid "Composer Preferences"
+ msgstr "Προτιμήσεις Επεξεργαστή"
+ 
+-#: ../modules/mail/e-mail-shell-backend.c:712
++#: ../modules/mail/e-mail-shell-backend.c:711
+ msgid "Network Preferences"
+ msgstr "Προτιμήσεις Δικτύου"
+ 
+ #. Translators: The first item in the list, to be
+ #. * able to set rule: [Label] [is/is-not] [None]
+-#: ../modules/mail/e-mail-shell-backend.c:1004
++#: ../modules/mail/e-mail-shell-backend.c:1003
+ msgctxt "label"
+ msgid "None"
+ msgstr "Κανένα"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:712
++#: ../modules/mail/e-mail-shell-view-actions.c:713
+ msgid "Marking messages as read..."
+ msgstr "Σήμανση μηνυμάτων ως διαβασμένων..."
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1572
++#: ../modules/mail/e-mail-shell-view-actions.c:1573
+ msgid "_Disable Account"
+ msgstr "Απε_νεργοποίηση λογαριασμού"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1574
++#: ../modules/mail/e-mail-shell-view-actions.c:1575
+ msgid "Disable this account"
+ msgstr "Απενεργοποίηση αυτού του λογαριασμού"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1581
++#: ../modules/mail/e-mail-shell-view-actions.c:1582
+ msgid "Permanently remove all the deleted messages from all folders"
+ msgstr "Οριστική απομάκρυνση όλων των διαγραμμένων μηνυμάτων από όλους τους φακέλους"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1588
++#: ../modules/mail/e-mail-shell-view-actions.c:1589
+ msgid "Edit properties of this account"
+ msgstr "Επξεργασία των ιδιοτήτων αυτού του λογαριασμού"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1595
++#: ../modules/mail/e-mail-shell-view-actions.c:1596
+ msgid "Refresh list of folders of this account"
+ msgstr "Ανανέωση της λίστας των φακέλων αυτού του λογαριασμού"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1600
++#: ../modules/mail/e-mail-shell-view-actions.c:1601
+ msgid "_Download Messages for Offline Usage"
+ msgstr "_Λήψη μηνυμάτων για εργασία χωρίς σύνδεση"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1602
++#: ../modules/mail/e-mail-shell-view-actions.c:1603
+ msgid "Download messages of accounts and folders marked for offline usage"
+ msgstr ""
+ "Λήψη μηνυμάτων από λογαριασμούς/ φακέλους που έχουν σημειωθεί για εργασία χωρίς σύνδεση"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1607
++#: ../modules/mail/e-mail-shell-view-actions.c:1608
+ msgid "Fl_ush Outbox"
+ msgstr "Εκκα_θάριση εξερχομένων"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1614
++#: ../modules/mail/e-mail-shell-view-actions.c:1615
+ msgid "_Copy Folder To..."
+ msgstr "_Αντιγραφή φακέλου σε..."
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1616
++#: ../modules/mail/e-mail-shell-view-actions.c:1617
+ msgid "Copy the selected folder into another folder"
+ msgstr "Αντιγραφή του επιλεγμένου φακέλου σε άλλο φάκελο"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1623
++#: ../modules/mail/e-mail-shell-view-actions.c:1624
+ msgid "Permanently remove this folder"
+ msgstr "Μόνιμη απομάκρυνση αυτού του φακέλου"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1628
++#: ../modules/mail/e-mail-shell-view-actions.c:1629
+ msgid "E_xpunge"
+ msgstr "Ε_ξάλειψη"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1630
++#: ../modules/mail/e-mail-shell-view-actions.c:1631
+ msgid "Permanently remove all deleted messages from this folder"
+ msgstr "Μόνιμη απομάκρυνση όλων των μηνυμάτων που έχουν διαγραφεί από αυτόν τον φάκελο"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1635
+-#: ../modules/mail/e-mail-shell-view-actions.c:1736
++#: ../modules/mail/e-mail-shell-view-actions.c:1636
++#: ../modules/mail/e-mail-shell-view-actions.c:1737
+ msgid "Mar_k All Messages as Read"
+ msgstr "_Σήμανση όλων των μηνυμάτων ως αναγνωσμένα"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1637
+-#: ../modules/mail/e-mail-shell-view-actions.c:1738
++#: ../modules/mail/e-mail-shell-view-actions.c:1638
++#: ../modules/mail/e-mail-shell-view-actions.c:1739
+ msgid "Mark all messages in the folder as read"
+ msgstr "Σήμανση όλων των μηνυμάτων σε αυτό τον φάκελο ως αναγνωσμένα"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1642
++#: ../modules/mail/e-mail-shell-view-actions.c:1643
+ msgid "_Move Folder To..."
+ msgstr "_Μετακίνηση φακέλου σε..."
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1644
++#: ../modules/mail/e-mail-shell-view-actions.c:1645
+ msgid "Move the selected folder into another folder"
+ msgstr "Μετακίνηση του επιλεγμένου φακέλου σε άλλο φάκελο"
+ 
+ #. Translators: An action caption to create a new mail folder
+-#: ../modules/mail/e-mail-shell-view-actions.c:1650
++#: ../modules/mail/e-mail-shell-view-actions.c:1651
+ msgid "_New..."
+ msgstr "_Νέο..."
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1652
++#: ../modules/mail/e-mail-shell-view-actions.c:1653
+ msgid "Create a new folder for storing mail"
+ msgstr "Δημιουργία ενός νέου φακέλου για αυτή την αποθήκευση αλληλογραφίας"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1659
++#: ../modules/mail/e-mail-shell-view-actions.c:1660
+ msgid "Change the properties of this folder"
+ msgstr "Αλλαγή των ιδιοτήτων αυτού του φακέλου"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1666
++#: ../modules/mail/e-mail-shell-view-actions.c:1667
+ msgid "Refresh the folder"
+ msgstr "Ανανέωση του φακέλου"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1673
++#: ../modules/mail/e-mail-shell-view-actions.c:1674
+ msgid "Change the name of this folder"
+ msgstr "Αλλαγή ονόματος αυτού του φακέλου"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1678
++#: ../modules/mail/e-mail-shell-view-actions.c:1679
+ msgid "Select Message _Thread"
+ msgstr "Επιλογή αλληλου_χίας μηνυμάτων"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1680
++#: ../modules/mail/e-mail-shell-view-actions.c:1681
+ msgid "Select all messages in the same thread as the selected message"
+ msgstr "Επιλογή όλων των μηνυμάτων στο ίδιο θέμα σαν το επιλεγμένο μήνυμα"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1685
++#: ../modules/mail/e-mail-shell-view-actions.c:1686
+ msgid "Select Message S_ubthread"
+ msgstr "Επιλογή αλληλου_χίας μηνυμάτων"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1687
++#: ../modules/mail/e-mail-shell-view-actions.c:1688
+ msgid "Select all replies to the currently selected message"
+ msgstr "Επιλογή όλων των απαντήσεων στο επιλεγμένο μήνυμα"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1699
++#: ../modules/mail/e-mail-shell-view-actions.c:1700
+ msgid "Empty _Trash"
+ msgstr "Άδειασμα _απορριμμάτων"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1701
++#: ../modules/mail/e-mail-shell-view-actions.c:1702
+ msgid "Permanently remove all the deleted messages from all accounts"
+ msgstr "Οριστική απομάκρυνση όλων των διαγραμμένων μηνυμάτων από όλους τους φακέλους"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1706
++#: ../modules/mail/e-mail-shell-view-actions.c:1707
+ msgid "_New Label"
+ msgstr "_Νέα ετικέτα"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1715
++#: ../modules/mail/e-mail-shell-view-actions.c:1716
+ msgid "N_one"
+ msgstr "Κα_νένα"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1729
++#: ../modules/mail/e-mail-shell-view-actions.c:1730
+ msgid "_Manage Subscriptions"
+ msgstr "Διαχείριση _συνδρομών"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1731
+-#: ../modules/mail/e-mail-shell-view-actions.c:1815
++#: ../modules/mail/e-mail-shell-view-actions.c:1732
++#: ../modules/mail/e-mail-shell-view-actions.c:1816
+ msgid "Subscribe or unsubscribe to folders on remote servers"
+ msgstr "Συνδρομή ή κατάργηση συνδρομής σε φακέλους σε απομακρυσμένους διακομιστές"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1743
+-#: ../modules/mail/e-mail-shell-view-actions.c:1764
++#: ../modules/mail/e-mail-shell-view-actions.c:1744
++#: ../modules/mail/e-mail-shell-view-actions.c:1765
+ msgid "Send / _Receive"
+ msgstr "Αποστολή / _Λήψη"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1745
++#: ../modules/mail/e-mail-shell-view-actions.c:1746
+ msgid "Send queued items and retrieve new items"
+ msgstr "Αποστολή μηνυμάτων σε αναμονή και λήψη νέων"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1750
++#: ../modules/mail/e-mail-shell-view-actions.c:1751
+ msgid "R_eceive All"
+ msgstr "Λή_ψη όλων"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1752
++#: ../modules/mail/e-mail-shell-view-actions.c:1753
+ msgid "Receive new items from all accounts"
+ msgstr "Λήψη νέων αντικειμένων από όλους τους λογαριασμούς"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1757
++#: ../modules/mail/e-mail-shell-view-actions.c:1758
+ msgid "_Send All"
+ msgstr "_Αποστολή όλων"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1759
++#: ../modules/mail/e-mail-shell-view-actions.c:1760
+ msgid "Send queued items in all accounts"
+ msgstr "Αποστολή αντικειμένων σε αναμονή σε όλους τους λογαριασμούς"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1787
++#: ../modules/mail/e-mail-shell-view-actions.c:1788
+ msgid "Cancel the current mail operation"
+ msgstr "Ακύρωση της τρέχουσας λειτουργίας ταχυδρομείου"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1792
++#: ../modules/mail/e-mail-shell-view-actions.c:1793
+ msgid "Collapse All _Threads"
+ msgstr "Σύμπτυξη ό_λων των αλληλουχιών"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1794
++#: ../modules/mail/e-mail-shell-view-actions.c:1795
+ msgid "Collapse all message threads"
+ msgstr "Σύμπτυξη όλων των αλληλουχιών μηνυμάτων"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1799
++#: ../modules/mail/e-mail-shell-view-actions.c:1800
+ msgid "E_xpand All Threads"
+ msgstr "Α_νάπτυξη όλων των αλληλουχιών"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1801
++#: ../modules/mail/e-mail-shell-view-actions.c:1802
+ msgid "Expand all message threads"
+ msgstr "Ανάπτυξη όλων των αλληλουχιών μηνυμάτων"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1806
++#: ../modules/mail/e-mail-shell-view-actions.c:1807
+ msgid "_Message Filters"
+ msgstr "_Φίλτρα μηνυμάτων"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1808
++#: ../modules/mail/e-mail-shell-view-actions.c:1809
+ msgid "Create or edit rules for filtering new mail"
+ msgstr "Δημιουργία ή επεξεργασία κανόνων για το φιλτράρισμα των μηνυμάτων"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1813
++#: ../modules/mail/e-mail-shell-view-actions.c:1814
+ msgid "_Subscriptions..."
+ msgstr "_Συνδρομές..."
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1822
++#: ../modules/mail/e-mail-shell-view-actions.c:1823
+ msgid "F_older"
+ msgstr "_Φάκελος"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1829
++#: ../modules/mail/e-mail-shell-view-actions.c:1830
+ msgid "_Label"
+ msgstr "_Ετικέτα"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1846
++#: ../modules/mail/e-mail-shell-view-actions.c:1847
+ msgid "C_reate Search Folder From Search..."
+ msgstr "_Δημιουργία φακέλου αναζήτησης από αναζήτηση..."
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1853
++#: ../modules/mail/e-mail-shell-view-actions.c:1854
+ msgid "Search F_olders"
+ msgstr "_Φάκελοι αναζήτησης"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1855
++#: ../modules/mail/e-mail-shell-view-actions.c:1856
+ msgid "Create or edit search folder definitions"
+ msgstr "Δημιουργία ή επεξεργασία ορισμών για το φάκελο αναζήτησης"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1894
++#: ../modules/mail/e-mail-shell-view-actions.c:1895
+ msgid "_New Folder..."
+ msgstr "_Νέος φάκελος..."
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1922
++#: ../modules/mail/e-mail-shell-view-actions.c:1923
+ msgid "Show Message _Preview"
+ msgstr "Εμφάνιση _προεπισκόπησης μηνύματος"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1924
++#: ../modules/mail/e-mail-shell-view-actions.c:1925
+ msgid "Show message preview pane"
+ msgstr "Εμφάνιση πλαισίου προεπισκόπησης μηνύματος"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1930
++#: ../modules/mail/e-mail-shell-view-actions.c:1931
+ msgid "Show _Deleted Messages"
+ msgstr "Προβολή _διαγραμμένων μηνυμάτων"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1932
++#: ../modules/mail/e-mail-shell-view-actions.c:1933
+ msgid "Show deleted messages with a line through them"
+ msgstr "Εμφάνιση διαγραμμένων μηνυμάτων με διακριτή γραμμή"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1938
++#: ../modules/mail/e-mail-shell-view-actions.c:1939
+ msgid "_Group By Threads"
+ msgstr "Ομα_δοποίηση βάσει αλληλουχιών"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1940
++#: ../modules/mail/e-mail-shell-view-actions.c:1941
+ msgid "Threaded message list"
+ msgstr "Λίστα μηνυμάτων κατά θέμα"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1946
++#: ../modules/mail/e-mail-shell-view-actions.c:1947
+ msgid "_Unmatched Folder Enabled"
+ msgstr "Ενεργοποίηση α_σύμφωνου φακέλου"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1948
++#: ../modules/mail/e-mail-shell-view-actions.c:1949
+ msgid "Toggles whether Unmatched search folder is enabled"
+ msgstr "Εναλλαγή εάν ο ασύμφωνος φάκελος αναζήτησης ενεργοποιηθεί"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1968
++#: ../modules/mail/e-mail-shell-view-actions.c:1969
+ msgid "Show message preview below the message list"
+ msgstr "Εμφάνιση προεπισκόπησης μηνυμάτων κάτω από τη λίστα μηνυμάτων"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1975
++#: ../modules/mail/e-mail-shell-view-actions.c:1976
+ msgid "Show message preview alongside the message list"
+ msgstr "Εμφάνιση προεπισκόπησης μηνυμάτων δίπλα από τη λίστα μηνυμάτων"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1983
++#: ../modules/mail/e-mail-shell-view-actions.c:1984
+ msgid "All Messages"
+ msgstr "Όλα τα μηνύματα"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1990
++#: ../modules/mail/e-mail-shell-view-actions.c:1991
+ msgid "Important Messages"
+ msgstr "Σημαντικά μηνύματα"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:1997
++#: ../modules/mail/e-mail-shell-view-actions.c:1998
+ msgid "Last 5 Days' Messages"
+ msgstr "Μηνύματα των 5 τελευταίων ημερών"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:2004
++#: ../modules/mail/e-mail-shell-view-actions.c:2005
+ msgid "Messages Not Junk"
+ msgstr "Τα μηνύματα είναι επιθυμητά"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:2011
++#: ../modules/mail/e-mail-shell-view-actions.c:2012
+ msgid "Messages with Attachments"
+ msgstr "Μηνύματα με συνημμένα"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:2018
++#: ../modules/mail/e-mail-shell-view-actions.c:2019
+ msgid "No Label"
+ msgstr "Χωρίς ετικέτα"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:2025
++#: ../modules/mail/e-mail-shell-view-actions.c:2026
+ msgid "Read Messages"
+ msgstr "Αναγνωσμένα μηνύματα"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:2032
++#: ../modules/mail/e-mail-shell-view-actions.c:2033
+ msgid "Unread Messages"
+ msgstr "Μη αναγνωσμένα μηνύματα"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:2091
++#: ../modules/mail/e-mail-shell-view-actions.c:2092
+ msgid "Subject or Addresses contain"
+ msgstr "Θέμα ή διευθύνσεις περιέχουν"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:2101
++#: ../modules/mail/e-mail-shell-view-actions.c:2102
+ msgid "All Accounts"
+ msgstr "Όλοι οι λογαριασμοί"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:2108
++#: ../modules/mail/e-mail-shell-view-actions.c:2109
+ msgid "Current Account"
+ msgstr "Αυτό το λογαριασμό"
+ 
+-#: ../modules/mail/e-mail-shell-view-actions.c:2115
++#: ../modules/mail/e-mail-shell-view-actions.c:2116
+ msgid "Current Folder"
+ msgstr "Αυτό τον φάκελο"
+ 
+@@ -22362,35 +22379,35 @@ msgstr ""
+ "$ORIG[subject], $ORIG[from], $ORIG[to] or $ORIG[body], που θα αντικατασταθούν από τιμές από "
+ "ένα μήνυμα στο οποίο απαντάτε."
+ 
+-#: ../plugins/templates/templates.c:1216
++#: ../plugins/templates/templates.c:1245
+ msgid "No Title"
+ msgstr "Χωρίς τίτλο"
+ 
+-#: ../plugins/templates/templates.c:1325
++#: ../plugins/templates/templates.c:1354
+ msgid "Save as _Template"
+ msgstr "Αποθήκευση ως Προ_τύπου"
+ 
+-#: ../plugins/templates/templates.c:1327
++#: ../plugins/templates/templates.c:1356
+ msgid "Save as Template"
+ msgstr "Αποθήκευση ως Προτύπου"
+ 
+-#: ../shell/e-shell.c:335
++#: ../shell/e-shell.c:337
+ msgid "Preparing to go offline..."
+ msgstr "Προετοιμασία για εργασία χωρίς σύνδεση..."
+ 
+-#: ../shell/e-shell.c:388
++#: ../shell/e-shell.c:390
+ msgid "Preparing to go online..."
+ msgstr "Προετοιμασία για εργασία με σύνδεση..."
+ 
+-#: ../shell/e-shell.c:495
++#: ../shell/e-shell.c:501
+ msgid "Preparing to quit"
+ msgstr "Προετοιμασία για τερματισμό"
+ 
+-#: ../shell/e-shell.c:501
++#: ../shell/e-shell.c:507
+ msgid "Preparing to quit..."
+ msgstr "Προετοιμασία για τερματισμό..."
+ 
+-#: ../shell/e-shell.c:909
++#: ../shell/e-shell.c:915
+ msgid "Credentials are required to connect to the destination host."
+ msgstr "Απαιτούνται διαπιστευτήρια για τη σύνδεση με τον οικοδεσπότη προορισμού."
+ 
+-- 
+2.15.0
+

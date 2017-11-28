@@ -1,0 +1,79 @@
+From f9415c153a15fe2fc09ce90cbf4ce56ba70ca7ae Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 10 Apr 2015 12:00:16 +0200
+Subject: [PATCH 0661/1800] Bug 747473 - Recurring all day events shown
+ incorrectly
+
+---
+ calendar/gui/comp-util.c        |  5 ++---
+ calendar/gui/e-cal-data-model.c | 21 +++++++++++++++++++--
+ 2 files changed, 21 insertions(+), 5 deletions(-)
+
+diff --git a/calendar/gui/comp-util.c b/calendar/gui/comp-util.c
+index cd1732b934..114a4bc83f 100644
+--- a/calendar/gui/comp-util.c
++++ b/calendar/gui/comp-util.c
+@@ -887,7 +887,7 @@ cal_comp_get_instance_times (ECalClient *client,
+ 				if (st_zone)
+ 					zone = st_zone;
+ 			}
+-	       }
++		}
+ 	}
+ 
+ 	*instance_start = icaltime_as_timet_with_zone (start_time, zone);
+@@ -914,8 +914,7 @@ cal_comp_get_instance_times (ECalClient *client,
+ 				if (end_zone)
+ 					zone = end_zone;
+ 			}
+-	       }
+-
++		}
+ 	}
+ 
+ 	*instance_end = icaltime_as_timet_with_zone (end_time, zone);
+diff --git a/calendar/gui/e-cal-data-model.c b/calendar/gui/e-cal-data-model.c
+index ea6430a9ee..fd84f7136a 100644
+--- a/calendar/gui/e-cal-data-model.c
++++ b/calendar/gui/e-cal-data-model.c
+@@ -1018,18 +1018,35 @@ cal_data_model_instance_generated (ECalComponent *comp,
+ {
+ 	GenerateInstancesData *gid = data;
+ 	ComponentData *comp_data;
++	ECalComponent *comp_copy;
++	icaltimetype tt, tt2;
+ 
+ 	g_return_val_if_fail (gid != NULL, FALSE);
+ 
+-	cal_comp_get_instance_times (gid->client, e_cal_component_get_icalcomponent (comp),
++	comp_copy = e_cal_component_clone (comp);
++	g_return_val_if_fail (comp_copy != NULL, FALSE);
++
++	tt = icalcomponent_get_dtstart (e_cal_component_get_icalcomponent (comp_copy));
++	tt2 = icaltime_from_timet_with_zone (instance_start, tt.is_date, gid->zone);
++	icalcomponent_set_dtstart (e_cal_component_get_icalcomponent (comp_copy), tt2);
++
++	tt = icalcomponent_get_dtend (e_cal_component_get_icalcomponent (comp_copy));
++	tt2 = icaltime_from_timet_with_zone (instance_end, tt.is_date, gid->zone);
++	icalcomponent_set_dtend (e_cal_component_get_icalcomponent (comp_copy), tt2);
++
++	e_cal_component_rescan (comp_copy);
++
++	cal_comp_get_instance_times (gid->client, e_cal_component_get_icalcomponent (comp_copy),
+ 		gid->zone, &instance_start, NULL, &instance_end, NULL, NULL);
+ 
+ 	if (instance_end > instance_start)
+ 		instance_end--;
+ 
+-	comp_data = component_data_new (comp, instance_start, instance_end, FALSE);
++	comp_data = component_data_new (comp_copy, instance_start, instance_end, FALSE);
+ 	*gid->pexpanded_recurrences = g_slist_prepend (*gid->pexpanded_recurrences, comp_data);
+ 
++	g_object_unref (comp_copy);
++
+ 	return TRUE;
+ }
+ 
+-- 
+2.15.0
+

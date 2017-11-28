@@ -1,0 +1,268 @@
+From 7d718da67f71c03be5a1b870fe0d94bac96c616e Mon Sep 17 00:00:00 2001
+From: Mike Gorse <mgorse@suse.com>
+Date: Wed, 25 Feb 2015 08:55:18 +0100
+Subject: [PATCH 0364/1800] Bug 743404 - Status column of message list exposed
+ poorly via atk
+
+Allow the atk implementation for ECellToggle to expose names for
+states, since an ECellToggle can potentially show many states,
+so setting ATK_STATE_CHECKABLE isn't always sufficient. Also
+expose the corresponding enum of the icon through AtkValue, in case
+an AT wants to perform a custom action for a particular value. Use
+this functionality for the "status" cells in the message list.
+---
+ e-util/e-cell-toggle.c          | 40 ++++++++++++++++++
+ e-util/e-cell-toggle.h          |  6 +++
+ e-util/gal-a11y-e-cell-toggle.c | 93 +++++++++++++++++++++--------------------
+ mail/message-list.c             |  4 +-
+ 4 files changed, 95 insertions(+), 48 deletions(-)
+
+diff --git a/e-util/e-cell-toggle.c b/e-util/e-cell-toggle.c
+index 716e70cb88..b081bac9ac 100644
+--- a/e-util/e-cell-toggle.c
++++ b/e-util/e-cell-toggle.c
+@@ -43,6 +43,7 @@
+ 
+ struct _ECellTogglePrivate {
+ 	gchar **icon_names;
++	gchar **icon_descriptions;
+ 	guint n_icon_names;
+ 
+ 	GdkPixbuf *empty;
+@@ -127,6 +128,12 @@ cell_toggle_finalize (GObject *object)
+ 		g_free (priv->icon_names[ii]);
+ 	g_free (priv->icon_names);
+ 
++	if (priv->icon_descriptions) {
++		for (ii = 0; ii < priv->n_icon_names; ii++)
++			g_free (priv->icon_descriptions[ii]);
++		g_free (priv->icon_descriptions);
++	}
++
+ 	g_ptr_array_free (priv->pixbufs, TRUE);
+ 
+ 	/* Chain up to parent's finalize() method. */
+@@ -466,3 +473,36 @@ e_cell_toggle_get_pixbufs (ECellToggle *cell_toggle)
+ 
+ 	return cell_toggle->priv->pixbufs;
+ }
++
++void
++e_cell_toggle_set_icon_descriptions (ECellToggle *cell_toggle,
++				     const gchar **descriptions,
++				     gint n_descriptions)
++{
++	gint ii;
++	gint n_icon_names;
++
++	g_return_if_fail (E_IS_CELL_TOGGLE (cell_toggle));
++	g_return_if_fail (cell_toggle->priv->icon_descriptions == NULL);
++	g_return_if_fail (n_descriptions == cell_toggle->priv->n_icon_names);
++
++	n_icon_names = cell_toggle->priv->n_icon_names;
++
++	cell_toggle->priv->icon_descriptions = g_new (gchar *, n_icon_names);
++
++	for (ii = 0; ii < n_icon_names; ii++)
++		cell_toggle->priv->icon_descriptions[ii] = g_strdup (descriptions[ii]);
++}
++
++const gchar *
++e_cell_toggle_get_icon_description (ECellToggle *cell_toggle,
++				    gint n)
++{
++	if (n < 0 || n >= cell_toggle->priv->n_icon_names)
++		return NULL;
++
++	if (!cell_toggle->priv->icon_descriptions)
++		return NULL;
++
++	return cell_toggle->priv->icon_descriptions[n];
++}
+diff --git a/e-util/e-cell-toggle.h b/e-util/e-cell-toggle.h
+index 7aa3f09f57..7c291c893f 100644
+--- a/e-util/e-cell-toggle.h
++++ b/e-util/e-cell-toggle.h
+@@ -76,6 +76,12 @@ void		e_cell_toggle_construct		(ECellToggle *cell_toggle,
+ 						 guint n_icon_names);
+ GPtrArray *	e_cell_toggle_get_pixbufs	(ECellToggle *cell_toggle);
+ 
++void		e_cell_toggle_set_icon_descriptions	(ECellToggle *cell_toggle,
++							 const gchar **descriptions,
++							 gint n_descriptions);
++
++const gchar *	e_cell_toggle_get_icon_description	(ECellToggle *cell_toggle,
++							 gint n);
+ G_END_DECLS
+ 
+ #endif /* E_CELL_TOGGLE_H */
+diff --git a/e-util/gal-a11y-e-cell-toggle.c b/e-util/gal-a11y-e-cell-toggle.c
+index 333ece2ea8..ef4b2741f0 100644
+--- a/e-util/gal-a11y-e-cell-toggle.c
++++ b/e-util/gal-a11y-e-cell-toggle.c
+@@ -33,8 +33,6 @@
+ #define PARENT_TYPE  (gal_a11y_e_cell_get_type ())
+ static GObjectClass *parent_class;
+ 
+-static void gal_a11y_e_cell_toggle_class_init (GalA11yECellToggleClass *class);
+-
+ static void
+ gal_a11y_e_cell_toggle_dispose (GObject *object)
+ {
+@@ -51,35 +49,32 @@ gal_a11y_e_cell_toggle_dispose (GObject *object)
+ 		parent_class->dispose (object);
+ }
+ 
+-GType
+-gal_a11y_e_cell_toggle_get_type (void)
++static void
++ect_get_current_value (AtkValue *obj,
++		       GValue *value)
+ {
+-  static GType type = 0;
++	gint val;
++	GalA11yECell *cell = GAL_A11Y_E_CELL (obj);
+ 
+-  if (!type)
+-    {
+-      static const GTypeInfo tinfo =
+-      {
+-	sizeof (GalA11yECellToggleClass),
+-	(GBaseInitFunc) NULL, /* base init */
+-	(GBaseFinalizeFunc) NULL, /* base finalize */
+-	(GClassInitFunc) gal_a11y_e_cell_toggle_class_init, /* class init */
+-	(GClassFinalizeFunc) NULL, /* class finalize */
+-	NULL, /* class data */
+-	sizeof (GalA11yECellToggle), /* instance size */
+-	0, /* nb preallocs */
+-	NULL, /* instance init */
+-	NULL /* value table */
+-      };
++	val = GPOINTER_TO_INT (e_table_model_value_at (cell->cell_view->e_table_model, cell->model_col, cell->row));
+ 
+-      type = g_type_register_static (GAL_A11Y_TYPE_E_CELL,
+-				     "GalA11yECellToggle", &tinfo, 0);
+-      gal_a11y_e_cell_type_add_action_interface (type);
++	memset (value, 0, sizeof (GValue));
++	g_value_init (value, G_TYPE_DOUBLE);
++	g_value_set_double (value, val);
++}
+ 
+-    }
+-  return type;
++static void
++ect_value_iface_init (AtkValueIface *iface)
++{
++	iface->get_current_value = ect_get_current_value;
+ }
+ 
++G_DEFINE_TYPE_WITH_CODE (GalA11yECellToggle,
++	gal_a11y_e_cell_toggle,
++	GAL_A11Y_TYPE_E_CELL,
++	gal_a11y_e_cell_type_add_action_interface (g_define_type_id);
++	G_IMPLEMENT_INTERFACE (ATK_TYPE_VALUE, ect_value_iface_init))
++
+ static void
+ gal_a11y_e_cell_toggle_class_init (GalA11yECellToggleClass *class)
+ {
+@@ -89,6 +84,11 @@ gal_a11y_e_cell_toggle_class_init (GalA11yECellToggleClass *class)
+ 	parent_class = g_type_class_ref (PARENT_TYPE);
+ }
+ 
++static void
++gal_a11y_e_cell_toggle_init (GalA11yECellToggle *toggle)
++{
++}
++
+ static void
+ toggle_cell_action (GalA11yECell *cell)
+ {
+@@ -119,25 +119,34 @@ toggle_cell_action (GalA11yECell *cell)
+ 	g_signal_emit_by_name (cell->item, "event", &event, &finished);
+ }
+ 
++static void
++update_cell (GalA11yECell *cell,
++	     gboolean notify)
++{
++	gint value;
++	const gchar *name;
++
++	value = GPOINTER_TO_INT (e_table_model_value_at (cell->cell_view->e_table_model, cell->model_col, cell->row));
++	name = e_cell_toggle_get_icon_description (E_CELL_TOGGLE (cell->cell_view->ecell), value);
++
++	if (name)
++		atk_object_set_name (ATK_OBJECT (cell), name);
++
++	if (value && !name)
++		gal_a11y_e_cell_add_state (cell, ATK_STATE_CHECKED, notify);
++	else
++		gal_a11y_e_cell_remove_state (cell, ATK_STATE_CHECKED, notify);
++}
++
+ static void
+ model_change_cb (ETableModel *etm,
+                  gint col,
+                  gint row,
+                  GalA11yECell *cell)
+ {
+-	gint value;
+ 
+-	if (col == cell->model_col && row == cell->row) {
+-
+-		value = GPOINTER_TO_INT (
+-			e_table_model_value_at (cell->cell_view->e_table_model,
+-						cell->model_col, cell->row));
+-
+-		if (value)
+-			gal_a11y_e_cell_add_state (cell, ATK_STATE_CHECKED, TRUE);
+-		else
+-			gal_a11y_e_cell_remove_state (cell, ATK_STATE_CHECKED, TRUE);
+-	}
++	if (col == cell->model_col && row == cell->row)
++		update_cell (cell, TRUE);
+ }
+ 
+ AtkObject *
+@@ -151,7 +160,6 @@ gal_a11y_e_cell_toggle_new (ETableItem *item,
+ 	AtkObject *a11y;
+ 	GalA11yECell *cell;
+ 	GalA11yECellToggle *toggle_cell;
+-	gint value;
+ 
+ 	a11y = ATK_OBJECT (g_object_new (GAL_A11Y_TYPE_E_CELL_TOGGLE, NULL));
+ 
+@@ -182,14 +190,7 @@ gal_a11y_e_cell_toggle_new (ETableItem *item,
+ 		item->table_model, "model_cell_changed",
+ 		(GCallback) model_change_cb, a11y);
+ 
+-	value = GPOINTER_TO_INT (
+-			e_table_model_value_at (
+-				cell->cell_view->e_table_model,
+-				cell->model_col, cell->row));
+-	if (value)
+-		gal_a11y_e_cell_add_state (cell, ATK_STATE_CHECKED, FALSE);
+-	else
+-		gal_a11y_e_cell_remove_state (cell, ATK_STATE_CHECKED, FALSE);
++	update_cell (cell, FALSE);
+ 
+ 	return a11y;
+ }
+diff --git a/mail/message-list.c b/mail/message-list.c
+index 386090dc66..4e12ccaa22 100644
+--- a/mail/message-list.c
++++ b/mail/message-list.c
+@@ -2170,8 +2170,8 @@ message_list_create_extras (void)
+ 
+ 	e_table_extras_add_compare (extras, "address_compare", address_compare);
+ 
+-	cell = e_cell_toggle_new (
+-		status_icons, G_N_ELEMENTS (status_icons));
++	cell = e_cell_toggle_new (status_icons, G_N_ELEMENTS (status_icons));
++	e_cell_toggle_set_icon_descriptions (E_CELL_TOGGLE (cell), status_map, G_N_ELEMENTS (status_map));
+ 	e_table_extras_add_cell (extras, "render_message_status", cell);
+ 	g_object_unref (cell);
+ 
+-- 
+2.15.0
+

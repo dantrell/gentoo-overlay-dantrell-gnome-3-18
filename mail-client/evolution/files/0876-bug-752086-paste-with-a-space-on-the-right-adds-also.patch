@@ -1,0 +1,35 @@
+From 1a14d6cd9feaee500844f23027cabdc719b3052a Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 26 Feb 2016 10:54:06 +0100
+Subject: [PATCH 0876/1800] Bug 752086 - Paste with a space on the right adds
+ also new-line
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 6101c07a8a..fb5200139b 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -5171,7 +5171,16 @@ dom_convert_and_insert_html_into_selection (WebKitDOMDocument *document,
+ 	remove_node (WEBKIT_DOM_NODE (selection_start_marker));
+ 	remove_node (WEBKIT_DOM_NODE (selection_end_marker));
+ 
+-	inner_html = webkit_dom_element_get_inner_html (element);
++	/* If the text to insert was converted just to one block, pass just its
++	 * text to WebKit otherwise WebKit will insert unwanted block with
++	 * extra new line. */
++	if (!webkit_dom_node_get_next_sibling (webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (element))))
++		inner_html = webkit_dom_html_element_get_inner_html (
++			WEBKIT_DOM_HTML_ELEMENT (webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (element))));
++	else
++		inner_html = webkit_dom_html_element_get_inner_html (
++			WEBKIT_DOM_HTML_ELEMENT (element));
++
+ 	dom_exec_command (
+ 		document, extension, E_HTML_EDITOR_VIEW_COMMAND_INSERT_HTML, inner_html);
+ 
+-- 
+2.15.0
+

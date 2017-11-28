@@ -1,0 +1,35 @@
+From 1ffddd025fa70f367dfcd36c12b0b9ba0e3b19cc Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 24 Feb 2016 13:01:24 +0100
+Subject: [PATCH 0637/1800] EHTMLEditorView - HTML scroll event callback is not
+ called
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index d9cc20e90f..b3e4ea024c 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -4628,8 +4628,6 @@ dom_convert_content (WebKitDOMDocument *document,
+ 		FALSE,
+ 		extension);
+ 
+-	g_object_unref (dom_window);
+-
+ 	register_html_events_handlers (body, extension);
+ 
+ 	g_free (inner_html);
+@@ -6789,8 +6787,6 @@ dom_process_content_after_load (WebKitDOMDocument *document,
+ 		G_CALLBACK (body_scroll_event_cb),
+ 		FALSE,
+ 		extension);
+-
+-	g_object_unref (dom_window);
+ }
+ 
+ GVariant *
+-- 
+2.15.0
+

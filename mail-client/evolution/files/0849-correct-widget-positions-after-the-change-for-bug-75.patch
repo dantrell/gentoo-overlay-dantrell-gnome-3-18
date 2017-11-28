@@ -1,0 +1,113 @@
+From ab929016ef92c5b3fb39c7eee7eeec659b812aee Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 29 Jun 2015 18:51:45 +0200
+Subject: [PATCH 0849/1800] Correct widget positions after the change for bug
+ 751594
+
+---
+ mail/mail-config.ui | 68 ++++++++++++++++++++++++++---------------------------
+ 1 file changed, 34 insertions(+), 34 deletions(-)
+
+diff --git a/mail/mail-config.ui b/mail/mail-config.ui
+index 999a777b4a..94cc0d76d8 100644
+--- a/mail/mail-config.ui
++++ b/mail/mail-config.ui
+@@ -297,6 +297,38 @@
+                         <property name="position">3</property>
+                       </packing>
+                     </child>
++                    <child>
++                      <object class="GtkCheckButton" id="chkRequestReceipt">
++                        <property name="label" translatable="yes">Always request rea_d receipt</property>
++                        <property name="visible">True</property>
++                        <property name="can_focus">True</property>
++                        <property name="receives_default">False</property>
++                        <property name="use_underline">True</property>
++                        <property name="xalign">0.5</property>
++                        <property name="draw_indicator">True</property>
++                      </object>
++                      <packing>
++                        <property name="expand">False</property>
++                        <property name="fill">False</property>
++                        <property name="position">4</property>
++                      </packing>
++                    </child>
++                    <child>
++                      <object class="GtkCheckButton" id="chkOutlookFilenames">
++                        <property name="label" translatable="yes">Encode filenames in an _Outlook/GMail way</property>
++                        <property name="visible">True</property>
++                        <property name="can_focus">True</property>
++                        <property name="receives_default">False</property>
++                        <property name="use_underline">True</property>
++                        <property name="xalign">0.5</property>
++                        <property name="draw_indicator">True</property>
++                      </object>
++                      <packing>
++                        <property name="expand">False</property>
++                        <property name="fill">False</property>
++                        <property name="position">5</property>
++                      </packing>
++                    </child>
+                     <child>
+                       <object class="GtkBox" id="hboxUseOutbox">
+                         <property name="visible">True</property>
+@@ -333,7 +365,7 @@
+                       <packing>
+                         <property name="expand">False</property>
+                         <property name="fill">False</property>
+-                        <property name="position">4</property>
++                        <property name="position">6</property>
+                       </packing>
+                     </child>
+                     <child>
+@@ -374,7 +406,7 @@
+                       <packing>
+                         <property name="expand">False</property>
+                         <property name="fill">False</property>
+-                        <property name="position">5</property>
++                        <property name="position">7</property>
+                       </packing>
+                     </child>
+                     <child>
+@@ -401,38 +433,6 @@
+                           <placeholder/>
+                         </child>
+                       </object>
+-                      <packing>
+-                        <property name="expand">False</property>
+-                        <property name="fill">False</property>
+-                        <property name="position">6</property>
+-                      </packing>
+-                    </child>
+-                    <child>
+-                      <object class="GtkCheckButton" id="chkRequestReceipt">
+-                        <property name="label" translatable="yes">Always request rea_d receipt</property>
+-                        <property name="visible">True</property>
+-                        <property name="can_focus">True</property>
+-                        <property name="receives_default">False</property>
+-                        <property name="use_underline">True</property>
+-                        <property name="xalign">0.5</property>
+-                        <property name="draw_indicator">True</property>
+-                      </object>
+-                      <packing>
+-                        <property name="expand">False</property>
+-                        <property name="fill">False</property>
+-                        <property name="position">7</property>
+-                      </packing>
+-                    </child>
+-                    <child>
+-                      <object class="GtkCheckButton" id="chkOutlookFilenames">
+-                        <property name="label" translatable="yes">Encode filenames in an _Outlook/GMail way</property>
+-                        <property name="visible">True</property>
+-                        <property name="can_focus">True</property>
+-                        <property name="receives_default">False</property>
+-                        <property name="use_underline">True</property>
+-                        <property name="xalign">0.5</property>
+-                        <property name="draw_indicator">True</property>
+-                      </object>
+                       <packing>
+                         <property name="expand">False</property>
+                         <property name="fill">False</property>
+-- 
+2.15.0
+

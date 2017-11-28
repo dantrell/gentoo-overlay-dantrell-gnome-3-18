@@ -1,0 +1,41 @@
+From 27156bbe259828558f866a5ebaaaad312def157c Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 31 Jul 2015 08:54:05 +0200
+Subject: [PATCH 0911/1800] Bug 753029 - Correct "Security Information" dialog
+ size requests
+
+---
+ em-format/e-mail-formatter-secure-button.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/em-format/e-mail-formatter-secure-button.c b/em-format/e-mail-formatter-secure-button.c
+index c457a11135..36f9b2c459 100644
+--- a/em-format/e-mail-formatter-secure-button.c
++++ b/em-format/e-mail-formatter-secure-button.c
+@@ -301,9 +301,9 @@ secure_button_clicked_cb (GtkWidget *widget,
+ 			"buffer", buffer,
+ 			"cursor_visible", FALSE,
+ 			"editable", FALSE,
+-			"width_request", 500,
+-			"height_request", 160,
+ 			NULL),
++			"width_request", 500,
++			"height_request", 80,
+ 			NULL);
+ 		g_object_unref (buffer);
+ 
+@@ -338,9 +338,9 @@ secure_button_clicked_cb (GtkWidget *widget,
+ 			"buffer", buffer,
+ 			"cursor_visible", FALSE,
+ 			"editable", FALSE,
+-			"width_request", 500,
+-			"height_request", 160,
+ 			NULL),
++			"width_request", 500,
++			"height_request", 80,
+ 			NULL);
+ 		g_object_unref (buffer);
+ 
+-- 
+2.15.0
+

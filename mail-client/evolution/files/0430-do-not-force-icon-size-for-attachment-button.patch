@@ -1,0 +1,32 @@
+From beb74cb4f72e6f9c67fd4fa3966bf4abbe966f0b Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 6 Mar 2015 10:32:25 +0100
+Subject: [PATCH 0430/1800] Do not force icon size for attachment button
+
+The GtkCellRendererPixbuf didn't show the left-most icon, I do not know
+why it doesn't like pixbuf pre-scaled to required size, but it doesn't.
+---
+ e-util/e-attachment-button.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/e-util/e-attachment-button.c b/e-util/e-attachment-button.c
+index 97167faf83..eabebf8fa4 100644
+--- a/e-util/e-attachment-button.c
++++ b/e-util/e-attachment-button.c
+@@ -229,11 +229,11 @@ attachment_button_update_pixbufs (EAttachmentButton *button)
+ 
+ 	pixbuf_expander_open = gtk_icon_theme_load_icon (
+ 		icon_theme, "go-down",
+-		GTK_ICON_SIZE_BUTTON, GTK_ICON_LOOKUP_FORCE_SIZE, NULL);
++		GTK_ICON_SIZE_BUTTON, 0, NULL);
+ 
+ 	pixbuf_expander_closed = gtk_icon_theme_load_icon (
+ 		icon_theme, "go-next",
+-		GTK_ICON_SIZE_BUTTON, GTK_ICON_LOOKUP_FORCE_SIZE, NULL);
++		GTK_ICON_SIZE_BUTTON, 0, NULL);
+ 
+ 	g_object_set (
+ 		renderer,
+-- 
+2.15.0
+

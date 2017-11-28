@@ -1,0 +1,54 @@
+From ba86169911dfc6bb463c99cc9959bee5bd1427ff Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 16 Sep 2014 15:29:43 +0200
+Subject: [PATCH 0063/1800] Include WebKit2 instead of WebKit1
+
+---
+ e-util/e-html-editor-selection.c | 3 +--
+ e-util/e-html-editor-selection.h | 2 +-
+ e-util/e-html-editor-view.h      | 2 +-
+ 3 files changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/e-util/e-html-editor-selection.c b/e-util/e-html-editor-selection.c
+index 26efeec9d4..f1076c7edf 100644
+--- a/e-util/e-html-editor-selection.c
++++ b/e-util/e-html-editor-selection.c
+@@ -28,8 +28,7 @@
+ 
+ #include <e-util/e-util.h>
+ 
+-#include <webkit/webkit.h>
+-#include <webkit/webkitdom.h>
++#include <webkit2/webkit2.h>
+ #include <string.h>
+ #include <stdlib.h>
+ #include <ctype.h>
+diff --git a/e-util/e-html-editor-selection.h b/e-util/e-html-editor-selection.h
+index 3290dfe39b..a08ae5bed3 100644
+--- a/e-util/e-html-editor-selection.h
++++ b/e-util/e-html-editor-selection.h
+@@ -27,7 +27,7 @@
+ 
+ #include <gtk/gtk.h>
+ #include <e-util/e-util-enums.h>
+-#include <webkit/webkit.h>
++#include <webkit2/webkit2.h>
+ 
+ /* Standard GObject macros */
+ #define E_TYPE_HTML_EDITOR_SELECTION \
+diff --git a/e-util/e-html-editor-view.h b/e-util/e-html-editor-view.h
+index 260bd25c8e..7daa8453a9 100644
+--- a/e-util/e-html-editor-view.h
++++ b/e-util/e-html-editor-view.h
+@@ -25,7 +25,7 @@
+ #ifndef E_HTML_EDITOR_VIEW_H
+ #define E_HTML_EDITOR_VIEW_H
+ 
+-#include <webkit/webkit.h>
++#include <webkit2/webkit2.h>
+ 
+ #include <camel/camel.h>
+ 
+-- 
+2.15.0
+

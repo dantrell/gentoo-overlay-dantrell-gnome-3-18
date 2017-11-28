@@ -1,0 +1,54 @@
+From 66a131fd61e30d4581e5a1cf51978489702dbc77 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 13 May 2015 13:41:47 +0200
+Subject: [PATCH 0583/1800] Add DOMGetCaretPosition function to
+ EHTMLEditorWebExtension
+
+---
+ web-extensions/e-html-editor-web-extension.c | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
+
+diff --git a/web-extensions/e-html-editor-web-extension.c b/web-extensions/e-html-editor-web-extension.c
+index 4e63e437d5..50c091ff0e 100644
+--- a/web-extensions/e-html-editor-web-extension.c
++++ b/web-extensions/e-html-editor-web-extension.c
+@@ -572,6 +572,13 @@ static const char introspection_xml[] =
+ "      <arg type='t' name='page_id' direction='in'/>"
+ "      <arg type='b' name='remove_inserted_uri_on_drop' direction='in'/>"
+ "    </method>"
++"<!-- ********************************************************* -->"
++"<!--     Functions that are used in External Editor plugin     -->"
++"<!-- ********************************************************* -->"
++"    <method name='DOMGetCaretPosition'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='i' name='position' direction='out'/>"
++"    </method>"
+ "  </interface>"
+ "</node>";
+ 
+@@ -2089,6 +2096,22 @@ handle_method_call (GDBusConnection *connection,
+ 		g_dbus_method_invocation_return_value (
+ 			invocation,
+ 			value ? g_variant_new_take_string (value) : NULL);
++	} else if (g_strcmp0 (method_name, "DOMGetCaretPosition") == 0) {
++		gint32 value;
++
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		value = dom_get_caret_position (document);
++
++		g_dbus_method_invocation_return_value (
++			invocation,
++			value ? g_variant_new_int32 (value) : NULL);
+ 	}
+ }
+ 
+-- 
+2.15.0
+

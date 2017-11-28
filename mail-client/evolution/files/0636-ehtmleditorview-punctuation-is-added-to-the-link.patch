@@ -1,0 +1,74 @@
+From 50214d254e773b64be17e117c9d8472efd369a68 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 24 Feb 2016 12:57:53 +0100
+Subject: [PATCH 0636/1800] EHTMLEditorView - Punctuation is added to the link
+
+---
+ .../composer/e-html-editor-view-dom-functions.c    | 24 +++++++++++++++++++++-
+ 1 file changed, 23 insertions(+), 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index d20c2d9617..d9cc20e90f 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -3621,7 +3621,8 @@ create_anchor_for_link (const GMatchInfo *info,
+                         GString *res,
+                         gpointer data)
+ {
+-	gint offset = 0;
++	gint offset = 0, truncate_from_end = 0;
++	const gchar *end_of_match = NULL;
+ 	gchar *match;
+ 	gboolean address_surrounded;
+ 
+@@ -3642,26 +3643,47 @@ create_anchor_for_link (const GMatchInfo *info,
+ 	if (address_surrounded)
+ 		g_string_append (res, "&lt;");
+ 
++	if (!address_surrounded) {
++		end_of_match = match + strlen (match) - 1;
++		/* Taken from camel-url-scanner.c */
++		/* URLs are extremely unlikely to end with any punctuation, so
++		 * strip any trailing punctuation off from link and put it after
++		 * the link. Do the same for any closing double-quotes as well. */
++		while (end_of_match && end_of_match != match && strchr (",.:;?!-|}])\"", *end_of_match)) {
++			truncate_from_end++;
++			end_of_match--;
++		}
++	}
+ 	g_string_append (res, "<a href=\"");
+ 	if (strstr (match, "@") && !strstr (match, "://")) {
+ 		g_string_append (res, "mailto:");
+ 		g_string_append (res, match + offset);
+ 		if (address_surrounded)
+ 			g_string_truncate (res, res->len - 4);
++		else if (truncate_from_end > 0)
++			g_string_truncate (res, res->len - truncate_from_end);
+ 
+ 		g_string_append (res, "\">");
+ 		g_string_append (res, match + offset);
+ 		if (address_surrounded)
+ 			g_string_truncate (res, res->len - 4);
++		else if (truncate_from_end > 0)
++			g_string_truncate (res, res->len - truncate_from_end);
+ 	} else {
+ 		g_string_append (res, match + offset);
++		if (truncate_from_end > 0)
++			g_string_truncate (res, res->len - truncate_from_end);
+ 		g_string_append (res, "\">");
+ 		g_string_append (res, match + offset);
++		if (truncate_from_end > 0)
++			g_string_truncate (res, res->len - truncate_from_end);
+ 	}
+ 	g_string_append (res, "</a>");
+ 
+ 	if (address_surrounded)
+ 		g_string_append (res, "&gt;");
++	else if (truncate_from_end > 0)
++		g_string_append (res, end_of_match + 1);
+ 
+ 	g_free (match);
+ 
+-- 
+2.15.0
+

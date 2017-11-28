@@ -1,0 +1,120 @@
+From 77f8373fbd458b8fef1f6e1138bcddb09d3cdd04 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 25 Mar 2015 08:58:57 +0100
+Subject: [PATCH 0573/1800] Remove Bcc header from 'Sender or Recipients'
+ filter search condition
+
+Similar to Searches or vFolders, using Bcc means downloading complete
+message, which is not necessary in this general case. Rather let user
+add the Bcc rule explicitly, if needed.
+---
+ mail/filtertypes.xml.in | 30 ++++++++++--------------------
+ 1 file changed, 10 insertions(+), 20 deletions(-)
+
+diff --git a/mail/filtertypes.xml.in b/mail/filtertypes.xml.in
+index 2aca67f26e..829874c51e 100644
+--- a/mail/filtertypes.xml.in
++++ b/mail/filtertypes.xml.in
+@@ -292,8 +292,7 @@
+      <code>
+ 	(match-all (or (header-contains "From" ${recipient})
+ 	    	       (header-contains "To" ${recipient})
+-	    	       (header-contains "Cc" ${recipient})
+-	    	       (header-contains "Bcc" ${recipient})))
++	               (header-contains "Cc" ${recipient})))
+      </code>
+     </option>
+     <option value="not contains">
+@@ -302,8 +301,7 @@
+ 	(match-all (not (or
+                (header-contains "From" ${recipient})
+ 	       (header-contains "To" ${recipient})
+-	       (header-contains "Cc" ${recipient})
+-	       (header-contains "Bcc" ${recipient}))))
++	       (header-contains "Cc" ${recipient}))))
+      </code>
+     </option>
+     <option value="is">
+@@ -311,8 +309,7 @@
+      <code>
+ 	(match-all (or (header-matches "From" ${recipient})
+ 	    	       (header-matches "To" ${recipient})
+-	    	       (header-matches "Cc" ${recipient})
+-	    	       (header-matches "Bcc" ${recipient})))
++	               (header-matches "Cc" ${recipient})))
+      </code>
+     </option>
+     <option value="is not">
+@@ -321,8 +318,7 @@
+ 	(match-all (not (or
+                (header-matches "From" ${recipient})
+                (header-matches "To" ${recipient})
+-	       (header-matches "Cc" ${recipient})
+-	       (header-matches "Bcc" ${recipient}))))
++	       (header-matches "Cc" ${recipient}))))
+      </code>
+     </option>
+     <option value="starts with">
+@@ -330,8 +326,7 @@
+      <code>
+         (match-all (or (header-starts-with "From" ${recipient})
+ 	    	       (header-starts-with "To" ${recipient})
+-	    	       (header-starts-with "Cc" ${recipient})
+-	    	       (header-starts-with "Bcc" ${recipient})))
++	               (header-starts-with "Cc" ${recipient})))
+      </code>
+     </option>
+     <option value="not starts with">
+@@ -340,8 +335,7 @@
+         (match-all (not (or
+                (header-starts-with "From" ${recipient})
+                (header-starts-with "To" ${recipient})
+-	       (header-starts-with "Cc" ${recipient})
+-	       (header-starts-with "Bcc" ${recipient}))))
++	       (header-starts-with "Cc" ${recipient}))))
+      </code>
+     </option>
+     <option value="ends with">
+@@ -349,8 +343,7 @@
+      <code>
+         (match-all (or (header-ends-with "From" ${recipient})
+ 	    	       (header-ends-with "To" ${recipient})
+-	    	       (header-ends-with "Cc" ${recipient})
+-	    	       (header-ends-with "Bcc" ${recipient})))
++	               (header-ends-with "Cc" ${recipient})))
+      </code>
+     </option>
+     <option value="not ends with">
+@@ -359,8 +352,7 @@
+         (match-all (not (or
+                (header-ends-with "From" ${recipient})
+                (header-ends-with "To" ${recipient})
+-	       (header-ends-with "Cc" ${recipient})
+-	       (header-ends-with "Bcc" ${recipient}))))
++	       (header-ends-with "Cc" ${recipient}))))
+      </code>
+     </option>
+     <option value="matches soundex">
+@@ -368,8 +360,7 @@
+      <code>
+ 	(match-all (or (header-soundex "From" ${recipient})
+ 	    	       (header-soundex "To" ${recipient})
+-	    	       (header-soundex "Cc" ${recipient})
+-	    	       (header-soundex "Bcc" ${recipient})))
++	               (header-soundex "Cc" ${recipient})))
+      </code>
+     </option>
+     <option value="not match soundex">
+@@ -378,8 +369,7 @@
+ 	(match-all (not (or
+                (header-soundex "From" ${recipient})
+                (header-soundex "To" ${recipient})
+-	       (header-soundex "Cc" ${recipient})
+-	       (header-soundex "Bcc" ${recipient}))))
++	       (header-soundex "Cc" ${recipient}))))
+      </code>
+     </option>
+    </input>
+-- 
+2.15.0
+

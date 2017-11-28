@@ -1,0 +1,43 @@
+From 9fb07fd62571bc9bf2253753651c96fc08c2edac Mon Sep 17 00:00:00 2001
+From: Alexander Tsoy <alexander@tsoy.me>
+Date: Mon, 5 Jan 2015 14:49:02 +0100
+Subject: [PATCH 0155/1800] Bug 741034 - Use portable shell in configure.ac
+
+---
+ configure.ac | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 9ed1efbcce..ef573149dd 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1058,7 +1058,7 @@ msg_bogofilter="$enable_bogofilter"
+ if test "x$enable_bogofilter" = "xyes"; then
+ 	AC_ARG_VAR([BOGOFILTER], [Bogofilter spam filtering program])
+ 	AC_PATH_PROG([BOGOFILTER], [bogofilter])
+-	if test "x$BOGOFILTER" == "x"; then
++	if test "x$BOGOFILTER" = "x"; then
+ 		AC_MSG_ERROR([
+ 
+ 	Bogofilter spam filtering program not found.
+@@ -1088,7 +1088,7 @@ msg_spamassassin="$enable_spamassassin"
+ if test "x$enable_spamassassin" = "xyes"; then
+ 	AC_ARG_VAR([SPAMASSASSIN], [SpamAssassin spam filtering program])
+ 	AC_PATH_PROG([SPAMASSASSIN], [spamassassin])
+-	if test "x$SPAMASSASSIN" == "x"; then
++	if test "x$SPAMASSASSIN" = "x"; then
+ 		AC_MSG_ERROR([
+ 
+ 	SpamAssassin spam filtering program not found.
+@@ -1320,7 +1320,7 @@ msg_text_highlight="$enable_text_highlight"
+ if test "x$enable_text_highlight" = "xyes"; then
+ 	AC_ARG_VAR([HIGHLIGHT], [Source code highlighting utility])
+ 	AC_PATH_PROG([HIGHLIGHT], [highlight])
+-	if test "x$HIGHLIGHT" == "x"; then
++	if test "x$HIGHLIGHT" = "x"; then
+ 		AC_MSG_ERROR([
+ 
+ 	Highlight utility not found.
+-- 
+2.15.0
+

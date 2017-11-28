@@ -1,0 +1,40 @@
+From 40369d487af7949314f2285980761995fc2f4ee1 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 17 Jun 2015 12:22:29 +0200
+Subject: [PATCH 0819/1800] Bug 751092 - Crash on message save with empty From
+ override address
+
+---
+ composer/e-msg-composer.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 7d3cbfed8b..249a1270de 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -551,7 +551,7 @@ build_message_headers (EMsgComposer *composer,
+ 		EComposerHeader *composer_header;
+ 		const gchar *extension_name;
+ 		const gchar *header_name;
+-		const gchar *name, *address;
++		const gchar *name, *address = NULL;
+ 		const gchar *transport_uid;
+ 		const gchar *sent_folder;
+ 
+@@ -559,7 +559,12 @@ build_message_headers (EMsgComposer *composer,
+ 		if (e_composer_from_header_get_override_visible (E_COMPOSER_FROM_HEADER (composer_header))) {
+ 			name = e_composer_header_table_get_from_name (table);
+ 			address = e_composer_header_table_get_from_address (table);
+-		} else {
++
++			if (address && !*address)
++				address = NULL;
++		}
++
++		if (!address) {
+ 			ESourceMailIdentity *mail_identity;
+ 
+ 			mail_identity = e_source_get_extension (source, E_SOURCE_EXTENSION_MAIL_IDENTITY);
+-- 
+2.15.0
+

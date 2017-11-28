@@ -1,0 +1,37 @@
+From 36bbf9d943a33ec3e63bde6a56d1a98b4c39f064 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 1 Mar 2016 13:51:31 +0100
+Subject: [PATCH 1007/1800] EHTMLEditorView - Bringing anchor from quoted text
+ to body with Backspace doesn't work
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 2e28ac92bb..a176f6c36d 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -3008,9 +3008,19 @@ dom_change_quoted_block_to_normal (WebKitDOMDocument *document,
+ 			prev_sibling = webkit_dom_node_get_previous_sibling (
+ 				WEBKIT_DOM_NODE (selection_start_marker));
+ 
++			if (!prev_sibling) {
++				WebKitDOMNode *parent;
++
++				parent = webkit_dom_node_get_parent_node (
++					WEBKIT_DOM_NODE (selection_start_marker));
++				if (WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (parent))
++					prev_sibling = webkit_dom_node_get_previous_sibling (parent);
++			}
++
+ 			if (WEBKIT_DOM_IS_ELEMENT (prev_sibling))
+ 				success = element_has_class (
+ 					WEBKIT_DOM_ELEMENT (prev_sibling), "-x-evo-quoted");
++
+ 			/* We really have to be in the beginning of paragraph and
+ 			 * not on the beginning of some line in the paragraph */
+ 			if (success && webkit_dom_node_get_previous_sibling (prev_sibling))
+-- 
+2.15.0
+

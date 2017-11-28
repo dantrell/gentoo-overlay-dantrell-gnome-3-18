@@ -1,0 +1,35 @@
+From 1805b16c087e2fc3d045b282e4e68a8712c3304d Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 28 Jul 2015 09:01:29 +0200
+Subject: [PATCH 0910/1800] Do not install tests as writable and executable for
+ everyone
+
+---
+ m4/behave-installed-tests.m4 | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/m4/behave-installed-tests.m4 b/m4/behave-installed-tests.m4
+index 0a552f4ee8..3d21545b5b 100644
+--- a/m4/behave-installed-tests.m4
++++ b/m4/behave-installed-tests.m4
+@@ -90,14 +90,14 @@ endif
+ installed-tests-exec-hook:
+ 	@$(MKDIR_P) $(EXEC_DIRECTORY);
+ 	@for feature in $(BEHAVE_FEATURES); do											\
+-	    $(LIBTOOL) --mode=install $(INSTALL) --mode=777 $$feature $(EXEC_DIRECTORY);\
++	    $(LIBTOOL) --mode=install $(INSTALL) --mode=644 $$feature $(EXEC_DIRECTORY);\
+ 	done
+ 	@for common_file in $(BEHAVE_COMMON_FILES); do										\
+-	    $(LIBTOOL) --mode=install $(INSTALL) --mode=777 $$common_file $(EXEC_DIRECTORY);\
++	    $(LIBTOOL) --mode=install $(INSTALL) --mode=644 $$common_file $(EXEC_DIRECTORY);\
+ 	done
+ 	@$(MKDIR_P) $(EXEC_DIRECTORY)/steps;
+ 	@for step_definition in $(BEHAVE_STEP_DEFINITION); do									\
+-	    $(LIBTOOL) --mode=install $(INSTALL) --mode=777 $$step_definition $(EXEC_DIRECTORY)/steps;\
++	    $(LIBTOOL) --mode=install $(INSTALL) --mode=644 $$step_definition $(EXEC_DIRECTORY)/steps;\
+ 	done
+ 
+ 
+-- 
+2.15.0
+

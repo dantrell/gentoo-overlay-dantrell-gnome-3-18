@@ -1,0 +1,846 @@
+From 844860a712f2a545e94ef28205a350f58c2edbd0 Mon Sep 17 00:00:00 2001
+From: Trinh Anh Ngoc <atw1990@gmail.com>
+Date: Mon, 25 May 2015 14:06:27 +0200
+Subject: [PATCH 0765/1800] Bug 749158 - UI layout improvements
+
+---
+ addressbook/gui/widgets/e-addressbook-view.c      |  3 +
+ calendar/gui/dialogs/comp-editor.c                |  1 -
+ calendar/gui/dialogs/task-page.ui                 | 10 +--
+ calendar/gui/e-cal-list-view.c                    |  4 +-
+ calendar/gui/e-day-view.c                         |  2 +
+ calendar/gui/e-week-view.c                        |  2 +
+ composer/e-composer-private.c                     |  2 -
+ e-util/e-attachment-paned.c                       |  3 -
+ e-util/e-cell-date-edit.c                         | 11 ++-
+ e-util/e-dateedit.c                               |  5 +-
+ e-util/e-preview-pane.c                           |  3 +
+ e-util/e-search-bar.c                             |  1 +
+ e-util/e-table-click-to-add.c                     | 28 ++++----
+ e-util/e-table-header.c                           |  3 +-
+ e-util/e-table-item.c                             | 18 ++---
+ e-util/e-table.c                                  |  4 +-
+ e-util/e-tree.c                                   |  3 +-
+ mail/mail-config.ui                               |  3 +
+ modules/addressbook/autocompletion-config.c       |  1 -
+ modules/addressbook/e-book-shell-sidebar.c        |  3 +
+ modules/calendar/e-cal-base-shell-sidebar.c       | 26 +++++++
+ modules/calendar/e-cal-shell-content.c            |  1 -
+ modules/calendar/e-cal-shell-view.c               |  2 +
+ modules/calendar/e-calendar-preferences.ui        |  1 +
+ modules/mail/e-mail-shell-sidebar.c               |  3 +
+ modules/plugin-manager/evolution-plugin-manager.c |  1 -
+ shell/e-shell-window-private.c                    |  8 ---
+ shell/e-shell-window.c                            | 86 +++++++++++++++++++++--
+ 28 files changed, 171 insertions(+), 67 deletions(-)
+
+diff --git a/addressbook/gui/widgets/e-addressbook-view.c b/addressbook/gui/widgets/e-addressbook-view.c
+index b1acaf9b6d..158308a03f 100644
+--- a/addressbook/gui/widgets/e-addressbook-view.c
++++ b/addressbook/gui/widgets/e-addressbook-view.c
+@@ -886,6 +886,9 @@ e_addressbook_view_init (EAddressbookView *view)
+ 	gtk_scrolled_window_set_policy (
+ 		GTK_SCROLLED_WINDOW (view),
+ 		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
++	gtk_scrolled_window_set_shadow_type (
++		GTK_SCROLLED_WINDOW (view),
++		GTK_SHADOW_IN);
+ }
+ 
+ static void
+diff --git a/calendar/gui/dialogs/comp-editor.c b/calendar/gui/dialogs/comp-editor.c
+index 31185ec41f..7aee23ea88 100644
+--- a/calendar/gui/dialogs/comp-editor.c
++++ b/calendar/gui/dialogs/comp-editor.c
+@@ -2266,7 +2266,6 @@ comp_editor_init (CompEditor *editor)
+ 	widget = e_attachment_paned_new ();
+ 	e_attachment_paned_set_resize_toplevel (
+ 		E_ATTACHMENT_PANED (widget), TRUE);
+-	gtk_container_set_border_width (GTK_CONTAINER (widget), 6);
+ 	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+ 	priv->attachment_view = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+diff --git a/calendar/gui/dialogs/task-page.ui b/calendar/gui/dialogs/task-page.ui
+index a97c9ce384..065a5ea129 100644
+--- a/calendar/gui/dialogs/task-page.ui
++++ b/calendar/gui/dialogs/task-page.ui
+@@ -138,6 +138,7 @@
+                 <property name="n_rows">10</property>
+                 <property name="n_columns">4</property>
+                 <property name="column_spacing">12</property>
++                <property name="row_spacing">6</property>
+                 <child>
+                   <object class="GtkLabel" id="summary-label">
+                     <property name="visible">True</property>
+@@ -265,7 +266,6 @@
+                     <property name="bottom_attach">4</property>
+                     <property name="x_options">GTK_SHRINK | GTK_FILL</property>
+                     <property name="y_options">GTK_SHRINK | GTK_FILL</property>
+-                    <property name="y_padding">3</property>
+                   </packing>
+                 </child>
+                 <child>
+@@ -284,7 +284,6 @@
+                     <property name="bottom_attach">5</property>
+                     <property name="x_options">GTK_FILL</property>
+                     <property name="y_options">GTK_FILL</property>
+-                    <property name="y_padding">3</property>
+                   </packing>
+                 </child>
+                 <child>
+@@ -298,7 +297,6 @@
+                     <property name="bottom_attach">8</property>
+                     <property name="x_options">GTK_FILL</property>
+                     <property name="y_options">GTK_FILL</property>
+-                    <property name="y_padding">3</property>
+                   </packing>
+                 </child>
+                 <child>
+@@ -322,7 +320,6 @@
+                     <property name="right_attach">4</property>
+                     <property name="top_attach">9</property>
+                     <property name="bottom_attach">10</property>
+-                    <property name="y_padding">3</property>
+                   </packing>
+                 </child>
+                 <child>
+@@ -336,7 +333,6 @@
+                     <property name="top_attach">2</property>
+                     <property name="bottom_attach">3</property>
+                     <property name="y_options"/>
+-                    <property name="y_padding">3</property>
+                   </packing>
+                 </child>
+                 <child>
+@@ -352,6 +348,7 @@
+                         <property name="visible">True</property>
+                         <property name="can_focus">False</property>
+                         <property name="layout_style">start</property>
++                        <property name="spacing">3</property>
+                         <child>
+                           <object class="GtkButton" id="add-attendee">
+                             <property name="label" translatable="yes">_Add</property>
+@@ -416,7 +413,6 @@
+                     <property name="bottom_attach">2</property>
+                     <property name="x_options">GTK_FILL</property>
+                     <property name="y_options">GTK_FILL</property>
+-                    <property name="y_padding">3</property>
+                   </packing>
+                 </child>
+                 <child>
+@@ -517,7 +513,6 @@
+                     <property name="right_attach">4</property>
+                     <property name="x_options">GTK_FILL</property>
+                     <property name="y_options">GTK_FILL</property>
+-                    <property name="y_padding">3</property>
+                   </packing>
+                 </child>
+                 <child>
+@@ -531,7 +526,6 @@
+                     <property name="top_attach">8</property>
+                     <property name="bottom_attach">9</property>
+                     <property name="y_options"/>
+-                    <property name="y_padding">3</property>
+                   </packing>
+                 </child>
+                 <child>
+diff --git a/calendar/gui/e-cal-list-view.c b/calendar/gui/e-cal-list-view.c
+index 2b75345b57..75bac8e312 100644
+--- a/calendar/gui/e-cal-list-view.c
++++ b/calendar/gui/e-cal-list-view.c
+@@ -272,11 +272,9 @@ setup_e_table (ECalListView *cal_list_view)
+ 	gtk_scrolled_window_set_policy (
+ 		GTK_SCROLLED_WINDOW (widget),
+ 		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+-	gtk_scrolled_window_set_shadow_type (
+-		GTK_SCROLLED_WINDOW (widget), GTK_SHADOW_IN);
+ 	gtk_table_attach (
+ 		GTK_TABLE (container), widget, 0, 2, 0, 2,
+-		GTK_EXPAND | GTK_FILL, GTK_EXPAND | GTK_FILL, 1, 1);
++		GTK_EXPAND | GTK_FILL, GTK_EXPAND | GTK_FILL, 0, 0);
+ 	gtk_widget_show (widget);
+ 
+ 	container = widget;
+diff --git a/calendar/gui/e-day-view.c b/calendar/gui/e-day-view.c
+index 555238d13d..bb84ca2165 100644
+--- a/calendar/gui/e-day-view.c
++++ b/calendar/gui/e-day-view.c
+@@ -2074,6 +2074,8 @@ e_day_view_init (EDayView *day_view)
+ 	day_view->before_click_dtstart = 0;
+ 	day_view->before_click_dtend = 0;
+ 
++	gtk_widget_set_margin_top (GTK_WIDGET (day_view), 1);
++
+ 	day_view->week_number_label = gtk_label_new ("");
+ 
+ 	widget = gtk_label_new (NULL);
+diff --git a/calendar/gui/e-week-view.c b/calendar/gui/e-week-view.c
+index c0723b085a..2a5c191740 100644
+--- a/calendar/gui/e-week-view.c
++++ b/calendar/gui/e-week-view.c
+@@ -1698,6 +1698,8 @@ e_week_view_init (EWeekView *week_view)
+ 	week_view->before_click_dtstart = 0;
+ 	week_view->before_click_dtend = 0;
+ 
++	gtk_widget_set_margin_top (GTK_WIDGET (week_view), 1);
++
+ 	/*
+ 	 * Titles Canvas. Note that we don't show it is only shown in the
+ 	 * Month view.
+diff --git a/composer/e-composer-private.c b/composer/e-composer-private.c
+index 79118b4043..486da1df78 100644
+--- a/composer/e-composer-private.c
++++ b/composer/e-composer-private.c
+@@ -252,8 +252,6 @@ e_composer_private_constructed (EMsgComposer *composer)
+ 	gtk_scrolled_window_set_policy (
+ 		GTK_SCROLLED_WINDOW (widget),
+ 		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+-	gtk_scrolled_window_set_shadow_type (
+-		GTK_SCROLLED_WINDOW (widget), GTK_SHADOW_IN);
+ 	gtk_widget_set_size_request (widget, -1, GALLERY_INITIAL_HEIGHT);
+ 	gtk_paned_pack1 (GTK_PANED (container), widget, FALSE, FALSE);
+ 	priv->gallery_scrolled_window = g_object_ref (widget);
+diff --git a/e-util/e-attachment-paned.c b/e-util/e-attachment-paned.c
+index 3db37605d8..ee96a9af0f 100644
+--- a/e-util/e-attachment-paned.c
++++ b/e-util/e-attachment-paned.c
+@@ -643,7 +643,6 @@ e_attachment_paned_init (EAttachmentPaned *paned)
+ 	widget = gtk_notebook_new ();
+ 	gtk_widget_set_size_request (widget, -1, initial_height);
+ 	gtk_notebook_set_show_tabs (GTK_NOTEBOOK (widget), FALSE);
+-	gtk_notebook_set_show_border (GTK_NOTEBOOK (widget), FALSE);
+ 	gtk_paned_pack2 (GTK_PANED (container), widget, FALSE, FALSE);
+ 	paned->priv->notebook = g_object_ref (widget);
+ 	gtk_widget_hide (widget);
+@@ -654,8 +653,6 @@ e_attachment_paned_init (EAttachmentPaned *paned)
+ 	gtk_scrolled_window_set_policy (
+ 		GTK_SCROLLED_WINDOW (widget),
+ 		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+-	gtk_scrolled_window_set_shadow_type (
+-		GTK_SCROLLED_WINDOW (widget), GTK_SHADOW_IN);
+ 	gtk_notebook_append_page (GTK_NOTEBOOK (container), widget, NULL);
+ 	gtk_widget_show (widget);
+ 
+diff --git a/e-util/e-cell-date-edit.c b/e-util/e-cell-date-edit.c
+index 24e9e8d5fb..4d5f5b2a8c 100644
+--- a/e-util/e-cell-date-edit.c
++++ b/e-util/e-cell-date-edit.c
+@@ -228,7 +228,8 @@ e_cell_date_edit_init (ECellDateEdit *ecde)
+ 	gtk_frame_set_shadow_type (GTK_FRAME (frame), GTK_SHADOW_OUT);
+ 	gtk_widget_show (frame);
+ 
+-	vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
++	vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6);
++	gtk_container_set_border_width (GTK_CONTAINER (vbox), 6);
+ 	gtk_container_add (GTK_CONTAINER (frame), vbox);
+ 	gtk_widget_show (vbox);
+ 
+@@ -244,7 +245,9 @@ e_cell_date_edit_init (ECellDateEdit *ecde)
+ 	gtk_box_pack_start (GTK_BOX (hbox), ecde->calendar, TRUE, TRUE, 0);
+ 	gtk_widget_show (ecde->calendar);
+ 
+-	vbox2 = gtk_box_new (GTK_ORIENTATION_VERTICAL, 2);
++	vbox2 = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
++	gtk_style_context_add_class (
++		gtk_widget_get_style_context (vbox2), "linked");
+ 	gtk_box_pack_start (GTK_BOX (hbox), vbox2, TRUE, TRUE, 0);
+ 	gtk_widget_show (vbox2);
+ 
+@@ -256,6 +259,9 @@ e_cell_date_edit_init (ECellDateEdit *ecde)
+ 	gtk_widget_show (ecde->time_entry);
+ 
+ 	scrolled_window = gtk_scrolled_window_new (NULL, NULL);
++	gtk_scrolled_window_set_shadow_type (
++		GTK_SCROLLED_WINDOW (scrolled_window),
++		GTK_SHADOW_IN);
+ 	gtk_box_pack_start (GTK_BOX (vbox2), scrolled_window, TRUE, TRUE, 0);
+ 	gtk_scrolled_window_set_policy (
+ 		GTK_SCROLLED_WINDOW (scrolled_window),
+@@ -290,7 +296,6 @@ e_cell_date_edit_init (ECellDateEdit *ecde)
+ 		G_CALLBACK (e_cell_date_edit_on_time_selected), ecde);
+ 
+ 	bbox = gtk_button_box_new (GTK_ORIENTATION_HORIZONTAL);
+-	gtk_container_set_border_width (GTK_CONTAINER (bbox), 4);
+ 	gtk_box_set_spacing (GTK_BOX (bbox), 2);
+ 	gtk_box_pack_start (GTK_BOX (vbox), bbox, FALSE, FALSE, 0);
+ 	gtk_widget_show (bbox);
+diff --git a/e-util/e-dateedit.c b/e-util/e-dateedit.c
+index 86878b5cc5..8f9e615a83 100644
+--- a/e-util/e-dateedit.c
++++ b/e-util/e-dateedit.c
+@@ -497,6 +497,7 @@ e_date_edit_init (EDateEdit *dedit)
+ 	dedit->priv->has_been_changed = FALSE;
+ 
+ 	gtk_orientable_set_orientation (GTK_ORIENTABLE (dedit), GTK_ORIENTATION_HORIZONTAL);
++	gtk_box_set_spacing (GTK_BOX (dedit), 3);
+ 
+ 	create_children (dedit);
+ 
+@@ -674,7 +675,8 @@ create_children (EDateEdit *dedit)
+ 	gtk_container_add (GTK_CONTAINER (priv->cal_popup), frame);
+ 	gtk_widget_show (frame);
+ 
+-	vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
++	vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6);
++	gtk_container_set_border_width (GTK_CONTAINER (vbox), 6);
+ 	gtk_container_add (GTK_CONTAINER (frame), vbox);
+ 	gtk_widget_show (vbox);
+ 
+@@ -694,7 +696,6 @@ create_children (EDateEdit *dedit)
+ 	gtk_widget_show (priv->calendar);
+ 
+ 	bbox = gtk_button_box_new (GTK_ORIENTATION_HORIZONTAL);
+-	gtk_container_set_border_width (GTK_CONTAINER (bbox), 4);
+ 	gtk_box_set_spacing (GTK_BOX (bbox), 2);
+ 	gtk_box_pack_start (GTK_BOX (vbox), bbox, FALSE, FALSE, 0);
+ 	gtk_widget_show (bbox);
+diff --git a/e-util/e-preview-pane.c b/e-util/e-preview-pane.c
+index 824f5562bf..eeb84bfa6c 100644
+--- a/e-util/e-preview-pane.c
++++ b/e-util/e-preview-pane.c
+@@ -162,6 +162,9 @@ preview_pane_constructed (GObject *object)
+ 	/* EAlertBar controls its own visibility. */
+ 
+ 	widget = gtk_scrolled_window_new (NULL, NULL);
++	gtk_scrolled_window_set_shadow_type (
++		GTK_SCROLLED_WINDOW (widget),
++		GTK_SHADOW_IN);
+ 	gtk_box_pack_start (GTK_BOX (object), widget, TRUE, TRUE, 0);
+ 	gtk_container_add (GTK_CONTAINER (widget), priv->web_view);
+ 	gtk_widget_show (widget);
+diff --git a/e-util/e-search-bar.c b/e-util/e-search-bar.c
+index e0814cbcd5..89a0dbae2e 100644
+--- a/e-util/e-search-bar.c
++++ b/e-util/e-search-bar.c
+@@ -589,6 +589,7 @@ e_search_bar_init (ESearchBar *search_bar)
+ 	search_bar->priv = E_SEARCH_BAR_GET_PRIVATE (search_bar);
+ 
+ 	gtk_box_set_spacing (GTK_BOX (search_bar), 12);
++	gtk_container_set_border_width (GTK_CONTAINER (search_bar), 6);
+ 	gtk_orientable_set_orientation (GTK_ORIENTABLE (search_bar), GTK_ORIENTATION_HORIZONTAL);
+ 
+ 	container = GTK_WIDGET (search_bar);
+diff --git a/e-util/e-table-click-to-add.c b/e-util/e-table-click-to-add.c
+index ddea91b695..a47106df8a 100644
+--- a/e-util/e-table-click-to-add.c
++++ b/e-util/e-table-click-to-add.c
+@@ -79,25 +79,23 @@ static void
+ etcta_style_updated (ETableClickToAdd *etcta)
+ {
+ 	GtkWidget *widget;
+-	GdkColor fg, bg, text;
++	GdkColor fg, bg;
+ 
+ 	widget = GTK_WIDGET (GNOME_CANVAS_ITEM (etcta)->canvas);
+ 
+-	e_utils_get_theme_color_color (widget, "theme_fg_color", E_UTILS_DEFAULT_THEME_FG_COLOR, &fg);
+-	e_utils_get_theme_color_color (widget, "theme_bg_color", E_UTILS_DEFAULT_THEME_BG_COLOR, &bg);
+-	e_utils_get_theme_color_color (widget, "theme_text_color,theme_fg_color", E_UTILS_DEFAULT_THEME_TEXT_COLOR, &text);
++	e_utils_get_theme_color_color (widget, "theme_selected_fg_color", E_UTILS_DEFAULT_THEME_FG_COLOR, &fg);
++	e_utils_get_theme_color_color (widget, "theme_selected_bg_color", E_UTILS_DEFAULT_THEME_BG_COLOR, &bg);
+ 
+ 	if (etcta->rect)
+ 		gnome_canvas_item_set (
+ 			etcta->rect,
+-			"outline_color_gdk", &fg,
+ 			"fill_color_gdk", &bg,
+ 			NULL);
+ 
+ 	if (etcta->text)
+ 		gnome_canvas_item_set (
+ 			etcta->text,
+-			"fill_color_gdk", &text,
++			"fill_color_gdk", &fg,
+ 			NULL);
+ }
+ 
+@@ -245,7 +243,7 @@ etcta_set_property (GObject *object,
+ 		if (etcta->rect)
+ 			gnome_canvas_item_set (
+ 				etcta->rect,
+-				"x2", etcta->width - 1,
++				"x2", etcta->width,
+ 				NULL);
+ 		break;
+ 	default:
+@@ -260,23 +258,21 @@ static void
+ create_rect_and_text (ETableClickToAdd *etcta)
+ {
+ 	GtkWidget *widget;
+-	GdkColor fg, bg, text;
++	GdkColor fg, bg;
+ 
+ 	widget = GTK_WIDGET (GNOME_CANVAS_ITEM (etcta)->canvas);
+ 
+-	e_utils_get_theme_color_color (widget, "theme_fg_color", E_UTILS_DEFAULT_THEME_FG_COLOR, &fg);
+-	e_utils_get_theme_color_color (widget, "theme_bg_color", E_UTILS_DEFAULT_THEME_BG_COLOR, &bg);
+-	e_utils_get_theme_color_color (widget, "theme_text_color,theme_fg_color", E_UTILS_DEFAULT_THEME_TEXT_COLOR, &text);
++	e_utils_get_theme_color_color (widget, "theme_selected_fg_color", E_UTILS_DEFAULT_THEME_FG_COLOR, &fg);
++	e_utils_get_theme_color_color (widget, "theme_selected_bg_color", E_UTILS_DEFAULT_THEME_BG_COLOR, &bg);
+ 
+ 	if (!etcta->rect)
+ 		etcta->rect = gnome_canvas_item_new (
+ 			GNOME_CANVAS_GROUP (etcta),
+ 			gnome_canvas_rect_get_type (),
+ 			"x1", (gdouble) 0,
+-			"y1", (gdouble) 0,
+-			"x2", (gdouble) etcta->width - 1,
+-			"y2", (gdouble) etcta->height - 1,
+-			"outline_color_gdk", &fg,
++			"y1", (gdouble) 1,
++			"x2", (gdouble) etcta->width,
++			"y2", (gdouble) etcta->height,
+ 			"fill_color_gdk", &bg,
+ 			NULL);
+ 
+@@ -286,7 +282,7 @@ create_rect_and_text (ETableClickToAdd *etcta)
+ 			e_text_get_type (),
+ 			"text", etcta->message ? etcta->message : "",
+ 			"width", etcta->width - 4,
+-			"fill_color_gdk", &text,
++			"fill_color_gdk", &fg,
+ 			NULL);
+ }
+ 
+diff --git a/e-util/e-table-header.c b/e-util/e-table-header.c
+index f9c50b5553..37bb6c0ac9 100644
+--- a/e-util/e-table-header.c
++++ b/e-util/e-table-header.c
+@@ -936,8 +936,7 @@ eth_calc_widths (ETableHeader *eth)
+ 
+ 	widths = g_new (int, eth->col_count);
+ 
+-	/* - 1 to account for the last pixel border. */
+-	extra = eth->width - 1;
++	extra = eth->width;
+ 	expansion = 0;
+ 	for (i = 0; i < eth->col_count; i++) {
+ 		extra -= eth->columns[i]->min_width + eth->width_extras;
+diff --git a/e-util/e-table-item.c b/e-util/e-table-item.c
+index da6171b5d8..681e2471f5 100644
+--- a/e-util/e-table-item.c
++++ b/e-util/e-table-item.c
+@@ -1855,11 +1855,11 @@ eti_draw_grid_line (ETableItem *eti,
+ {
+ 	cairo_save (cr);
+ 
+-	cairo_set_line_width (cr, 1.0);
++	cairo_set_line_width (cr, 0.5);
+ 	gdk_cairo_set_source_rgba (cr, rgba);
+ 
+-	cairo_move_to (cr, x1 + 0.5, y1 + 0.5);
+-	cairo_line_to (cr, x2 + 0.5, y2 + 0.5);
++	cairo_move_to (cr, x1 - 0.5, y1 + 0.5);
++	cairo_line_to (cr, x2 - 0.5, y2 + 0.5);
+ 	cairo_stroke (cr);
+ 
+ 	cairo_restore (cr);
+@@ -2059,22 +2059,22 @@ eti_draw (GnomeCanvasItem *item,
+ 			cairo_restore (cr);
+ 
+ 			cairo_save (cr);
+-			cairo_set_line_width (cr, 1.0);
++			cairo_set_line_width (cr, 0.5);
+ 			cairo_set_source_rgba (
+ 				cr, background.red,
+ 				background.green,
+ 				background.blue, 1);
+-			cairo_move_to (cr, x1, y1);
+-			cairo_line_to (cr, x2, y1);
++			cairo_move_to (cr, x1, y1 + 0.5);
++			cairo_line_to (cr, x2, y1 + 0.5);
+ 			cairo_stroke (cr);
+ 
+-			cairo_set_line_width (cr, 1.0);
++			cairo_set_line_width (cr, 0.5);
+ 			cairo_set_source_rgba (
+ 				cr, background.red,
+ 				background.green,
+ 				background.blue, 1);
+-			cairo_move_to (cr, x1, y2);
+-			cairo_line_to (cr, x2, y2);
++			cairo_move_to (cr, x1, y2 + 0.5);
++			cairo_line_to (cr, x2, y2 + 0.5);
+ 			cairo_stroke (cr);
+ 			cairo_restore (cr);
+ 
+diff --git a/e-util/e-table.c b/e-util/e-table.c
+index 5b9b274736..9d5b709312 100644
+--- a/e-util/e-table.c
++++ b/e-util/e-table.c
+@@ -727,7 +727,9 @@ e_table_setup_header (ETable *e_table)
+ {
+ 	gchar *pointer;
+ 	e_table->header_canvas = GNOME_CANVAS (e_canvas_new ());
+-	gtk_style_context_add_class (gtk_widget_get_style_context (GTK_WIDGET (e_table->header_canvas)), "linked");
++	gtk_style_context_add_class (
++		gtk_widget_get_style_context (GTK_WIDGET (e_table->header_canvas)),
++		"table-header");
+ 
+ 	gtk_widget_show (GTK_WIDGET (e_table->header_canvas));
+ 
+diff --git a/e-util/e-tree.c b/e-util/e-tree.c
+index 502967a19c..a5255135b9 100644
+--- a/e-util/e-tree.c
++++ b/e-util/e-tree.c
+@@ -752,7 +752,8 @@ e_tree_setup_header (ETree *tree)
+ 	gchar *pointer;
+ 
+ 	widget = e_canvas_new ();
+-	gtk_style_context_add_class (gtk_widget_get_style_context (widget), "linked");
++	gtk_style_context_add_class (
++		gtk_widget_get_style_context (widget), "table-header");
+ 	gtk_widget_set_can_focus (widget, FALSE);
+ 	tree->priv->header_canvas = GNOME_CANVAS (widget);
+ 	gtk_widget_show (widget);
+diff --git a/mail/mail-config.ui b/mail/mail-config.ui
+index a887abfae9..165c3c2b54 100644
+--- a/mail/mail-config.ui
++++ b/mail/mail-config.ui
+@@ -2388,6 +2388,7 @@
+                 <property name="hexpand">True</property>
+                 <property name="vexpand">True</property>
+                 <property name="row_spacing">2</property>
++                <property name="column_spacing">2</property>
+                 <child>
+                   <object class="GtkEntry" id="RCSitesEntry">
+                     <property name="visible">True</property>
+@@ -2492,6 +2493,7 @@
+                 <property name="hexpand">True</property>
+                 <property name="vexpand">True</property>
+                 <property name="row_spacing">2</property>
++                <property name="column_spacing">2</property>
+                 <child>
+                   <object class="GtkEntry" id="RCMailsEntry">
+                     <property name="visible">True</property>
+@@ -2918,6 +2920,7 @@
+                     <property name="visible">True</property>
+                     <property name="can_focus">False</property>
+                     <property name="n_columns">3</property>
++                    <property name="row_spacing">6</property>
+                     <child>
+                       <placeholder/>
+                     </child>
+diff --git a/modules/addressbook/autocompletion-config.c b/modules/addressbook/autocompletion-config.c
+index 80b4f742fd..cc7c7ec23c 100644
+--- a/modules/addressbook/autocompletion-config.c
++++ b/modules/addressbook/autocompletion-config.c
+@@ -77,7 +77,6 @@ get_main_notebook (EConfig *config,
+ 		return old;
+ 
+ 	notebook = gtk_notebook_new ();
+-	gtk_notebook_set_show_border (GTK_NOTEBOOK (notebook), FALSE);
+ 	gtk_widget_show (notebook);
+ 
+ 	return notebook;
+diff --git a/modules/addressbook/e-book-shell-sidebar.c b/modules/addressbook/e-book-shell-sidebar.c
+index 79940678b4..7a40caf51e 100644
+--- a/modules/addressbook/e-book-shell-sidebar.c
++++ b/modules/addressbook/e-book-shell-sidebar.c
+@@ -153,6 +153,9 @@ book_shell_sidebar_constructed (GObject *object)
+ 	gtk_scrolled_window_set_policy (
+ 		GTK_SCROLLED_WINDOW (widget),
+ 		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
++	gtk_scrolled_window_set_shadow_type (
++		GTK_SCROLLED_WINDOW (widget),
++		GTK_SHADOW_IN);
+ 	gtk_container_add (container, widget);
+ 	gtk_widget_show (widget);
+ 
+diff --git a/modules/calendar/e-cal-base-shell-sidebar.c b/modules/calendar/e-cal-base-shell-sidebar.c
+index 8f2f9208c5..00a77c4503 100644
+--- a/modules/calendar/e-cal-base-shell-sidebar.c
++++ b/modules/calendar/e-cal-base-shell-sidebar.c
+@@ -629,6 +629,25 @@ cal_base_shell_sidebar_get_property (GObject *object,
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+ }
+ 
++static void
++e_cal_base_shell_sidebar_update_calendar_margin_cb (GObject *object,
++													GParamSpec *pspec,
++													gpointer *user_data)
++{
++	EShellWindow *shell_window;
++	GtkWidget *calendar;
++	gboolean switcher_visible;
++
++	shell_window = E_SHELL_WINDOW (object);
++	calendar = GTK_WIDGET (user_data);
++	switcher_visible = e_shell_window_get_switcher_visible (shell_window);
++
++	if (switcher_visible)
++		gtk_widget_set_margin_bottom (calendar, 0);
++	else
++		gtk_widget_set_margin_bottom (calendar, 6);
++}
++
+ static void
+ cal_base_shell_sidebar_constructed (GObject *object)
+ {
+@@ -693,6 +712,9 @@ cal_base_shell_sidebar_constructed (GObject *object)
+ 	gtk_scrolled_window_set_policy (
+ 		GTK_SCROLLED_WINDOW (widget),
+ 		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
++	gtk_scrolled_window_set_shadow_type (
++		GTK_SCROLLED_WINDOW (widget),
++		GTK_SHADOW_IN);
+ 	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+ 
+ 	container = widget;
+@@ -737,6 +759,10 @@ cal_base_shell_sidebar_constructed (GObject *object)
+ 
+ 	e_drag_dest_add_calendar_targets (GTK_WIDGET (cal_base_shell_sidebar->priv->selector));
+ 
++	g_signal_connect (shell_window,
++		"notify::switcher-visible", G_CALLBACK (e_cal_base_shell_sidebar_update_calendar_margin_cb),
++		widget);
++
+ 	g_signal_connect (cal_base_shell_sidebar->priv->selector,
+ 		"realize", G_CALLBACK (e_cal_base_shell_sidebar_selector_realize_cb),
+ 		cal_base_shell_sidebar);
+diff --git a/modules/calendar/e-cal-shell-content.c b/modules/calendar/e-cal-shell-content.c
+index 7b765b3e01..d8936bec39 100644
+--- a/modules/calendar/e-cal-shell-content.c
++++ b/modules/calendar/e-cal-shell-content.c
+@@ -1524,7 +1524,6 @@ cal_shell_content_constructed (GObject *object)
+ 
+ 	widget = gtk_notebook_new ();
+ 	gtk_notebook_set_show_tabs (GTK_NOTEBOOK (widget), FALSE);
+-	gtk_notebook_set_show_border (GTK_NOTEBOOK (widget), FALSE);
+ 	gtk_paned_pack1 (GTK_PANED (container), widget, TRUE, FALSE);
+ 	cal_shell_content->priv->calendar_notebook = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+diff --git a/modules/calendar/e-cal-shell-view.c b/modules/calendar/e-cal-shell-view.c
+index fde1069303..bf29efc47e 100644
+--- a/modules/calendar/e-cal-shell-view.c
++++ b/modules/calendar/e-cal-shell-view.c
+@@ -534,6 +534,8 @@ cal_shell_view_constructed (GObject *object)
+ 	container = e_shell_searchbar_get_search_box (searchbar);
+ 
+ 	widget = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
++	gtk_style_context_add_class (
++		gtk_widget_get_style_context (widget), "linked");
+ 	cal_shell_view_add_action_button (
+ 		GTK_BOX (widget), ACTION (CALENDAR_SEARCH_PREV));
+ 	cal_shell_view_add_action_button (
+diff --git a/modules/calendar/e-calendar-preferences.ui b/modules/calendar/e-calendar-preferences.ui
+index f3561dea31..2fbd008066 100644
+--- a/modules/calendar/e-calendar-preferences.ui
++++ b/modules/calendar/e-calendar-preferences.ui
+@@ -682,6 +682,7 @@
+               <object class="GtkTable" id="datetime_format_table">
+                 <property name="visible">True</property>
+                 <property name="n_columns">3</property>
++                <property name="row_spacing">6</property>
+                 <child>
+                   <placeholder/>
+                 </child>
+diff --git a/modules/mail/e-mail-shell-sidebar.c b/modules/mail/e-mail-shell-sidebar.c
+index 78b9a5c492..2b45a31bd7 100644
+--- a/modules/mail/e-mail-shell-sidebar.c
++++ b/modules/mail/e-mail-shell-sidebar.c
+@@ -155,6 +155,9 @@ mail_shell_sidebar_constructed (GObject *object)
+ 	gtk_scrolled_window_set_policy (
+ 		GTK_SCROLLED_WINDOW (widget),
+ 		GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
++	gtk_scrolled_window_set_shadow_type (
++		GTK_SCROLLED_WINDOW (widget),
++		GTK_SHADOW_IN);
+ 	gtk_container_add (GTK_CONTAINER (container), widget);
+ 	gtk_widget_show (widget);
+ 
+diff --git a/modules/plugin-manager/evolution-plugin-manager.c b/modules/plugin-manager/evolution-plugin-manager.c
+index a042481f3c..4f7adb89c4 100644
+--- a/modules/plugin-manager/evolution-plugin-manager.c
++++ b/modules/plugin-manager/evolution-plugin-manager.c
+@@ -280,7 +280,6 @@ action_plugin_manager_cb (GtkAction *action,
+ 
+ 	notebook = gtk_notebook_new ();
+ 	gtk_notebook_set_show_tabs (GTK_NOTEBOOK (notebook), TRUE);
+-	gtk_notebook_set_show_border (GTK_NOTEBOOK (notebook), FALSE);
+ 	gtk_notebook_set_scrollable (GTK_NOTEBOOK (notebook), TRUE);
+ 
+ 	switch_page_handler_id = g_signal_connect (
+diff --git a/shell/e-shell-window-private.c b/shell/e-shell-window-private.c
+index 3f028a9ccc..f9e21b1bdf 100644
+--- a/shell/e-shell-window-private.c
++++ b/shell/e-shell-window-private.c
+@@ -322,19 +322,11 @@ e_shell_window_private_constructed (EShellWindow *shell_window)
+ 	if (widget != NULL)
+ 		gtk_box_pack_start (box, widget, FALSE, FALSE, 0);
+ 
+-	widget = gtk_separator_new (GTK_ORIENTATION_HORIZONTAL);
+-	gtk_box_pack_start (box, widget, FALSE, FALSE, 0);
+-	gtk_widget_show (widget);
+-
+ 	widget = gtk_paned_new (GTK_ORIENTATION_HORIZONTAL);
+ 	gtk_box_pack_start (box, widget, TRUE, TRUE, 0);
+ 	priv->content_pane = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+ 
+-	widget = gtk_separator_new (GTK_ORIENTATION_HORIZONTAL);
+-	gtk_box_pack_start (box, widget, FALSE, FALSE, 0);
+-	gtk_widget_show (widget);
+-
+ 	widget = shell_window_construct_taskbar (shell_window);
+ 	if (widget != NULL)
+ 		gtk_box_pack_start (box, widget, FALSE, FALSE, 0);
+diff --git a/shell/e-shell-window.c b/shell/e-shell-window.c
+index 1826a27216..6bc9f55489 100644
+--- a/shell/e-shell-window.c
++++ b/shell/e-shell-window.c
+@@ -66,6 +66,56 @@ G_DEFINE_TYPE_WITH_CODE (
+ 	G_IMPLEMENT_INTERFACE (
+ 		E_TYPE_EXTENSIBLE, NULL))
+ 
++static const char *css =
++".table-header > .button {\
++   border-radius: 0;\
++   border-width: 1px 1px 1px 0;\
++   border-color: @borders;\
++}\
++.toolbar {\
++   border-bottom: 1px solid alpha(black, 0.1);\
++}\
++.taskbar {\
++   border-width: 1px 0 0 0;\
++}\
++EMailBrowser EPreviewPane GtkScrolledWindow {\
++    border: none;\
++}\
++EPaned.horizontal EPreviewPane GtkScrolledWindow {\
++    border-width: 1px 0 0 0;\
++}\
++EPaned.vertical EPreviewPane GtkScrolledWindow {\
++    border: none;\
++}\
++EAddressbookView {\
++   border-width: 1px 0 0 0;\
++}\
++ECalShellContent GtkSeparator {\
++   color: @borders;\
++}\
++ECalShellContent GtkNotebook {\
++   border-width: 1px 0 0 0;\
++}\
++EShellSidebar GtkScrolledWindow {\
++   border-width: 1px 0 0 0;\
++}\
++.switcher-visible EShellSidebar GtkScrolledWindow {\
++   border-width: 1px 0;\
++}\
++.switcher-visible ECalBaseShellSidebar EPaned {\
++   -GtkPaned-handle-size: 0;\
++}\
++EMAccountPrefs GtkFrame {\
++   border: none;\
++}\
++EAttachmentPaned > GtkBox > GtkPaned > GtkScrolledWindow {\
++   border-width: 1px 0;\
++}\
++EHTMLEditor .toolbar {\
++   border-bottom: none;\
++   background: transparent;\
++}";
++
+ static void
+ shell_window_menubar_update_new_menu (EShellWindow *shell_window)
+ {
+@@ -613,16 +663,24 @@ static GtkWidget *
+ shell_window_construct_taskbar (EShellWindow *shell_window)
+ {
+ 	EShell *shell;
++	GtkWidget *box;
+ 	GtkWidget *notebook;
+ 	GtkWidget *status_area;
+ 	GtkWidget *online_button;
+ 	GtkWidget *tooltip_label;
++	GtkStyleContext *style_context;
+ 	gint height;
+ 
+ 	shell = e_shell_window_get_shell (shell_window);
+ 
+-	status_area = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 3);
+-	gtk_container_set_border_width (GTK_CONTAINER (status_area), 3);
++	box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 3);
++	gtk_container_set_border_width (GTK_CONTAINER (box), 3);
++	gtk_widget_show (box);
++
++	status_area = gtk_frame_new (NULL);
++	style_context = gtk_widget_get_style_context (status_area);
++	gtk_style_context_add_class (style_context, "taskbar");
++	gtk_container_add (GTK_CONTAINER (status_area), box);
+ 
+ 	e_binding_bind_property (
+ 		shell_window, "taskbar-visible",
+@@ -635,7 +693,7 @@ shell_window_construct_taskbar (EShellWindow *shell_window)
+ 
+ 	online_button = e_online_button_new ();
+ 	gtk_box_pack_start (
+-		GTK_BOX (status_area), online_button, FALSE, TRUE, 0);
++		GTK_BOX (box), online_button, FALSE, TRUE, 0);
+ 	gtk_widget_show (online_button);
+ 
+ 	e_binding_bind_property (
+@@ -656,14 +714,14 @@ shell_window_construct_taskbar (EShellWindow *shell_window)
+ 	tooltip_label = gtk_label_new ("");
+ 	gtk_misc_set_alignment (GTK_MISC (tooltip_label), 0.0, 0.5);
+ 	gtk_box_pack_start (
+-		GTK_BOX (status_area), tooltip_label, TRUE, TRUE, 0);
++		GTK_BOX (box), tooltip_label, TRUE, TRUE, 0);
+ 	shell_window->priv->tooltip_label = g_object_ref (tooltip_label);
+ 	gtk_widget_hide (tooltip_label);
+ 
+ 	notebook = gtk_notebook_new ();
+ 	gtk_notebook_set_show_tabs (GTK_NOTEBOOK (notebook), FALSE);
+ 	gtk_notebook_set_show_border (GTK_NOTEBOOK (notebook), FALSE);
+-	gtk_box_pack_start (GTK_BOX (status_area), notebook, TRUE, TRUE, 0);
++	gtk_box_pack_start (GTK_BOX (box), notebook, TRUE, TRUE, 0);
+ 	shell_window->priv->status_notebook = g_object_ref (notebook);
+ 	gtk_widget_show (notebook);
+ 
+@@ -1054,9 +1112,17 @@ e_shell_window_alert_sink_init (EAlertSinkInterface *iface)
+ static void
+ e_shell_window_init (EShellWindow *shell_window)
+ {
++	GtkCssProvider *css_provider;
++
+ 	shell_window->priv = E_SHELL_WINDOW_GET_PRIVATE (shell_window);
+ 
+ 	e_shell_window_private_init (shell_window);
++
++	css_provider = gtk_css_provider_new ();
++	gtk_css_provider_load_from_data (css_provider, css, -1, NULL);
++	gtk_style_context_add_provider_for_screen (gdk_screen_get_default (),
++		GTK_STYLE_PROVIDER (css_provider),
++		GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+ }
+ 
+ /**
+@@ -1550,6 +1616,8 @@ void
+ e_shell_window_set_switcher_visible (EShellWindow *shell_window,
+                                      gboolean switcher_visible)
+ {
++	GtkStyleContext *style_context;
++
+ 	g_return_if_fail (E_IS_SHELL_WINDOW (shell_window));
+ 
+ 	if (shell_window->priv->switcher_visible == switcher_visible)
+@@ -1557,6 +1625,14 @@ e_shell_window_set_switcher_visible (EShellWindow *shell_window,
+ 
+ 	shell_window->priv->switcher_visible = switcher_visible;
+ 
++	style_context = gtk_widget_get_style_context (GTK_WIDGET (shell_window->priv->sidebar_notebook));
++
++	if (switcher_visible)
++		gtk_style_context_add_class (style_context, "switcher-visible");
++	else
++		gtk_style_context_remove_class (style_context, "switcher-visible");
++
++
+ 	g_object_notify (G_OBJECT (shell_window), "switcher-visible");
+ }
+ 
+-- 
+2.15.0
+

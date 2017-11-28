@@ -1,0 +1,25 @@
+From 81b4ac843d216592c2181dd8d7c73855b204b1a4 Mon Sep 17 00:00:00 2001
+From: Shawn Dunn <sfalken@opensuse.org>
+Date: Thu, 27 Nov 2014 14:03:56 +0100
+Subject: [PATCH 0114/1800] Bug 740743 - Update 'New email setup' welcome text
+
+---
+ mail/e-mail-config-welcome-page.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mail/e-mail-config-welcome-page.c b/mail/e-mail-config-welcome-page.c
+index 8e5d82c37f..edb249acf5 100644
+--- a/mail/e-mail-config-welcome-page.c
++++ b/mail/e-mail-config-welcome-page.c
+@@ -154,7 +154,7 @@ e_mail_config_welcome_page_class_init (EMailConfigWelcomePageClass *class)
+ 			"Text",
+ 			"Welcome message",
+ 			_("Welcome to the Evolution Mail Configuration "
+-			"Assistant.\n\nClick \"Continue\" to begin."),
++			"Assistant.\n\nClick \"Next\" to begin."),
+ 			G_PARAM_READWRITE |
+ 			G_PARAM_CONSTRUCT |
+ 			G_PARAM_STATIC_STRINGS));
+-- 
+2.15.0
+

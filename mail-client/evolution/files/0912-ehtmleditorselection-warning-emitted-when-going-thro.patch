@@ -1,0 +1,42 @@
+From 25a265735843fcbcffe6c0ce799d3253fd38de75 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 26 Feb 2016 13:20:12 +0100
+Subject: [PATCH 0912/1800] EHTMLEditorSelection - Warning emitted when going
+ through element with font size set in increment
+
+---
+ web-extensions/composer/e-html-editor-selection-dom-functions.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 44cbe30a15..e127364f0a 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -4583,6 +4583,7 @@ dom_selection_get_font_size (WebKitDOMDocument *document,
+ {
+ 	gchar *size;
+ 	guint size_int;
++	gboolean increment;
+ 
+ 	size = get_font_property (document, "size");
+ 	if (!(size && *size)) {
+@@ -4590,10 +4591,15 @@ dom_selection_get_font_size (WebKitDOMDocument *document,
+ 		return E_HTML_EDITOR_SELECTION_FONT_SIZE_NORMAL;
+ 	}
+ 
++	/* We don't support increments, but when going through a content that
++	 * was not written in Evolution we can find it. In this case just report
++	 * the normal size. */
++	/* FIXME: go through all parent and get the right value. */
++	increment = size[0] == '+' || size[0] == '-';
+ 	size_int = atoi (size);
+ 	g_free (size);
+ 
+-	if (size_int == 0)
++	if (increment || size_int == 0)
+ 		return E_HTML_EDITOR_SELECTION_FONT_SIZE_NORMAL;
+ 
+ 	return size_int;
+-- 
+2.15.0
+

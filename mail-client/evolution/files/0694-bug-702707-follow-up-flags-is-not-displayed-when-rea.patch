@@ -1,0 +1,183 @@
+From edffe6af745889d841d25792f46f521dc557305d Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 22 Apr 2015 13:28:33 +0200
+Subject: [PATCH 0694/1800] Bug 702707 - Follow up flags is not displayed when
+ reading message
+
+---
+ mail/e-mail-reader.c | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+ mail/mail.error.xml  |  20 +++++++++-
+ 2 files changed, 120 insertions(+), 2 deletions(-)
+
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index 8eb2220dbe..c6e9effbd5 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -97,6 +97,8 @@ struct _EMailReaderPrivate {
+ 	guint schedule_mark_seen_interval;
+ 
+ 	gpointer remote_content_alert; /* EAlert */
++
++	gpointer followup_alert; /* weak pointer to an EAlert */
+ };
+ 
+ enum {
+@@ -2883,6 +2885,94 @@ discard_timeout_mark_seen_cb (EMailReader *reader)
+ 	return FALSE;
+ }
+ 
++static void
++mail_reader_remove_followup_alert (EMailReader *reader)
++{
++	EMailReaderPrivate *priv;
++
++	g_return_if_fail (E_IS_MAIL_READER (reader));
++
++	priv = E_MAIL_READER_GET_PRIVATE (reader);
++	if (!priv)
++		return;
++
++	if (priv->followup_alert)
++		e_alert_response (priv->followup_alert, GTK_RESPONSE_OK);
++}
++
++static void
++mail_reader_manage_followup_flag (EMailReader *reader,
++				  CamelFolder *folder,
++				  const gchar *message_uid)
++{
++	EMailReaderPrivate *priv;
++	CamelMessageInfo *info;
++	const gchar *followup, *completed_on, *due_by;
++	time_t date;
++	gchar *date_str = NULL;
++	gboolean alert_added = FALSE;
++
++	g_return_if_fail (E_IS_MAIL_READER (reader));
++	g_return_if_fail (CAMEL_IS_FOLDER (folder));
++	g_return_if_fail (message_uid != NULL);
++
++	priv = E_MAIL_READER_GET_PRIVATE (reader);
++	if (!priv)
++		return;
++
++	info = camel_folder_get_message_info (folder, message_uid);
++	if (!info)
++		return;
++
++	followup = camel_message_info_user_tag (info, "follow-up");
++	if (followup && *followup) {
++		EPreviewPane *preview_pane;
++		const gchar *alert_tag;
++		EAlert *alert;
++
++		completed_on = camel_message_info_user_tag (info, "completed-on");
++		due_by = camel_message_info_user_tag (info, "due-by");
++
++		if (completed_on && *completed_on) {
++			alert_tag = "mail:follow-up-completed-info";
++			date = camel_header_decode_date (completed_on, NULL);
++			date_str = e_datetime_format_format ("mail", "header", DTFormatKindDateTime, date);
++		} else if (due_by && *due_by) {
++			time_t now;
++
++			alert_tag = "mail:follow-up-dueby-info";
++			date = camel_header_decode_date (due_by, NULL);
++			date_str = e_datetime_format_format ("mail", "header", DTFormatKindDateTime, date);
++
++			now = time (NULL);
++			if (now > date)
++				alert_tag = "mail:follow-up-overdue-error";
++		} else {
++			alert_tag = "mail:follow-up-flag-info";
++		}
++
++		alert = e_alert_new (alert_tag, followup, date_str ? date_str : "???", NULL);
++
++		g_free (date_str);
++
++		preview_pane = e_mail_reader_get_preview_pane (reader);
++		e_alert_sink_submit_alert (E_ALERT_SINK (preview_pane), alert);
++
++		alert_added = TRUE;
++
++		mail_reader_remove_followup_alert (reader);
++		priv->followup_alert = alert;
++		g_object_add_weak_pointer (G_OBJECT (priv->followup_alert), &priv->followup_alert);
++
++		g_object_unref (alert);
++	}
++
++	camel_message_info_unref (info);
++
++	if (!alert_added)
++		mail_reader_remove_followup_alert (reader);
++}
++
+ static void
+ mail_reader_message_loaded_cb (CamelFolder *folder,
+                                GAsyncResult *result,
+@@ -2926,10 +3016,13 @@ mail_reader_message_loaded_cb (CamelFolder *folder,
+ 		goto exit;
+ 	}
+ 
+-	if (message != NULL)
++	if (message != NULL) {
++		mail_reader_manage_followup_flag (reader, folder, message_uid);
++
+ 		g_signal_emit (
+ 			reader, signals[MESSAGE_LOADED], 0,
+ 			message_uid, message);
++	}
+ 
+ exit:
+ 	if (error != NULL) {
+@@ -4271,9 +4364,16 @@ connect_signals:
+ void
+ e_mail_reader_changed (EMailReader *reader)
+ {
++	MessageList *message_list;
++
+ 	g_return_if_fail (E_IS_MAIL_READER (reader));
+ 
+ 	g_signal_emit (reader, signals[CHANGED], 0);
++
++	message_list = MESSAGE_LIST (e_mail_reader_get_message_list (reader));
++
++	if (!message_list || message_list_selected_count (message_list) != 1)
++		mail_reader_remove_followup_alert (reader);
+ }
+ 
+ guint32
+diff --git a/mail/mail.error.xml b/mail/mail.error.xml
+index ec81430e23..731af24f9c 100644
+--- a/mail/mail.error.xml
++++ b/mail/mail.error.xml
+@@ -573,5 +573,23 @@ in the folder will be available in offline mode.</_secondary>
+     <_primary>Remote content download had been blocked for this message.</_primary>
+     <_secondary>You can download remote content manually, or set to remember to download remote content for this sender or used sites.</_secondary>
+   </error>
++
++  <error id="follow-up-flag-info" type="info">
++    <secondary>{0}</secondary>
++  </error>
++
++  <error id="follow-up-completed-info" type="info">
++    <!-- Translators: This constructs a string like "Follow-up, Completed on Tuesday, January 13, 2009" -->
++    <_secondary>{0}, Completed on {1}</_secondary>
++  </error>
++
++  <error id="follow-up-dueby-info" type="info">
++    <!-- Translators: This constructs a string like "Follow-up by Tuesday, January 13, 2009" -->
++    <_secondary>{0} by {1}</_secondary>
++  </error>
++
++  <error id="follow-up-overdue-error" type="error">
++    <!-- Translators: This constructs a string like "Overdue: Follow-up by Tuesday, January 13, 2009" -->
++    <_primary>Overdue: {0} by {1}</_primary>
++  </error>
+ </error-list>
+-
+-- 
+2.15.0
+

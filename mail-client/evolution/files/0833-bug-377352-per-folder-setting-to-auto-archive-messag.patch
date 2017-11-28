@@ -1,0 +1,1599 @@
+From 57c86b66330045f855049fce28957b3bcab3b361 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 23 Jun 2015 19:52:51 +0200
+Subject: [PATCH 0833/1800] Bug 377352 - Per-folder setting to auto-archive
+ messages based on their age
+
+---
+ mail/Makefile.am             |   2 +
+ mail/e-mail-backend.c        |  34 +++-
+ mail/e-mail-backend.h        |   4 +
+ mail/e-mail-properties.c     | 337 ++++++++++++++++++++++++++++++++++++
+ mail/e-mail-properties.h     |  82 +++++++++
+ mail/e-mail-reader-utils.c   |  80 ++++++++-
+ mail/e-mail-reader.c         |  77 +--------
+ mail/e-mail-remote-content.c |   2 +-
+ mail/em-folder-properties.c  | 402 ++++++++++++++++++++++++++++++++++++++++++-
+ mail/em-folder-properties.h  |  33 ++++
+ mail/em-utils.c              | 240 ++++++++++++++++++++++++++
+ mail/em-utils.h              |  14 ++
+ mail/mail-send-recv.c        |   7 +
+ 13 files changed, 1229 insertions(+), 85 deletions(-)
+ create mode 100644 mail/e-mail-properties.c
+ create mode 100644 mail/e-mail-properties.h
+
+diff --git a/mail/Makefile.am b/mail/Makefile.am
+index cc2094c9cb..c0fab7b250 100644
+--- a/mail/Makefile.am
++++ b/mail/Makefile.am
+@@ -98,6 +98,7 @@ mailinclude_HEADERS =					\
+ 	e-mail-paned-view.h				\
+ 	e-mail-print-config-headers.h			\
+ 	e-mail-printer.h				\
++	e-mail-properties.h				\
+ 	e-mail-reader-utils.h				\
+ 	e-mail-reader.h					\
+ 	e-mail-remote-content.h				\
+@@ -177,6 +178,7 @@ libevolution_mail_la_SOURCES =				\
+ 	e-mail-paned-view.c				\
+ 	e-mail-print-config-headers.c			\
+ 	e-mail-printer.c				\
++	e-mail-properties.c				\
+ 	e-mail-reader-utils.c				\
+ 	e-mail-reader.c					\
+ 	e-mail-remote-content.c				\
+diff --git a/mail/e-mail-backend.c b/mail/e-mail-backend.c
+index 701e202b88..f50049aafa 100644
+--- a/mail/e-mail-backend.c
++++ b/mail/e-mail-backend.c
+@@ -58,13 +58,15 @@ struct _EMailBackendPrivate {
+ 	GHashTable *jobs;
+ 	EMailSendAccountOverride *send_account_override;
+ 	EMailRemoteContent *remote_content;
++	EMailProperties *mail_properties;
+ };
+ 
+ enum {
+ 	PROP_0,
+ 	PROP_SESSION,
+ 	PROP_SEND_ACCOUNT_OVERRIDE,
+-	PROP_REMOTE_CONTENT
++	PROP_REMOTE_CONTENT,
++	PROP_MAIL_PROPERTIES
+ };
+ 
+ G_DEFINE_ABSTRACT_TYPE (
+@@ -958,6 +960,13 @@ mail_backend_get_property (GObject *object,
+ 				e_mail_backend_get_remote_content (
+ 				E_MAIL_BACKEND (object)));
+ 			return;
++
++		case PROP_MAIL_PROPERTIES:
++			g_value_set_object (
++				value,
++				e_mail_backend_get_mail_properties (
++				E_MAIL_BACKEND (object)));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -999,6 +1008,7 @@ mail_backend_finalize (GObject *object)
+ 	g_hash_table_destroy (priv->jobs);
+ 	g_clear_object (&priv->send_account_override);
+ 	g_clear_object (&priv->remote_content);
++	g_clear_object (&priv->mail_properties);
+ 
+ 	/* Chain up to parent's finalize() method. */
+ 	G_OBJECT_CLASS (e_mail_backend_parent_class)->finalize (object);
+@@ -1267,6 +1277,10 @@ mail_backend_constructed (GObject *object)
+ 	config_filename = g_build_filename (e_shell_backend_get_config_dir (shell_backend), "remote-content.db", NULL);
+ 	priv->remote_content = e_mail_remote_content_new (config_filename);
+ 	g_free (config_filename);
++
++	config_filename = g_build_filename (e_shell_backend_get_config_dir (shell_backend), "properties.db", NULL);
++	priv->mail_properties = e_mail_properties_new (config_filename);
++	g_free (config_filename);
+ }
+ 
+ static void
+@@ -1317,6 +1331,16 @@ e_mail_backend_class_init (EMailBackendClass *class)
+ 			NULL,
+ 			E_TYPE_MAIL_REMOTE_CONTENT,
+ 			G_PARAM_READABLE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_MAIL_PROPERTIES,
++		g_param_spec_object (
++			"mail-properties",
++			NULL,
++			NULL,
++			E_TYPE_MAIL_PROPERTIES,
++			G_PARAM_READABLE));
+ }
+ 
+ static void
+@@ -1423,3 +1447,11 @@ e_mail_backend_get_remote_content (EMailBackend *backend)
+ 
+ 	return backend->priv->remote_content;
+ }
++
++EMailProperties *
++e_mail_backend_get_mail_properties (EMailBackend *backend)
++{
++	g_return_val_if_fail (E_IS_MAIL_BACKEND (backend), NULL);
++
++	return backend->priv->mail_properties;
++}
+diff --git a/mail/e-mail-backend.h b/mail/e-mail-backend.h
+index 4426abfb9e..f03aa93057 100644
+--- a/mail/e-mail-backend.h
++++ b/mail/e-mail-backend.h
+@@ -29,6 +29,7 @@
+ #include <libemail-engine/libemail-engine.h>
+ #include <mail/e-mail-remote-content.h>
+ #include <mail/e-mail-send-account-override.h>
++#include <mail/e-mail-properties.h>
+ 
+ /* Standard GObject macros */
+ #define E_TYPE_MAIL_BACKEND \
+@@ -83,6 +84,9 @@ EMailSendAccountOverride *
+ EMailRemoteContent *
+ 		e_mail_backend_get_remote_content
+ 						(EMailBackend *backend);
++EMailProperties *
++		e_mail_backend_get_mail_properties
++						(EMailBackend *backend);
+ 
+ G_END_DECLS
+ 
+diff --git a/mail/e-mail-properties.c b/mail/e-mail-properties.c
+new file mode 100644
+index 0000000000..47a8e8c123
+--- /dev/null
++++ b/mail/e-mail-properties.c
+@@ -0,0 +1,337 @@
++/* -*- Mode: C; tab-width: 8; indent-tabs-mode: t; c-basic-offset: 8 -*- */
++/*
++ * Copyright (C) 2015 Red Hat Inc. (www.redhat.com)
++ *
++ * This library is free software: you can redistribute it and/or modify it
++ * under the terms of version 2.1. of the GNU Lesser General Public License
++ * as published by the Free Software Foundation.
++ *
++ * This library is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
++ * for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public License
++ * along with this library. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <stdio.h>
++#include <string.h>
++
++#include <camel/camel.h>
++
++#include <libemail-engine/libemail-engine.h>
++
++#include "e-mail-properties.h"
++
++#define CURRENT_VERSION 1
++
++struct _EMailPropertiesPrivate {
++	CamelDB *db;
++};
++
++G_DEFINE_TYPE (EMailProperties, e_mail_properties, G_TYPE_OBJECT)
++
++static gint
++e_mail_properties_get_value_cb (gpointer data,
++				gint ncol,
++				gchar **colvalues,
++				gchar **colnames)
++{
++	gchar **value = data;
++
++	if (value && colvalues && colvalues[0]) {
++		g_return_val_if_fail (*value == NULL, 0);
++
++		*value = g_strdup (colvalues[0]);
++	}
++
++	return 0;
++}
++
++static gchar *
++e_mail_properties_get (EMailProperties *properties,
++		       const gchar *table,
++		       const gchar *id,
++		       const gchar *key)
++{
++	gchar *value = NULL;
++	gchar *stmt;
++
++	g_return_val_if_fail (E_IS_MAIL_PROPERTIES (properties), NULL);
++	g_return_val_if_fail (table != NULL, NULL);
++	g_return_val_if_fail (id != NULL, NULL);
++	g_return_val_if_fail (key != NULL, NULL);
++	g_return_val_if_fail (properties->priv->db != NULL, NULL);
++
++	stmt = sqlite3_mprintf ("SELECT value FROM %Q WHERE id=%Q AND key=%Q", table, id, key);
++	camel_db_select (properties->priv->db, stmt, e_mail_properties_get_value_cb, &value, NULL);
++	sqlite3_free (stmt);
++
++	return value;
++}
++
++static void
++e_mail_properties_add (EMailProperties *properties,
++		       const gchar *table,
++		       const gchar *id,
++		       const gchar *key,
++		       const gchar *value)
++{
++	gchar *stmt, *stored;
++	GError *error = NULL;
++
++	g_return_if_fail (E_IS_MAIL_PROPERTIES (properties));
++	g_return_if_fail (table != NULL);
++	g_return_if_fail (id != NULL);
++	g_return_if_fail (key != NULL);
++	g_return_if_fail (value != NULL);
++	g_return_if_fail (properties->priv->db != NULL);
++
++	stored = e_mail_properties_get (properties, table, id, key);
++	if (stored)
++		stmt = sqlite3_mprintf ("UPDATE %Q SET id=%Q,key=%Q,value=%Q WHERE id=%Q AND key=%Q", table, id, key, value, id, key);
++	else
++		stmt = sqlite3_mprintf ("INSERT INTO %Q (id,key,value) VALUES (%Q,%Q,%Q)", table, id, key, value, id, key);
++	camel_db_command (properties->priv->db, stmt, &error);
++	sqlite3_free (stmt);
++	g_free (stored);
++
++	if (error) {
++		g_warning ("%s: Failed to add to '%s' for '%s|%s|%s': %s", G_STRFUNC, table, id, key, value, error->message);
++		g_clear_error (&error);
++	}
++}
++
++static void
++e_mail_properties_remove (EMailProperties *properties,
++			  const gchar *table,
++			  const gchar *id,
++			  const gchar *key)
++{
++	gchar *stmt;
++	GError *error = NULL;
++
++	g_return_if_fail (E_IS_MAIL_PROPERTIES (properties));
++	g_return_if_fail (table != NULL);
++	g_return_if_fail (id != NULL);
++	g_return_if_fail (key != NULL);
++	g_return_if_fail (properties->priv->db != NULL);
++
++	stmt = sqlite3_mprintf ("DELETE FROM %Q WHERE id=%Q AND key=%Q", table, id, key);
++	camel_db_command (properties->priv->db, stmt, &error);
++	sqlite3_free (stmt);
++
++	if (error) {
++		g_warning ("%s: Failed to remove from '%s' value '%s|%s': %s", G_STRFUNC, table, id, key, error->message);
++		g_clear_error (&error);
++	}
++}
++
++static gint
++e_mail_properties_get_version_cb (gpointer data,
++				  gint ncol,
++				  gchar **colvalues,
++				  gchar **colnames)
++{
++	gint *pversion = data;
++
++	if (pversion && ncol == 1 && colvalues && colvalues[0])
++		*pversion = (gint) g_ascii_strtoll (colvalues[0], NULL, 10);
++
++	return 0;
++}
++
++static void
++e_mail_properties_set_config_filename (EMailProperties *properties,
++				       const gchar *config_filename)
++{
++	GError *error = NULL;
++
++	g_return_if_fail (E_IS_MAIL_PROPERTIES (properties));
++	g_return_if_fail (config_filename != NULL);
++	g_return_if_fail (properties->priv->db == NULL);
++
++	properties->priv->db = camel_db_open (config_filename, &error);
++
++	if (error) {
++		g_warning ("%s: Failed to open '%s': %s", G_STRFUNC, config_filename, error->message);
++		g_clear_error (&error);
++	}
++
++	if (properties->priv->db) {
++		#define ctb(stmt) G_STMT_START { \
++			if (properties->priv->db) { \
++				camel_db_command (properties->priv->db, stmt, &error); \
++				if (error) { \
++					g_warning ("%s: Failed to execute '%s' on '%s': %s", \
++						G_STRFUNC, stmt, config_filename, error->message); \
++					g_clear_error (&error); \
++				} \
++			} \
++		} G_STMT_END
++
++		ctb ("CREATE TABLE IF NOT EXISTS version (current INT)");
++		ctb ("CREATE TABLE IF NOT EXISTS folders ('id' TEXT, 'key' TEXT, 'value' TEXT)");
++		ctb ("CREATE INDEX IF NOT EXISTS 'folders_index' ON 'folders' (id,key)");
++
++		#undef ctb
++	}
++
++	if (properties->priv->db) {
++		gint version = -1;
++		gchar *stmt;
++
++		camel_db_select (properties->priv->db, "SELECT 'current' FROM 'version'", e_mail_properties_get_version_cb, &version, NULL);
++
++		if (version != -1 && version < CURRENT_VERSION) {
++			/* Here will be added migration code, if needed in the future */
++		}
++
++		if (version < CURRENT_VERSION) {
++			stmt = sqlite3_mprintf ("DELETE FROM %Q", "version");
++			camel_db_command (properties->priv->db, stmt, NULL);
++			sqlite3_free (stmt);
++
++			stmt = sqlite3_mprintf ("INSERT INTO %Q (current) VALUES (%d);", "version", CURRENT_VERSION);
++			camel_db_command (properties->priv->db, stmt, NULL);
++			sqlite3_free (stmt);
++		}
++	}
++}
++
++static void
++mail_properties_finalize (GObject *object)
++{
++	EMailProperties *properties;
++
++	properties = E_MAIL_PROPERTIES (object);
++
++	if (properties->priv->db) {
++		GError *error = NULL;
++
++		camel_db_maybe_run_maintenance (properties->priv->db, &error);
++
++		if (error) {
++			g_warning ("%s: Failed to run maintenance: %s", G_STRFUNC, error->message);
++			g_clear_error (&error);
++		}
++
++		camel_db_close (properties->priv->db);
++		properties->priv->db = NULL;
++	}
++
++	/* Chain up to parent's finalize() method. */
++	G_OBJECT_CLASS (e_mail_properties_parent_class)->finalize (object);
++}
++
++static void
++e_mail_properties_class_init (EMailPropertiesClass *class)
++{
++	GObjectClass *object_class;
++
++	g_type_class_add_private (class, sizeof (EMailPropertiesPrivate));
++
++	object_class = G_OBJECT_CLASS (class);
++	object_class->finalize = mail_properties_finalize;
++}
++
++static void
++e_mail_properties_init (EMailProperties *properties)
++{
++	properties->priv = G_TYPE_INSTANCE_GET_PRIVATE (properties, E_TYPE_MAIL_PROPERTIES, EMailPropertiesPrivate);
++}
++
++EMailProperties *
++e_mail_properties_new (const gchar *config_filename)
++{
++	EMailProperties *properties;
++
++	properties = g_object_new (E_TYPE_MAIL_PROPERTIES, NULL);
++
++	if (config_filename != NULL)
++		e_mail_properties_set_config_filename (properties, config_filename);
++
++	return properties;
++}
++
++void
++e_mail_properties_set_for_folder (EMailProperties *properties,
++				  CamelFolder *folder,
++				  const gchar *key,
++				  const gchar *value)
++{
++	gchar *folder_uri;
++
++	g_return_if_fail (E_IS_MAIL_PROPERTIES (properties));
++	g_return_if_fail (CAMEL_IS_FOLDER (folder));
++	g_return_if_fail (key != NULL);
++
++	folder_uri = e_mail_folder_uri_build (
++		camel_folder_get_parent_store (folder),
++		camel_folder_get_full_name (folder));
++
++	g_return_if_fail (folder_uri != NULL);
++
++	e_mail_properties_set_for_folder_uri (properties, folder_uri, key, value);
++
++	g_free (folder_uri);
++}
++
++void
++e_mail_properties_set_for_folder_uri (EMailProperties *properties,
++				      const gchar *folder_uri,
++				      const gchar *key,
++				      const gchar *value)
++{
++	g_return_if_fail (E_IS_MAIL_PROPERTIES (properties));
++	g_return_if_fail (folder_uri != NULL);
++	g_return_if_fail (key != NULL);
++
++	if (value)
++		e_mail_properties_add (properties, "folders", folder_uri, key, value);
++	else
++		e_mail_properties_remove (properties, "folders", folder_uri, key);
++}
++
++/* Free returned pointer with g_free() */
++gchar *
++e_mail_properties_get_for_folder (EMailProperties *properties,
++				  CamelFolder *folder,
++				  const gchar *key)
++{
++	gchar *folder_uri, *value;
++
++	g_return_val_if_fail (E_IS_MAIL_PROPERTIES (properties), NULL);
++	g_return_val_if_fail (CAMEL_IS_FOLDER (folder), NULL);
++	g_return_val_if_fail (key != NULL, NULL);
++
++	folder_uri = e_mail_folder_uri_build (
++		camel_folder_get_parent_store (folder),
++		camel_folder_get_full_name (folder));
++
++	g_return_val_if_fail (folder_uri != NULL, NULL);
++
++	value = e_mail_properties_get_for_folder_uri (properties, folder_uri, key);
++
++	g_free (folder_uri);
++
++	return value;
++}
++
++/* Free returned pointer with g_free() */
++gchar *
++e_mail_properties_get_for_folder_uri (EMailProperties *properties,
++				      const gchar *folder_uri,
++				      const gchar *key)
++{
++	g_return_val_if_fail (E_IS_MAIL_PROPERTIES (properties), NULL);
++	g_return_val_if_fail (folder_uri != NULL, NULL);
++	g_return_val_if_fail (key != NULL, NULL);
++
++	return e_mail_properties_get (properties, "folders", folder_uri, key);
++}
+diff --git a/mail/e-mail-properties.h b/mail/e-mail-properties.h
+new file mode 100644
+index 0000000000..b22957335a
+--- /dev/null
++++ b/mail/e-mail-properties.h
+@@ -0,0 +1,82 @@
++/* -*- Mode: C; tab-width: 8; indent-tabs-mode: t; c-basic-offset: 8 -*- */
++/*
++ * Copyright (C) 2015 Red Hat Inc. (www.redhat.com)
++ *
++ * This library is free software: you can redistribute it and/or modify it
++ * under the terms of version 2.1. of the GNU Lesser General Public License
++ * as published by the Free Software Foundation.
++ *
++ * This library is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License
++ * for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public License
++ * along with this library. If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#ifndef E_MAIL_PROPERTIES_H
++#define E_MAIL_PROPERTIES_H
++
++#include <glib-object.h>
++
++#include <camel/camel.h>
++
++/* Standard GObject macros */
++#define E_TYPE_MAIL_PROPERTIES \
++	(e_mail_properties_get_type ())
++#define E_MAIL_PROPERTIES(obj) \
++	(G_TYPE_CHECK_INSTANCE_CAST \
++	((obj), E_TYPE_MAIL_PROPERTIES, EMailProperties))
++#define E_MAIL_PROPERTIES_CLASS(cls) \
++	(G_TYPE_CHECK_CLASS_CAST \
++	((cls), E_TYPE_MAIL_PROPERTIES, EMailPropertiesClass))
++#define E_IS_MAIL_PROPERTIES(obj) \
++	(G_TYPE_CHECK_INSTANCE_TYPE \
++	((obj), E_TYPE_MAIL_PROPERTIES))
++#define E_IS_MAIL_PROPERTIES_CLASS(cls) \
++	(G_TYPE_CHECK_CLASS_TYPE \
++	((cls), E_TYPE_MAIL_PROPERTIES))
++#define E_MAIL_PROPERTIES_GET_CLASS(obj) \
++	(G_TYPE_INSTANCE_GET_CLASS \
++	((obj), E_TYPE_MAIL_PROPERTIES, EMailPropertiesClass))
++
++G_BEGIN_DECLS
++
++typedef struct _EMailProperties EMailProperties;
++typedef struct _EMailPropertiesClass EMailPropertiesClass;
++typedef struct _EMailPropertiesPrivate EMailPropertiesPrivate;
++
++struct _EMailProperties {
++	GObject parent;
++	EMailPropertiesPrivate *priv;
++};
++
++struct _EMailPropertiesClass {
++	GObjectClass parent_class;
++};
++
++GType		e_mail_properties_get_type	(void) G_GNUC_CONST;
++EMailProperties *
++		e_mail_properties_new		(const gchar *config_filename);
++void		e_mail_properties_set_for_folder
++						(EMailProperties *properties,
++						 CamelFolder *folder,
++						 const gchar *key,
++						 const gchar *value);
++void		e_mail_properties_set_for_folder_uri
++						(EMailProperties *properties,
++						 const gchar *folder_uri,
++						 const gchar *key,
++						 const gchar *value);
++gchar *		e_mail_properties_get_for_folder
++						(EMailProperties *properties,
++						 CamelFolder *folder,
++						 const gchar *key);
++gchar *		e_mail_properties_get_for_folder_uri
++						(EMailProperties *properties,
++						 const gchar *folder_uri,
++						 const gchar *key);
++G_END_DECLS
++
++#endif /* E_MAIL_PROPERTIES_H */
+diff --git a/mail/e-mail-reader-utils.c b/mail/e-mail-reader-utils.c
+index 22cc715a10..9af48b09c1 100644
+--- a/mail/e-mail-reader-utils.c
++++ b/mail/e-mail-reader-utils.c
+@@ -539,6 +539,70 @@ e_mail_reader_expunge_folder_name (EMailReader *reader,
+ 	g_object_unref (activity);
+ }
+ 
++struct _process_autoarchive_msg {
++	MailMsg base;
++
++	AsyncContext *async_context;
++};
++
++static gchar *
++process_autoarchive_desc (struct _process_autoarchive_msg *m)
++{
++	return g_strdup_printf (
++		_("Refreshing folder '%s'"),
++		camel_folder_get_display_name (m->async_context->folder));
++}
++
++static void
++process_autoarchive_exec (struct _process_autoarchive_msg *m,
++			  GCancellable *cancellable,
++			  GError **error)
++{
++	gchar *folder_uri;
++
++	folder_uri = e_mail_folder_uri_from_folder (m->async_context->folder);
++
++	em_utils_process_autoarchive_sync (
++		e_mail_reader_get_backend (m->async_context->reader),
++		m->async_context->folder, folder_uri, cancellable, error);
++
++	g_free (folder_uri);
++}
++
++static void
++process_autoarchive_done (struct _process_autoarchive_msg *m)
++{
++	EActivity *activity;
++	EAlertSink *alert_sink;
++
++	activity = m->async_context->activity;
++	alert_sink = e_activity_get_alert_sink (activity);
++
++	if (e_activity_handle_cancellation (activity, m->base.error)) {
++	} else if (m->base.error != NULL) {
++		e_alert_submit (
++			alert_sink, "mail:no-refresh-folder",
++			camel_folder_get_display_name (m->async_context->folder),
++			m->base.error->message, NULL);
++	} else {
++		e_activity_set_state (activity, E_ACTIVITY_COMPLETED);
++	}
++}
++
++static void
++process_autoarchive_free (struct _process_autoarchive_msg *m)
++{
++	async_context_free (m->async_context);
++}
++
++static MailMsgInfo process_autoarchive_info = {
++	sizeof (struct _process_autoarchive_msg),
++	(MailMsgDescFunc) process_autoarchive_desc,
++	(MailMsgExecFunc) process_autoarchive_exec,
++	(MailMsgDoneFunc) process_autoarchive_done,
++	(MailMsgFreeFunc) process_autoarchive_free
++};
++
+ /* Helper for e_mail_reader_refresh_folder() */
+ static void
+ mail_reader_refresh_folder_cb (GObject *source_object,
+@@ -571,10 +635,22 @@ mail_reader_refresh_folder_cb (GObject *source_object,
+ 		g_error_free (local_error);
+ 
+ 	} else {
+-		e_activity_set_state (activity, E_ACTIVITY_COMPLETED);
++		struct _process_autoarchive_msg *m;
++
++		g_warn_if_fail (async_context->folder == NULL);
++
++		async_context->folder = g_object_ref (folder);
++
++		m = mail_msg_new (&process_autoarchive_info);
++		m->async_context = async_context;
++
++		mail_msg_unordered_push (m);
++
++		async_context = NULL;
+ 	}
+ 
+-	async_context_free (async_context);
++	if (async_context)
++		async_context_free (async_context);
+ }
+ 
+ void
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index 39ca7a5f04..dca7c5b426 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -874,75 +874,6 @@ action_mail_message_open_cb (GtkAction *action,
+ 	e_mail_reader_open_selected_mail (reader);
+ }
+ 
+-static gchar *
+-mail_reader_get_archive_folder_from_folder (CamelFolder *folder,
+-					    ESourceRegistry *registry,
+-					    GPtrArray *uids,
+-					    gboolean deep_uids_check)
+-{
+-	CamelStore *store;
+-	ESource *source = NULL;
+-	gchar *archive_folder = NULL;
+-
+-	if (!folder)
+-		return NULL;
+-
+-	store = camel_folder_get_parent_store (folder);
+-	if (g_strcmp0 (E_MAIL_SESSION_LOCAL_UID, camel_service_get_uid (CAMEL_SERVICE (store))) == 0) {
+-		return mail_config_dup_local_archive_folder ();
+-	}
+-
+-	if (CAMEL_IS_VEE_FOLDER (folder) && uids && uids->len > 0) {
+-		CamelVeeFolder *vee_folder = CAMEL_VEE_FOLDER (folder);
+-		CamelFolder *orig_folder;
+-
+-		store = NULL;
+-
+-		if (deep_uids_check) {
+-			gint ii;
+-
+-			for (ii = 0; ii < uids->len; ii++) {
+-				orig_folder = camel_vee_folder_get_vee_uid_folder (vee_folder, uids->pdata[ii]);
+-				if (orig_folder) {
+-					if (store && camel_folder_get_parent_store (orig_folder) != store) {
+-						/* Do not know which archive folder to use when there are
+-						   selected messages from multiple accounts/stores. */
+-						store = NULL;
+-						break;
+-					}
+-
+-					store = camel_folder_get_parent_store (orig_folder);
+-				}
+-			}
+-		} else {
+-			orig_folder = camel_vee_folder_get_vee_uid_folder (CAMEL_VEE_FOLDER (folder), uids->pdata[0]);
+-			if (orig_folder)
+-				store = camel_folder_get_parent_store (orig_folder);
+-		}
+-	}
+-
+-	if (store)
+-		source = e_source_registry_ref_source (registry, camel_service_get_uid (CAMEL_SERVICE (store)));
+-
+-	if (source) {
+-		if (e_source_has_extension (source, E_SOURCE_EXTENSION_MAIL_ACCOUNT)) {
+-			ESourceMailAccount *account_ext;
+-
+-			account_ext = e_source_get_extension (source, E_SOURCE_EXTENSION_MAIL_ACCOUNT);
+-
+-			archive_folder = e_source_mail_account_dup_archive_folder (account_ext);
+-			if (!archive_folder || !*archive_folder) {
+-				g_free (archive_folder);
+-				archive_folder = NULL;
+-			}
+-		}
+-
+-		g_object_unref (source);
+-	}
+-
+-	return archive_folder;
+-}
+-
+ static void
+ action_mail_archive_cb (GtkAction *action,
+ 			EMailReader *reader)
+@@ -950,21 +881,17 @@ action_mail_archive_cb (GtkAction *action,
+ 	CamelFolder *folder;
+ 	EMailBackend *backend;
+ 	EMailSession *session;
+-	EShell *shell;
+-	ESourceRegistry *registry;
+ 	GPtrArray *uids;
+ 	gchar *archive_folder;
+ 
+ 	backend = e_mail_reader_get_backend (reader);
+ 	session = e_mail_backend_get_session (backend);
+-	shell = e_shell_backend_get_shell (E_SHELL_BACKEND (backend));
+-	registry = e_shell_get_registry (shell);
+ 
+ 	uids = e_mail_reader_get_selected_uids (reader);
+ 	g_return_if_fail (uids != NULL);
+ 
+ 	folder = e_mail_reader_ref_folder (reader);
+-	archive_folder = mail_reader_get_archive_folder_from_folder (folder, registry, uids, TRUE);
++	archive_folder = em_utils_get_archive_folder_uri_from_folder (folder, backend, uids, TRUE);
+ 
+ 	if (archive_folder != NULL)
+ 		mail_transfer_messages (
+@@ -4446,7 +4373,7 @@ e_mail_reader_check_state (EMailReader *reader)
+ 			em_utils_folder_is_drafts (registry, folder) ||
+ 			em_utils_folder_is_outbox (registry, folder);
+ 
+-		archive_folder = mail_reader_get_archive_folder_from_folder (folder, registry, uids, TRUE);
++		archive_folder = em_utils_get_archive_folder_uri_from_folder (folder, backend, uids, TRUE);
+ 		if (archive_folder && *archive_folder)
+ 			archive_folder_set = TRUE;
+ 
+diff --git a/mail/e-mail-remote-content.c b/mail/e-mail-remote-content.c
+index 31b2be65f8..57ae1afa24 100644
+--- a/mail/e-mail-remote-content.c
++++ b/mail/e-mail-remote-content.c
+@@ -442,7 +442,7 @@ mail_remote_content_finalize (GObject *object)
+ 		camel_db_maybe_run_maintenance (content->priv->db, &error);
+ 
+ 		if (error) {
+-			g_warning ("%s: Failed to tun maintenance: %s", G_STRFUNC, error->message);
++			g_warning ("%s: Failed to run maintenance: %s", G_STRFUNC, error->message);
+ 			g_clear_error (&error);
+ 		}
+ 
+diff --git a/mail/em-folder-properties.c b/mail/em-folder-properties.c
+index e3ca6a0bd7..2a55f3c843 100644
+--- a/mail/em-folder-properties.c
++++ b/mail/em-folder-properties.c
+@@ -39,6 +39,7 @@
+ #include "e-mail-backend.h"
+ #include "e-mail-ui-session.h"
+ #include "em-config.h"
++#include "em-folder-selection-button.h"
+ #include "mail-vfolder-ui.h"
+ 
+ typedef struct _AsyncContext AsyncContext;
+@@ -326,16 +327,285 @@ emfp_get_folder_item (EConfig *ec,
+ 	return table;
+ }
+ 
++static const gchar *
++emfp_autoarchive_config_to_string (EAutoArchiveConfig config)
++{
++	switch (config) {
++		case E_AUTO_ARCHIVE_CONFIG_UNKNOWN:
++			break;
++		case E_AUTO_ARCHIVE_CONFIG_MOVE_TO_ARCHIVE:
++			return "move-to-archive";
++		case E_AUTO_ARCHIVE_CONFIG_MOVE_TO_CUSTOM:
++			return "move-to-custom";
++		case E_AUTO_ARCHIVE_CONFIG_DELETE:
++			return "delete";
++	}
++
++	return "unknown";
++}
++
++static EAutoArchiveConfig
++emfp_autoarchive_config_from_string (const gchar *str)
++{
++	if (!str)
++		return E_AUTO_ARCHIVE_CONFIG_UNKNOWN;
++	if (g_ascii_strcasecmp (str, "move-to-archive") == 0)
++		return E_AUTO_ARCHIVE_CONFIG_MOVE_TO_ARCHIVE;
++	if (g_ascii_strcasecmp (str, "move-to-custom") == 0)
++		return E_AUTO_ARCHIVE_CONFIG_MOVE_TO_CUSTOM;
++	if (g_ascii_strcasecmp (str, "delete") == 0)
++		return E_AUTO_ARCHIVE_CONFIG_DELETE;
++
++	return E_AUTO_ARCHIVE_CONFIG_UNKNOWN;
++}
++
++static const gchar *
++emfp_autoarchive_unit_to_string (EAutoArchiveUnit unit)
++{
++	switch (unit) {
++		case E_AUTO_ARCHIVE_UNIT_UNKNOWN:
++			break;
++		case E_AUTO_ARCHIVE_UNIT_DAYS:
++			return "days";
++		case E_AUTO_ARCHIVE_UNIT_WEEKS:
++			return "weeks";
++		case E_AUTO_ARCHIVE_UNIT_MONTHS:
++			return "months";
++	}
++
++	return "unknown";
++}
++
++static EAutoArchiveUnit
++emfp_autoarchive_unit_from_string (const gchar *str)
++{
++	if (!str)
++		return E_AUTO_ARCHIVE_UNIT_UNKNOWN;
++	if (g_ascii_strcasecmp (str, "days") == 0)
++		return E_AUTO_ARCHIVE_UNIT_DAYS;
++	if (g_ascii_strcasecmp (str, "weeks") == 0)
++		return E_AUTO_ARCHIVE_UNIT_WEEKS;
++	if (g_ascii_strcasecmp (str, "months") == 0)
++		return E_AUTO_ARCHIVE_UNIT_MONTHS;
++
++	return E_AUTO_ARCHIVE_UNIT_UNKNOWN;
++}
++
++#define AUTO_ARCHIVE_KEY_DATA	"auto-archive-key-data"
++
++typedef struct _AutoArchiveData {
++	gchar *folder_uri;
++	GtkWidget *enabled_check;
++	GtkWidget *n_units_spin;
++	GtkWidget *unit_combo;
++	GtkWidget *move_to_default_radio;
++	GtkWidget *move_to_custom_radio;
++	GtkWidget *custom_folder_butt;
++	GtkWidget *delete_radio;
++} AutoArchiveData;
++
++static void
++auto_archive_data_free (gpointer ptr)
++{
++	AutoArchiveData *aad = ptr;
++
++	if (!aad)
++		return;
++
++	g_free (aad->folder_uri);
++	g_free (aad);
++}
++
++static void
++emfp_autoarchive_commit_cb (EConfig *ec,
++			    AutoArchiveData *aad)
++{
++	EShell *shell;
++	EMailBackend *mail_backend;
++	gboolean enabled;
++	EAutoArchiveConfig config = E_AUTO_ARCHIVE_CONFIG_UNKNOWN;
++	gint n_units;
++	EAutoArchiveUnit unit;
++	const gchar *custom_target_folder_uri;
++
++	g_return_if_fail (E_IS_CONFIG (ec));
++	g_return_if_fail (aad != NULL);
++	g_return_if_fail (aad->folder_uri != NULL);
++
++	shell = e_shell_get_default ();
++	mail_backend = E_MAIL_BACKEND (e_shell_get_backend_by_name (shell, "mail"));
++	g_return_if_fail (mail_backend != NULL);
++
++	if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (aad->move_to_default_radio)))
++		config = E_AUTO_ARCHIVE_CONFIG_MOVE_TO_ARCHIVE;
++	else if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (aad->move_to_custom_radio)))
++		config = E_AUTO_ARCHIVE_CONFIG_MOVE_TO_CUSTOM;
++	else if (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (aad->delete_radio)))
++		config = E_AUTO_ARCHIVE_CONFIG_DELETE;
++	else
++		g_warn_if_reached ();
++
++	enabled = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (aad->enabled_check));
++	n_units = gtk_spin_button_get_value (GTK_SPIN_BUTTON (aad->n_units_spin));
++	unit = emfp_autoarchive_unit_from_string (gtk_combo_box_get_active_id (GTK_COMBO_BOX (aad->unit_combo)));
++	custom_target_folder_uri = em_folder_selection_button_get_folder_uri (EM_FOLDER_SELECTION_BUTTON (aad->custom_folder_butt));
++	if (custom_target_folder_uri && !*custom_target_folder_uri)
++		custom_target_folder_uri = NULL;
++
++	em_folder_properties_autoarchive_set (mail_backend, aad->folder_uri, enabled, config, n_units, unit, custom_target_folder_uri);
++}
++
++static GtkWidget *
++emfp_get_autoarchive_item (EConfig *ec,
++			   EConfigItem *item,
++			   GtkWidget *parent,
++			   GtkWidget *old,
++			   gint position,
++			   gpointer data)
++{
++	EShell *shell;
++	EMailBackend *mail_backend;
++	GtkGrid *grid;
++	GtkWidget *widget, *label, *check, *radio, *hbox;
++	AutoArchiveData *aad;
++	AsyncContext *context = data;
++	gboolean enabled;
++	EAutoArchiveConfig config;
++	gint n_units;
++	EAutoArchiveUnit unit;
++	gchar *custom_target_folder_uri;
++
++	if (old)
++		return old;
++
++	shell = e_shell_get_default ();
++	mail_backend = E_MAIL_BACKEND (e_shell_get_backend_by_name (shell, "mail"));
++	g_return_val_if_fail (mail_backend != NULL, NULL);
++
++	aad = g_new0 (AutoArchiveData, 1);
++	g_object_set_data_full (G_OBJECT (ec), AUTO_ARCHIVE_KEY_DATA, aad, auto_archive_data_free);
++
++	grid = GTK_GRID (gtk_grid_new ());
++	gtk_box_pack_start (GTK_BOX (parent), GTK_WIDGET (grid), TRUE, TRUE, 0);
++
++	check = gtk_check_button_new_with_mnemonic (_("_Archive this folder using these settings:"));
++	gtk_grid_attach (grid, check, 0, 0, 3, 1);
++	aad->enabled_check = check;
++
++	label = gtk_label_new ("");
++	g_object_set (G_OBJECT (label), "margin-left", 12, NULL);
++	gtk_grid_attach (grid, label, 0, 1, 1, 3);
++
++	/* Translators: This text is part of "Cleanup messages older than [X] [days/weeks/months]" */
++	label = gtk_label_new_with_mnemonic (C_("autoarchive", "_Cleanup messages older than"));
++	gtk_grid_attach (grid, label, 1, 1, 1, 1);
++
++	e_binding_bind_property (check, "active", label, "sensitive", G_BINDING_DEFAULT | G_BINDING_SYNC_CREATE);
++
++	widget = gtk_spin_button_new_with_range (1.0, 999.0, 1.0);
++	gtk_spin_button_set_digits (GTK_SPIN_BUTTON (widget), 0);
++	gtk_grid_attach (grid, widget, 2, 1, 1, 1);
++	aad->n_units_spin = widget;
++
++	gtk_label_set_mnemonic_widget (GTK_LABEL (label), widget);
++
++	e_binding_bind_property (check, "active", widget, "sensitive", G_BINDING_DEFAULT | G_BINDING_SYNC_CREATE);
++
++	widget = gtk_combo_box_text_new ();
++	/* Translators: This text is part of "Cleanup messages older than [X] [days/weeks/months]" */
++	gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (widget), emfp_autoarchive_unit_to_string (E_AUTO_ARCHIVE_UNIT_DAYS), C_("autoarchive", "days"));
++	/* Translators: This text is part of "Cleanup messages older than [X] [days/weeks/months]" */
++	gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (widget), emfp_autoarchive_unit_to_string (E_AUTO_ARCHIVE_UNIT_WEEKS), C_("autoarchive", "weeks"));
++	/* Translators: This text is part of "Cleanup messages older than [X] [days/weeks/months]" */
++	gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (widget), emfp_autoarchive_unit_to_string (E_AUTO_ARCHIVE_UNIT_MONTHS), C_("autoarchive", "months"));
++	gtk_grid_attach (grid, widget, 3, 1, 1, 1);
++	aad->unit_combo = widget;
++
++	e_binding_bind_property (check, "active", widget, "sensitive", G_BINDING_DEFAULT | G_BINDING_SYNC_CREATE);
++
++	radio = gtk_radio_button_new_with_mnemonic (NULL, _("Move old messages to the default archive _folder"));
++	gtk_grid_attach (grid, radio, 1, 2, 2, 1);
++	aad->move_to_default_radio = radio;
++
++	e_binding_bind_property (check, "active", radio, "sensitive", G_BINDING_DEFAULT | G_BINDING_SYNC_CREATE);
++
++	hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 2);
++	gtk_grid_attach (grid, hbox, 1, 3, 2, 1);
++
++	e_binding_bind_property (check, "active", hbox, "sensitive", G_BINDING_DEFAULT | G_BINDING_SYNC_CREATE);
++
++	widget = gtk_radio_button_new_with_mnemonic_from_widget (GTK_RADIO_BUTTON (radio), _("_Move old messages to:"));
++	gtk_box_pack_start (GTK_BOX (hbox), widget, FALSE, FALSE, 0);
++	aad->move_to_custom_radio = widget;
++
++	widget = em_folder_selection_button_new (e_mail_backend_get_session (mail_backend), _("AutoArchive folder"), _("Select folder to use for AutoArchive"));
++	gtk_box_pack_start (GTK_BOX (hbox), widget, TRUE, FALSE, 0);
++	aad->custom_folder_butt = widget;
++
++	e_binding_bind_property (aad->move_to_custom_radio, "active", widget, "sensitive", G_BINDING_DEFAULT | G_BINDING_SYNC_CREATE);
++
++	widget = gtk_radio_button_new_with_mnemonic_from_widget (GTK_RADIO_BUTTON (radio), _("_Delete old messages"));
++	gtk_grid_attach (grid, widget, 1, 4, 2, 1);
++	aad->delete_radio = widget;
++
++	e_binding_bind_property (check, "active", widget, "sensitive", G_BINDING_DEFAULT | G_BINDING_SYNC_CREATE);
++
++	aad->folder_uri = e_mail_folder_uri_build (
++		camel_folder_get_parent_store (context->folder),
++		camel_folder_get_full_name (context->folder));
++
++	if (em_folder_properties_autoarchive_get (mail_backend, aad->folder_uri,
++		&enabled, &config, &n_units, &unit, &custom_target_folder_uri)) {
++		switch (config) {
++			case E_AUTO_ARCHIVE_CONFIG_MOVE_TO_ARCHIVE:
++				gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (aad->move_to_default_radio), TRUE);
++				break;
++			case E_AUTO_ARCHIVE_CONFIG_MOVE_TO_CUSTOM:
++				gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (aad->move_to_custom_radio), TRUE);
++				break;
++			case E_AUTO_ARCHIVE_CONFIG_DELETE:
++				gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (aad->delete_radio), TRUE);
++				break;
++			default:
++				g_warn_if_reached ();
++				break;
++		}
++
++		gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (aad->enabled_check), enabled);
++		gtk_spin_button_set_value (GTK_SPIN_BUTTON (aad->n_units_spin), n_units);
++		g_warn_if_fail (gtk_combo_box_set_active_id (GTK_COMBO_BOX (aad->unit_combo),
++			emfp_autoarchive_unit_to_string (unit)));
++
++		if (custom_target_folder_uri && *custom_target_folder_uri)
++			em_folder_selection_button_set_folder_uri (EM_FOLDER_SELECTION_BUTTON (aad->custom_folder_butt),
++				custom_target_folder_uri);
++
++		g_free (custom_target_folder_uri);
++	} else {
++		gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (aad->enabled_check), FALSE);
++		gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (aad->move_to_default_radio), TRUE);
++		gtk_spin_button_set_value (GTK_SPIN_BUTTON (aad->n_units_spin), 12.0);
++		g_warn_if_fail (gtk_combo_box_set_active_id (GTK_COMBO_BOX (aad->unit_combo),
++			emfp_autoarchive_unit_to_string (E_AUTO_ARCHIVE_UNIT_MONTHS)));
++	}
++
++	gtk_widget_show_all (GTK_WIDGET (grid));
++
++	g_signal_connect (ec, "commit", G_CALLBACK (emfp_autoarchive_commit_cb), aad);
++
++	return GTK_WIDGET (grid);
++}
++
+ #define EMFP_FOLDER_SECTION (2)
+ 
+ static EMConfigItem emfp_items[] = {
+ 	{ E_CONFIG_BOOK, (gchar *) "", NULL },
+-	{ E_CONFIG_PAGE, (gchar *) "00.general",
+-	  (gchar *) N_("General") },
+-	{ E_CONFIG_SECTION, (gchar *) "00.general/00.folder",
+-	  NULL /* set by code */ },
+-	{ E_CONFIG_ITEM, (gchar *) "00.general/00.folder/00.info",
+-	  NULL, emfp_get_folder_item },
++	{ E_CONFIG_PAGE, (gchar *) "00.general", (gchar *) N_("General") },
++	{ E_CONFIG_SECTION, (gchar *) "00.general/00.folder", NULL /* set by code */ },
++	{ E_CONFIG_ITEM, (gchar *) "00.general/00.folder/00.info", NULL, emfp_get_folder_item },
++	{ E_CONFIG_PAGE, (gchar *) "10.autoarchive", (gchar *) N_("AutoArchive") },
++	{ E_CONFIG_SECTION, (gchar *) "10.autoarchive/00.folder", NULL },
++	{ E_CONFIG_ITEM, (gchar *) "10.autoarchive/00.folder/00.info", NULL, emfp_get_autoarchive_item }
+ };
+ static gboolean emfp_items_translated = FALSE;
+ 
+@@ -612,3 +882,123 @@ em_folder_properties_show (CamelStore *store,
+ exit:
+ 	g_object_unref (session);
+ }
++
++/*
++  out-parameters are valid only if TRUE is returned;
++  returned custom_target_folder_uri, if not NULL, should be freed with g_free()
++ */
++gboolean
++em_folder_properties_autoarchive_get (EMailBackend *mail_backend,
++				      const gchar *folder_uri,
++				      gboolean *enabled,
++				      EAutoArchiveConfig *config,
++				      gint *n_units,
++				      EAutoArchiveUnit *unit,
++				      gchar **custom_target_folder_uri)
++{
++	EMailProperties *properties;
++	ENamedParameters *parameters;
++	gchar *stored;
++	const gchar *value;
++	gboolean success;
++
++	g_return_val_if_fail (E_IS_MAIL_BACKEND (mail_backend), FALSE);
++	g_return_val_if_fail (folder_uri != NULL, FALSE);
++	g_return_val_if_fail (enabled != NULL, FALSE);
++	g_return_val_if_fail (config != NULL, FALSE);
++	g_return_val_if_fail (n_units != NULL, FALSE);
++	g_return_val_if_fail (unit != NULL, FALSE);
++	g_return_val_if_fail (custom_target_folder_uri != NULL, FALSE);
++
++	properties = e_mail_backend_get_mail_properties (mail_backend);
++	g_return_val_if_fail (properties != NULL, FALSE);
++
++	stored = e_mail_properties_get_for_folder_uri (properties, folder_uri, "autoarchive");
++	if (!stored)
++		return FALSE;
++
++	parameters = e_named_parameters_new_string (stored);
++
++	g_free (stored);
++
++	if (!parameters)
++		return FALSE;
++
++	*enabled = g_strcmp0 (e_named_parameters_get (parameters, "enabled"), "1") == 0;
++	*config = emfp_autoarchive_config_from_string (e_named_parameters_get (parameters, "config"));
++	*unit = emfp_autoarchive_unit_from_string (e_named_parameters_get (parameters, "unit"));
++
++	value = e_named_parameters_get (parameters, "n-units");
++	if (value && *value)
++		*n_units = (gint) g_ascii_strtoll (value, NULL, 10);
++	else
++		*n_units = -1;
++
++	success = *config != E_AUTO_ARCHIVE_CONFIG_UNKNOWN &&
++		  *unit != E_AUTO_ARCHIVE_UNIT_UNKNOWN &&
++		  *n_units > 0;
++
++	if (success)
++		*custom_target_folder_uri = g_strdup (e_named_parameters_get (parameters, "custom-target"));
++
++	e_named_parameters_free (parameters);
++
++	return success;
++}
++
++void
++em_folder_properties_autoarchive_set (EMailBackend *mail_backend,
++				      const gchar *folder_uri,
++				      gboolean enabled,
++				      EAutoArchiveConfig config,
++				      gint n_units,
++				      EAutoArchiveUnit unit,
++				      const gchar *custom_target_folder_uri)
++{
++	EMailProperties *properties;
++	ENamedParameters *parameters;
++	gchar *value, *stored_value;
++
++	g_return_if_fail (E_IS_MAIL_BACKEND (mail_backend));
++	g_return_if_fail (folder_uri != NULL);
++	g_return_if_fail (config != E_AUTO_ARCHIVE_CONFIG_UNKNOWN);
++	g_return_if_fail (n_units > 0);
++	g_return_if_fail (unit != E_AUTO_ARCHIVE_UNIT_UNKNOWN);
++
++	properties = e_mail_backend_get_mail_properties (mail_backend);
++	g_return_if_fail (properties != NULL);
++
++	parameters = e_named_parameters_new ();
++
++	e_named_parameters_set (parameters, "enabled", enabled ? "1" : "0");
++	e_named_parameters_set (parameters, "config", emfp_autoarchive_config_to_string (config));
++	e_named_parameters_set (parameters, "unit", emfp_autoarchive_unit_to_string (unit));
++
++	value = g_strdup_printf ("%d", n_units);
++	e_named_parameters_set (parameters, "n-units", value);
++	g_free (value);
++
++	if (custom_target_folder_uri && *custom_target_folder_uri)
++		e_named_parameters_set (parameters, "custom-target", custom_target_folder_uri);
++
++	value = e_named_parameters_to_string (parameters);
++	stored_value = e_mail_properties_get_for_folder_uri (properties, folder_uri, "autoarchive");
++	if (!stored_value) {
++		/* If nothing is stored, then use the defaults */
++		e_named_parameters_set (parameters, "enabled", "0");
++		e_named_parameters_set (parameters, "config", emfp_autoarchive_config_to_string (E_AUTO_ARCHIVE_CONFIG_MOVE_TO_ARCHIVE));
++		e_named_parameters_set (parameters, "unit", emfp_autoarchive_unit_to_string (E_AUTO_ARCHIVE_UNIT_MONTHS));
++		e_named_parameters_set (parameters, "n-units", "12");
++		e_named_parameters_set (parameters, "custom-target", NULL);
++
++		stored_value = e_named_parameters_to_string (parameters);
++	}
++
++	/* To avoid overwriting unchanged values or adding default values. */
++	if (g_strcmp0 (stored_value, value) != 0)
++		e_mail_properties_set_for_folder_uri (properties, folder_uri, "autoarchive", value);
++
++	e_named_parameters_free (parameters);
++	g_free (stored_value);
++	g_free (value);
++}
+diff --git a/mail/em-folder-properties.h b/mail/em-folder-properties.h
+index 496cfe4e0a..f4db2447fb 100644
+--- a/mail/em-folder-properties.h
++++ b/mail/em-folder-properties.h
+@@ -25,6 +25,7 @@
+ 
+ #include <camel/camel.h>
+ #include <e-util/e-util.h>
++#include <mail/e-mail-backend.h>
+ 
+ G_BEGIN_DECLS
+ 
+@@ -33,6 +34,38 @@ void		em_folder_properties_show	(CamelStore *store,
+ 						 EAlertSink *alert_sink,
+ 						 GtkWindow *parent_window);
+ 
++typedef enum {
++	E_AUTO_ARCHIVE_CONFIG_UNKNOWN,
++	E_AUTO_ARCHIVE_CONFIG_MOVE_TO_ARCHIVE,
++	E_AUTO_ARCHIVE_CONFIG_MOVE_TO_CUSTOM,
++	E_AUTO_ARCHIVE_CONFIG_DELETE
++} EAutoArchiveConfig;
++
++typedef enum {
++	E_AUTO_ARCHIVE_UNIT_UNKNOWN,
++	E_AUTO_ARCHIVE_UNIT_DAYS,
++	E_AUTO_ARCHIVE_UNIT_WEEKS,
++	E_AUTO_ARCHIVE_UNIT_MONTHS
++} EAutoArchiveUnit;
++
++gboolean	em_folder_properties_autoarchive_get
++						(EMailBackend *mail_backend,
++						 const gchar *folder_uri,
++						 gboolean *enabled,
++						 EAutoArchiveConfig *config,
++						 gint *n_units,
++						 EAutoArchiveUnit *unit,
++						 gchar **custom_target_folder_uri);
++
++void		em_folder_properties_autoarchive_set
++						(EMailBackend *mail_backend,
++						 const gchar *folder_uri,
++						 gboolean enabled,
++						 EAutoArchiveConfig config,
++						 gint n_units,
++						 EAutoArchiveUnit unit,
++						 const gchar *custom_target_folder_uri);
++
+ G_END_DECLS
+ 
+ #endif /* __EM_FOLDER_PROPERTIES_H__ */
+diff --git a/mail/em-utils.c b/mail/em-utils.c
+index 30432bb48c..70230d3246 100644
+--- a/mail/em-utils.c
++++ b/mail/em-utils.c
+@@ -50,6 +50,7 @@
+ #include "e-mail-tag-editor.h"
+ #include "em-composer-utils.h"
+ #include "em-filter-editor.h"
++#include "em-folder-properties.h"
+ 
+ /* How many is too many? */
+ /* Used in em_util_ask_open_many() */
+@@ -1459,3 +1460,242 @@ em_utils_is_re_in_subject (const gchar *subject,
+ 
+ 	return res;
+ }
++
++gchar *
++em_utils_get_archive_folder_uri_from_folder (CamelFolder *folder,
++					     EMailBackend *mail_backend,
++					     GPtrArray *uids,
++					     gboolean deep_uids_check)
++{
++	CamelStore *store;
++	ESource *source = NULL;
++	gchar *archive_folder = NULL;
++	gchar *folder_uri;
++	gboolean aa_enabled;
++	EAutoArchiveConfig aa_config;
++	gint aa_n_units;
++	EAutoArchiveUnit aa_unit;
++	gchar *aa_custom_target_folder_uri;
++
++	if (!folder)
++		return NULL;
++
++	folder_uri = e_mail_folder_uri_build (
++		camel_folder_get_parent_store (folder),
++		camel_folder_get_full_name (folder));
++
++	if (em_folder_properties_autoarchive_get (mail_backend, folder_uri,
++		&aa_enabled, &aa_config, &aa_n_units, &aa_unit, &aa_custom_target_folder_uri)) {
++		if (aa_enabled && aa_config == E_AUTO_ARCHIVE_CONFIG_MOVE_TO_CUSTOM &&
++		    aa_custom_target_folder_uri && *aa_custom_target_folder_uri) {
++			g_free (folder_uri);
++			return aa_custom_target_folder_uri;
++		}
++
++		g_free (aa_custom_target_folder_uri);
++	}
++	g_free (folder_uri);
++
++	store = camel_folder_get_parent_store (folder);
++	if (g_strcmp0 (E_MAIL_SESSION_LOCAL_UID, camel_service_get_uid (CAMEL_SERVICE (store))) == 0) {
++		return mail_config_dup_local_archive_folder ();
++	}
++
++	if (CAMEL_IS_VEE_FOLDER (folder) && uids && uids->len > 0) {
++		CamelVeeFolder *vee_folder = CAMEL_VEE_FOLDER (folder);
++		CamelFolder *orig_folder = NULL;
++
++		store = NULL;
++
++		if (deep_uids_check) {
++			gint ii;
++
++			for (ii = 0; ii < uids->len; ii++) {
++				orig_folder = camel_vee_folder_get_vee_uid_folder (vee_folder, uids->pdata[ii]);
++				if (orig_folder) {
++					if (store && camel_folder_get_parent_store (orig_folder) != store) {
++						/* Do not know which archive folder to use when there are
++						   selected messages from multiple accounts/stores. */
++						store = NULL;
++						break;
++					}
++
++					store = camel_folder_get_parent_store (orig_folder);
++				}
++			}
++		} else {
++			orig_folder = camel_vee_folder_get_vee_uid_folder (CAMEL_VEE_FOLDER (folder), uids->pdata[0]);
++			if (orig_folder)
++				store = camel_folder_get_parent_store (orig_folder);
++		}
++
++		if (store && orig_folder) {
++			folder_uri = e_mail_folder_uri_build (
++				camel_folder_get_parent_store (orig_folder),
++				camel_folder_get_full_name (orig_folder));
++
++			if (em_folder_properties_autoarchive_get (mail_backend, folder_uri,
++				&aa_enabled, &aa_config, &aa_n_units, &aa_unit, &aa_custom_target_folder_uri)) {
++				if (aa_enabled && aa_config == E_AUTO_ARCHIVE_CONFIG_MOVE_TO_CUSTOM &&
++				    aa_custom_target_folder_uri && *aa_custom_target_folder_uri) {
++					g_free (folder_uri);
++					return aa_custom_target_folder_uri;
++				}
++
++				g_free (aa_custom_target_folder_uri);
++			}
++
++			g_free (folder_uri);
++		}
++	}
++
++	if (store) {
++		ESourceRegistry *registry;
++
++		registry = e_mail_session_get_registry (e_mail_backend_get_session (mail_backend));
++		source = e_source_registry_ref_source (registry, camel_service_get_uid (CAMEL_SERVICE (store)));
++	}
++
++	if (source) {
++		if (e_source_has_extension (source, E_SOURCE_EXTENSION_MAIL_ACCOUNT)) {
++			ESourceMailAccount *account_ext;
++
++			account_ext = e_source_get_extension (source, E_SOURCE_EXTENSION_MAIL_ACCOUNT);
++
++			archive_folder = e_source_mail_account_dup_archive_folder (account_ext);
++			if (!archive_folder || !*archive_folder) {
++				g_free (archive_folder);
++				archive_folder = NULL;
++			}
++		}
++
++		g_object_unref (source);
++	}
++
++	return archive_folder;
++}
++
++gboolean
++em_utils_process_autoarchive_sync (EMailBackend *mail_backend,
++				   CamelFolder *folder,
++				   const gchar *folder_uri,
++				   GCancellable *cancellable,
++				   GError **error)
++{
++	gboolean aa_enabled;
++	EAutoArchiveConfig aa_config;
++	gint aa_n_units;
++	EAutoArchiveUnit aa_unit;
++	gchar *aa_custom_target_folder_uri = NULL;
++	GDateTime *now_time, *use_time;
++	gchar *search_sexp;
++	GPtrArray *uids;
++	gboolean success = TRUE;
++
++	g_return_val_if_fail (E_IS_MAIL_BACKEND (mail_backend), FALSE);
++	g_return_val_if_fail (CAMEL_IS_FOLDER (folder), FALSE);
++	g_return_val_if_fail (folder_uri != NULL, FALSE);
++
++	if (!em_folder_properties_autoarchive_get (mail_backend, folder_uri,
++		&aa_enabled, &aa_config, &aa_n_units, &aa_unit, &aa_custom_target_folder_uri))
++		return TRUE;
++
++	if (!aa_enabled) {
++		g_free (aa_custom_target_folder_uri);
++		return TRUE;
++	}
++
++	if (aa_config == E_AUTO_ARCHIVE_CONFIG_MOVE_TO_CUSTOM && (!aa_custom_target_folder_uri || !*aa_custom_target_folder_uri)) {
++		g_free (aa_custom_target_folder_uri);
++		return TRUE;
++	}
++
++	now_time = g_date_time_new_now_utc ();
++	switch (aa_unit) {
++		case E_AUTO_ARCHIVE_UNIT_DAYS:
++			use_time = g_date_time_add_days (now_time, -aa_n_units);
++			break;
++		case E_AUTO_ARCHIVE_UNIT_WEEKS:
++			use_time = g_date_time_add_weeks (now_time, -aa_n_units);
++			break;
++		case E_AUTO_ARCHIVE_UNIT_MONTHS:
++			use_time = g_date_time_add_months (now_time, -aa_n_units);
++			break;
++		default:
++			g_date_time_unref (now_time);
++			g_free (aa_custom_target_folder_uri);
++			return TRUE;
++	}
++
++	g_date_time_unref (now_time);
++
++	search_sexp = g_strdup_printf ("(match-all (< (get-sent-date) %" G_GINT64_FORMAT "))", g_date_time_to_unix (use_time));
++	uids = camel_folder_search_by_expression (folder, search_sexp, cancellable, error);
++
++	if (!uids) {
++		success = FALSE;
++	} else {
++		gint ii;
++
++		if (aa_config == E_AUTO_ARCHIVE_CONFIG_MOVE_TO_ARCHIVE ||
++		    aa_config == E_AUTO_ARCHIVE_CONFIG_MOVE_TO_CUSTOM) {
++			CamelFolder *dest;
++
++			if (aa_config == E_AUTO_ARCHIVE_CONFIG_MOVE_TO_ARCHIVE) {
++				g_free (aa_custom_target_folder_uri);
++				aa_custom_target_folder_uri = em_utils_get_archive_folder_uri_from_folder (folder, mail_backend, uids, TRUE);
++			}
++
++			dest = aa_custom_target_folder_uri ? e_mail_session_uri_to_folder_sync (
++				e_mail_backend_get_session (mail_backend), aa_custom_target_folder_uri, 0,
++				cancellable, error) : NULL;
++			if (dest != NULL && dest != folder) {
++				camel_folder_freeze (folder);
++				camel_folder_freeze (dest);
++
++				if (camel_folder_transfer_messages_to_sync (
++					folder, uids, dest, TRUE, NULL,
++					cancellable, error)) {
++					/* make sure all deleted messages are marked as seen */
++					for (ii = 0; ii < uids->len; ii++) {
++						camel_folder_set_message_flags (
++							folder, uids->pdata[ii],
++							CAMEL_MESSAGE_SEEN, CAMEL_MESSAGE_SEEN);
++					}
++				} else {
++					success = FALSE;
++				}
++
++				camel_folder_thaw (folder);
++				camel_folder_thaw (dest);
++
++				if (success)
++					success = camel_folder_synchronize_sync (dest, FALSE, cancellable, error);
++			}
++
++			g_clear_object (&dest);
++		} else if (aa_config == E_AUTO_ARCHIVE_CONFIG_DELETE) {
++			camel_folder_freeze (folder);
++
++			camel_operation_push_message (cancellable, "%s", _("Deleting old messages"));
++
++			for (ii = 0; ii < uids->len; ii++) {
++				camel_folder_set_message_flags (
++					folder, uids->pdata[ii],
++					CAMEL_MESSAGE_DELETED | CAMEL_MESSAGE_SEEN, CAMEL_MESSAGE_DELETED | CAMEL_MESSAGE_SEEN);
++			}
++
++			camel_operation_pop_message (cancellable);
++
++			camel_folder_thaw (folder);
++		}
++
++		camel_folder_search_free (folder, uids);
++	}
++
++	g_free (search_sexp);
++	g_free (aa_custom_target_folder_uri);
++	g_date_time_unref (use_time);
++
++	return success;
++}
+diff --git a/mail/em-utils.h b/mail/em-utils.h
+index 8911cd7c4f..e2ff524af9 100644
+--- a/mail/em-utils.h
++++ b/mail/em-utils.h
+@@ -79,6 +79,20 @@ gboolean	em_utils_is_re_in_subject	(const gchar *subject,
+ 						 gint *skip_len,
+ 						 const gchar * const *use_prefixes_strv);
+ 
++gchar *		em_utils_get_archive_folder_uri_from_folder
++						(CamelFolder *folder,
++						 EMailBackend *mail_backend,
++						 GPtrArray *uids,
++						 gboolean deep_uids_check);
++
++gboolean	em_utils_process_autoarchive_sync
++						(EMailBackend *mail_backend,
++						 CamelFolder *folder,
++						 const gchar *folder_uri,
++						 GCancellable *cancellable,
++						 GError **error);
++
++
+ G_END_DECLS
+ 
+ #endif /* __EM_UTILS_H__ */
+diff --git a/mail/mail-send-recv.c b/mail/mail-send-recv.c
+index 9d6fd62bb6..7ffb392d22 100644
+--- a/mail/mail-send-recv.c
++++ b/mail/mail-send-recv.c
+@@ -1232,6 +1232,7 @@ refresh_folders_exec (struct _refresh_folders_msg *m,
+ 	gboolean success;
+ 	gboolean delete_junk = FALSE, expunge = FALSE;
+ 	GHashTable *known_errors;
++	EMailBackend *mail_backend;
+ 	GError *local_error = NULL;
+ 	gulong handler_id = 0;
+ 
+@@ -1256,6 +1257,8 @@ refresh_folders_exec (struct _refresh_folders_msg *m,
+ 		goto exit;
+ 	}
+ 
++	mail_backend = E_MAIL_BACKEND (e_shell_get_backend_by_name (e_shell_get_default (), "mail"));
++
+ 	known_errors = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+ 
+ 	for (i = 0; i < m->folders->len; i++) {
+@@ -1266,6 +1269,10 @@ refresh_folders_exec (struct _refresh_folders_msg *m,
+ 		if (folder && camel_folder_synchronize_sync (folder, expunge, cancellable, &local_error))
+ 			camel_folder_refresh_info_sync (folder, cancellable, &local_error);
+ 
++		if (folder && !local_error && mail_backend) {
++			em_utils_process_autoarchive_sync (mail_backend, folder, m->folders->pdata[i], cancellable, &local_error);
++		}
++
+ 		if (local_error != NULL) {
+ 			const gchar *error_message = local_error->message ? local_error->message : _("Unknown error");
+ 
+-- 
+2.15.0
+

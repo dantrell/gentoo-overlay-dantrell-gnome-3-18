@@ -1,0 +1,51 @@
+From 6cb303064016e756f86108280cc7a36b86b52095 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 14 Aug 2015 13:46:44 +0200
+Subject: [PATCH 0946/1800] Fix couple memory leaks
+
+---
+ calendar/gui/e-cal-model-tasks.c    | 9 ++++-----
+ e-util/e-table-field-chooser-item.c | 3 +++
+ 2 files changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/calendar/gui/e-cal-model-tasks.c b/calendar/gui/e-cal-model-tasks.c
+index 20c2a4a199..fee0e4047b 100644
+--- a/calendar/gui/e-cal-model-tasks.c
++++ b/calendar/gui/e-cal-model-tasks.c
+@@ -1002,15 +1002,14 @@ cal_model_tasks_duplicate_value (ETableModel *etm,
+ 		return table_model_parent_interface->duplicate_value (etm, col, value);
+ 
+ 	switch (col) {
+-	case E_CAL_MODEL_TASKS_FIELD_GEO :
+-	case E_CAL_MODEL_TASKS_FIELD_PRIORITY :
+-	case E_CAL_MODEL_TASKS_FIELD_STATUS :
+-	case E_CAL_MODEL_TASKS_FIELD_URL :
+-		return g_strdup (value);
+ 	case E_CAL_MODEL_TASKS_FIELD_COMPLETED :
+ 	case E_CAL_MODEL_TASKS_FIELD_DUE :
+ 		return e_cal_model_copy_cell_date_value (value);
+ 
++	case E_CAL_MODEL_TASKS_FIELD_GEO :
++	case E_CAL_MODEL_TASKS_FIELD_PRIORITY :
++	case E_CAL_MODEL_TASKS_FIELD_STATUS :
++	case E_CAL_MODEL_TASKS_FIELD_URL :
+ 	case E_CAL_MODEL_TASKS_FIELD_COMPLETE :
+ 	case E_CAL_MODEL_TASKS_FIELD_PERCENT :
+ 	case E_CAL_MODEL_TASKS_FIELD_OVERDUE :
+diff --git a/e-util/e-table-field-chooser-item.c b/e-util/e-table-field-chooser-item.c
+index 66191888d5..4ab252656d 100644
+--- a/e-util/e-table-field-chooser-item.c
++++ b/e-util/e-table-field-chooser-item.c
+@@ -82,6 +82,9 @@ etfci_dispose (GObject *object)
+ 		pango_font_description_free (etfci->font_desc);
+ 	etfci->font_desc = NULL;
+ 
++	g_free (etfci->dnd_code);
++	etfci->dnd_code = NULL;
++
+ 	/* Chain up to parent's dispose() method. */
+ 	G_OBJECT_CLASS (e_table_field_chooser_item_parent_class)->dispose (object);
+ }
+-- 
+2.15.0
+

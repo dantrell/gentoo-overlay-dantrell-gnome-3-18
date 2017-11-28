@@ -1,0 +1,47 @@
+From 74abb90347ca336a03475f211bd594286a336953 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 17 Feb 2015 09:29:59 +0100
+Subject: [PATCH 0312/1800] Bug 744471 - Correct may/might usage in gschema
+ strings
+
+---
+ data/org.gnome.evolution.bogofilter.gschema.xml.in   | 2 +-
+ data/org.gnome.evolution.spamassassin.gschema.xml.in | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/data/org.gnome.evolution.bogofilter.gschema.xml.in b/data/org.gnome.evolution.bogofilter.gschema.xml.in
+index bda707be45..5e13655dc5 100644
+--- a/data/org.gnome.evolution.bogofilter.gschema.xml.in
++++ b/data/org.gnome.evolution.bogofilter.gschema.xml.in
+@@ -9,7 +9,7 @@
+     <key name="command" type="s">
+       <default>''</default>
+       <_summary>Full path command to run Bogofilter</_summary>
+-      <_description>Full path to a Bogofilter command. If not set, then a compile-time path is used, usually /usr/bin/bogofilter. The command might not contain any other arguments.</_description>
++      <_description>Full path to a Bogofilter command. If not set, then a compile-time path is used, usually /usr/bin/bogofilter. The command should not contain any other arguments.</_description>
+     </key>
+   </schema>
+ </schemalist>
+diff --git a/data/org.gnome.evolution.spamassassin.gschema.xml.in b/data/org.gnome.evolution.spamassassin.gschema.xml.in
+index 57cab542c1..bed350f517 100644
+--- a/data/org.gnome.evolution.spamassassin.gschema.xml.in
++++ b/data/org.gnome.evolution.spamassassin.gschema.xml.in
+@@ -9,13 +9,13 @@
+     <key name="command" type="s">
+       <default>''</default>
+       <_summary>Full path command to run spamassassin</_summary>
+-      <_description>Full path to a spamassassin command. If not set, then a compile-time path is used, usually /usr/bin/spamassassin. The command might not contain any other arguments.</_description>
++      <_description>Full path to a spamassassin command. If not set, then a compile-time path is used, usually /usr/bin/spamassassin. The command should not contain any other arguments.</_description>
+     </key>
+ 
+     <key name="learn-command" type="s">
+       <default>''</default>
+       <_summary>Full path command to run sa-learn</_summary>
+-      <_description>Full path to a sa-learn command. If not set, then a compile-time path is used, usually /usr/bin/sa-learn. The command might not contain any other arguments.</_description>
++      <_description>Full path to a sa-learn command. If not set, then a compile-time path is used, usually /usr/bin/sa-learn. The command should not contain any other arguments.</_description>
+     </key>
+   </schema>
+ </schemalist>
+-- 
+2.15.0
+

@@ -1,0 +1,25 @@
+From f1f9f708d6f5257950589c33e9ee75dcc18734c1 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 15:43:21 +0100
+Subject: [PATCH 0290/1800] Bug 732999 - Middle-click paste doesn't move cursor
+
+Move the caret to the position where the mouse is.
+---
+ e-util/e-html-editor-view.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 5a24bf51f1..3f00c411ee 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -638,6 +638,7 @@ html_editor_view_button_press_event (GtkWidget *widget,
+ 
+ 	if (event->button == 2) {
+ 		/* Middle click paste */
++		html_editor_view_move_selection_on_point (widget);
+ 		g_signal_emit (widget, signals[PASTE_PRIMARY_CLIPBOARD], 0);
+ 		event_handled = TRUE;
+ 	} else if (event->button == 3) {
+-- 
+2.15.0
+

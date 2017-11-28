@@ -1,0 +1,352 @@
+From d0166b29e1cf31937366a9ce5c652cdefd8a8053 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 27 Feb 2015 14:18:10 +0100
+Subject: [PATCH 0388/1800] Bug 621751 - Allow import of non-MBOX format mail
+ messages
+
+---
+ mail/importers/evolution-mbox-importer.c | 125 ++++++++++++++++++++++++-------
+ mail/importers/mail-importer.c           |  76 ++++++++++++++-----
+ modules/mail/e-mail-shell-backend.c      |   6 +-
+ 3 files changed, 161 insertions(+), 46 deletions(-)
+
+diff --git a/mail/importers/evolution-mbox-importer.c b/mail/importers/evolution-mbox-importer.c
+index 8433a1df17..5187c74f36 100644
+--- a/mail/importers/evolution-mbox-importer.c
++++ b/mail/importers/evolution-mbox-importer.c
+@@ -163,7 +163,7 @@ mbox_supported (EImport *ei,
+                 EImportTarget *target,
+                 EImportImporter *im)
+ {
+-	gchar signature[6];
++	gchar signature[1024];
+ 	gboolean ret = FALSE;
+ 	gint fd, n;
+ 	EImportTargetURI *s;
+@@ -181,13 +181,57 @@ mbox_supported (EImport *ei,
+ 
+ 	filename = g_filename_from_uri (s->uri_src, NULL, NULL);
+ 	fd = g_open (filename, O_RDONLY, 0);
+-	g_free (filename);
+ 	if (fd != -1) {
+-		n = read (fd, signature, 5);
+-		ret = n == 5 && memcmp (signature, "From ", 5) == 0;
++		n = read (fd, signature, 1024);
++		ret = n >= 5 && memcmp (signature, "From ", 5) == 0;
+ 		close (fd);
++
++		/* An artificial number, at least 256 bytes message
++		   to be able to try to import it as an MBOX */
++		if (!ret && n >= 256) {
++			gint ii;
++
++			ret = (signature[0] >= 'a' && signature[0] <= 'z') ||
++			      (signature[0] >= 'A' && signature[0] <= 'Z');
++
++			for (ii = 0; ii < n && ret; ii++) {
++				ret = signature[ii] == '-' ||
++				      signature[ii] == ' ' ||
++				      signature[ii] == '\t' ||
++				     (signature[ii] >= 'a' && signature[ii] <= 'z') ||
++				     (signature[ii] >= 'A' && signature[ii] <= 'Z') ||
++				     (signature[ii] >= '0' && signature[ii] <= '9');
++			}
++
++			/* It's probably a header name which starts with ASCII letter and
++			   contains only [a..z][A..Z][\t, ,-] and the read stopped on ':'. */
++			if (ii > 0 && ii < n && !ret && signature[ii - 1] == ':') {
++				CamelStream *stream;
++
++				stream = camel_stream_fs_new_with_name (filename, O_RDONLY, 0, NULL);
++				if (stream) {
++					CamelMimeMessage *msg;
++
++					msg = camel_mime_message_new ();
++
++					/* Check whether the message can be parsed and whether
++					   it contains any mandatory fields. */
++					ret = camel_data_wrapper_construct_from_stream_sync ((CamelDataWrapper *) msg, stream, NULL, NULL) &&
++					      camel_mime_message_get_message_id (msg) &&
++					      camel_mime_message_get_subject (msg) &&
++					      camel_mime_message_get_from (msg) &&
++					      (camel_mime_message_get_recipients (msg, CAMEL_RECIPIENT_TYPE_TO) ||
++					       camel_mime_message_get_recipients (msg, CAMEL_RECIPIENT_TYPE_RESENT_TO));
++
++					g_object_unref (msg);
++					g_object_unref (stream);
++				}
++			}
++		}
+ 	}
+ 
++	g_free (filename);
++
+ 	return ret;
+ }
+ 
+@@ -336,6 +380,36 @@ preview_selection_changed_cb (GtkTreeSelection *selection,
+ 	}
+ }
+ 
++static void
++mbox_preview_add_message (CamelMimeMessage *msg,
++			  GtkListStore **pstore)
++{
++	GtkTreeIter iter;
++	gchar *from;
++
++	g_return_if_fail (CAMEL_IS_MIME_MESSAGE (msg));
++	g_return_if_fail (pstore != NULL);
++
++	if (!*pstore)
++		*pstore = gtk_list_store_new (
++			3, G_TYPE_STRING, G_TYPE_STRING,
++			CAMEL_TYPE_MIME_MESSAGE);
++
++	from = NULL;
++
++	if (camel_mime_message_get_from (msg))
++		from = camel_address_encode (CAMEL_ADDRESS (camel_mime_message_get_from (msg)));
++
++	gtk_list_store_append (*pstore, &iter);
++	gtk_list_store_set (
++		*pstore, &iter,
++		0, camel_mime_message_get_subject (msg) ?
++		camel_mime_message_get_subject (msg) : "",
++		1, from ? from : "", 2, msg, -1);
++
++	g_free (from);
++}
++
+ static GtkWidget *
+ mbox_get_preview (EImport *ei,
+                   EImportTarget *target,
+@@ -349,6 +423,7 @@ mbox_get_preview (EImport *ei,
+ 	GtkListStore *store = NULL;
+ 	GtkTreeIter iter;
+ 	GtkWidget *preview_widget = NULL;
++	gboolean any_read = FALSE;
+ 
+ 	if (!create_preview_func || !fill_preview_func)
+ 		return NULL;
+@@ -368,8 +443,6 @@ mbox_get_preview (EImport *ei,
+ 		return NULL;
+ 	}
+ 
+-	g_free (filename);
+-
+ 	mp = camel_mime_parser_new ();
+ 	camel_mime_parser_scan_from (mp, TRUE);
+ 	if (camel_mime_parser_init_with_fd (mp, fd) == -1) {
+@@ -378,7 +451,8 @@ mbox_get_preview (EImport *ei,
+ 
+ 	while (camel_mime_parser_step (mp, NULL, NULL) == CAMEL_MIME_PARSER_STATE_FROM) {
+ 		CamelMimeMessage *msg;
+-		gchar *from;
++
++		any_read = TRUE;
+ 
+ 		msg = camel_mime_message_new ();
+ 		if (!camel_mime_part_construct_from_parser_sync (
+@@ -387,30 +461,30 @@ mbox_get_preview (EImport *ei,
+ 			break;
+ 		}
+ 
+-		if (!store)
+-			store = gtk_list_store_new (
+-				3, G_TYPE_STRING, G_TYPE_STRING,
+-				CAMEL_TYPE_MIME_MESSAGE);
+-
+-		from = NULL;
+-		if (camel_mime_message_get_from (msg))
+-			from = camel_address_encode (
+-				CAMEL_ADDRESS (
+-				camel_mime_message_get_from (msg)));
+-
+-		gtk_list_store_append (store, &iter);
+-		gtk_list_store_set (
+-			store, &iter,
+-			0, camel_mime_message_get_subject (msg) ?
+-			camel_mime_message_get_subject (msg) : "",
+-			1, from ? from : "", 2, msg, -1);
++		mbox_preview_add_message (msg, &store);
+ 
+ 		g_object_unref (msg);
+-		g_free (from);
+ 
+ 		camel_mime_parser_step (mp, NULL, NULL);
+ 	}
+ 
++	if (!any_read) {
++		CamelStream *stream;
++
++		stream = camel_stream_fs_new_with_name (filename, O_RDONLY, 0, NULL);
++		if (stream) {
++			CamelMimeMessage *msg;
++
++			msg = camel_mime_message_new ();
++
++			if (camel_data_wrapper_construct_from_stream_sync ((CamelDataWrapper *) msg, stream, NULL, NULL))
++				mbox_preview_add_message (msg, &store);
++
++			g_object_unref (msg);
++			g_object_unref (stream);
++		}
++	}
++
+ 	if (store) {
+ 		GtkTreeView *tree_view;
+ 		GtkTreeSelection *selection;
+@@ -471,6 +545,7 @@ mbox_get_preview (EImport *ei,
+ 
+  cleanup:
+ 	g_object_unref (mp);
++	g_free (filename);
+ 
+ 	/* 'fd' is freed together with 'mp' */
+ 	/* coverity[leaked_handle] */
+diff --git a/mail/importers/mail-importer.c b/mail/importers/mail-importer.c
+index c3805f3ed0..b63251a8b1 100644
+--- a/mail/importers/mail-importer.c
++++ b/mail/importers/mail-importer.c
+@@ -102,6 +102,41 @@ decode_mozilla_status (const gchar *tmp)
+ 	return flags;
+ }
+ 
++static void
++import_mbox_add_message (CamelFolder *folder,
++			 CamelMimeMessage *msg,
++			 GCancellable *cancellable,
++			 GError **error)
++{
++	CamelMessageInfo *info;
++	CamelMedium *medium;
++	guint32 flags = 0;
++	const gchar *tmp;
++
++	g_return_if_fail (CAMEL_IS_FOLDER (folder));
++	g_return_if_fail (CAMEL_IS_MIME_MESSAGE (msg));
++
++	medium = CAMEL_MEDIUM (msg);
++
++	tmp = camel_medium_get_header (medium, "X-Mozilla-Status");
++	if (tmp)
++		flags |= decode_mozilla_status (tmp);
++	tmp = camel_medium_get_header (medium, "Status");
++	if (tmp)
++		flags |= decode_status (tmp);
++	tmp = camel_medium_get_header (medium, "X-Status");
++	if (tmp)
++		flags |= decode_status (tmp);
++
++	info = camel_message_info_new (NULL);
++
++	camel_message_info_set_flags (info, flags, ~0);
++	camel_folder_append_message_sync (
++		folder, msg, info, NULL,
++		cancellable, error);
++	camel_message_info_unref (info);
++}
++
+ static void
+ import_mbox_exec (struct _import_mbox_msg *m,
+                   GCancellable *cancellable,
+@@ -111,7 +146,6 @@ import_mbox_exec (struct _import_mbox_msg *m,
+ 	CamelMimeParser *mp = NULL;
+ 	struct stat st;
+ 	gint fd;
+-	CamelMessageInfo *info;
+ 
+ 	if (g_stat (m->path, &st) == -1) {
+ 		g_warning (
+@@ -132,6 +166,8 @@ import_mbox_exec (struct _import_mbox_msg *m,
+ 		return;
+ 
+ 	if (S_ISREG (st.st_mode)) {
++		gboolean any_read = FALSE;
++
+ 		fd = g_open (m->path, O_RDONLY | O_BINARY, 0);
+ 		if (fd == -1) {
+ 			g_warning (
+@@ -155,9 +191,9 @@ import_mbox_exec (struct _import_mbox_msg *m,
+ 				CAMEL_MIME_PARSER_STATE_FROM) {
+ 
+ 			CamelMimeMessage *msg;
+-			const gchar *tmp;
+ 			gint pc = 0;
+-			guint32 flags = 0;
++
++			any_read = TRUE;
+ 
+ 			if (st.st_size > 0)
+ 				pc = (gint) (100.0 * ((gdouble)
+@@ -173,23 +209,8 @@ import_mbox_exec (struct _import_mbox_msg *m,
+ 				break;
+ 			}
+ 
+-			info = camel_message_info_new (NULL);
++			import_mbox_add_message (folder, msg, cancellable, error);
+ 
+-			tmp = camel_medium_get_header ((CamelMedium *) msg, "X-Mozilla-Status");
+-			if (tmp)
+-				flags |= decode_mozilla_status (tmp);
+-			tmp = camel_medium_get_header ((CamelMedium *) msg, "Status");
+-			if (tmp)
+-				flags |= decode_status (tmp);
+-			tmp = camel_medium_get_header ((CamelMedium *) msg, "X-Status");
+-			if (tmp)
+-				flags |= decode_status (tmp);
+-
+-			camel_message_info_set_flags (info, flags, ~0);
+-			camel_folder_append_message_sync (
+-				folder, msg, info, NULL,
+-				cancellable, error);
+-			camel_message_info_unref (info);
+ 			g_object_unref (msg);
+ 
+ 			if (error && *error != NULL)
+@@ -197,6 +218,23 @@ import_mbox_exec (struct _import_mbox_msg *m,
+ 
+ 			camel_mime_parser_step (mp, NULL, NULL);
+ 		}
++
++		if (!any_read) {
++			CamelStream *stream;
++
++			stream = camel_stream_fs_new_with_name (m->path, O_RDONLY, 0, NULL);
++			if (stream) {
++				CamelMimeMessage *msg;
++
++				msg = camel_mime_message_new ();
++
++				if (camel_data_wrapper_construct_from_stream_sync ((CamelDataWrapper *) msg, stream, NULL, NULL))
++					import_mbox_add_message (folder, msg, cancellable, error);
++
++				g_object_unref (msg);
++				g_object_unref (stream);
++			}
++		}
+ 		/* Not passing a GCancellable or GError here. */
+ 		camel_folder_synchronize_sync (folder, FALSE, NULL, NULL);
+ 		camel_folder_thaw (folder);
+diff --git a/modules/mail/e-mail-shell-backend.c b/modules/mail/e-mail-shell-backend.c
+index ff83c9f8e8..7b4b2298de 100644
+--- a/modules/mail/e-mail-shell-backend.c
++++ b/modules/mail/e-mail-shell-backend.c
+@@ -125,9 +125,11 @@ message_parsed_cb (GObject *source_object,
+ 
+ 	folder = e_mail_part_list_get_folder (parts_list);
+ 	message_uid = e_mail_part_list_get_message_uid (parts_list);
+-	mail_uri = e_mail_part_build_uri (folder, message_uid, NULL, NULL);
++	if (message_uid) {
++		mail_uri = e_mail_part_build_uri (folder, message_uid, NULL, NULL);
+ 
+-	g_hash_table_insert (mails, mail_uri, parts_list);
++		g_hash_table_insert (mails, mail_uri, parts_list);
++	}
+ 
+ 	e_mail_display_set_part_list (display, parts_list);
+ 	e_mail_display_load (display, NULL);
+-- 
+2.15.0
+

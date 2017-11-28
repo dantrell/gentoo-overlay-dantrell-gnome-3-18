@@ -1,0 +1,27 @@
+From 43d5e818c9ec273266fd68c86a3466fb33abd961 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 4 Nov 2014 08:25:12 +0100
+Subject: [PATCH 0030/1800] [Mark-All-Read] Save changes to the server
+ immediately
+
+---
+ modules/mail/e-mail-shell-view-actions.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/modules/mail/e-mail-shell-view-actions.c b/modules/mail/e-mail-shell-view-actions.c
+index 292aa96c48..4da4c3ff85 100644
+--- a/modules/mail/e-mail-shell-view-actions.c
++++ b/modules/mail/e-mail-shell-view-actions.c
+@@ -546,6 +546,9 @@ mark_all_read_thread (GSimpleAsyncResult *simple,
+ 
+ 		camel_folder_thaw (folder);
+ 
++		/* Save changes to the server immediately. */
++		camel_folder_synchronize_sync (folder, FALSE, cancellable, &error);
++
+ 		camel_folder_free_uids (folder, uids);
+ 		g_object_unref (folder);
+ 	}
+-- 
+2.15.0
+

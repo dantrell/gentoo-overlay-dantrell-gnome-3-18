@@ -1,0 +1,3024 @@
+From a4a7e42d974b4e97be220b8e4287b7373c28a4cb Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 16 Jun 2015 15:32:45 +0200
+Subject: [PATCH 0817/1800] Bug 231666 - Ability to set different work time for
+ different days
+
+---
+ calendar/gui/dialogs/comp-editor.c               | 742 +++++++++++++++++++++-
+ calendar/gui/dialogs/comp-editor.h               |  77 +++
+ calendar/gui/dialogs/schedule-page.c             |  18 +-
+ calendar/gui/e-cal-model.c                       | 756 ++++++++++++++++++++++-
+ calendar/gui/e-cal-model.h                       |  77 +++
+ calendar/gui/e-day-view-main-item.c              |  28 +-
+ calendar/gui/e-day-view.c                        | 456 ++++++++------
+ calendar/gui/e-meeting-time-sel.c                | 154 +++--
+ calendar/gui/e-meeting-time-sel.h                |   9 +-
+ data/org.gnome.evolution.calendar.gschema.xml.in |  70 +++
+ modules/settings/e-settings-cal-model.c          |  70 +++
+ modules/settings/e-settings-comp-editor.c        |  70 +++
+ 12 files changed, 2263 insertions(+), 264 deletions(-)
+
+diff --git a/calendar/gui/dialogs/comp-editor.c b/calendar/gui/dialogs/comp-editor.c
+index 7aee23ea88..c6ffd0d41b 100644
+--- a/calendar/gui/dialogs/comp-editor.c
++++ b/calendar/gui/dialogs/comp-editor.c
+@@ -113,6 +113,20 @@ struct _CompEditorPrivate {
+ 	gint work_day_end_minute;
+ 	gint work_day_start_hour;
+ 	gint work_day_start_minute;
++	gint work_day_start_mon;
++	gint work_day_end_mon;
++	gint work_day_start_tue;
++	gint work_day_end_tue;
++	gint work_day_start_wed;
++	gint work_day_end_wed;
++	gint work_day_start_thu;
++	gint work_day_end_thu;
++	gint work_day_start_fri;
++	gint work_day_end_fri;
++	gint work_day_start_sat;
++	gint work_day_end_sat;
++	gint work_day_start_sun;
++	gint work_day_end_sun;
+ 
+ 	gboolean changed;
+ 	gboolean needs_send;
+@@ -142,7 +156,21 @@ enum {
+ 	PROP_WORK_DAY_END_HOUR,
+ 	PROP_WORK_DAY_END_MINUTE,
+ 	PROP_WORK_DAY_START_HOUR,
+-	PROP_WORK_DAY_START_MINUTE
++	PROP_WORK_DAY_START_MINUTE,
++	PROP_WORK_DAY_START_MON,
++	PROP_WORK_DAY_END_MON,
++	PROP_WORK_DAY_START_TUE,
++	PROP_WORK_DAY_END_TUE,
++	PROP_WORK_DAY_START_WED,
++	PROP_WORK_DAY_END_WED,
++	PROP_WORK_DAY_START_THU,
++	PROP_WORK_DAY_END_THU,
++	PROP_WORK_DAY_START_FRI,
++	PROP_WORK_DAY_END_FRI,
++	PROP_WORK_DAY_START_SAT,
++	PROP_WORK_DAY_END_SAT,
++	PROP_WORK_DAY_START_SUN,
++	PROP_WORK_DAY_END_SUN
+ };
+ 
+ static const gchar *ui =
+@@ -1537,6 +1565,90 @@ comp_editor_set_property (GObject *object,
+ 				COMP_EDITOR (object),
+ 				g_value_get_int (value));
+ 			return;
++
++		case PROP_WORK_DAY_START_MON:
++			comp_editor_set_work_day_start_mon (
++				COMP_EDITOR (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_END_MON:
++			comp_editor_set_work_day_end_mon (
++				COMP_EDITOR (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_START_TUE:
++			comp_editor_set_work_day_start_tue (
++				COMP_EDITOR (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_END_TUE:
++			comp_editor_set_work_day_end_tue (
++				COMP_EDITOR (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_START_WED:
++			comp_editor_set_work_day_start_wed (
++				COMP_EDITOR (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_END_WED:
++			comp_editor_set_work_day_end_wed (
++				COMP_EDITOR (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_START_THU:
++			comp_editor_set_work_day_start_thu (
++				COMP_EDITOR (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_END_THU:
++			comp_editor_set_work_day_end_thu (
++				COMP_EDITOR (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_START_FRI:
++			comp_editor_set_work_day_start_fri (
++				COMP_EDITOR (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_END_FRI:
++			comp_editor_set_work_day_end_fri (
++				COMP_EDITOR (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_START_SAT:
++			comp_editor_set_work_day_start_sat (
++				COMP_EDITOR (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_END_SAT:
++			comp_editor_set_work_day_end_sat (
++				COMP_EDITOR (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_START_SUN:
++			comp_editor_set_work_day_start_sun (
++				COMP_EDITOR (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_END_SUN:
++			comp_editor_set_work_day_end_sun (
++				COMP_EDITOR (object),
++				g_value_get_int (value));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -1626,6 +1738,90 @@ comp_editor_get_property (GObject *object,
+ 				value, comp_editor_get_work_day_start_minute (
+ 				COMP_EDITOR (object)));
+ 			return;
++
++		case PROP_WORK_DAY_START_MON:
++			g_value_set_int (
++				value, comp_editor_get_work_day_start_mon (
++				COMP_EDITOR (object)));
++			return;
++
++		case PROP_WORK_DAY_END_MON:
++			g_value_set_int (
++				value, comp_editor_get_work_day_end_mon (
++				COMP_EDITOR (object)));
++			return;
++
++		case PROP_WORK_DAY_START_TUE:
++			g_value_set_int (
++				value, comp_editor_get_work_day_start_tue (
++				COMP_EDITOR (object)));
++			return;
++
++		case PROP_WORK_DAY_END_TUE:
++			g_value_set_int (
++				value, comp_editor_get_work_day_end_tue (
++				COMP_EDITOR (object)));
++			return;
++
++		case PROP_WORK_DAY_START_WED:
++			g_value_set_int (
++				value, comp_editor_get_work_day_start_wed (
++				COMP_EDITOR (object)));
++			return;
++
++		case PROP_WORK_DAY_END_WED:
++			g_value_set_int (
++				value, comp_editor_get_work_day_end_wed (
++				COMP_EDITOR (object)));
++			return;
++
++		case PROP_WORK_DAY_START_THU:
++			g_value_set_int (
++				value, comp_editor_get_work_day_start_thu (
++				COMP_EDITOR (object)));
++			return;
++
++		case PROP_WORK_DAY_END_THU:
++			g_value_set_int (
++				value, comp_editor_get_work_day_end_thu (
++				COMP_EDITOR (object)));
++			return;
++
++		case PROP_WORK_DAY_START_FRI:
++			g_value_set_int (
++				value, comp_editor_get_work_day_start_fri (
++				COMP_EDITOR (object)));
++			return;
++
++		case PROP_WORK_DAY_END_FRI:
++			g_value_set_int (
++				value, comp_editor_get_work_day_end_fri (
++				COMP_EDITOR (object)));
++			return;
++
++		case PROP_WORK_DAY_START_SAT:
++			g_value_set_int (
++				value, comp_editor_get_work_day_start_sat (
++				COMP_EDITOR (object)));
++			return;
++
++		case PROP_WORK_DAY_END_SAT:
++			g_value_set_int (
++				value, comp_editor_get_work_day_end_sat (
++				COMP_EDITOR (object)));
++			return;
++
++		case PROP_WORK_DAY_START_SUN:
++			g_value_set_int (
++				value, comp_editor_get_work_day_start_sun (
++				COMP_EDITOR (object)));
++			return;
++
++		case PROP_WORK_DAY_END_SUN:
++			g_value_set_int (
++				value, comp_editor_get_work_day_end_sun (
++				COMP_EDITOR (object)));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -2049,6 +2245,174 @@ comp_editor_class_init (CompEditorClass *class)
+ 			0,
+ 			G_PARAM_READWRITE));
+ 
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_START_MON,
++		g_param_spec_int (
++			"work-day-start-mon",
++			"Work Day Start for Monday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_END_MON,
++		g_param_spec_int (
++			"work-day-end-mon",
++			"Work Day End for Monday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_START_TUE,
++		g_param_spec_int (
++			"work-day-start-tue",
++			"Work Day Start for Tuesday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_END_TUE,
++		g_param_spec_int (
++			"work-day-end-tue",
++			"Work Day End for Tuesday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_START_WED,
++		g_param_spec_int (
++			"work-day-start-wed",
++			"Work Day Start for Wednesday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_END_WED,
++		g_param_spec_int (
++			"work-day-end-wed",
++			"Work Day End for Wednesday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_START_THU,
++		g_param_spec_int (
++			"work-day-start-thu",
++			"Work Day Start for Thursday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_END_THU,
++		g_param_spec_int (
++			"work-day-end-thu",
++			"Work Day End for Thursday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_START_FRI,
++		g_param_spec_int (
++			"work-day-start-fri",
++			"Work Day Start for Friday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_END_FRI,
++		g_param_spec_int (
++			"work-day-end-fri",
++			"Work Day End for Friday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_START_SAT,
++		g_param_spec_int (
++			"work-day-start-sat",
++			"Work Day Start for Saturday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_END_SAT,
++		g_param_spec_int (
++			"work-day-end-sat",
++			"Work Day End for Saturday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_START_SUN,
++		g_param_spec_int (
++			"work-day-start-sun",
++			"Work Day Start for Sunday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_END_SUN,
++		g_param_spec_int (
++			"work-day-end-sun",
++			"Work Day End for Sunday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
+ 	signals[OBJECT_CREATED] = g_signal_new (
+ 		"object_created",
+ 		G_TYPE_FROM_CLASS (class),
+@@ -2732,6 +3096,382 @@ comp_editor_set_work_day_start_minute (CompEditor *editor,
+ 	g_object_notify (G_OBJECT (editor), "work-day-start-minute");
+ }
+ 
++gint
++comp_editor_get_work_day_start_mon (CompEditor *editor)
++{
++	g_return_val_if_fail (IS_COMP_EDITOR (editor), -1);
++
++	return editor->priv->work_day_start_mon;
++}
++
++void
++comp_editor_set_work_day_start_mon (CompEditor *editor,
++				    gint work_day_start)
++{
++	g_return_if_fail (IS_COMP_EDITOR (editor));
++
++	if (editor->priv->work_day_start_mon == work_day_start)
++		return;
++
++	editor->priv->work_day_start_mon = work_day_start;
++
++	g_object_notify (G_OBJECT (editor), "work-day-start-mon");
++}
++
++gint
++comp_editor_get_work_day_end_mon (CompEditor *editor)
++{
++	g_return_val_if_fail (IS_COMP_EDITOR (editor), -1);
++
++	return editor->priv->work_day_end_mon;
++}
++
++void
++comp_editor_set_work_day_end_mon (CompEditor *editor,
++				  gint work_day_end)
++{
++	g_return_if_fail (IS_COMP_EDITOR (editor));
++
++	if (editor->priv->work_day_end_mon == work_day_end)
++		return;
++
++	editor->priv->work_day_end_mon = work_day_end;
++
++	g_object_notify (G_OBJECT (editor), "work-day-end-mon");
++}
++
++gint
++comp_editor_get_work_day_start_tue (CompEditor *editor)
++{
++	g_return_val_if_fail (IS_COMP_EDITOR (editor), -1);
++
++	return editor->priv->work_day_start_tue;
++}
++
++void
++comp_editor_set_work_day_start_tue (CompEditor *editor,
++				    gint work_day_start)
++{
++	g_return_if_fail (IS_COMP_EDITOR (editor));
++
++	if (editor->priv->work_day_start_tue == work_day_start)
++		return;
++
++	editor->priv->work_day_start_tue = work_day_start;
++
++	g_object_notify (G_OBJECT (editor), "work-day-start-tue");
++}
++
++gint
++comp_editor_get_work_day_end_tue (CompEditor *editor)
++{
++	g_return_val_if_fail (IS_COMP_EDITOR (editor), -1);
++
++	return editor->priv->work_day_end_tue;
++}
++
++void
++comp_editor_set_work_day_end_tue (CompEditor *editor,
++				  gint work_day_end)
++{
++	g_return_if_fail (IS_COMP_EDITOR (editor));
++
++	if (editor->priv->work_day_end_tue == work_day_end)
++		return;
++
++	editor->priv->work_day_end_tue = work_day_end;
++
++	g_object_notify (G_OBJECT (editor), "work-day-end-tue");
++}
++
++gint
++comp_editor_get_work_day_start_wed (CompEditor *editor)
++{
++	g_return_val_if_fail (IS_COMP_EDITOR (editor), -1);
++
++	return editor->priv->work_day_start_wed;
++}
++
++void
++comp_editor_set_work_day_start_wed (CompEditor *editor,
++				    gint work_day_start)
++{
++	g_return_if_fail (IS_COMP_EDITOR (editor));
++
++	if (editor->priv->work_day_start_wed == work_day_start)
++		return;
++
++	editor->priv->work_day_start_wed = work_day_start;
++
++	g_object_notify (G_OBJECT (editor), "work-day-start-wed");
++}
++
++gint
++comp_editor_get_work_day_end_wed (CompEditor *editor)
++{
++	g_return_val_if_fail (IS_COMP_EDITOR (editor), -1);
++
++	return editor->priv->work_day_end_wed;
++}
++
++void
++comp_editor_set_work_day_end_wed (CompEditor *editor,
++				  gint work_day_end)
++{
++	g_return_if_fail (IS_COMP_EDITOR (editor));
++
++	if (editor->priv->work_day_end_wed == work_day_end)
++		return;
++
++	editor->priv->work_day_end_wed = work_day_end;
++
++	g_object_notify (G_OBJECT (editor), "work-day-end-wed");
++}
++
++gint
++comp_editor_get_work_day_start_thu (CompEditor *editor)
++{
++	g_return_val_if_fail (IS_COMP_EDITOR (editor), -1);
++
++	return editor->priv->work_day_start_thu;
++}
++
++void
++comp_editor_set_work_day_start_thu (CompEditor *editor,
++				    gint work_day_start)
++{
++	g_return_if_fail (IS_COMP_EDITOR (editor));
++
++	if (editor->priv->work_day_start_thu == work_day_start)
++		return;
++
++	editor->priv->work_day_start_thu = work_day_start;
++
++	g_object_notify (G_OBJECT (editor), "work-day-start-thu");
++}
++
++gint
++comp_editor_get_work_day_end_thu (CompEditor *editor)
++{
++	g_return_val_if_fail (IS_COMP_EDITOR (editor), -1);
++
++	return editor->priv->work_day_end_thu;
++}
++
++void
++comp_editor_set_work_day_end_thu (CompEditor *editor,
++				  gint work_day_end)
++{
++	g_return_if_fail (IS_COMP_EDITOR (editor));
++
++	if (editor->priv->work_day_end_thu == work_day_end)
++		return;
++
++	editor->priv->work_day_end_thu = work_day_end;
++
++	g_object_notify (G_OBJECT (editor), "work-day-end-thu");
++}
++
++gint
++comp_editor_get_work_day_start_fri (CompEditor *editor)
++{
++	g_return_val_if_fail (IS_COMP_EDITOR (editor), -1);
++
++	return editor->priv->work_day_start_fri;
++}
++
++void
++comp_editor_set_work_day_start_fri (CompEditor *editor,
++				    gint work_day_start)
++{
++	g_return_if_fail (IS_COMP_EDITOR (editor));
++
++	if (editor->priv->work_day_start_fri == work_day_start)
++		return;
++
++	editor->priv->work_day_start_fri = work_day_start;
++
++	g_object_notify (G_OBJECT (editor), "work-day-start-fri");
++}
++
++gint
++comp_editor_get_work_day_end_fri (CompEditor *editor)
++{
++	g_return_val_if_fail (IS_COMP_EDITOR (editor), -1);
++
++	return editor->priv->work_day_end_fri;
++}
++
++void
++comp_editor_set_work_day_end_fri (CompEditor *editor,
++				  gint work_day_end)
++{
++	g_return_if_fail (IS_COMP_EDITOR (editor));
++
++	if (editor->priv->work_day_end_fri == work_day_end)
++		return;
++
++	editor->priv->work_day_end_fri = work_day_end;
++
++	g_object_notify (G_OBJECT (editor), "work-day-end-fri");
++}
++
++gint
++comp_editor_get_work_day_start_sat (CompEditor *editor)
++{
++	g_return_val_if_fail (IS_COMP_EDITOR (editor), -1);
++
++	return editor->priv->work_day_start_sat;
++}
++
++void
++comp_editor_set_work_day_start_sat (CompEditor *editor,
++				    gint work_day_start)
++{
++	g_return_if_fail (IS_COMP_EDITOR (editor));
++
++	if (editor->priv->work_day_start_sat == work_day_start)
++		return;
++
++	editor->priv->work_day_start_sat = work_day_start;
++
++	g_object_notify (G_OBJECT (editor), "work-day-start-sat");
++}
++
++gint
++comp_editor_get_work_day_end_sat (CompEditor *editor)
++{
++	g_return_val_if_fail (IS_COMP_EDITOR (editor), -1);
++
++	return editor->priv->work_day_end_sat;
++}
++
++void
++comp_editor_set_work_day_end_sat (CompEditor *editor,
++				  gint work_day_end)
++{
++	g_return_if_fail (IS_COMP_EDITOR (editor));
++
++	if (editor->priv->work_day_end_sat == work_day_end)
++		return;
++
++	editor->priv->work_day_end_sat = work_day_end;
++
++	g_object_notify (G_OBJECT (editor), "work-day-end-sat");
++}
++
++gint
++comp_editor_get_work_day_start_sun (CompEditor *editor)
++{
++	g_return_val_if_fail (IS_COMP_EDITOR (editor), -1);
++
++	return editor->priv->work_day_start_sun;
++}
++
++void
++comp_editor_set_work_day_start_sun (CompEditor *editor,
++				    gint work_day_start)
++{
++	g_return_if_fail (IS_COMP_EDITOR (editor));
++
++	if (editor->priv->work_day_start_sun == work_day_start)
++		return;
++
++	editor->priv->work_day_start_sun = work_day_start;
++
++	g_object_notify (G_OBJECT (editor), "work-day-start-sun");
++}
++
++gint
++comp_editor_get_work_day_end_sun (CompEditor *editor)
++{
++	g_return_val_if_fail (IS_COMP_EDITOR (editor), -1);
++
++	return editor->priv->work_day_end_sun;
++}
++
++void
++comp_editor_set_work_day_end_sun (CompEditor *editor,
++				  gint work_day_end)
++{
++	g_return_if_fail (IS_COMP_EDITOR (editor));
++
++	if (editor->priv->work_day_end_sun == work_day_end)
++		return;
++
++	editor->priv->work_day_end_sun = work_day_end;
++
++	g_object_notify (G_OBJECT (editor), "work-day-end-sun");
++}
++
++void
++comp_editor_get_work_day_range_for (CompEditor *editor,
++				    GDateWeekday weekday,
++				    gint *start_hour,
++				    gint *start_minute,
++				    gint *end_hour,
++				    gint *end_minute)
++{
++	gint start_adept = -1, end_adept = -1;
++
++	g_return_if_fail (IS_COMP_EDITOR (editor));
++	g_return_if_fail (start_hour != NULL);
++	g_return_if_fail (start_minute != NULL);
++	g_return_if_fail (end_hour != NULL);
++	g_return_if_fail (end_minute != NULL);
++
++	switch (weekday) {
++		case G_DATE_MONDAY:
++			start_adept = comp_editor_get_work_day_start_mon (editor);
++			end_adept = comp_editor_get_work_day_end_mon (editor);
++			break;
++		case G_DATE_TUESDAY:
++			start_adept = comp_editor_get_work_day_start_tue (editor);
++			end_adept = comp_editor_get_work_day_end_tue (editor);
++			break;
++		case G_DATE_WEDNESDAY:
++			start_adept = comp_editor_get_work_day_start_wed (editor);
++			end_adept = comp_editor_get_work_day_end_wed (editor);
++			break;
++		case G_DATE_THURSDAY:
++			start_adept = comp_editor_get_work_day_start_thu (editor);
++			end_adept = comp_editor_get_work_day_end_thu (editor);
++			break;
++		case G_DATE_FRIDAY:
++			start_adept = comp_editor_get_work_day_start_fri (editor);
++			end_adept = comp_editor_get_work_day_end_fri (editor);
++			break;
++		case G_DATE_SATURDAY:
++			start_adept = comp_editor_get_work_day_start_sat (editor);
++			end_adept = comp_editor_get_work_day_end_sat (editor);
++			break;
++		case G_DATE_SUNDAY:
++			start_adept = comp_editor_get_work_day_start_sun (editor);
++			end_adept = comp_editor_get_work_day_end_sun (editor);
++			break;
++		default:
++			break;
++	}
++
++	if (start_adept > 0 && (start_adept / 100) >= 0 && (start_adept / 100) <= 23 &&
++	    (start_adept % 100) >= 0 && (start_adept % 100) <= 59) {
++		*start_hour = start_adept / 100;
++		*start_minute = start_adept % 100;
++	} else {
++		*start_hour = comp_editor_get_work_day_start_hour (editor);
++		*start_minute = comp_editor_get_work_day_start_minute (editor);
++	}
++
++	if (end_adept > 0 && (end_adept / 100) >= 0 && (end_adept / 100) <= 23 &&
++	    (end_adept % 100) >= 0 && (end_adept % 100) <= 59) {
++		*end_hour = end_adept / 100;
++		*end_minute = end_adept % 100;
++	} else {
++		*end_hour = comp_editor_get_work_day_end_hour (editor);
++		*end_minute = comp_editor_get_work_day_end_minute (editor);
++	}
++}
++
+ /**
+  * comp_editor_set_changed:
+  * @editor: A component editor
+diff --git a/calendar/gui/dialogs/comp-editor.h b/calendar/gui/dialogs/comp-editor.h
+index e8c0126af6..f354c843a8 100644
+--- a/calendar/gui/dialogs/comp-editor.h
++++ b/calendar/gui/dialogs/comp-editor.h
+@@ -156,6 +156,83 @@ gint		comp_editor_get_work_day_start_minute
+ void		comp_editor_set_work_day_start_minute
+ 						(CompEditor *editor,
+ 						 gint work_day_start_minute);
++gint		comp_editor_get_work_day_start_mon
++						(CompEditor *editor);
++void		comp_editor_set_work_day_start_mon
++						(CompEditor *editor,
++						 gint work_day_start);
++gint		comp_editor_get_work_day_end_mon
++						(CompEditor *editor);
++void		comp_editor_set_work_day_end_mon
++						(CompEditor *editor,
++						 gint work_day_end);
++gint		comp_editor_get_work_day_start_tue
++						(CompEditor *editor);
++void		comp_editor_set_work_day_start_tue
++						(CompEditor *editor,
++						 gint work_day_start);
++gint		comp_editor_get_work_day_end_tue
++						(CompEditor *editor);
++void		comp_editor_set_work_day_end_tue
++						(CompEditor *editor,
++						 gint work_day_end);
++gint		comp_editor_get_work_day_start_wed
++						(CompEditor *editor);
++void		comp_editor_set_work_day_start_wed
++						(CompEditor *editor,
++						 gint work_day_start);
++gint		comp_editor_get_work_day_end_wed
++						(CompEditor *editor);
++void		comp_editor_set_work_day_end_wed
++						(CompEditor *editor,
++						 gint work_day_end);
++gint		comp_editor_get_work_day_start_thu
++						(CompEditor *editor);
++void		comp_editor_set_work_day_start_thu
++						(CompEditor *editor,
++						 gint work_day_start);
++gint		comp_editor_get_work_day_end_thu
++						(CompEditor *editor);
++void		comp_editor_set_work_day_end_thu
++						(CompEditor *editor,
++						 gint work_day_end);
++gint		comp_editor_get_work_day_start_fri
++						(CompEditor *editor);
++void		comp_editor_set_work_day_start_fri
++						(CompEditor *editor,
++						 gint work_day_start);
++gint		comp_editor_get_work_day_end_fri
++						(CompEditor *editor);
++void		comp_editor_set_work_day_end_fri
++						(CompEditor *editor,
++						 gint work_day_end);
++gint		comp_editor_get_work_day_start_sat
++						(CompEditor *editor);
++void		comp_editor_set_work_day_start_sat
++						(CompEditor *editor,
++						 gint work_day_start);
++gint		comp_editor_get_work_day_end_sat
++						(CompEditor *editor);
++void		comp_editor_set_work_day_end_sat
++						(CompEditor *editor,
++						 gint work_day_end);
++gint		comp_editor_get_work_day_start_sun
++						(CompEditor *editor);
++void		comp_editor_set_work_day_start_sun
++						(CompEditor *editor,
++						 gint work_day_start);
++gint		comp_editor_get_work_day_end_sun
++						(CompEditor *editor);
++void		comp_editor_set_work_day_end_sun
++						(CompEditor *editor,
++						 gint work_day_end);
++void		comp_editor_get_work_day_range_for
++						(CompEditor *editor,
++						 GDateWeekday weekday,
++						 gint *start_hour,
++						 gint *start_minute,
++						 gint *end_hour,
++						 gint *end_minute);
+ void		comp_editor_append_page		(CompEditor *editor,
+ 						 CompEditorPage *page,
+ 						 const gchar *label,
+diff --git a/calendar/gui/dialogs/schedule-page.c b/calendar/gui/dialogs/schedule-page.c
+index 054fe133f7..870ef8efd7 100644
+--- a/calendar/gui/dialogs/schedule-page.c
++++ b/calendar/gui/dialogs/schedule-page.c
+@@ -393,6 +393,7 @@ schedule_page_construct (SchedulePage *spage,
+ {
+ 	SchedulePagePrivate *priv = spage->priv;
+ 	CompEditor *editor;
++	gint weekday;
+ 
+ 	editor = comp_editor_page_get_editor (COMP_EDITOR_PAGE (spage));
+ 
+@@ -413,12 +414,17 @@ schedule_page_construct (SchedulePage *spage,
+ 	/* Selector */
+ 	priv->sel = E_MEETING_TIME_SELECTOR (e_meeting_time_selector_new (ems));
+ 	gtk_widget_set_size_request ((GtkWidget *) priv->sel, -1, 400);
+-	e_meeting_time_selector_set_working_hours (
+-		priv->sel,
+-		comp_editor_get_work_day_start_hour (editor),
+-		comp_editor_get_work_day_start_minute (editor),
+-		comp_editor_get_work_day_end_hour (editor),
+-		comp_editor_get_work_day_end_minute (editor));
++
++	for (weekday = G_DATE_BAD_WEEKDAY; weekday <= G_DATE_SUNDAY; weekday++) {
++		gint start_hour, start_minute, end_hour, end_minute;
++
++		comp_editor_get_work_day_range_for (editor, weekday,
++			&start_hour, &start_minute, &end_hour, &end_minute);
++
++		e_meeting_time_selector_set_working_hours (priv->sel, weekday,
++			start_hour, start_minute, end_hour, end_minute);
++	}
++
+ 	gtk_widget_show (GTK_WIDGET (priv->sel));
+ 	gtk_box_pack_start (GTK_BOX (priv->main), GTK_WIDGET (priv->sel), TRUE, TRUE, 6);
+ 
+diff --git a/calendar/gui/e-cal-model.c b/calendar/gui/e-cal-model.c
+index 700462c3bc..17f9040e78 100644
+--- a/calendar/gui/e-cal-model.c
++++ b/calendar/gui/e-cal-model.c
+@@ -98,6 +98,20 @@ struct _ECalModelPrivate {
+ 	gint work_day_start_minute;
+ 	gint work_day_end_hour;
+ 	gint work_day_end_minute;
++	gint work_day_start_mon;
++	gint work_day_end_mon;
++	gint work_day_start_tue;
++	gint work_day_end_tue;
++	gint work_day_start_wed;
++	gint work_day_end_wed;
++	gint work_day_start_thu;
++	gint work_day_end_thu;
++	gint work_day_start_fri;
++	gint work_day_end_fri;
++	gint work_day_start_sat;
++	gint work_day_end_sat;
++	gint work_day_start_sun;
++	gint work_day_end_sun;
+ 
+ 	/* callback, to retrieve start time for newly added rows by click-to-add */
+ 	ECalModelDefaultTimeFunc get_default_time;
+@@ -144,7 +158,21 @@ enum {
+ 	PROP_WORK_DAY_END_HOUR,
+ 	PROP_WORK_DAY_END_MINUTE,
+ 	PROP_WORK_DAY_START_HOUR,
+-	PROP_WORK_DAY_START_MINUTE
++	PROP_WORK_DAY_START_MINUTE,
++	PROP_WORK_DAY_START_MON,
++	PROP_WORK_DAY_END_MON,
++	PROP_WORK_DAY_START_TUE,
++	PROP_WORK_DAY_END_TUE,
++	PROP_WORK_DAY_START_WED,
++	PROP_WORK_DAY_END_WED,
++	PROP_WORK_DAY_START_THU,
++	PROP_WORK_DAY_END_THU,
++	PROP_WORK_DAY_START_FRI,
++	PROP_WORK_DAY_END_FRI,
++	PROP_WORK_DAY_START_SAT,
++	PROP_WORK_DAY_END_SAT,
++	PROP_WORK_DAY_START_SUN,
++	PROP_WORK_DAY_END_SUN
+ };
+ 
+ enum {
+@@ -772,6 +800,90 @@ cal_model_set_property (GObject *object,
+ 				E_CAL_MODEL (object),
+ 				g_value_get_int (value));
+ 			return;
++
++		case PROP_WORK_DAY_START_MON:
++			e_cal_model_set_work_day_start_mon (
++				E_CAL_MODEL (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_END_MON:
++			e_cal_model_set_work_day_end_mon (
++				E_CAL_MODEL (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_START_TUE:
++			e_cal_model_set_work_day_start_tue (
++				E_CAL_MODEL (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_END_TUE:
++			e_cal_model_set_work_day_end_tue (
++				E_CAL_MODEL (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_START_WED:
++			e_cal_model_set_work_day_start_wed (
++				E_CAL_MODEL (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_END_WED:
++			e_cal_model_set_work_day_end_wed (
++				E_CAL_MODEL (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_START_THU:
++			e_cal_model_set_work_day_start_thu (
++				E_CAL_MODEL (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_END_THU:
++			e_cal_model_set_work_day_end_thu (
++				E_CAL_MODEL (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_START_FRI:
++			e_cal_model_set_work_day_start_fri (
++				E_CAL_MODEL (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_END_FRI:
++			e_cal_model_set_work_day_end_fri (
++				E_CAL_MODEL (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_START_SAT:
++			e_cal_model_set_work_day_start_sat (
++				E_CAL_MODEL (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_END_SAT:
++			e_cal_model_set_work_day_end_sat (
++				E_CAL_MODEL (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_START_SUN:
++			e_cal_model_set_work_day_start_sun (
++				E_CAL_MODEL (object),
++				g_value_get_int (value));
++			return;
++
++		case PROP_WORK_DAY_END_SUN:
++			e_cal_model_set_work_day_end_sun (
++				E_CAL_MODEL (object),
++				g_value_get_int (value));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -951,6 +1063,104 @@ cal_model_get_property (GObject *object,
+ 				e_cal_model_get_work_day_start_minute (
+ 				E_CAL_MODEL (object)));
+ 			return;
++
++		case PROP_WORK_DAY_START_MON:
++			g_value_set_int (
++				value,
++				e_cal_model_get_work_day_start_mon (
++				E_CAL_MODEL (object)));
++			return;
++
++		case PROP_WORK_DAY_END_MON:
++			g_value_set_int (
++				value,
++				e_cal_model_get_work_day_end_mon (
++				E_CAL_MODEL (object)));
++			return;
++
++		case PROP_WORK_DAY_START_TUE:
++			g_value_set_int (
++				value,
++				e_cal_model_get_work_day_start_tue (
++				E_CAL_MODEL (object)));
++			return;
++
++		case PROP_WORK_DAY_END_TUE:
++			g_value_set_int (
++				value,
++				e_cal_model_get_work_day_end_tue (
++				E_CAL_MODEL (object)));
++			return;
++
++		case PROP_WORK_DAY_START_WED:
++			g_value_set_int (
++				value,
++				e_cal_model_get_work_day_start_wed (
++				E_CAL_MODEL (object)));
++			return;
++
++		case PROP_WORK_DAY_END_WED:
++			g_value_set_int (
++				value,
++				e_cal_model_get_work_day_end_wed (
++				E_CAL_MODEL (object)));
++			return;
++
++		case PROP_WORK_DAY_START_THU:
++			g_value_set_int (
++				value,
++				e_cal_model_get_work_day_start_thu (
++				E_CAL_MODEL (object)));
++			return;
++
++		case PROP_WORK_DAY_END_THU:
++			g_value_set_int (
++				value,
++				e_cal_model_get_work_day_end_thu (
++				E_CAL_MODEL (object)));
++			return;
++
++		case PROP_WORK_DAY_START_FRI:
++			g_value_set_int (
++				value,
++				e_cal_model_get_work_day_start_fri (
++				E_CAL_MODEL (object)));
++			return;
++
++		case PROP_WORK_DAY_END_FRI:
++			g_value_set_int (
++				value,
++				e_cal_model_get_work_day_end_fri (
++				E_CAL_MODEL (object)));
++			return;
++
++		case PROP_WORK_DAY_START_SAT:
++			g_value_set_int (
++				value,
++				e_cal_model_get_work_day_start_sat (
++				E_CAL_MODEL (object)));
++			return;
++
++		case PROP_WORK_DAY_END_SAT:
++			g_value_set_int (
++				value,
++				e_cal_model_get_work_day_end_sat (
++				E_CAL_MODEL (object)));
++			return;
++
++		case PROP_WORK_DAY_START_SUN:
++			g_value_set_int (
++				value,
++				e_cal_model_get_work_day_start_sun (
++				E_CAL_MODEL (object)));
++			return;
++
++		case PROP_WORK_DAY_END_SUN:
++			g_value_set_int (
++				value,
++				e_cal_model_get_work_day_end_sun (
++				E_CAL_MODEL (object)));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -2134,6 +2344,174 @@ e_cal_model_class_init (ECalModelClass *class)
+ 			0,
+ 			G_PARAM_READWRITE));
+ 
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_START_MON,
++		g_param_spec_int (
++			"work-day-start-mon",
++			"Work Day Start for Monday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_END_MON,
++		g_param_spec_int (
++			"work-day-end-mon",
++			"Work Day End for Monday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_START_TUE,
++		g_param_spec_int (
++			"work-day-start-tue",
++			"Work Day Start for Tuesday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_END_TUE,
++		g_param_spec_int (
++			"work-day-end-tue",
++			"Work Day End for Tuesday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_START_WED,
++		g_param_spec_int (
++			"work-day-start-wed",
++			"Work Day Start for Wednesday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_END_WED,
++		g_param_spec_int (
++			"work-day-end-wed",
++			"Work Day End for Wednesday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_START_THU,
++		g_param_spec_int (
++			"work-day-start-thu",
++			"Work Day Start for Thursday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_END_THU,
++		g_param_spec_int (
++			"work-day-end-thu",
++			"Work Day End for Thursday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_START_FRI,
++		g_param_spec_int (
++			"work-day-start-fri",
++			"Work Day Start for Friday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_END_FRI,
++		g_param_spec_int (
++			"work-day-end-fri",
++			"Work Day End for Friday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_START_SAT,
++		g_param_spec_int (
++			"work-day-start-sat",
++			"Work Day Start for Saturday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_END_SAT,
++		g_param_spec_int (
++			"work-day-end-sat",
++			"Work Day End for Saturday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_START_SUN,
++		g_param_spec_int (
++			"work-day-start-sun",
++			"Work Day Start for Sunday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_WORK_DAY_END_SUN,
++		g_param_spec_int (
++			"work-day-end-sun",
++			"Work Day End for Sunday",
++			NULL,
++			-1,
++			2359,
++			-1,
++			G_PARAM_READWRITE));
++
+ 	signals[TIME_RANGE_CHANGED] = g_signal_new (
+ 		"time_range_changed",
+ 		G_TYPE_FROM_CLASS (class),
+@@ -2806,6 +3184,382 @@ e_cal_model_set_work_day_start_minute (ECalModel *model,
+ 	g_object_notify (G_OBJECT (model), "work-day-start-minute");
+ }
+ 
++gint
++e_cal_model_get_work_day_start_mon (ECalModel *model)
++{
++	g_return_val_if_fail (E_IS_CAL_MODEL (model), -1);
++
++	return model->priv->work_day_start_mon;
++}
++
++void
++e_cal_model_set_work_day_start_mon (ECalModel *model,
++				    gint work_day_start)
++{
++	g_return_if_fail (E_IS_CAL_MODEL (model));
++
++	if (model->priv->work_day_start_mon == work_day_start)
++		return;
++
++	model->priv->work_day_start_mon = work_day_start;
++
++	g_object_notify (G_OBJECT (model), "work-day-start-mon");
++}
++
++gint
++e_cal_model_get_work_day_end_mon (ECalModel *model)
++{
++	g_return_val_if_fail (E_IS_CAL_MODEL (model), -1);
++
++	return model->priv->work_day_end_mon;
++}
++
++void
++e_cal_model_set_work_day_end_mon (ECalModel *model,
++				  gint work_day_end)
++{
++	g_return_if_fail (E_IS_CAL_MODEL (model));
++
++	if (model->priv->work_day_end_mon == work_day_end)
++		return;
++
++	model->priv->work_day_end_mon = work_day_end;
++
++	g_object_notify (G_OBJECT (model), "work-day-end-mon");
++}
++
++gint
++e_cal_model_get_work_day_start_tue (ECalModel *model)
++{
++	g_return_val_if_fail (E_IS_CAL_MODEL (model), -1);
++
++	return model->priv->work_day_start_tue;
++}
++
++void
++e_cal_model_set_work_day_start_tue (ECalModel *model,
++				    gint work_day_start)
++{
++	g_return_if_fail (E_IS_CAL_MODEL (model));
++
++	if (model->priv->work_day_start_tue == work_day_start)
++		return;
++
++	model->priv->work_day_start_tue = work_day_start;
++
++	g_object_notify (G_OBJECT (model), "work-day-start-tue");
++}
++
++gint
++e_cal_model_get_work_day_end_tue (ECalModel *model)
++{
++	g_return_val_if_fail (E_IS_CAL_MODEL (model), -1);
++
++	return model->priv->work_day_end_tue;
++}
++
++void
++e_cal_model_set_work_day_end_tue (ECalModel *model,
++				  gint work_day_end)
++{
++	g_return_if_fail (E_IS_CAL_MODEL (model));
++
++	if (model->priv->work_day_end_tue == work_day_end)
++		return;
++
++	model->priv->work_day_end_tue = work_day_end;
++
++	g_object_notify (G_OBJECT (model), "work-day-end-tue");
++}
++
++gint
++e_cal_model_get_work_day_start_wed (ECalModel *model)
++{
++	g_return_val_if_fail (E_IS_CAL_MODEL (model), -1);
++
++	return model->priv->work_day_start_wed;
++}
++
++void
++e_cal_model_set_work_day_start_wed (ECalModel *model,
++				    gint work_day_start)
++{
++	g_return_if_fail (E_IS_CAL_MODEL (model));
++
++	if (model->priv->work_day_start_wed == work_day_start)
++		return;
++
++	model->priv->work_day_start_wed = work_day_start;
++
++	g_object_notify (G_OBJECT (model), "work-day-start-wed");
++}
++
++gint
++e_cal_model_get_work_day_end_wed (ECalModel *model)
++{
++	g_return_val_if_fail (E_IS_CAL_MODEL (model), -1);
++
++	return model->priv->work_day_end_wed;
++}
++
++void
++e_cal_model_set_work_day_end_wed (ECalModel *model,
++				  gint work_day_end)
++{
++	g_return_if_fail (E_IS_CAL_MODEL (model));
++
++	if (model->priv->work_day_end_wed == work_day_end)
++		return;
++
++	model->priv->work_day_end_wed = work_day_end;
++
++	g_object_notify (G_OBJECT (model), "work-day-end-wed");
++}
++
++gint
++e_cal_model_get_work_day_start_thu (ECalModel *model)
++{
++	g_return_val_if_fail (E_IS_CAL_MODEL (model), -1);
++
++	return model->priv->work_day_start_thu;
++}
++
++void
++e_cal_model_set_work_day_start_thu (ECalModel *model,
++				    gint work_day_start)
++{
++	g_return_if_fail (E_IS_CAL_MODEL (model));
++
++	if (model->priv->work_day_start_thu == work_day_start)
++		return;
++
++	model->priv->work_day_start_thu = work_day_start;
++
++	g_object_notify (G_OBJECT (model), "work-day-start-thu");
++}
++
++gint
++e_cal_model_get_work_day_end_thu (ECalModel *model)
++{
++	g_return_val_if_fail (E_IS_CAL_MODEL (model), -1);
++
++	return model->priv->work_day_end_thu;
++}
++
++void
++e_cal_model_set_work_day_end_thu (ECalModel *model,
++				  gint work_day_end)
++{
++	g_return_if_fail (E_IS_CAL_MODEL (model));
++
++	if (model->priv->work_day_end_thu == work_day_end)
++		return;
++
++	model->priv->work_day_end_thu = work_day_end;
++
++	g_object_notify (G_OBJECT (model), "work-day-end-thu");
++}
++
++gint
++e_cal_model_get_work_day_start_fri (ECalModel *model)
++{
++	g_return_val_if_fail (E_IS_CAL_MODEL (model), -1);
++
++	return model->priv->work_day_start_fri;
++}
++
++void
++e_cal_model_set_work_day_start_fri (ECalModel *model,
++				    gint work_day_start)
++{
++	g_return_if_fail (E_IS_CAL_MODEL (model));
++
++	if (model->priv->work_day_start_fri == work_day_start)
++		return;
++
++	model->priv->work_day_start_fri = work_day_start;
++
++	g_object_notify (G_OBJECT (model), "work-day-start-fri");
++}
++
++gint
++e_cal_model_get_work_day_end_fri (ECalModel *model)
++{
++	g_return_val_if_fail (E_IS_CAL_MODEL (model), -1);
++
++	return model->priv->work_day_end_fri;
++}
++
++void
++e_cal_model_set_work_day_end_fri (ECalModel *model,
++				  gint work_day_end)
++{
++	g_return_if_fail (E_IS_CAL_MODEL (model));
++
++	if (model->priv->work_day_end_fri == work_day_end)
++		return;
++
++	model->priv->work_day_end_fri = work_day_end;
++
++	g_object_notify (G_OBJECT (model), "work-day-end-fri");
++}
++
++gint
++e_cal_model_get_work_day_start_sat (ECalModel *model)
++{
++	g_return_val_if_fail (E_IS_CAL_MODEL (model), -1);
++
++	return model->priv->work_day_start_sat;
++}
++
++void
++e_cal_model_set_work_day_start_sat (ECalModel *model,
++				    gint work_day_start)
++{
++	g_return_if_fail (E_IS_CAL_MODEL (model));
++
++	if (model->priv->work_day_start_sat == work_day_start)
++		return;
++
++	model->priv->work_day_start_sat = work_day_start;
++
++	g_object_notify (G_OBJECT (model), "work-day-start-sat");
++}
++
++gint
++e_cal_model_get_work_day_end_sat (ECalModel *model)
++{
++	g_return_val_if_fail (E_IS_CAL_MODEL (model), -1);
++
++	return model->priv->work_day_end_sat;
++}
++
++void
++e_cal_model_set_work_day_end_sat (ECalModel *model,
++				  gint work_day_end)
++{
++	g_return_if_fail (E_IS_CAL_MODEL (model));
++
++	if (model->priv->work_day_end_sat == work_day_end)
++		return;
++
++	model->priv->work_day_end_sat = work_day_end;
++
++	g_object_notify (G_OBJECT (model), "work-day-end-sat");
++}
++
++gint
++e_cal_model_get_work_day_start_sun (ECalModel *model)
++{
++	g_return_val_if_fail (E_IS_CAL_MODEL (model), -1);
++
++	return model->priv->work_day_start_sun;
++}
++
++void
++e_cal_model_set_work_day_start_sun (ECalModel *model,
++				    gint work_day_start)
++{
++	g_return_if_fail (E_IS_CAL_MODEL (model));
++
++	if (model->priv->work_day_start_sun == work_day_start)
++		return;
++
++	model->priv->work_day_start_sun = work_day_start;
++
++	g_object_notify (G_OBJECT (model), "work-day-start-sun");
++}
++
++gint
++e_cal_model_get_work_day_end_sun (ECalModel *model)
++{
++	g_return_val_if_fail (E_IS_CAL_MODEL (model), -1);
++
++	return model->priv->work_day_end_sun;
++}
++
++void
++e_cal_model_set_work_day_end_sun (ECalModel *model,
++				  gint work_day_end)
++{
++	g_return_if_fail (E_IS_CAL_MODEL (model));
++
++	if (model->priv->work_day_end_sun == work_day_end)
++		return;
++
++	model->priv->work_day_end_sun = work_day_end;
++
++	g_object_notify (G_OBJECT (model), "work-day-end-sun");
++}
++
++void
++e_cal_model_get_work_day_range_for (ECalModel *model,
++				    GDateWeekday weekday,
++				    gint *start_hour,
++				    gint *start_minute,
++				    gint *end_hour,
++				    gint *end_minute)
++{
++	gint start_adept = -1, end_adept = -1;
++
++	g_return_if_fail (E_IS_CAL_MODEL (model));
++	g_return_if_fail (start_hour != NULL);
++	g_return_if_fail (start_minute != NULL);
++	g_return_if_fail (end_hour != NULL);
++	g_return_if_fail (end_minute != NULL);
++
++	switch (weekday) {
++		case G_DATE_MONDAY:
++			start_adept = e_cal_model_get_work_day_start_mon (model);
++			end_adept = e_cal_model_get_work_day_end_mon (model);
++			break;
++		case G_DATE_TUESDAY:
++			start_adept = e_cal_model_get_work_day_start_tue (model);
++			end_adept = e_cal_model_get_work_day_end_tue (model);
++			break;
++		case G_DATE_WEDNESDAY:
++			start_adept = e_cal_model_get_work_day_start_wed (model);
++			end_adept = e_cal_model_get_work_day_end_wed (model);
++			break;
++		case G_DATE_THURSDAY:
++			start_adept = e_cal_model_get_work_day_start_thu (model);
++			end_adept = e_cal_model_get_work_day_end_thu (model);
++			break;
++		case G_DATE_FRIDAY:
++			start_adept = e_cal_model_get_work_day_start_fri (model);
++			end_adept = e_cal_model_get_work_day_end_fri (model);
++			break;
++		case G_DATE_SATURDAY:
++			start_adept = e_cal_model_get_work_day_start_sat (model);
++			end_adept = e_cal_model_get_work_day_end_sat (model);
++			break;
++		case G_DATE_SUNDAY:
++			start_adept = e_cal_model_get_work_day_start_sun (model);
++			end_adept = e_cal_model_get_work_day_end_sun (model);
++			break;
++		default:
++			break;
++	}
++
++	if (start_adept > 0 && (start_adept / 100) >= 0 && (start_adept / 100) <= 23 &&
++	    (start_adept % 100) >= 0 && (start_adept % 100) <= 59) {
++		*start_hour = start_adept / 100;
++		*start_minute = start_adept % 100;
++	} else {
++		*start_hour = e_cal_model_get_work_day_start_hour (model);
++		*start_minute = e_cal_model_get_work_day_start_minute (model);
++	}
++
++	if (end_adept > 0 && (end_adept / 100) >= 0 && (end_adept / 100) <= 23 &&
++	    (end_adept % 100) >= 0 && (end_adept % 100) <= 59) {
++		*end_hour = end_adept / 100;
++		*end_minute = end_adept % 100;
++	} else {
++		*end_hour = e_cal_model_get_work_day_end_hour (model);
++		*end_minute = e_cal_model_get_work_day_end_minute (model);
++	}
++}
++
+ const gchar *
+ e_cal_model_get_default_source_uid (ECalModel *model)
+ {
+diff --git a/calendar/gui/e-cal-model.h b/calendar/gui/e-cal-model.h
+index cecc20aebd..c4a5230e8a 100644
+--- a/calendar/gui/e-cal-model.h
++++ b/calendar/gui/e-cal-model.h
+@@ -243,6 +243,83 @@ gint		e_cal_model_get_work_day_start_minute
+ void		e_cal_model_set_work_day_start_minute
+ 						(ECalModel *model,
+ 						 gint work_day_start_minute);
++gint		e_cal_model_get_work_day_start_mon
++						(ECalModel *model);
++void		e_cal_model_set_work_day_start_mon
++						(ECalModel *model,
++						 gint work_day_start);
++gint		e_cal_model_get_work_day_end_mon
++						(ECalModel *model);
++void		e_cal_model_set_work_day_end_mon
++						(ECalModel *model,
++						 gint work_day_end);
++gint		e_cal_model_get_work_day_start_tue
++						(ECalModel *model);
++void		e_cal_model_set_work_day_start_tue
++						(ECalModel *model,
++						 gint work_day_start);
++gint		e_cal_model_get_work_day_end_tue
++						(ECalModel *model);
++void		e_cal_model_set_work_day_end_tue
++						(ECalModel *model,
++						 gint work_day_end);
++gint		e_cal_model_get_work_day_start_wed
++						(ECalModel *model);
++void		e_cal_model_set_work_day_start_wed
++						(ECalModel *model,
++						 gint work_day_start);
++gint		e_cal_model_get_work_day_end_wed
++						(ECalModel *model);
++void		e_cal_model_set_work_day_end_wed
++						(ECalModel *model,
++						 gint work_day_end);
++gint		e_cal_model_get_work_day_start_thu
++						(ECalModel *model);
++void		e_cal_model_set_work_day_start_thu
++						(ECalModel *model,
++						 gint work_day_start);
++gint		e_cal_model_get_work_day_end_thu
++						(ECalModel *model);
++void		e_cal_model_set_work_day_end_thu
++						(ECalModel *model,
++						 gint work_day_end);
++gint		e_cal_model_get_work_day_start_fri
++						(ECalModel *model);
++void		e_cal_model_set_work_day_start_fri
++						(ECalModel *model,
++						 gint work_day_start);
++gint		e_cal_model_get_work_day_end_fri
++						(ECalModel *model);
++void		e_cal_model_set_work_day_end_fri
++						(ECalModel *model,
++						 gint work_day_end);
++gint		e_cal_model_get_work_day_start_sat
++						(ECalModel *model);
++void		e_cal_model_set_work_day_start_sat
++						(ECalModel *model,
++						 gint work_day_start);
++gint		e_cal_model_get_work_day_end_sat
++						(ECalModel *model);
++void		e_cal_model_set_work_day_end_sat
++						(ECalModel *model,
++						 gint work_day_end);
++gint		e_cal_model_get_work_day_start_sun
++						(ECalModel *model);
++void		e_cal_model_set_work_day_start_sun
++						(ECalModel *model,
++						 gint work_day_start);
++gint		e_cal_model_get_work_day_end_sun
++						(ECalModel *model);
++void		e_cal_model_set_work_day_end_sun
++						(ECalModel *model,
++						 gint work_day_end);
++void		e_cal_model_get_work_day_range_for
++						(ECalModel *model,
++						 GDateWeekday weekday,
++						 gint *start_hour,
++						 gint *start_minute,
++						 gint *end_hour,
++						 gint *end_minute);
+ const gchar *	e_cal_model_get_default_source_uid
+ 						(ECalModel *model);
+ void		e_cal_model_set_default_source_uid
+diff --git a/calendar/gui/e-day-view-main-item.c b/calendar/gui/e-day-view-main-item.c
+index b03ac81983..3b2d437177 100644
+--- a/calendar/gui/e-day-view-main-item.c
++++ b/calendar/gui/e-day-view-main-item.c
+@@ -1002,13 +1002,8 @@ day_view_main_item_draw (GnomeCanvasItem *canvas_item,
+ 	ECalendarView *cal_view;
+ 	ECalModel *model;
+ 	gint time_divisions;
+-	gint work_day_start_hour;
+-	gint work_day_start_minute;
+-	gint work_day_end_hour;
+-	gint work_day_end_minute;
+ 	gint row, row_y, grid_x1, grid_x2;
+ 	gint day, grid_y1, grid_y2;
+-	gint work_day_start_y, work_day_end_y;
+ 	gint day_x, day_w;
+ 	gint start_row, end_row, rect_x, rect_y, rect_width, rect_height;
+ 	gint days_shown;
+@@ -1031,10 +1026,6 @@ day_view_main_item_draw (GnomeCanvasItem *canvas_item,
+ 	time_divisions = e_calendar_view_get_time_divisions (cal_view);
+ 
+ 	model = e_calendar_view_get_model (cal_view);
+-	work_day_start_hour = e_cal_model_get_work_day_start_hour (model);
+-	work_day_start_minute = e_cal_model_get_work_day_start_minute (model);
+-	work_day_end_hour = e_cal_model_get_work_day_end_hour (model);
+-	work_day_end_minute = e_cal_model_get_work_day_end_minute (model);
+ 
+ 	rect.x = 0;
+ 	rect.y = 0;
+@@ -1046,10 +1037,6 @@ day_view_main_item_draw (GnomeCanvasItem *canvas_item,
+ 		draw_region = cairo_region_create ();
+ 
+ 	/* Paint the background colors. */
+-	work_day_start_y = e_day_view_convert_time_to_position (
+-		day_view, work_day_start_hour, work_day_start_minute) - y;
+-	work_day_end_y = e_day_view_convert_time_to_position (
+-		day_view, work_day_end_hour, work_day_end_minute) - y;
+ 
+ 	today_tt = icaltime_from_timet_with_zone (
+ 		time (NULL), FALSE,
+@@ -1093,6 +1080,21 @@ day_view_main_item_draw (GnomeCanvasItem *canvas_item,
+ 		day_w = day_view->day_widths[day];
+ 
+ 		if (e_cal_model_get_work_day (model, weekday)) {
++			gint work_day_start_hour;
++			gint work_day_start_minute;
++			gint work_day_end_hour;
++			gint work_day_end_minute;
++			gint work_day_start_y, work_day_end_y;
++
++			e_cal_model_get_work_day_range_for (model, weekday,
++				&work_day_start_hour, &work_day_start_minute,
++				&work_day_end_hour, &work_day_end_minute);
++
++			work_day_start_y = e_day_view_convert_time_to_position (
++				day_view, work_day_start_hour, work_day_start_minute) - y;
++			work_day_end_y = e_day_view_convert_time_to_position (
++				day_view, work_day_end_hour, work_day_end_minute) - y;
++
+ 			if (can_draw_in_region (draw_region, day_x, 0 - y, day_w, work_day_start_y - (0 - y))) {
+ 				cairo_save (cr);
+ 				gdk_cairo_set_source_color (cr, &day_view->colors[E_DAY_VIEW_COLOR_BG_NOT_WORKING]);
+diff --git a/calendar/gui/e-day-view.c b/calendar/gui/e-day-view.c
+index a02d8d583d..b9a5cdc926 100644
+--- a/calendar/gui/e-day-view.c
++++ b/calendar/gui/e-day-view.c
+@@ -106,6 +106,20 @@ struct _EDayViewPrivate {
+ 	gulong notify_work_day_start_minute_handler_id;
+ 	gulong notify_work_day_end_hour_handler_id;
+ 	gulong notify_work_day_end_minute_handler_id;
++	gulong notify_work_day_start_mon_handler_id;
++	gulong notify_work_day_end_mon_handler_id;
++	gulong notify_work_day_start_tue_handler_id;
++	gulong notify_work_day_end_tue_handler_id;
++	gulong notify_work_day_start_wed_handler_id;
++	gulong notify_work_day_end_wed_handler_id;
++	gulong notify_work_day_start_thu_handler_id;
++	gulong notify_work_day_end_thu_handler_id;
++	gulong notify_work_day_start_fri_handler_id;
++	gulong notify_work_day_end_fri_handler_id;
++	gulong notify_work_day_start_sat_handler_id;
++	gulong notify_work_day_end_sat_handler_id;
++	gulong notify_work_day_start_sun_handler_id;
++	gulong notify_work_day_end_sun_handler_id;
+ 	gulong time_range_changed_handler_id;
+ 	gulong model_row_changed_handler_id;
+ 	gulong model_cell_changed_handler_id;
+@@ -545,19 +559,75 @@ day_view_notify_work_day_cb (ECalModel *model,
+ 	gtk_widget_queue_draw (day_view->main_canvas);
+ }
+ 
++static void
++e_day_view_get_work_day_range_for_day (EDayView *day_view,
++				       gint day,
++				       gint *start_hour,
++				       gint *start_minute,
++				       gint *end_hour,
++				       gint *end_minute)
++{
++	ECalModel *model;
++
++	g_return_if_fail (E_IS_DAY_VIEW (day_view));
++	g_return_if_fail (start_hour != NULL);
++	g_return_if_fail (start_minute != NULL);
++	g_return_if_fail (end_hour != NULL);
++	g_return_if_fail (end_minute != NULL);
++
++	model = e_calendar_view_get_model (E_CALENDAR_VIEW (day_view));
++
++	if (day >= 0 && day < e_day_view_get_days_shown (day_view)) {
++		GDateWeekday weekday;
++		struct icaltimetype tt;
++
++		tt = icaltime_from_timet_with_zone (day_view->day_starts[day], FALSE,
++			e_calendar_view_get_timezone (E_CALENDAR_VIEW (day_view)));
++
++		switch (icaltime_day_of_week (tt)) {
++			case 1:
++				weekday = G_DATE_SUNDAY;
++				break;
++			case 2:
++				weekday = G_DATE_MONDAY;
++				break;
++			case 3:
++				weekday = G_DATE_TUESDAY;
++				break;
++			case 4:
++				weekday = G_DATE_WEDNESDAY;
++				break;
++			case 5:
++				weekday = G_DATE_THURSDAY;
++				break;
++			case 6:
++				weekday = G_DATE_FRIDAY;
++				break;
++			case 7:
++				weekday = G_DATE_SATURDAY;
++				break;
++			default:
++				weekday = G_DATE_BAD_WEEKDAY;
++				break;
++		}
++
++		e_cal_model_get_work_day_range_for (model, weekday,
++			start_hour, start_minute,
++			end_hour, end_minute);
++	} else {
++		*start_hour = e_cal_model_get_work_day_start_hour (model);
++		*start_minute = e_cal_model_get_work_day_start_minute (model);
++		*end_hour = e_cal_model_get_work_day_end_hour (model);
++		*end_minute = e_cal_model_get_work_day_end_minute (model);
++	}
++}
++
+ static void
+ e_day_view_recalc_main_canvas_size (EDayView *day_view)
+ {
+-	ECalModel *model;
+-	gint work_day_start_hour;
+-	gint work_day_start_minute;
+ 	gint day, scroll_y;
+ 	gboolean need_reshape;
+ 
+-	model = e_calendar_view_get_model (E_CALENDAR_VIEW (day_view));
+-	work_day_start_hour = e_cal_model_get_work_day_start_hour (model);
+-	work_day_start_minute = e_cal_model_get_work_day_start_minute (model);
+-
+ 	/* Set the scroll region of the top canvas */
+ 	e_day_view_update_top_scroll (day_view, TRUE);
+ 
+@@ -568,6 +638,15 @@ e_day_view_recalc_main_canvas_size (EDayView *day_view)
+ 	/* Scroll to the start of the working day, if this is the initial
+ 	 * allocation. */
+ 	if (day_view->scroll_to_work_day) {
++		gint work_day_start_hour;
++		gint work_day_start_minute;
++		gint work_day_end_hour;
++		gint work_day_end_minute;
++
++		e_day_view_get_work_day_range_for_day (day_view, 0,
++			&work_day_start_hour, &work_day_start_minute,
++			&work_day_end_hour, &work_day_end_minute);
++
+ 		scroll_y = e_day_view_convert_time_to_position (
+ 			day_view, work_day_start_hour, work_day_start_minute);
+ 		gnome_canvas_scroll_to (
+@@ -935,131 +1014,47 @@ day_view_dispose (GObject *object)
+ 		day_view->grabbed_pointer = NULL;
+ 	}
+ 
+-	if (day_view->priv->notify_work_day_monday_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->notify_work_day_monday_handler_id);
+-		day_view->priv->notify_work_day_monday_handler_id = 0;
+-	}
+-
+-	if (day_view->priv->notify_work_day_tuesday_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->notify_work_day_tuesday_handler_id);
+-		day_view->priv->notify_work_day_tuesday_handler_id = 0;
+-	}
+-
+-	if (day_view->priv->notify_work_day_wednesday_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->notify_work_day_wednesday_handler_id);
+-		day_view->priv->notify_work_day_wednesday_handler_id = 0;
+-	}
+-
+-	if (day_view->priv->notify_work_day_thursday_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->notify_work_day_thursday_handler_id);
+-		day_view->priv->notify_work_day_thursday_handler_id = 0;
+-	}
+-
+-	if (day_view->priv->notify_work_day_friday_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->notify_work_day_friday_handler_id);
+-		day_view->priv->notify_work_day_friday_handler_id = 0;
+-	}
+-
+-	if (day_view->priv->notify_work_day_saturday_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->notify_work_day_saturday_handler_id);
+-		day_view->priv->notify_work_day_saturday_handler_id = 0;
+-	}
+-
+-	if (day_view->priv->notify_work_day_sunday_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->notify_work_day_sunday_handler_id);
+-		day_view->priv->notify_work_day_sunday_handler_id = 0;
+-	}
+-
+-	if (day_view->priv->notify_week_start_day_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->notify_week_start_day_handler_id);
+-		day_view->priv->notify_week_start_day_handler_id = 0;
+-	}
+-
+-	if (day_view->priv->notify_work_day_start_hour_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->notify_work_day_start_hour_handler_id);
+-		day_view->priv->notify_work_day_start_hour_handler_id = 0;
+-	}
+-
+-	if (day_view->priv->notify_work_day_start_minute_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->notify_work_day_start_minute_handler_id);
+-		day_view->priv->notify_work_day_start_minute_handler_id = 0;
+-	}
+-
+-	if (day_view->priv->notify_work_day_end_hour_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->notify_work_day_end_hour_handler_id);
+-		day_view->priv->notify_work_day_end_hour_handler_id = 0;
+-	}
+-
+-	if (day_view->priv->notify_work_day_end_minute_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->notify_work_day_end_minute_handler_id);
+-		day_view->priv->notify_work_day_end_minute_handler_id = 0;
+-	}
+-
+-	if (day_view->priv->time_range_changed_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->time_range_changed_handler_id);
+-		day_view->priv->time_range_changed_handler_id = 0;
+-	}
+-
+-	if (day_view->priv->model_row_changed_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->model_row_changed_handler_id);
+-		day_view->priv->model_row_changed_handler_id = 0;
+-	}
+-
+-	if (day_view->priv->model_cell_changed_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->model_cell_changed_handler_id);
+-		day_view->priv->model_cell_changed_handler_id = 0;
+-	}
+-
+-	if (day_view->priv->model_rows_inserted_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->model_rows_inserted_handler_id);
+-		day_view->priv->model_rows_inserted_handler_id = 0;
+-	}
+-
+-	if (day_view->priv->comps_deleted_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->comps_deleted_handler_id);
+-		day_view->priv->comps_deleted_handler_id = 0;
+-	}
+-
+-	if (day_view->priv->timezone_changed_handler_id > 0) {
+-		g_signal_handler_disconnect (
+-			day_view->priv->model,
+-			day_view->priv->timezone_changed_handler_id);
+-		day_view->priv->timezone_changed_handler_id = 0;
+-	}
++	#define disconnect_model_handler(x) G_STMT_START { \
++		if ((x) > 0) { \
++			g_signal_handler_disconnect (day_view->priv->model, (x)); \
++			(x) = 0; \
++		} \
++	} G_STMT_END
++
++	disconnect_model_handler (day_view->priv->notify_work_day_monday_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_tuesday_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_wednesday_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_thursday_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_friday_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_saturday_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_sunday_handler_id);
++	disconnect_model_handler (day_view->priv->notify_week_start_day_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_start_hour_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_start_minute_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_end_hour_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_end_minute_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_start_mon_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_end_mon_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_start_tue_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_end_tue_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_start_wed_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_end_wed_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_start_thu_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_end_thu_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_start_fri_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_end_fri_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_start_sat_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_end_sat_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_start_sun_handler_id);
++	disconnect_model_handler (day_view->priv->notify_work_day_end_sun_handler_id);
++	disconnect_model_handler (day_view->priv->time_range_changed_handler_id);
++	disconnect_model_handler (day_view->priv->model_row_changed_handler_id);
++	disconnect_model_handler (day_view->priv->model_cell_changed_handler_id);
++	disconnect_model_handler (day_view->priv->model_rows_inserted_handler_id);
++	disconnect_model_handler (day_view->priv->comps_deleted_handler_id);
++	disconnect_model_handler (day_view->priv->timezone_changed_handler_id);
++
++	#undef disconnect_model_handler
+ 
+ 	if (day_view->priv->top_canvas_button_press_event_handler_id > 0) {
+ 		g_signal_handler_disconnect (
+@@ -1320,6 +1315,76 @@ day_view_constructed (GObject *object)
+ 		G_CALLBACK (gtk_widget_queue_draw), day_view->main_canvas);
+ 	day_view->priv->notify_work_day_end_minute_handler_id = handler_id;
+ 
++	handler_id = e_signal_connect_notify_swapped (
++		model, "notify::work-day-start-mon",
++		G_CALLBACK (gtk_widget_queue_draw), day_view->main_canvas);
++	day_view->priv->notify_work_day_start_mon_handler_id = handler_id;
++
++	handler_id = e_signal_connect_notify_swapped (
++		model, "notify::work-day-end-mon",
++		G_CALLBACK (gtk_widget_queue_draw), day_view->main_canvas);
++	day_view->priv->notify_work_day_end_mon_handler_id = handler_id;
++
++	handler_id = e_signal_connect_notify_swapped (
++		model, "notify::work-day-start-tue",
++		G_CALLBACK (gtk_widget_queue_draw), day_view->main_canvas);
++	day_view->priv->notify_work_day_start_tue_handler_id = handler_id;
++
++	handler_id = e_signal_connect_notify_swapped (
++		model, "notify::work-day-end-tue",
++		G_CALLBACK (gtk_widget_queue_draw), day_view->main_canvas);
++	day_view->priv->notify_work_day_end_tue_handler_id = handler_id;
++
++	handler_id = e_signal_connect_notify_swapped (
++		model, "notify::work-day-start-wed",
++		G_CALLBACK (gtk_widget_queue_draw), day_view->main_canvas);
++	day_view->priv->notify_work_day_start_wed_handler_id = handler_id;
++
++	handler_id = e_signal_connect_notify_swapped (
++		model, "notify::work-day-end-wed",
++		G_CALLBACK (gtk_widget_queue_draw), day_view->main_canvas);
++	day_view->priv->notify_work_day_end_wed_handler_id = handler_id;
++
++	handler_id = e_signal_connect_notify_swapped (
++		model, "notify::work-day-start-thu",
++		G_CALLBACK (gtk_widget_queue_draw), day_view->main_canvas);
++	day_view->priv->notify_work_day_start_thu_handler_id = handler_id;
++
++	handler_id = e_signal_connect_notify_swapped (
++		model, "notify::work-day-end-thu",
++		G_CALLBACK (gtk_widget_queue_draw), day_view->main_canvas);
++	day_view->priv->notify_work_day_end_thu_handler_id = handler_id;
++
++	handler_id = e_signal_connect_notify_swapped (
++		model, "notify::work-day-start-fri",
++		G_CALLBACK (gtk_widget_queue_draw), day_view->main_canvas);
++	day_view->priv->notify_work_day_start_fri_handler_id = handler_id;
++
++	handler_id = e_signal_connect_notify_swapped (
++		model, "notify::work-day-end-fri",
++		G_CALLBACK (gtk_widget_queue_draw), day_view->main_canvas);
++	day_view->priv->notify_work_day_end_fri_handler_id = handler_id;
++
++	handler_id = e_signal_connect_notify_swapped (
++		model, "notify::work-day-start-sat",
++		G_CALLBACK (gtk_widget_queue_draw), day_view->main_canvas);
++	day_view->priv->notify_work_day_start_sat_handler_id = handler_id;
++
++	handler_id = e_signal_connect_notify_swapped (
++		model, "notify::work-day-end-sat",
++		G_CALLBACK (gtk_widget_queue_draw), day_view->main_canvas);
++	day_view->priv->notify_work_day_end_sat_handler_id = handler_id;
++
++	handler_id = e_signal_connect_notify_swapped (
++		model, "notify::work-day-start-sun",
++		G_CALLBACK (gtk_widget_queue_draw), day_view->main_canvas);
++	day_view->priv->notify_work_day_start_sun_handler_id = handler_id;
++
++	handler_id = e_signal_connect_notify_swapped (
++		model, "notify::work-day-end-sun",
++		G_CALLBACK (gtk_widget_queue_draw), day_view->main_canvas);
++	day_view->priv->notify_work_day_end_sun_handler_id = handler_id;
++
+ 	e_day_view_update_timezone_name_labels (day_view);
+ }
+ 
+@@ -1777,17 +1842,15 @@ day_view_set_selected_time_range (ECalendarView *cal_view,
+                                   time_t start_time,
+                                   time_t end_time)
+ {
+-	ECalModel *model;
+ 	EDayView *day_view;
+ 	gint work_day_start_hour;
+ 	gint work_day_start_minute;
++	gint work_day_end_hour;
++	gint work_day_end_minute;
+ 	gint start_row, start_col, end_row, end_col;
+ 	gboolean need_redraw = FALSE, start_in_grid, end_in_grid;
+ 
+ 	day_view = E_DAY_VIEW (cal_view);
+-	model = e_calendar_view_get_model (cal_view);
+-	work_day_start_hour = e_cal_model_get_work_day_start_hour (model);
+-	work_day_start_minute = e_cal_model_get_work_day_start_minute (model);
+ 
+ 	if (start_time == end_time)
+ 		end_time += e_calendar_view_get_time_divisions (cal_view) * 60;
+@@ -1804,6 +1867,10 @@ day_view_set_selected_time_range (ECalendarView *cal_view,
+ 		&end_col,
+ 		&end_row);
+ 
++	e_day_view_get_work_day_range_for_day (day_view, start_col,
++		&work_day_start_hour, &work_day_start_minute,
++		&work_day_end_hour, &work_day_end_minute);
++
+ 	/* If either of the times isn't in the grid, or the selection covers
+ 	 * an entire day, we set the selection to 1 row from the start of the
+ 	 * working day, in the day corresponding to the start time. */
+@@ -3542,18 +3609,15 @@ e_day_view_set_selected_time_range_visible (EDayView *day_view,
+                                             time_t start_time,
+                                             time_t end_time)
+ {
+-	ECalModel *model;
+ 	gint work_day_start_hour;
+ 	gint work_day_start_minute;
++	gint work_day_end_hour;
++	gint work_day_end_minute;
+ 	gint start_row, start_col, end_row, end_col;
+ 	gboolean need_redraw = FALSE, start_in_grid, end_in_grid;
+ 
+ 	g_return_if_fail (E_IS_DAY_VIEW (day_view));
+ 
+-	model = e_calendar_view_get_model (E_CALENDAR_VIEW (day_view));
+-	work_day_start_hour = e_cal_model_get_work_day_start_hour (model);
+-	work_day_start_minute = e_cal_model_get_work_day_start_minute (model);
+-
+ 	/* Set the selection. */
+ 	start_in_grid = e_day_view_convert_time_to_grid_position (
+ 		day_view,
+@@ -3562,9 +3626,13 @@ e_day_view_set_selected_time_range_visible (EDayView *day_view,
+ 		&start_row);
+ 	end_in_grid = e_day_view_convert_time_to_grid_position (
+ 		day_view,
+-								end_time - 60,
+-								&end_col,
+-								&end_row);
++		end_time - 60,
++		&end_col,
++		&end_row);
++
++	e_day_view_get_work_day_range_for_day (day_view, start_col,
++		&work_day_start_hour, &work_day_start_minute,
++		&work_day_end_hour, &work_day_end_minute);
+ 
+ 	/* If either of the times isn't in the grid, or the selection covers
+ 	 * an entire day, we set the selection to 1 row from the start of the
+@@ -6350,21 +6418,23 @@ e_day_view_do_key_press (GtkWidget *widget,
+ static void
+ e_day_view_goto_start_of_work_day (EDayView *day_view)
+ {
+-	ECalModel *model;
+ 	gint work_day_start_hour;
+ 	gint work_day_start_minute;
+-
+-	model = e_calendar_view_get_model (E_CALENDAR_VIEW (day_view));
+-	work_day_start_hour = e_cal_model_get_work_day_start_hour (model);
+-	work_day_start_minute = e_cal_model_get_work_day_start_minute (model);
++	gint work_day_end_hour;
++	gint work_day_end_minute;
+ 
+ 	if (day_view->selection_in_top_canvas)
+ 		return;
+-	else
+-		day_view->selection_start_row =
+-			e_day_view_convert_time_to_row (
+-			day_view, work_day_start_hour, work_day_start_minute);
++
++	e_day_view_get_work_day_range_for_day (day_view, day_view->selection_start_day,
++		&work_day_start_hour, &work_day_start_minute,
++		&work_day_end_hour, &work_day_end_minute);
++
++	day_view->selection_start_row =
++		e_day_view_convert_time_to_row (
++		day_view, work_day_start_hour, work_day_start_minute);
+ 	day_view->selection_end_row = day_view->selection_start_row;
++	day_view->selection_end_day = day_view->selection_start_day;
+ 
+ 	e_day_view_ensure_rows_visible (
+ 		day_view,
+@@ -6382,21 +6452,23 @@ e_day_view_goto_start_of_work_day (EDayView *day_view)
+ static void
+ e_day_view_goto_end_of_work_day (EDayView *day_view)
+ {
+-	ECalModel *model;
++	gint work_day_start_hour;
++	gint work_day_start_minute;
+ 	gint work_day_end_hour;
+ 	gint work_day_end_minute;
+ 
+-	model = e_calendar_view_get_model (E_CALENDAR_VIEW (day_view));
+-	work_day_end_hour = e_cal_model_get_work_day_end_hour (model);
+-	work_day_end_minute = e_cal_model_get_work_day_end_minute (model);
+-
+ 	if (day_view->selection_in_top_canvas)
+ 		return;
+-	else
+-		day_view->selection_start_row =
+-			e_day_view_convert_time_to_row (
+-			day_view, work_day_end_hour - 1, work_day_end_minute + 30);
++
++	e_day_view_get_work_day_range_for_day (day_view, day_view->selection_end_day,
++		&work_day_start_hour, &work_day_start_minute,
++		&work_day_end_hour, &work_day_end_minute);
++
++	day_view->selection_start_row =
++		e_day_view_convert_time_to_row (
++		day_view, work_day_end_hour - 1, work_day_end_minute + 30);
+ 	day_view->selection_end_row = day_view->selection_start_row;
++	day_view->selection_start_day = day_view->selection_end_day;
+ 
+ 	e_day_view_ensure_rows_visible (
+ 		day_view,
+@@ -6414,29 +6486,27 @@ e_day_view_goto_end_of_work_day (EDayView *day_view)
+ static void
+ e_day_view_change_duration_to_start_of_work_day (EDayView *day_view)
+ {
+-	ECalModel *model;
++	gint work_start_row;
+ 	gint work_day_start_hour;
+ 	gint work_day_start_minute;
++	gint work_day_end_hour;
++	gint work_day_end_minute;
+ 
+ 	g_return_if_fail (day_view != NULL);
+ 
+-	model = e_calendar_view_get_model (E_CALENDAR_VIEW (day_view));
+-	work_day_start_hour = e_cal_model_get_work_day_start_hour (model);
+-	work_day_start_minute = e_cal_model_get_work_day_start_minute (model);
+-
+ 	if (day_view->selection_in_top_canvas)
+ 		return;
+-	else {
+-		/* These are never used after being set? */
+-		gint work_start_row,selection_start_row;
+ 
+-		work_start_row = e_day_view_convert_time_to_row (
+-			day_view, work_day_start_hour, work_day_start_minute);
+-		selection_start_row = day_view->selection_start_row;
+-		if (selection_start_row < work_start_row)
+-			day_view->selection_end_row = work_start_row - 1;
+-		else day_view->selection_start_row = work_start_row;
+-	}
++	e_day_view_get_work_day_range_for_day (day_view, day_view->selection_start_day,
++		&work_day_start_hour, &work_day_start_minute,
++		&work_day_end_hour, &work_day_end_minute);
++
++	work_start_row = e_day_view_convert_time_to_row (day_view, work_day_start_hour, work_day_start_minute);
++
++	if (day_view->selection_start_row < work_start_row)
++		day_view->selection_end_row = work_start_row - 1;
++	else
++		day_view->selection_start_row = work_start_row;
+ 
+ 	e_day_view_ensure_rows_visible (
+ 		day_view,
+@@ -6454,30 +6524,30 @@ e_day_view_change_duration_to_start_of_work_day (EDayView *day_view)
+ static void
+ e_day_view_change_duration_to_end_of_work_day (EDayView *day_view)
+ {
+-	ECalModel *model;
++	gint selection_start_row, work_end_row;
++	gint work_day_start_hour;
++	gint work_day_start_minute;
+ 	gint work_day_end_hour;
+ 	gint work_day_end_minute;
+ 
+ 	g_return_if_fail (day_view != NULL);
+ 
+-	model = e_calendar_view_get_model (E_CALENDAR_VIEW (day_view));
+-	work_day_end_hour = e_cal_model_get_work_day_end_hour (model);
+-	work_day_end_minute = e_cal_model_get_work_day_end_minute (model);
+-
+ 	if (day_view->selection_in_top_canvas)
+ 		return;
+-	else {
+-		gint work_end_row,selection_start_row;
+ 
+-		work_end_row = e_day_view_convert_time_to_row (
+-			day_view, work_day_end_hour - 1, work_day_end_minute + 30);
+-		selection_start_row = day_view->selection_start_row;
+-		if (selection_start_row <= work_end_row)
+-			day_view->selection_end_row = work_end_row;
+-		else {
+-			day_view->selection_start_row = work_end_row + 1;
+-			day_view->selection_end_row = selection_start_row;
+-		}
++	e_day_view_get_work_day_range_for_day (day_view, day_view->selection_start_day,
++		&work_day_start_hour, &work_day_start_minute,
++		&work_day_end_hour, &work_day_end_minute);
++
++	work_end_row = e_day_view_convert_time_to_row (
++		day_view, work_day_end_hour - 1, work_day_end_minute + 30);
++	selection_start_row = day_view->selection_start_row;
++
++	if (selection_start_row <= work_end_row) {
++		day_view->selection_end_row = work_end_row;
++	} else {
++		day_view->selection_start_row = work_end_row + 1;
++		day_view->selection_end_row = selection_start_row;
+ 	}
+ 
+ 	e_day_view_ensure_rows_visible (
+diff --git a/calendar/gui/e-meeting-time-sel.c b/calendar/gui/e-meeting-time-sel.c
+index bdc404765d..36b0fcd166 100644
+--- a/calendar/gui/e-meeting-time-sel.c
++++ b/calendar/gui/e-meeting-time-sel.c
+@@ -316,6 +316,8 @@ e_meeting_time_selector_class_init (EMeetingTimeSelectorClass *class)
+ static void
+ e_meeting_time_selector_init (EMeetingTimeSelector *mts)
+ {
++	GDateWeekday weekday;
++
+ 	mts->priv = E_MEETING_TIME_SELECTOR_GET_PRIVATE (mts);
+ 
+ 	/* The shadow is drawn in the border so it must be >= 2 pixels. */
+@@ -324,10 +326,14 @@ e_meeting_time_selector_init (EMeetingTimeSelector *mts)
+ 	mts->accel_group = gtk_accel_group_new ();
+ 
+ 	mts->working_hours_only = TRUE;
+-	mts->day_start_hour = 9;
+-	mts->day_start_minute = 0;
+-	mts->day_end_hour = 18;
+-	mts->day_end_minute = 0;
++
++	for (weekday = G_DATE_BAD_WEEKDAY; weekday <= G_DATE_SUNDAY; weekday++) {
++		mts->day_start_hour[weekday] = 9;
++		mts->day_start_minute[weekday] = 0;
++		mts->day_end_hour[weekday] = 18;
++		mts->day_end_minute[weekday] = 0;
++	}
++
+ 	mts->zoomed_out = FALSE;
+ 	mts->dragging_position = E_MEETING_TIME_SELECTOR_POS_NONE;
+ 
+@@ -1344,6 +1350,7 @@ e_meeting_time_selector_set_working_hours_only (EMeetingTimeSelector *mts,
+ 
+ void
+ e_meeting_time_selector_set_working_hours (EMeetingTimeSelector *mts,
++					   GDateWeekday for_weekday,
+                                            gint day_start_hour,
+                                            gint day_start_minute,
+                                            gint day_end_hour,
+@@ -1352,23 +1359,31 @@ e_meeting_time_selector_set_working_hours (EMeetingTimeSelector *mts,
+ 	EMeetingTime saved_time;
+ 
+ 	g_return_if_fail (E_IS_MEETING_TIME_SELECTOR (mts));
++	g_return_if_fail (for_weekday == G_DATE_MONDAY ||
++			  for_weekday == G_DATE_TUESDAY ||
++			  for_weekday == G_DATE_WEDNESDAY ||
++			  for_weekday == G_DATE_THURSDAY ||
++			  for_weekday == G_DATE_FRIDAY ||
++			  for_weekday == G_DATE_SATURDAY ||
++			  for_weekday == G_DATE_SUNDAY ||
++			  for_weekday == G_DATE_BAD_WEEKDAY);
+ 
+-	if (mts->day_start_hour == day_start_hour
+-	    && mts->day_start_minute == day_start_minute
+-	    && mts->day_end_hour == day_end_hour
+-	    && mts->day_end_minute == day_end_minute)
++	if (mts->day_start_hour[for_weekday] == day_start_hour
++	    && mts->day_start_minute[for_weekday] == day_start_minute
++	    && mts->day_end_hour[for_weekday] == day_end_hour
++	    && mts->day_end_minute[for_weekday] == day_end_minute)
+ 		return;
+ 
+-	mts->day_start_hour = day_start_hour;
+-	mts->day_start_minute = day_start_minute;
++	mts->day_start_hour[for_weekday] = day_start_hour;
++	mts->day_start_minute[for_weekday] = day_start_minute;
+ 
+ 	/* Make sure we always show atleast an hour */
+ 	if (day_start_hour * 60 + day_start_minute + 60 < day_end_hour * 60 + day_end_minute) {
+-		mts->day_end_hour = day_end_hour;
+-		mts->day_end_minute = day_end_minute;
++		mts->day_end_hour[for_weekday] = day_end_hour;
++		mts->day_end_minute[for_weekday] = day_end_minute;
+ 	} else {
+-		mts->day_end_hour = day_start_hour + 1;
+-		mts->day_end_minute = day_start_minute;
++		mts->day_end_hour[for_weekday] = day_start_hour + 1;
++		mts->day_end_minute[for_weekday] = day_start_minute;
+ 	}
+ 
+ 	e_meeting_time_selector_save_position (mts, &saved_time);
+@@ -1913,6 +1928,22 @@ e_meeting_time_selector_calculate_time_difference (EMeetingTime *start,
+ 	}
+ }
+ 
++static GDateWeekday
++e_meeting_time_selector_get_time_weekday (const EMeetingTime *time)
++{
++	GDateWeekday weekday;
++
++	if (!time || !g_date_valid (&time->date))
++		return G_DATE_BAD_WEEKDAY;
++
++	weekday = g_date_get_weekday (&time->date);
++
++	if (weekday < G_DATE_BAD_WEEKDAY || weekday > G_DATE_SUNDAY)
++		weekday = G_DATE_BAD_WEEKDAY;
++
++	return weekday;
++}
++
+ /* This moves the given time forward to the next suitable start of a meeting.
+  * If zoomed_out is set, this means every hour. If not every half-hour. */
+ static void
+@@ -1923,6 +1954,7 @@ e_meeting_time_selector_find_nearest_interval (EMeetingTimeSelector *mts,
+                                                gint hours,
+                                                gint mins)
+ {
++	GDateWeekday start_weekday, end_weekday;
+ 	gint minutes_shown;
+ 	gboolean set_to_start_of_working_day = FALSE;
+ 
+@@ -1948,31 +1980,35 @@ e_meeting_time_selector_find_nearest_interval (EMeetingTimeSelector *mts,
+ 	 * If it isn't we don't worry about the working day. */
+ 	if (!mts->working_hours_only || days > 0)
+ 		return;
+-	minutes_shown = (mts->day_end_hour - mts->day_start_hour) * 60;
+-	minutes_shown += mts->day_end_minute - mts->day_start_minute;
++
++	start_weekday = e_meeting_time_selector_get_time_weekday (start_time);
++	end_weekday = e_meeting_time_selector_get_time_weekday (end_time);
++
++	minutes_shown = (mts->day_end_hour[end_weekday] - mts->day_start_hour[start_weekday]) * 60;
++	minutes_shown += mts->day_end_minute[end_weekday] - mts->day_start_minute[start_weekday];
+ 	if (hours * 60 + mins > minutes_shown)
+ 		return;
+ 
+ 	/* If the meeting time finishes past the end of the working day, move
+ 	 * onto the start of the next working day. If the meeting time starts
+ 	 * before the working day, move it on as well. */
+-	if (start_time->hour > mts->day_end_hour
+-	    || (start_time->hour == mts->day_end_hour
+-		&& start_time->minute > mts->day_end_minute)
+-	    || end_time->hour > mts->day_end_hour
+-	    || (end_time->hour == mts->day_end_hour
+-		&& end_time->minute > mts->day_end_minute)) {
++	if (start_time->hour > mts->day_end_hour[end_weekday]
++	    || (start_time->hour == mts->day_end_hour[end_weekday]
++		&& start_time->minute > mts->day_end_minute[end_weekday])
++	    || end_time->hour > mts->day_end_hour[end_weekday]
++	    || (end_time->hour == mts->day_end_hour[end_weekday]
++		&& end_time->minute > mts->day_end_minute[end_weekday])) {
+ 		g_date_add_days (&start_time->date, 1);
+ 		set_to_start_of_working_day = TRUE;
+-	} else if (start_time->hour < mts->day_start_hour
+-		   || (start_time->hour == mts->day_start_hour
+-		       && start_time->minute < mts->day_start_minute)) {
++	} else if (start_time->hour < mts->day_start_hour[start_weekday]
++		   || (start_time->hour == mts->day_start_hour[start_weekday]
++		       && start_time->minute < mts->day_start_minute[start_weekday])) {
+ 		set_to_start_of_working_day = TRUE;
+ 	}
+ 
+ 	if (set_to_start_of_working_day) {
+-		start_time->hour = mts->day_start_hour;
+-		start_time->minute = mts->day_start_minute;
++		start_time->hour = mts->day_start_hour[start_weekday];
++		start_time->minute = mts->day_start_minute[start_weekday];
+ 
+ 		if (mts->zoomed_out) {
+ 			if (start_time->minute > 0) {
+@@ -2001,6 +2037,7 @@ e_meeting_time_selector_find_nearest_interval_backward (EMeetingTimeSelector *mt
+                                                         gint hours,
+                                                         gint mins)
+ {
++	GDateWeekday start_weekday, end_weekday;
+ 	gint new_hour, minutes_shown;
+ 	gboolean set_to_end_of_working_day = FALSE;
+ 
+@@ -2037,8 +2074,13 @@ e_meeting_time_selector_find_nearest_interval_backward (EMeetingTimeSelector *mt
+ 	 * If it isn't we don't worry about the working day. */
+ 	if (!mts->working_hours_only || days > 0)
+ 		return;
+-	minutes_shown = (mts->day_end_hour - mts->day_start_hour) * 60;
+-	minutes_shown += mts->day_end_minute - mts->day_start_minute;
++
++	start_weekday = e_meeting_time_selector_get_time_weekday (start_time);
++	end_weekday = e_meeting_time_selector_get_time_weekday (end_time);
++
++	minutes_shown = (mts->day_end_hour[end_weekday] - mts->day_start_hour[start_weekday]) * 60;
++	minutes_shown += mts->day_end_minute[end_weekday] - mts->day_start_minute[start_weekday];
++
+ 	if (hours * 60 + mins > minutes_shown)
+ 		return;
+ 
+@@ -2046,23 +2088,23 @@ e_meeting_time_selector_find_nearest_interval_backward (EMeetingTimeSelector *mt
+ 	 * back to the end of the working day. If the meeting time starts
+ 	 * before the working day, move it back to the end of the previous
+ 	 * working day. */
+-	if (start_time->hour > mts->day_end_hour
+-	    || (start_time->hour == mts->day_end_hour
+-		&& start_time->minute > mts->day_end_minute)
+-	    || end_time->hour > mts->day_end_hour
+-	    || (end_time->hour == mts->day_end_hour
+-		&& end_time->minute > mts->day_end_minute)) {
++	if (start_time->hour > mts->day_end_hour[end_weekday]
++	    || (start_time->hour == mts->day_end_hour[end_weekday]
++		&& start_time->minute > mts->day_end_minute[end_weekday])
++	    || end_time->hour > mts->day_end_hour[end_weekday]
++	    || (end_time->hour == mts->day_end_hour[end_weekday]
++		&& end_time->minute > mts->day_end_minute[end_weekday])) {
+ 		set_to_end_of_working_day = TRUE;
+-	} else if (start_time->hour < mts->day_start_hour
+-		   || (start_time->hour == mts->day_start_hour
+-		       && start_time->minute < mts->day_start_minute)) {
++	} else if (start_time->hour < mts->day_start_hour[start_weekday]
++		   || (start_time->hour == mts->day_start_hour[start_weekday]
++		       && start_time->minute < mts->day_start_minute[start_weekday])) {
+ 		g_date_subtract_days (&end_time->date, 1);
+ 		set_to_end_of_working_day = TRUE;
+ 	}
+ 
+ 	if (set_to_end_of_working_day) {
+-		end_time->hour = mts->day_end_hour;
+-		end_time->minute = mts->day_end_minute;
++		end_time->hour = mts->day_end_hour[end_weekday];
++		end_time->minute = mts->day_end_minute[end_weekday];
+ 		*start_time = *end_time;
+ 		e_meeting_time_selector_adjust_time (start_time, -days, -hours, -mins);
+ 
+@@ -2188,10 +2230,20 @@ static void
+ e_meeting_time_selector_recalc_grid (EMeetingTimeSelector *mts)
+ {
+ 	if (mts->working_hours_only) {
+-		mts->first_hour_shown = mts->day_start_hour;
+-		mts->last_hour_shown = mts->day_end_hour;
+-		if (mts->day_end_minute != 0)
+-			mts->last_hour_shown += 1;
++		GDateWeekday weekday;
++
++		mts->first_hour_shown = mts->day_start_hour[G_DATE_BAD_WEEKDAY];
++		mts->last_hour_shown = mts->day_end_hour[G_DATE_BAD_WEEKDAY];
++
++		for (weekday = G_DATE_BAD_WEEKDAY; weekday <= G_DATE_SUNDAY; weekday++) {
++			if (mts->first_hour_shown > mts->day_start_hour[weekday])
++				mts->first_hour_shown = mts->day_start_hour[weekday];
++			if (mts->last_hour_shown <= mts->day_end_hour[weekday]) {
++				mts->last_hour_shown = mts->day_end_hour[weekday];
++				if (mts->day_end_minute[weekday] != 0)
++					mts->last_hour_shown += 1;
++			}
++		}
+ 	} else {
+ 		mts->first_hour_shown = 0;
+ 		mts->last_hour_shown = 24;
+@@ -2509,8 +2561,18 @@ e_meeting_time_selector_update_date_popup_menus (EMeetingTimeSelector *mts)
+ 	end_edit = E_DATE_EDIT (mts->end_date_edit);
+ 
+ 	if (mts->working_hours_only) {
+-		low_hour = mts->day_start_hour;
+-		high_hour = mts->day_end_hour;
++		GDateWeekday weekday;
++
++		low_hour = mts->day_start_hour[G_DATE_MONDAY];
++		high_hour = mts->day_end_hour[G_DATE_MONDAY];
++
++		for (weekday = G_DATE_MONDAY; weekday <= G_DATE_SUNDAY; weekday++) {
++			if (low_hour > mts->day_start_hour[weekday])
++				low_hour = mts->day_start_hour[weekday];
++			if (high_hour <= mts->day_end_hour[weekday]) {
++				high_hour = mts->day_end_hour[weekday];
++			}
++		}
+ 	} else {
+ 		low_hour = 0;
+ 		high_hour = 23;
+diff --git a/calendar/gui/e-meeting-time-sel.h b/calendar/gui/e-meeting-time-sel.h
+index 20c5f0ca9f..b3e0c9b471 100644
+--- a/calendar/gui/e-meeting-time-sel.h
++++ b/calendar/gui/e-meeting-time-sel.h
+@@ -198,10 +198,10 @@ struct _EMeetingTimeSelector {
+ 	/* If this is TRUE we only show hours between day_start_hour and
+ 	 * day_end_hour, defaults to TRUE (9am-6pm). */
+ 	gboolean working_hours_only;
+-	gint day_start_hour;
+-	gint day_start_minute;
+-	gint day_end_hour;
+-	gint day_end_minute;
++	gint day_start_hour[G_DATE_SUNDAY + 1];
++	gint day_start_minute[G_DATE_SUNDAY + 1];
++	gint day_end_hour[G_DATE_SUNDAY + 1];
++	gint day_end_minute[G_DATE_SUNDAY + 1];
+ 
+ 	/* If TRUE, view is compressed, with one cell for every 3 hours rather
+ 	 * than every hour. Defaults to FALSE. */
+@@ -327,6 +327,7 @@ void		e_meeting_time_selector_set_working_hours_only
+ 						 gboolean working_hours_only);
+ void		e_meeting_time_selector_set_working_hours
+ 						(EMeetingTimeSelector *mts,
++						 GDateWeekday for_weekday,
+ 						 gint day_start_hour,
+ 						 gint day_start_minute,
+ 						 gint day_end_hour,
+diff --git a/data/org.gnome.evolution.calendar.gschema.xml.in b/data/org.gnome.evolution.calendar.gschema.xml.in
+index cd5e341ff6..960161d42e 100644
+--- a/data/org.gnome.evolution.calendar.gschema.xml.in
++++ b/data/org.gnome.evolution.calendar.gschema.xml.in
+@@ -79,6 +79,76 @@
+       <_summary>Workday start minute</_summary>
+       <_description>Minute the workday starts on, 0 to 59.</_description>
+     </key>
++    <key name="day-start-mon" type="i">
++      <default>-1</default>
++      <_summary>Workday start time for Monday</_summary>
++      <_description>Time the workday ends on, in twenty four hour format HHMM, 0000 to 2359, or -1 to use day-start-hour and day-start-minute</_description>
++    </key>
++    <key name="day-end-mon" type="i">
++      <default>-1</default>
++      <_summary>Workday end time for Monday</_summary>
++      <_description>Time the workday ends on, in twenty four hour format HHMM, 0000 to 2359, or -1 to use day-end-hour and day-end-minute</_description>
++    </key>
++    <key name="day-start-tue" type="i">
++      <default>-1</default>
++      <_summary>Workday start time for Teusday</_summary>
++      <_description>Time the workday ends on, in twenty four hour format HHMM, 0000 to 2359, or -1 to use day-start-hour and day-start-minute</_description>
++    </key>
++    <key name="day-end-tue" type="i">
++      <default>-1</default>
++      <_summary>Workday end time for Teusday</_summary>
++      <_description>Time the workday ends on, in twenty four hour format HHMM, 0000 to 2359, or -1 to use day-end-hour and day-end-minute</_description>
++    </key>
++    <key name="day-start-wed" type="i">
++      <default>-1</default>
++      <_summary>Workday start time for Wednesday</_summary>
++      <_description>Time the workday ends on, in twenty four hour format HHMM, 0000 to 2359, or -1 to use day-start-hour and day-start-minute</_description>
++    </key>
++    <key name="day-end-wed" type="i">
++      <default>-1</default>
++      <_summary>Workday end time for Wednesday</_summary>
++      <_description>Time the workday ends on, in twenty four hour format HHMM, 0000 to 2359, or -1 to use day-end-hour and day-end-minute</_description>
++    </key>
++    <key name="day-start-thu" type="i">
++      <default>-1</default>
++      <_summary>Workday start time for Thursday</_summary>
++      <_description>Time the workday ends on, in twenty four hour format HHMM, 0000 to 2359, or -1 to use day-start-hour and day-start-minute</_description>
++    </key>
++    <key name="day-end-thu" type="i">
++      <default>-1</default>
++      <_summary>Workday end time for Thursday</_summary>
++      <_description>Time the workday ends on, in twenty four hour format HHMM, 0000 to 2359, or -1 to use day-end-hour and day-end-minute</_description>
++    </key>
++    <key name="day-start-fri" type="i">
++      <default>-1</default>
++      <_summary>Workday start time for Friday</_summary>
++      <_description>Time the workday ends on, in twenty four hour format HHMM, 0000 to 2359, or -1 to use day-start-hour and day-start-minute</_description>
++    </key>
++    <key name="day-end-fri" type="i">
++      <default>-1</default>
++      <_summary>Workday end time for Friday</_summary>
++      <_description>Time the workday ends on, in twenty four hour format HHMM, 0000 to 2359, or -1 to use day-end-hour and day-end-minute</_description>
++    </key>
++    <key name="day-start-sat" type="i">
++      <default>-1</default>
++      <_summary>Workday start time for Saturday</_summary>
++      <_description>Time the workday ends on, in twenty four hour format HHMM, 0000 to 2359, or -1 to use day-start-hour and day-start-minute</_description>
++    </key>
++    <key name="day-end-sat" type="i">
++      <default>-1</default>
++      <_summary>Workday end time for Saturday</_summary>
++      <_description>Time the workday ends on, in twenty four hour format HHMM, 0000 to 2359, or -1 to use day-end-hour and day-end-minute</_description>
++    </key>
++    <key name="day-start-sun" type="i">
++      <default>-1</default>
++      <_summary>Workday start time for Sunday</_summary>
++      <_description>Time the workday ends on, in twenty four hour format HHMM, 0000 to 2359, or -1 to use day-start-hour and day-start-minute</_description>
++    </key>
++    <key name="day-end-sun" type="i">
++      <default>-1</default>
++      <_summary>Workday end time for Sunday</_summary>
++      <_description>Time the workday ends on, in twenty four hour format HHMM, 0000 to 2359, or -1 to use day-end-hour and day-end-minute</_description>
++    </key>
+     <key name="day-second-zone" type="s">
+       <default>''</default>
+       <_summary>The second timezone for a Day View</_summary>
+diff --git a/modules/settings/e-settings-cal-model.c b/modules/settings/e-settings-cal-model.c
+index 4646d172e1..19401cde98 100644
+--- a/modules/settings/e-settings-cal-model.c
++++ b/modules/settings/e-settings-cal-model.c
+@@ -178,6 +178,76 @@ settings_cal_model_constructed (GObject *object)
+ 		extensible, "work-day-start-minute",
+ 		G_SETTINGS_BIND_GET);
+ 
++	g_settings_bind (
++		settings, "day-start-mon",
++		extensible, "work-day-start-mon",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-end-mon",
++		extensible, "work-day-end-mon",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-start-tue",
++		extensible, "work-day-start-tue",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-end-tue",
++		extensible, "work-day-end-tue",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-start-wed",
++		extensible, "work-day-start-wed",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-end-wed",
++		extensible, "work-day-end-wed",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-start-thu",
++		extensible, "work-day-start-thu",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-end-thu",
++		extensible, "work-day-end-thu",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-start-fri",
++		extensible, "work-day-start-fri",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-end-fri",
++		extensible, "work-day-end-fri",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-start-sat",
++		extensible, "work-day-start-sat",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-end-sat",
++		extensible, "work-day-end-sat",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-start-sun",
++		extensible, "work-day-start-sun",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-end-sun",
++		extensible, "work-day-end-sun",
++		G_SETTINGS_BIND_GET);
++
+ 	/*** ECalModelTasks ***/
+ 
+ 	if (E_IS_CAL_MODEL_TASKS (extensible)) {
+diff --git a/modules/settings/e-settings-comp-editor.c b/modules/settings/e-settings-comp-editor.c
+index 54c43c2026..01680c2ae5 100644
+--- a/modules/settings/e-settings-comp-editor.c
++++ b/modules/settings/e-settings-comp-editor.c
+@@ -115,6 +115,76 @@ settings_comp_editor_constructed (GObject *object)
+ 		extensible, "work-day-start-minute",
+ 		G_SETTINGS_BIND_GET);
+ 
++	g_settings_bind (
++		settings, "day-start-mon",
++		extensible, "work-day-start-mon",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-end-mon",
++		extensible, "work-day-end-mon",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-start-tue",
++		extensible, "work-day-start-tue",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-end-tue",
++		extensible, "work-day-end-tue",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-start-wed",
++		extensible, "work-day-start-wed",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-end-wed",
++		extensible, "work-day-end-wed",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-start-thu",
++		extensible, "work-day-start-thu",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-end-thu",
++		extensible, "work-day-end-thu",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-start-fri",
++		extensible, "work-day-start-fri",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-end-fri",
++		extensible, "work-day-end-fri",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-start-sat",
++		extensible, "work-day-start-sat",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-end-sat",
++		extensible, "work-day-end-sat",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-start-sun",
++		extensible, "work-day-start-sun",
++		G_SETTINGS_BIND_GET);
++
++	g_settings_bind (
++		settings, "day-end-sun",
++		extensible, "work-day-end-sun",
++		G_SETTINGS_BIND_GET);
++
+ 	g_object_unref (settings);
+ 
+ 	/* Chain up to parent's constructed() method. */
+-- 
+2.15.0
+

@@ -1,0 +1,30 @@
+From 8de37573459b50663fd010783c0b6733a2241dfd Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 30 Oct 2014 09:02:58 +0100
+Subject: [PATCH 0004/1800] Bug 739375 - Crash when sort folder with Due By
+ column
+
+---
+ e-util/e-table-extras.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/e-util/e-table-extras.c b/e-util/e-table-extras.c
+index 07f81ba44a..dcf15b0d02 100644
+--- a/e-util/e-table-extras.c
++++ b/e-util/e-table-extras.c
+@@ -113,7 +113,11 @@ e_int64ptr_compare (gconstpointer data1,
+ {
+ 	const gint64 *pa = data1, *pb = data2;
+ 
+-	return (*pa == *pb) ? 0 : (*pa < *pb) ? -1 : 1;
++	if (pa && pb)
++		return (*pa == *pb) ? 0 : (*pa < *pb) ? -1 : 1;
++
++	/* sort unset values before set */
++	return pa ? 1 : -1;
+ }
+ 
+ /* UTF-8 strncasecmp - not optimized */
+-- 
+2.15.0
+

@@ -1,0 +1,31 @@
+From bb5723b4dd2f3754c4feae1f5db5e43f609cde3b Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 10 Mar 2015 16:33:39 +0100
+Subject: [PATCH 0478/1800] Bug 692578 - Display "File As" column by default in
+ Contacts list view
+
+---
+ views/addressbook/Phone_List.galview | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/views/addressbook/Phone_List.galview b/views/addressbook/Phone_List.galview
+index 3ab8fe7b10..1b8942f7bb 100644
+--- a/views/addressbook/Phone_List.galview
++++ b/views/addressbook/Phone_List.galview
+@@ -1,11 +1,12 @@
+ <?xml version="1.0"?>
+ <ETableState state-version="0.100000">
++  <column source="0"/>
+   <column source="1"/>
+   <column source="5"/>
+   <column source="9"/>
+   <column source="15"/>
+   <column source="19"/>
+   <grouping>
+-    <leaf column="4" ascending="true"/>
++    <leaf column="0" ascending="true"/>
+   </grouping>
+ </ETableState>
+-- 
+2.15.0
+

@@ -1,0 +1,805 @@
+From 57fd6869994feeb125bc01246c49cc9b4e056785 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 6 Feb 2015 07:52:45 +0100
+Subject: [PATCH 0258/1800] Bug 743109 - Do not require spam software during
+ build time
+
+---
+ configure.ac                                       |  81 ++++----
+ data/org.gnome.evolution.bogofilter.gschema.xml.in |   6 +
+ ...org.gnome.evolution.spamassassin.gschema.xml.in |  12 ++
+ libemail-engine/e-mail-junk-filter.c               |  13 ++
+ libemail-engine/e-mail-junk-filter.h               |   2 +
+ libemail-engine/e-mail-session.c                   |  21 +-
+ modules/Makefile.am                                |   4 +-
+ modules/bogofilter/evolution-bogofilter.c          |  90 ++++++++-
+ modules/settings/e-settings-mail-session.c         |   6 +-
+ modules/spamassassin/evolution-spamassassin.c      | 220 ++++++++++++++++++++-
+ 10 files changed, 394 insertions(+), 61 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 55ca4a5492..3392dc8165 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1049,79 +1049,70 @@ fi
+ dnl **********************************
+ dnl Check for Bogofilter (spam filter)
+ dnl **********************************
+-AC_ARG_ENABLE([bogofilter],
+-	[AS_HELP_STRING([--enable-bogofilter],
++AC_ARG_WITH([bogofilter],
++	[AS_HELP_STRING([--with-bogofilter=yes/no/COMMAND],
+ 	[enable spam filtering using Bogofilter (default=yes)])],
+-	[enable_bogofilter=$enableval], [enable_bogofilter=yes])
++	[with_bogofilter=$withval], [with_bogofilter=yes])
++if test "x$with_bogofilter" != "xyes" -a "x$with_bogofilter" != "xno" ; then
++	BOGOFILTER=$with_bogofilter
++	with_bogofilter=yes
++fi
+ AC_MSG_CHECKING([if Bogofilter support is enabled])
+-AC_MSG_RESULT([$enable_bogofilter])
+-msg_bogofilter="$enable_bogofilter"
+-if test "x$enable_bogofilter" = "xyes"; then
++AC_MSG_RESULT([$with_bogofilter])
++msg_bogofilter="$with_bogofilter"
++if test "x$with_bogofilter" = "xyes"; then
+ 	AC_ARG_VAR([BOGOFILTER], [Bogofilter spam filtering program])
+-	AC_PATH_PROG([BOGOFILTER], [bogofilter])
+-	if test "x$BOGOFILTER" = "x"; then
+-		AC_MSG_ERROR([
+-
+-	Bogofilter spam filtering program not found.
+-
+-	If you want to disable spam filtering using Bogofilter,
+-	please append --disable-bogofilter to configure.
+-
+-	])
++	if test "x$BOGOFILTER" = "x" ; then
++		BOGOFILTER="/usr/bin/bogofilter"
+ 	fi
+ 	AC_DEFINE_UNQUOTED(
+ 		BOGOFILTER_COMMAND, "$BOGOFILTER",
+ 		[Bogofilter spam filtering program])
+ 	msg_bogofilter="$msg_bogofilter ($BOGOFILTER)"
+ fi
+-AM_CONDITIONAL([ENABLE_BOGOFILTER], [test "x$enable_bogofilter" = "xyes"])
++AM_CONDITIONAL([WITH_BOGOFILTER], [test "x$with_bogofilter" = "xyes"])
+ 
+ dnl ************************************
+ dnl Check for SpamAssassin (spam filter)
+ dnl ************************************
+-AC_ARG_ENABLE([spamassassin],
+-	[AS_HELP_STRING([--enable-spamassassin],
++AC_ARG_WITH([spamassassin],
++	[AS_HELP_STRING([--with-spamassassin=yes/no/COMMAND],
+ 	[enable spam filtering using SpamAssassin (default=yes)])],
+-	[enable_spamassassin=$enableval], [enable_spamassassin=yes])
++	[with_spamassassin=$withval], [with_spamassassin=yes])
++if test "x$with_spamassassin" != "xyes" -a "x$with_spamassassin" != "xno" ; then
++	SPAMASSASSIN=$with_spamassassin
++	with_spamassassin=yes
++fi
+ AC_MSG_CHECKING([if SpamAssassin support is enabled])
+-AC_MSG_RESULT([$enable_spamassassin])
+-msg_spamassassin="$enable_spamassassin"
+-if test "x$enable_spamassassin" = "xyes"; then
++AC_MSG_RESULT([$with_spamassassin])
++msg_spamassassin="$with_spamassassin"
++if test "x$with_spamassassin" = "xyes"; then
+ 	AC_ARG_VAR([SPAMASSASSIN], [SpamAssassin spam filtering program])
+-	AC_PATH_PROG([SPAMASSASSIN], [spamassassin])
+-	if test "x$SPAMASSASSIN" = "x"; then
+-		AC_MSG_ERROR([
+-
+-	SpamAssassin spam filtering program not found.
+-
+-	If you want to disable spam filtering using SpamAssassin,
+-	please append --disable-spamassassin to configure.
+-
+-	])
++	if test "x$SPAMASSASSIN" = "x" ; then
++		SPAMASSASSIN="/usr/bin/spamassassin"
+ 	fi
+ 	AC_DEFINE_UNQUOTED(
+ 		SPAMASSASSIN_COMMAND, "$SPAMASSASSIN",
+ 		[SpamAssassin spam filtering program])
+ 
++	AC_ARG_WITH([sa-learn],
++		AS_HELP_STRING([--with-sa-learn=COMMAND],
++		[Full path command where sa-learn is located; (default=/usr/bin/sa-learn)]),
++		[with_sa_learn="$withval"], [with_sa_learn=""])
++
+ 	AC_ARG_VAR([SA_LEARN], [SpamAssassin spam training program])
+-	AC_PATH_PROG([SA_LEARN], [sa-learn])
+-	if test "x$SA_LEARN" = "x"; then
+-		AC_MSG_ERROR([
+-
+-	SpamAssassin training program (sa-learn) not found.
+-
+-	If you want to disable spam filtering using SpamAssassin,
+-	please append --disable-spamassassin to configure.
+-
+-	])
++	if test "x$with_sa_learn" != "x" ; then
++		SA_LEARN="$with_sa_learn"
++	elif test "x$SA_LEARN" = "x" ; then
++		SA_LEARN="/usr/bin/sa-learn"
+ 	fi
+ 	AC_DEFINE_UNQUOTED(
+ 		SA_LEARN_COMMAND, "$SA_LEARN",
+ 		[SpamAssassin spam training program])
+ 
+-	msg_spamassassin="$msg_spamassassin ($SPAMASSASSIN)"
++	msg_spamassassin="$msg_spamassassin ($SPAMASSASSIN $SA_LEARN)"
+ fi
+-AM_CONDITIONAL([ENABLE_SPAMASSASSIN], [test "x$enable_spamassassin" = "xyes"])
++AM_CONDITIONAL([WITH_SPAMASSASSIN], [test "x$with_spamassassin" = "xyes"])
+ 
+ dnl ******************************
+ dnl CERT_UI Flags
+diff --git a/data/org.gnome.evolution.bogofilter.gschema.xml.in b/data/org.gnome.evolution.bogofilter.gschema.xml.in
+index 25ada49b56..bda707be45 100644
+--- a/data/org.gnome.evolution.bogofilter.gschema.xml.in
++++ b/data/org.gnome.evolution.bogofilter.gschema.xml.in
+@@ -5,5 +5,11 @@
+       <_summary>Convert mail messages to Unicode</_summary>
+       <_description>Convert message text to Unicode UTF-8 to unify spam/ham tokens coming from different character sets.</_description>
+     </key>
++
++    <key name="command" type="s">
++      <default>''</default>
++      <_summary>Full path command to run Bogofilter</_summary>
++      <_description>Full path to a Bogofilter command. If not set, then a compile-time path is used, usually /usr/bin/bogofilter. The command might not contain any other arguments.</_description>
++    </key>
+   </schema>
+ </schemalist>
+diff --git a/data/org.gnome.evolution.spamassassin.gschema.xml.in b/data/org.gnome.evolution.spamassassin.gschema.xml.in
+index 5bf3599447..57cab542c1 100644
+--- a/data/org.gnome.evolution.spamassassin.gschema.xml.in
++++ b/data/org.gnome.evolution.spamassassin.gschema.xml.in
+@@ -5,5 +5,17 @@
+       <_summary>Use only local spam tests.</_summary>
+       <_description>Use only the local spam tests (no DNS).</_description>
+     </key>
++
++    <key name="command" type="s">
++      <default>''</default>
++      <_summary>Full path command to run spamassassin</_summary>
++      <_description>Full path to a spamassassin command. If not set, then a compile-time path is used, usually /usr/bin/spamassassin. The command might not contain any other arguments.</_description>
++    </key>
++
++    <key name="learn-command" type="s">
++      <default>''</default>
++      <_summary>Full path command to run sa-learn</_summary>
++      <_description>Full path to a sa-learn command. If not set, then a compile-time path is used, usually /usr/bin/sa-learn. The command might not contain any other arguments.</_description>
++    </key>
+   </schema>
+ </schemalist>
+diff --git a/libemail-engine/e-mail-junk-filter.c b/libemail-engine/e-mail-junk-filter.c
+index e35609b68b..580ed2df76 100644
+--- a/libemail-engine/e-mail-junk-filter.c
++++ b/libemail-engine/e-mail-junk-filter.c
+@@ -38,6 +38,19 @@ e_mail_junk_filter_init (EMailJunkFilter *junk_filter)
+ {
+ }
+ 
++gboolean
++e_mail_junk_filter_available (EMailJunkFilter *junk_filter)
++{
++	EMailJunkFilterClass *class;
++
++	g_return_val_if_fail (E_IS_MAIL_JUNK_FILTER (junk_filter), FALSE);
++
++	class = E_MAIL_JUNK_FILTER_GET_CLASS (junk_filter);
++	g_return_val_if_fail (class->available != NULL, FALSE);
++
++	return class->available (junk_filter);
++}
++
+ GtkWidget *
+ e_mail_junk_filter_new_config_widget (EMailJunkFilter *junk_filter)
+ {
+diff --git a/libemail-engine/e-mail-junk-filter.h b/libemail-engine/e-mail-junk-filter.h
+index 77a09418db..a22a1b350d 100644
+--- a/libemail-engine/e-mail-junk-filter.h
++++ b/libemail-engine/e-mail-junk-filter.h
+@@ -61,10 +61,12 @@ struct _EMailJunkFilterClass {
+ 	const gchar *filter_name;
+ 	const gchar *display_name;
+ 
++	gboolean	(*available)		(EMailJunkFilter *junk_filter);
+ 	GtkWidget *	(*new_config_widget)	(EMailJunkFilter *junk_filter);
+ };
+ 
+ GType		e_mail_junk_filter_get_type	(void) G_GNUC_CONST;
++gboolean	e_mail_junk_filter_available	(EMailJunkFilter *junk_filter);
+ GtkWidget *	e_mail_junk_filter_new_config_widget
+ 						(EMailJunkFilter *junk_filter);
+ gint		e_mail_junk_filter_compare	(EMailJunkFilter *junk_filter_a,
+diff --git a/libemail-engine/e-mail-session.c b/libemail-engine/e-mail-session.c
+index 6fb442ba35..c931524064 100644
+--- a/libemail-engine/e-mail-session.c
++++ b/libemail-engine/e-mail-session.c
+@@ -1737,13 +1737,30 @@ e_mail_session_get_local_folder_uri (EMailSession *session,
+ GList *
+ e_mail_session_get_available_junk_filters (EMailSession *session)
+ {
+-	GList *list;
++	GList *list, *link;
++	GQueue trash = G_QUEUE_INIT;
+ 
+ 	g_return_val_if_fail (E_IS_MAIL_SESSION (session), NULL);
+ 
+ 	list = g_hash_table_get_values (session->priv->junk_filters);
+ 
+-	/* Sort the available junk filters by display name. */
++	/* Discard unavailable junk filters.  (e.g. Junk filter
++	 * requires Bogofilter but Bogofilter is not installed,
++	 * hence the junk filter is unavailable.) */
++
++	for (link = list; link != NULL; link = g_list_next (link)) {
++		EMailJunkFilter *junk_filter;
++
++		junk_filter = E_MAIL_JUNK_FILTER (link->data);
++		if (!e_mail_junk_filter_available (junk_filter))
++			g_queue_push_tail (&trash, link);
++	}
++
++	while ((link = g_queue_pop_head (&trash)) != NULL)
++		list = g_list_delete_link (list, link);
++
++	/* Sort the remaining junk filters by display name. */
++
+ 	return g_list_sort (list, (GCompareFunc) e_mail_junk_filter_compare);
+ }
+ 
+diff --git a/modules/Makefile.am b/modules/Makefile.am
+index ac6655ffd0..5dbe22802b 100644
+--- a/modules/Makefile.am
++++ b/modules/Makefile.am
+@@ -1,4 +1,4 @@
+-if ENABLE_BOGOFILTER
++if WITH_BOGOFILTER
+ BOGOFILTER_DIR = bogofilter
+ endif
+ 
+@@ -10,7 +10,7 @@ if ENABLE_WEATHER
+ CONFIG_WEATHER_DIR = cal-config-weather
+ endif
+ 
+-if ENABLE_SPAMASSASSIN
++if WITH_SPAMASSASSIN
+ SPAMASSASSIN_DIR = spamassassin
+ endif
+ 
+diff --git a/modules/bogofilter/evolution-bogofilter.c b/modules/bogofilter/evolution-bogofilter.c
+index 318bfb0e97..14166cfd48 100644
+--- a/modules/bogofilter/evolution-bogofilter.c
++++ b/modules/bogofilter/evolution-bogofilter.c
+@@ -46,6 +46,7 @@ typedef struct _EBogofilterClass EBogofilterClass;
+ struct _EBogofilter {
+ 	EMailJunkFilter parent;
+ 	gboolean convert_to_unicode;
++	gchar *command;
+ };
+ 
+ struct _EBogofilterClass {
+@@ -54,7 +55,8 @@ struct _EBogofilterClass {
+ 
+ enum {
+ 	PROP_0,
+-	PROP_CONVERT_TO_UNICODE
++	PROP_CONVERT_TO_UNICODE,
++	PROP_COMMAND
+ };
+ 
+ /* Module Entry Points */
+@@ -73,6 +75,21 @@ G_DEFINE_DYNAMIC_TYPE_EXTENDED (
+ 		CAMEL_TYPE_JUNK_FILTER,
+ 		e_bogofilter_interface_init))
+ 
++#ifndef BOGOFILTER_COMMAND
++#define BOGOFILTER_COMMAND "/usr/bin/bogofilter"
++#endif
++
++static const gchar *
++bogofilter_get_command_path (EBogofilter *extension)
++{
++	g_return_val_if_fail (extension != NULL, NULL);
++
++	if (extension->command && *extension->command)
++		return extension->command;
++
++	return BOGOFILTER_COMMAND;
++}
++
+ #ifdef G_OS_UNIX
+ static void
+ bogofilter_cancelled_cb (GCancellable *cancellable,
+@@ -260,6 +277,25 @@ bogofilter_set_convert_to_unicode (EBogofilter *extension,
+ 	g_object_notify (G_OBJECT (extension), "convert-to-unicode");
+ }
+ 
++static const gchar *
++bogofilter_get_command (EBogofilter *extension)
++{
++	return extension->command ? extension->command : "";
++}
++
++static void
++bogofilter_set_command (EBogofilter *extension,
++			const gchar *command)
++{
++	if (g_strcmp0 (extension->command, command) == 0)
++		return;
++
++	g_free (extension->command);
++	extension->command = g_strdup (command);
++
++	g_object_notify (G_OBJECT (extension), "command");
++}
++
+ static void
+ bogofilter_set_property (GObject *object,
+                          guint property_id,
+@@ -272,6 +308,12 @@ bogofilter_set_property (GObject *object,
+ 				E_BOGOFILTER (object),
+ 				g_value_get_boolean (value));
+ 			return;
++
++		case PROP_COMMAND:
++			bogofilter_set_command (
++				E_BOGOFILTER (object),
++				g_value_get_string (value));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -289,11 +331,35 @@ bogofilter_get_property (GObject *object,
+ 				value, bogofilter_get_convert_to_unicode (
+ 				E_BOGOFILTER (object)));
+ 			return;
++
++		case PROP_COMMAND:
++			g_value_set_string (
++				value, bogofilter_get_command (
++				E_BOGOFILTER (object)));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+ }
+ 
++static void
++bogofilter_finalize (GObject *object)
++{
++	EBogofilter *extension = E_BOGOFILTER (object);
++
++	g_free (extension->command);
++	extension->command = NULL;
++
++	/* Chain up to parent's method. */
++	G_OBJECT_CLASS (e_bogofilter_parent_class)->finalize (object);
++}
++
++static gboolean
++bogofilter_available (EMailJunkFilter *junk_filter)
++{
++	return g_file_test (bogofilter_get_command_path (E_BOGOFILTER (junk_filter)), G_FILE_TEST_IS_EXECUTABLE);
++}
++
+ static GtkWidget *
+ bogofilter_new_config_widget (EMailJunkFilter *junk_filter)
+ {
+@@ -339,7 +405,7 @@ bogofilter_classify (CamelJunkFilter *junk_filter,
+ 	gint exit_code;
+ 
+ 	const gchar *argv[] = {
+-		BOGOFILTER_COMMAND,
++		bogofilter_get_command_path (extension),
+ 		NULL,  /* leave room for unicode option */
+ 		NULL
+ 	};
+@@ -398,7 +464,7 @@ bogofilter_learn_junk (CamelJunkFilter *junk_filter,
+ 	gint exit_code;
+ 
+ 	const gchar *argv[] = {
+-		BOGOFILTER_COMMAND,
++		bogofilter_get_command_path (extension),
+ 		"--register-spam",
+ 		NULL,  /* leave room for unicode option */
+ 		NULL
+@@ -433,7 +499,7 @@ bogofilter_learn_not_junk (CamelJunkFilter *junk_filter,
+ 	gint exit_code;
+ 
+ 	const gchar *argv[] = {
+-		BOGOFILTER_COMMAND,
++		bogofilter_get_command_path (extension),
+ 		"--register-ham",
+ 		NULL,  /* leave room for unicode option */
+ 		NULL
+@@ -467,10 +533,12 @@ e_bogofilter_class_init (EBogofilterClass *class)
+ 	object_class = G_OBJECT_CLASS (class);
+ 	object_class->set_property = bogofilter_set_property;
+ 	object_class->get_property = bogofilter_get_property;
++	object_class->finalize = bogofilter_finalize;
+ 
+ 	junk_filter_class = E_MAIL_JUNK_FILTER_CLASS (class);
+ 	junk_filter_class->filter_name = "Bogofilter";
+ 	junk_filter_class->display_name = _("Bogofilter");
++	junk_filter_class->available = bogofilter_available;
+ 	junk_filter_class->new_config_widget = bogofilter_new_config_widget;
+ 
+ 	g_object_class_install_property (
+@@ -482,6 +550,16 @@ e_bogofilter_class_init (EBogofilterClass *class)
+ 			"Convert message text to Unicode",
+ 			TRUE,
+ 			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_COMMAND,
++		g_param_spec_string (
++			"command",
++			"Full Path Command",
++			"Full path command to use to run bogofilter",
++			"",
++			G_PARAM_READWRITE));
+ }
+ 
+ static void
+@@ -507,6 +585,10 @@ e_bogofilter_init (EBogofilter *extension)
+ 		settings, "utf8-for-spam-filter",
+ 		G_OBJECT (extension), "convert-to-unicode",
+ 		G_SETTINGS_BIND_DEFAULT);
++	g_settings_bind (
++		settings, "command",
++		G_OBJECT (extension), "command",
++		G_SETTINGS_BIND_DEFAULT);
+ 	g_object_unref (settings);
+ }
+ 
+diff --git a/modules/settings/e-settings-mail-session.c b/modules/settings/e-settings-mail-session.c
+index fe54eda848..eff537d866 100644
+--- a/modules/settings/e-settings-mail-session.c
++++ b/modules/settings/e-settings-mail-session.c
+@@ -44,9 +44,9 @@ settings_mail_session_name_to_junk_filter (GValue *value,
+ 	if (filter_name != NULL) {
+ 		EMailJunkFilter *junk_filter;
+ 
+-		junk_filter = e_mail_session_get_junk_filter_by_name (
+-			E_MAIL_SESSION (user_data), filter_name);
+-		g_value_set_object (value, junk_filter);
++		junk_filter = e_mail_session_get_junk_filter_by_name (E_MAIL_SESSION (user_data), filter_name);
++		if (junk_filter && e_mail_junk_filter_available (E_MAIL_JUNK_FILTER (junk_filter)))
++			g_value_set_object (value, junk_filter);
+ 	}
+ 
+ 	/* XXX Always return success, even if we cannot find a matching
+diff --git a/modules/spamassassin/evolution-spamassassin.c b/modules/spamassassin/evolution-spamassassin.c
+index b32d71fedf..934b090f6d 100644
+--- a/modules/spamassassin/evolution-spamassassin.c
++++ b/modules/spamassassin/evolution-spamassassin.c
+@@ -44,6 +44,11 @@ struct _ESpamAssassin {
+ 	EMailJunkFilter parent;
+ 
+ 	gboolean local_only;
++	gchar *command;
++	gchar *learn_command;
++
++	gboolean version_set;
++	gint version;
+ };
+ 
+ struct _ESpamAssassinClass {
+@@ -52,7 +57,9 @@ struct _ESpamAssassinClass {
+ 
+ enum {
+ 	PROP_0,
+-	PROP_LOCAL_ONLY
++	PROP_LOCAL_ONLY,
++	PROP_COMMAND,
++	PROP_LEARN_COMMAND
+ };
+ 
+ /* Module Entry Points */
+@@ -71,6 +78,36 @@ G_DEFINE_DYNAMIC_TYPE_EXTENDED (
+ 		CAMEL_TYPE_JUNK_FILTER,
+ 		e_spam_assassin_interface_init))
+ 
++#ifndef SPAMASSASSIN_COMMAND
++#define SPAMASSASSIN_COMMAND "/usr/bin/spamassassin"
++#endif
++
++#ifndef SA_LEARN_COMMAND
++#define SA_LEARN_COMMAND "/usr/bin/sa-learn"
++#endif
++
++static const gchar *
++spam_assassin_get_command_path (ESpamAssassin *extension)
++{
++	g_return_val_if_fail (extension != NULL, NULL);
++
++	if (extension->command && *extension->command)
++		return extension->command;
++
++	return SPAMASSASSIN_COMMAND;
++}
++
++static const gchar *
++spam_assassin_get_learn_command_path (ESpamAssassin *extension)
++{
++	g_return_val_if_fail (extension != NULL, NULL);
++
++	if (extension->learn_command && *extension->learn_command)
++		return extension->learn_command;
++
++	return SA_LEARN_COMMAND;
++}
++
+ #ifdef G_OS_UNIX
+ static void
+ spam_assassin_cancelled_cb (GCancellable *cancellable,
+@@ -307,6 +344,44 @@ spam_assassin_set_local_only (ESpamAssassin *extension,
+ 	g_object_notify (G_OBJECT (extension), "local-only");
+ }
+ 
++static const gchar *
++spam_assassin_get_command (ESpamAssassin *extension)
++{
++	return extension->command;
++}
++
++static void
++spam_assassin_set_command (ESpamAssassin *extension,
++			   const gchar *command)
++{
++	if (g_strcmp0 (extension->command, command) == 0)
++		return;
++
++	g_free (extension->command);
++	extension->command = g_strdup (command);
++
++	g_object_notify (G_OBJECT (extension), "command");
++}
++
++static const gchar *
++spam_assassin_get_learn_command (ESpamAssassin *extension)
++{
++	return extension->learn_command;
++}
++
++static void
++spam_assassin_set_learn_command (ESpamAssassin *extension,
++				 const gchar *learn_command)
++{
++	if (g_strcmp0 (extension->learn_command, learn_command) == 0)
++		return;
++
++	g_free (extension->learn_command);
++	extension->learn_command = g_strdup (learn_command);
++
++	g_object_notify (G_OBJECT (extension), "learn-command");
++}
++
+ static void
+ spam_assassin_set_property (GObject *object,
+                             guint property_id,
+@@ -319,6 +394,18 @@ spam_assassin_set_property (GObject *object,
+ 				E_SPAM_ASSASSIN (object),
+ 				g_value_get_boolean (value));
+ 			return;
++
++		case PROP_COMMAND:
++			spam_assassin_set_command (
++				E_SPAM_ASSASSIN (object),
++				g_value_get_string (value));
++			return;
++
++		case PROP_LEARN_COMMAND:
++			spam_assassin_set_learn_command (
++				E_SPAM_ASSASSIN (object),
++				g_value_get_string (value));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -336,11 +423,104 @@ spam_assassin_get_property (GObject *object,
+ 				value, spam_assassin_get_local_only (
+ 				E_SPAM_ASSASSIN (object)));
+ 			return;
++
++		case PROP_COMMAND:
++			g_value_set_string (
++				value, spam_assassin_get_command (
++				E_SPAM_ASSASSIN (object)));
++			return;
++
++		case PROP_LEARN_COMMAND:
++			g_value_set_string (
++				value, spam_assassin_get_learn_command (
++				E_SPAM_ASSASSIN (object)));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+ }
+ 
++static void
++spam_assassin_finalize (GObject *object)
++{
++	ESpamAssassin *extension = E_SPAM_ASSASSIN (object);
++
++	g_free (extension->command);
++	extension->command = NULL;
++
++	g_free (extension->learn_command);
++	extension->learn_command = NULL;
++
++	/* Chain up to parent's method. */
++	G_OBJECT_CLASS (e_spam_assassin_parent_class)->finalize (object);
++}
++
++static gboolean
++spam_assassin_get_version (ESpamAssassin *extension,
++                           gint *spam_assassin_version,
++                           GCancellable *cancellable,
++                           GError **error)
++{
++	GByteArray *output_buffer;
++	gint exit_code;
++	guint ii;
++
++	const gchar *argv[] = {
++		spam_assassin_get_learn_command_path (extension),
++		"--version",
++		NULL
++	};
++
++	if (extension->version_set) {
++		if (spam_assassin_version != NULL)
++			*spam_assassin_version = extension->version;
++		return TRUE;
++	}
++
++	output_buffer = g_byte_array_new ();
++
++	exit_code = spam_assassin_command_full (
++		argv, NULL, NULL, output_buffer, TRUE, cancellable, error);
++
++	if (exit_code != 0) {
++		g_byte_array_free (output_buffer, TRUE);
++		return FALSE;
++	}
++
++	for (ii = 0; ii < output_buffer->len; ii++) {
++		if (g_ascii_isdigit (output_buffer->data[ii])) {
++			guint8 ch = output_buffer->data[ii];
++			extension->version = (ch - '0');
++			extension->version_set = TRUE;
++			break;
++		}
++	}
++
++	if (spam_assassin_version != NULL)
++		*spam_assassin_version = extension->version;
++
++	g_byte_array_free (output_buffer, TRUE);
++
++	return TRUE;
++}
++
++static gboolean
++spam_assassin_available (EMailJunkFilter *junk_filter)
++{
++	ESpamAssassin *extension = E_SPAM_ASSASSIN (junk_filter);
++	gboolean available;
++	GError *error = NULL;
++
++	available = spam_assassin_get_version (extension, NULL, NULL, &error);
++
++	if (error != NULL) {
++		g_debug ("%s: %s", G_STRFUNC, error->message);
++		g_error_free (error);
++	}
++
++	return available;
++}
++
+ static GtkWidget *
+ spam_assassin_new_config_widget (EMailJunkFilter *junk_filter)
+ {
+@@ -408,7 +588,7 @@ spam_assassin_classify (CamelJunkFilter *junk_filter,
+ 	if (g_cancellable_set_error_if_cancelled (cancellable, error))
+ 		return FALSE;
+ 
+-	argv[ii++] = SPAMASSASSIN_COMMAND;
++	argv[ii++] = spam_assassin_get_command_path (extension);
+ 	argv[ii++] = "--exit-code";
+ 	if (extension->local_only)
+ 		argv[ii++] = "--local";
+@@ -454,7 +634,7 @@ spam_assassin_learn_junk (CamelJunkFilter *junk_filter,
+ 	if (g_cancellable_set_error_if_cancelled (cancellable, error))
+ 		return FALSE;
+ 
+-	argv[ii++] = SA_LEARN_COMMAND;
++	argv[ii++] = spam_assassin_get_learn_command_path (extension);
+ 	argv[ii++] = "--spam";
+ 	argv[ii++] = "--no-sync";
+ 	if (extension->local_only)
+@@ -489,7 +669,7 @@ spam_assassin_learn_not_junk (CamelJunkFilter *junk_filter,
+ 	if (g_cancellable_set_error_if_cancelled (cancellable, error))
+ 		return FALSE;
+ 
+-	argv[ii++] = SA_LEARN_COMMAND;
++	argv[ii++] = spam_assassin_get_learn_command_path (extension);
+ 	argv[ii++] = "--ham";
+ 	argv[ii++] = "--no-sync";
+ 	if (extension->local_only)
+@@ -523,7 +703,7 @@ spam_assassin_synchronize (CamelJunkFilter *junk_filter,
+ 	if (g_cancellable_set_error_if_cancelled (cancellable, error))
+ 		return FALSE;
+ 
+-	argv[ii++] = SA_LEARN_COMMAND;
++	argv[ii++] = spam_assassin_get_learn_command_path (extension);
+ 	argv[ii++] = "--sync";
+ 	if (extension->local_only)
+ 		argv[ii++] = "--local";
+@@ -552,10 +732,12 @@ e_spam_assassin_class_init (ESpamAssassinClass *class)
+ 	object_class = G_OBJECT_CLASS (class);
+ 	object_class->set_property = spam_assassin_set_property;
+ 	object_class->get_property = spam_assassin_get_property;
++	object_class->finalize = spam_assassin_finalize;
+ 
+ 	junk_filter_class = E_MAIL_JUNK_FILTER_CLASS (class);
+ 	junk_filter_class->filter_name = "SpamAssassin";
+ 	junk_filter_class->display_name = _("SpamAssassin");
++	junk_filter_class->available = spam_assassin_available;
+ 	junk_filter_class->new_config_widget = spam_assassin_new_config_widget;
+ 
+ 	g_object_class_install_property (
+@@ -567,6 +749,26 @@ e_spam_assassin_class_init (ESpamAssassinClass *class)
+ 			"Do not use tests requiring DNS lookups",
+ 			TRUE,
+ 			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_COMMAND,
++		g_param_spec_string (
++			"command",
++			"Full Path Command",
++			"Full path command to use to run spamassassin",
++			"",
++			G_PARAM_READWRITE));
++
++	g_object_class_install_property (
++		object_class,
++		PROP_LEARN_COMMAND,
++		g_param_spec_string (
++			"learn-command",
++			"Full Path Command",
++			"Full path command to use to run sa-learn",
++			"",
++			G_PARAM_READWRITE));
+ }
+ 
+ static void
+@@ -594,6 +796,14 @@ e_spam_assassin_init (ESpamAssassin *extension)
+ 		settings, "local-only",
+ 		extension, "local-only",
+ 		G_SETTINGS_BIND_DEFAULT);
++	g_settings_bind (
++		settings, "command",
++		G_OBJECT (extension), "command",
++		G_SETTINGS_BIND_DEFAULT);
++	g_settings_bind (
++		settings, "learn-command",
++		G_OBJECT (extension), "learn-command",
++		G_SETTINGS_BIND_DEFAULT);
+ 
+ 	g_object_unref (settings);
+ }
+-- 
+2.15.0
+

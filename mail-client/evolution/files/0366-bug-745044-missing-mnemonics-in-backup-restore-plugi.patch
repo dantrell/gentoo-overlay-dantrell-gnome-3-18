@@ -1,0 +1,48 @@
+From b2ee882a8b4a5489fcc3cde7ce8e5e0b9e75435a Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 25 Feb 2015 15:41:20 +0100
+Subject: [PATCH 0366/1800] Bug 745044 - Missing mnemonics in backup-restore
+ plugin
+
+---
+ modules/backup-restore/evolution-backup-restore.c         | 2 +-
+ modules/backup-restore/org-gnome-backup-restore.error.xml | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/modules/backup-restore/evolution-backup-restore.c b/modules/backup-restore/evolution-backup-restore.c
+index da83a47efa..354a63492f 100644
+--- a/modules/backup-restore/evolution-backup-restore.c
++++ b/modules/backup-restore/evolution-backup-restore.c
+@@ -286,7 +286,7 @@ action_settings_restore_cb (GtkAction *action,
+ 
+ 		mask = dialog_prompt_user (
+ 			GTK_WINDOW (shell_window),
+-			_("_Restart Evolution after restore"),
++			_("Re_start Evolution after restore"),
+ 			"org.gnome.backup-restore:restore-confirm", NULL);
+ 		if (mask & BR_OK)
+ 			restore (path, mask & BR_START);
+diff --git a/modules/backup-restore/org-gnome-backup-restore.error.xml b/modules/backup-restore/org-gnome-backup-restore.error.xml
+index b38a134132..ed19e3a5c6 100644
+--- a/modules/backup-restore/org-gnome-backup-restore.error.xml
++++ b/modules/backup-restore/org-gnome-backup-restore.error.xml
+@@ -8,14 +8,14 @@
+    <error id="backup-confirm" type="warning" default="GTK_RESPONSE_CANCEL">
+     <_primary>Are you sure you want to close Evolution?</_primary>
+     <_secondary xml:space="preserve">To back up your data and settings, you must first close Evolution. Please make sure that you save any unsaved data before proceeding.</_secondary>
+-    <button _label="Close and Back up Evolution" response="GTK_RESPONSE_YES"/>
++    <button _label="Close and _Back up Evolution" response="GTK_RESPONSE_YES"/>
+     <button stock="gtk-cancel" response="GTK_RESPONSE_CANCEL"/>
+   </error>
+    <error id="restore-confirm" type="warning" default="GTK_RESPONSE_CANCEL">
+     <_primary>Are you sure you want to restore Evolution from the selected backup file?</_primary>
+     <_secondary xml:space="preserve">To restore your data and settings, you must first close Evolution. Please make sure that you save any unsaved data before proceeding. This will delete all your current Evolution data and settings and restore them from your backup.</_secondary>
+     <button stock="gtk-cancel" response="GTK_RESPONSE_CANCEL"/>
+-    <button _label="Close and Restore Evolution" response="GTK_RESPONSE_YES"/>
++    <button _label="Close and _Restore Evolution" response="GTK_RESPONSE_YES"/>
+   </error>  
+    <error id="insufficient-permissions" type="error">
+         <_primary>Insufficient Permissions</_primary>
+-- 
+2.15.0
+

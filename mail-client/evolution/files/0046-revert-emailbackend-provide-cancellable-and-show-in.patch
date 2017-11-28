@@ -1,0 +1,40 @@
+From f5b585cde4ae5e134e51c1d48ae92e6f8f8d71c2 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 7 Nov 2014 12:40:18 +0100
+Subject: [PATCH 0046/1800] Revert "[EMailBackend] Provide cancellable and show
+ in UI prepare for a quit"
+
+This reverts commit 7c918831a8aac463ffe3cdd7e39b36ad09eec34a.
+
+It turned out that the Evolution won't quit when the quit was initiated
+with a "busy" EShellBackend. In that case the EShellBackend itself
+references the activity and lets it alive until the activity is completed.
+The problem is that the activity is completed only after it is freed,
+thus there happens a circular dependency on the reference count of
+that activity.
+---
+ mail/e-mail-backend.c | 6 ------
+ 1 file changed, 6 deletions(-)
+
+diff --git a/mail/e-mail-backend.c b/mail/e-mail-backend.c
+index 8e8c11bb5e..d3113ba8cc 100644
+--- a/mail/e-mail-backend.c
++++ b/mail/e-mail-backend.c
+@@ -396,14 +396,8 @@ mail_backend_prepare_for_quit_cb (EShell *shell,
+ 		   camel_operation_cancel_all() had been called, but we want
+ 		   it alive for the following operations, thus reset it. */
+ 		g_cancellable_reset (cancellable);
+-	} else {
+-		cancellable = camel_operation_new ();
+-		e_activity_set_cancellable (activity, cancellable);
+-		g_object_unref (cancellable);
+ 	}
+ 
+-	e_shell_backend_add_activity (E_SHELL_BACKEND (backend), activity);
+-
+ 	list = camel_session_list_services (CAMEL_SESSION (session));
+ 
+ 	if (delete_junk) {
+-- 
+2.15.0
+

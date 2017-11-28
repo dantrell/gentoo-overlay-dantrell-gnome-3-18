@@ -1,0 +1,48 @@
+From 816895cf51241016a0c01d7e6f33db256b9b0f8c Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 13 Nov 2014 11:46:13 +0100
+Subject: [PATCH 0074/1800] GSettings Bindings rely on quarks
+
+There is a fake change notify on timezone when either a corresponding
+file changes or the setting for "use system timezone" changes,
+to propagate the change in the code properly. This notify requires
+proper key identification for GSettings bindings, because without it
+the binding crashes on a runtime check.
+---
+ modules/calendar/e-cal-shell-backend.c      | 4 +++-
+ modules/calendar/e-cal-shell-view-private.c | 4 +++-
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/modules/calendar/e-cal-shell-backend.c b/modules/calendar/e-cal-shell-backend.c
+index eb89729b91..e3d33f042c 100644
+--- a/modules/calendar/e-cal-shell-backend.c
++++ b/modules/calendar/e-cal-shell-backend.c
+@@ -232,7 +232,9 @@ cal_shell_backend_use_system_timezone_changed_cb (GSettings *settings,
+ 	if ((value ? 1 : 0) != old_value) {
+ 		old_value = value ? 1 : 0;
+ 
+-		g_signal_emit_by_name (settings, "changed::timezone", timezone);
++		/* GSettings Bindings rely on quarks */
++		g_signal_emit_by_name (settings, "changed::timezone",
++			g_quark_to_string (g_quark_from_string ("timezone")));
+ 	}
+ }
+ 
+diff --git a/modules/calendar/e-cal-shell-view-private.c b/modules/calendar/e-cal-shell-view-private.c
+index a916d670ea..a2df5cb0e1 100644
+--- a/modules/calendar/e-cal-shell-view-private.c
++++ b/modules/calendar/e-cal-shell-view-private.c
+@@ -192,7 +192,9 @@ system_timezone_monitor_changed (GFileMonitor *handle,
+ 		return;
+ 
+ 	settings = e_util_ref_settings ("org.gnome.evolution.calendar");
+-	g_signal_emit_by_name (settings, "changed::timezone", "timezone");
++	/* GSettings Bindings rely on quarks */
++	g_signal_emit_by_name (settings, "changed::timezone",
++		g_quark_to_string (g_quark_from_string ("timezone")));
+ 	g_object_unref (settings);
+ }
+ 
+-- 
+2.15.0
+

@@ -1,0 +1,26 @@
+From 5b7f84ca9271a615de6a0a75387edbb360f5feeb Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 26 Mar 2015 14:43:46 +0100
+Subject: [PATCH 0399/1800] EHTMLEditorView - Fix Paste Quotation action
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 0f4f7513fb..9ee707a57e 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -2190,7 +2190,8 @@ dom_quote_and_insert_text_into_selection (WebKitDOMDocument *document,
+ 				WEBKIT_DOM_NODE (element),
+ 				webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (selection_start)),
+ 				NULL);
+-	} else
++		}
++	} else {
+ 		webkit_dom_node_insert_before (
+ 			WEBKIT_DOM_NODE (webkit_dom_document_get_body (document)),
+ 			WEBKIT_DOM_NODE (element),
+-- 
+2.15.0
+

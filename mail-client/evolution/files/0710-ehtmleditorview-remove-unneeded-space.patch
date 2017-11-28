@@ -1,0 +1,25 @@
+From 35807effb0a6eb0eb5fbfe3fe689c9ae64ccdea4 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 10:17:56 +0100
+Subject: [PATCH 0710/1800] EHTMLEditorView - Remove unneeded space
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 0f4c85d00d..57d1be3be2 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -4204,7 +4204,7 @@ create_text_markers_for_citations_in_document (WebKitDOMDocument *document)
+ 
+ 	while (citation) {
+ 		mark_citation (citation);
+-		count ++;
++		count++;
+ 
+ 		citation = webkit_dom_document_query_selector (
+ 			document, "blockquote[type=cite]:not(.marked)", NULL);
+-- 
+2.15.0
+

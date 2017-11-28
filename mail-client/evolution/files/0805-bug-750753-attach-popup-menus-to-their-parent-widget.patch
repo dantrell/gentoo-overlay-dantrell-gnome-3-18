@@ -1,0 +1,236 @@
+From e95e9d962e3b9559ed74f0fea2646e63aecf5c44 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 25 Feb 2016 18:51:58 +0100
+Subject: [PATCH 0805/1800] Bug 750753 - Attach popup menus to their parent
+ widgets
+
+---
+ calendar/gui/e-day-view-time-item.c       | 3 +++
+ e-util/e-attachment-view.c                | 5 +++++
+ e-util/e-calendar-item.c                  | 3 +++
+ e-util/e-html-editor.c                    | 5 +++++
+ e-util/e-name-selector-list.c             | 1 +
+ e-util/e-table-header-item.c              | 6 ++++++
+ e-util/e-web-view.c                       | 5 +++++
+ mail/e-mail-reader.c                      | 9 ++++++++-
+ mail/em-subscription-editor.c             | 2 ++
+ modules/calendar/e-calendar-preferences.c | 1 +
+ shell/e-shell-view.c                      | 4 ++++
+ smime/gui/certificate-manager.c           | 2 ++
+ 12 files changed, 45 insertions(+), 1 deletion(-)
+
+diff --git a/calendar/gui/e-day-view-time-item.c b/calendar/gui/e-day-view-time-item.c
+index 7fbd2e0673..615b66e3ac 100644
+--- a/calendar/gui/e-day-view-time-item.c
++++ b/calendar/gui/e-day-view-time-item.c
+@@ -885,6 +885,9 @@ e_day_view_time_item_show_popup_menu (EDayViewTimeItem *time_item,
+ 
+ 	gtk_widget_show_all (submenu);
+ 
++	gtk_menu_attach_to_widget (GTK_MENU (menu),
++				   GTK_WIDGET (day_view),
++				   NULL);
+ 	gtk_menu_popup (
+ 		GTK_MENU (menu), NULL, NULL, NULL, NULL,
+ 		event->button.button, event->button.time);
+diff --git a/e-util/e-attachment-view.c b/e-util/e-attachment-view.c
+index 61fedfc685..7020ab88a4 100644
+--- a/e-util/e-attachment-view.c
++++ b/e-util/e-attachment-view.c
+@@ -1961,6 +1961,11 @@ e_attachment_view_get_popup_menu (EAttachmentView *view)
+ 	menu = gtk_ui_manager_get_widget (ui_manager, "/context");
+ 	g_return_val_if_fail (GTK_IS_MENU (menu), NULL);
+ 
++	if (!gtk_menu_get_attach_widget (GTK_MENU (menu)))
++		gtk_menu_attach_to_widget (GTK_MENU (menu),
++					   GTK_WIDGET (view),
++					   NULL);
++
+ 	return menu;
+ }
+ 
+diff --git a/e-util/e-calendar-item.c b/e-util/e-calendar-item.c
+index b415870ee7..b0a44d2cc6 100644
+--- a/e-util/e-calendar-item.c
++++ b/e-util/e-calendar-item.c
+@@ -3644,6 +3644,7 @@ e_calendar_item_show_popup_menu (ECalendarItem *calitem,
+                                  gint month_offset)
+ {
+ 	GtkWidget *menu, *submenu, *menuitem, *label;
++	GtkWidget *canvas_widget;
+ 	gint year, month;
+ 	const gchar *name;
+ 	gchar buffer[64];
+@@ -3698,6 +3699,8 @@ e_calendar_item_show_popup_menu (ECalendarItem *calitem,
+ 	gdk_event_get_button (button_event, &event_button);
+ 	event_time = gdk_event_get_time (button_event);
+ 
++	canvas_widget = GTK_WIDGET (calitem->canvas_item.canvas);
++	gtk_menu_attach_to_widget (GTK_MENU (menu), canvas_widget, NULL);
+ 	gtk_menu_popup (
+ 		GTK_MENU (menu), NULL, NULL,
+ 		e_calendar_item_position_menu, calitem,
+diff --git a/e-util/e-html-editor.c b/e-util/e-html-editor.c
+index 43c38d72ed..4a776100da 100644
+--- a/e-util/e-html-editor.c
++++ b/e-util/e-html-editor.c
+@@ -507,6 +507,11 @@ html_editor_context_menu_cb (WebKitWebView *webkit_web_view,
+ 
+ 	g_signal_emit (editor, signals[UPDATE_ACTIONS], 0, flags);
+ 
++	if (!gtk_menu_get_attach_widget (GTK_MENU (menu)))
++		gtk_menu_attach_to_widget (GTK_MENU (menu),
++					   GTK_WIDGET (editor),
++					   NULL);
++
+ 	if (event)
+ 		gtk_menu_popup (
+ 			GTK_MENU (menu), NULL, NULL, NULL,
+diff --git a/e-util/e-name-selector-list.c b/e-util/e-name-selector-list.c
+index 7375c47d4e..2de7e7feb4 100644
+--- a/e-util/e-name-selector-list.c
++++ b/e-util/e-name-selector-list.c
+@@ -493,6 +493,7 @@ enl_tree_button_press_event (GtkWidget *widget,
+ 	menu = gtk_menu_new ();
+ 	g_signal_connect (menu, "deactivate", G_CALLBACK (menu_deactivate), list);
+ 	list->priv->menu = menu;
++	gtk_menu_attach_to_widget (GTK_MENU (menu), widget, NULL);
+ 	gtk_menu_popup (GTK_MENU (menu), NULL, NULL, NULL, NULL, event->button, gtk_get_current_event_time ());
+ 
+ 	email_num = e_destination_get_email_num (destination);
+diff --git a/e-util/e-table-header-item.c b/e-util/e-table-header-item.c
+index e3f83d3908..0867fa5e39 100644
+--- a/e-util/e-table-header-item.c
++++ b/e-util/e-table-header-item.c
+@@ -1780,6 +1780,9 @@ ethi_header_context_menu (ETableHeaderItem *ethi,
+ 		popup, "selection-done",
+ 		G_CALLBACK (free_popup_info), info);
+ 
++	gtk_menu_attach_to_widget (GTK_MENU (popup),
++				   GTK_WIDGET (ethi->parent.canvas),
++				   NULL);
+ 	gtk_menu_popup (
+ 		GTK_MENU (popup),
+ 		NULL, NULL, NULL, NULL,
+@@ -2082,6 +2085,9 @@ ethi_event (GnomeCanvasItem *item,
+ 			g_signal_connect (
+ 				popup, "selection-done",
+ 				G_CALLBACK (free_popup_info), info);
++			gtk_menu_attach_to_widget (GTK_MENU (popup),
++						   GTK_WIDGET (canvas),
++						   NULL);
+ 			gtk_menu_popup (
+ 				GTK_MENU (popup),
+ 				NULL, NULL, NULL, NULL,
+diff --git a/e-util/e-web-view.c b/e-util/e-web-view.c
+index 98c74a49ed..7524d149f5 100644
+--- a/e-util/e-web-view.c
++++ b/e-util/e-web-view.c
+@@ -2994,6 +2994,11 @@ e_web_view_get_popup_menu (EWebView *web_view)
+ 	menu = gtk_ui_manager_get_widget (ui_manager, "/context");
+ 	g_return_val_if_fail (GTK_IS_MENU (menu), NULL);
+ 
++	if (!gtk_menu_get_attach_widget (GTK_MENU (menu)))
++		gtk_menu_attach_to_widget (GTK_MENU (menu),
++					   GTK_WIDGET (web_view),
++					   NULL);
++
+ 	return menu;
+ }
+ 
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index 4a78214d39..39ca7a5f04 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -4739,13 +4739,19 @@ GtkMenu *
+ e_mail_reader_get_popup_menu (EMailReader *reader)
+ {
+ 	EMailReaderInterface *iface;
++	GtkMenu *menu;
+ 
+ 	g_return_val_if_fail (E_IS_MAIL_READER (reader), NULL);
+ 
+ 	iface = E_MAIL_READER_GET_INTERFACE (reader);
+ 	g_return_val_if_fail (iface->get_popup_menu != NULL, NULL);
+ 
+-	return iface->get_popup_menu (reader);
++	menu = iface->get_popup_menu (reader);
++	if (!gtk_menu_get_attach_widget (GTK_MENU (menu)))
++		gtk_menu_attach_to_widget (GTK_MENU (menu),
++					   GTK_WIDGET (reader),
++					   NULL);
++	return menu;
+ }
+ 
+ EPreviewPane *
+@@ -5339,6 +5345,7 @@ e_mail_reader_show_remote_content_popup (EMailReader *reader,
+ 
+ 		gtk_widget_show_all (popup_menu);
+ 
++		gtk_menu_attach_to_widget (GTK_MENU (popup_menu), box, NULL);
+ 		if (event)
+ 			gtk_menu_popup (GTK_MENU (popup_menu), NULL, NULL,
+ 				e_mail_reader_remote_content_menu_position,
+diff --git a/mail/em-subscription-editor.c b/mail/em-subscription-editor.c
+index 5b870594bb..e0dfff15b3 100644
+--- a/mail/em-subscription-editor.c
++++ b/mail/em-subscription-editor.c
+@@ -874,6 +874,7 @@ subscription_editor_subscribe_popup_cb (EMSubscriptionEditor *editor)
+ 			G_CALLBACK (subscription_editor_subscribe_all),
+ 			editor));
+ 
++	gtk_menu_attach_to_widget (GTK_MENU (menu), GTK_WIDGET (editor), NULL);
+ 	gtk_menu_popup (
+ 		GTK_MENU (menu), NULL, NULL,
+ 		position_below_widget_cb,
+@@ -988,6 +989,7 @@ subscription_editor_unsubscribe_popup_cb (EMSubscriptionEditor *editor)
+ 			G_CALLBACK (subscription_editor_unsubscribe_all),
+ 			editor));
+ 
++	gtk_menu_attach_to_widget (GTK_MENU (menu), GTK_WIDGET (editor), NULL);
+ 	gtk_menu_popup (
+ 		GTK_MENU (menu), NULL, NULL,
+ 		position_below_widget_cb,
+diff --git a/modules/calendar/e-calendar-preferences.c b/modules/calendar/e-calendar-preferences.c
+index df44feda8a..be75bac07f 100644
+--- a/modules/calendar/e-calendar-preferences.c
++++ b/modules/calendar/e-calendar-preferences.c
+@@ -394,6 +394,7 @@ day_second_zone_clicked (GtkWidget *widget,
+ 
+ 	gtk_widget_show_all (menu);
+ 
++	gtk_menu_attach_to_widget (GTK_MENU (menu), widget, NULL);
+ 	gtk_menu_popup (
+ 		GTK_MENU (menu), NULL, NULL, NULL, NULL,
+ 		0, gtk_get_current_event_time ());
+diff --git a/shell/e-shell-view.c b/shell/e-shell-view.c
+index e5a19ddd13..f7a5d06bba 100644
+--- a/shell/e-shell-view.c
++++ b/shell/e-shell-view.c
+@@ -1927,6 +1927,10 @@ e_shell_view_show_popup_menu (EShellView *shell_view,
+ 		event_time = gtk_get_current_event_time ();
+ 	}
+ 
++	if (!gtk_menu_get_attach_widget (GTK_MENU (menu)))
++		gtk_menu_attach_to_widget (GTK_MENU (menu),
++					   GTK_WIDGET (shell_window),
++					   NULL);
+ 	gtk_menu_popup (
+ 		GTK_MENU (menu),
+ 		NULL, NULL, NULL, NULL,
+diff --git a/smime/gui/certificate-manager.c b/smime/gui/certificate-manager.c
+index 2263ee1a78..4566523fce 100644
+--- a/smime/gui/certificate-manager.c
++++ b/smime/gui/certificate-manager.c
+@@ -365,6 +365,8 @@ treeview_header_clicked (GtkWidget *widget,
+ 		return FALSE;
+ 
+ 	gtk_widget_show_all (GTK_WIDGET (menu));
++	if (!gtk_menu_get_attach_widget (menu))
++		gtk_menu_attach_to_widget (menu, widget, NULL);
+ 	gtk_menu_popup (menu, NULL, NULL, NULL, NULL, event_button, event_time);
+ 
+ 	return TRUE;
+-- 
+2.15.0
+

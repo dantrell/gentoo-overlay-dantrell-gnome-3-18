@@ -1,0 +1,27 @@
+From 27431917cc0d80483a755c9a403de7fb4cc49d08 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 29 Feb 2016 19:49:14 +0100
+Subject: [PATCH 0942/1800] EHTMLEditorDOMUtils - Don't leak a
+ WebKitDOMNodeList object
+
+---
+ web-extensions/e-dom-utils.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/web-extensions/e-dom-utils.c b/web-extensions/e-dom-utils.c
+index 627c99ded7..126b90a439 100644
+--- a/web-extensions/e-dom-utils.c
++++ b/web-extensions/e-dom-utils.c
+@@ -1870,7 +1870,9 @@ merge_lists_if_possible (WebKitDOMNode *list)
+ 
+ 		node = webkit_dom_node_list_item (lists, ii);
+ 		merge_lists_if_possible (node);
++		g_object_unref (node);
+ 	}
++	g_object_unref (lists);
+ }
+ 
+ WebKitDOMElement *
+-- 
+2.15.0
+

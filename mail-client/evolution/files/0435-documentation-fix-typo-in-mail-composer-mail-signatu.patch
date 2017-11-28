@@ -1,0 +1,24 @@
+From e39f1986b384cad5470ad1260676cca2ba19a17d Mon Sep 17 00:00:00 2001
+From: Christian Kirbach <christian.kirbach@gmail.com>
+Date: Sat, 7 Mar 2015 00:14:53 +0100
+Subject: [PATCH 0435/1800] Documentation - Fix typo in
+ mail-composer-mail-signatures-manage.page
+
+---
+ help/C/mail-composer-mail-signatures-manage.page | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/help/C/mail-composer-mail-signatures-manage.page b/help/C/mail-composer-mail-signatures-manage.page
+index 8bd5a8f75f..74e5e56986 100644
+--- a/help/C/mail-composer-mail-signatures-manage.page
++++ b/help/C/mail-composer-mail-signatures-manage.page
+@@ -22,5 +22,5 @@
+ <p>You can add, edit and delete all your signatures under <guiseq><gui>Edit</gui><gui>Preferences</gui><gui>Composer preferences</gui><gui>Signatures</gui></guiseq>.</p>
+ <p>Assigning a default signature to an email account has to be done in the <link xref="mail-composer-mail-signatures-per-account">account settings</link>.</p>
+ 
+-<note style="tip"><p>Per <link href="http://tools.ietf.org/html/rfc3676#section-4.3">long-standing convention</link>, signatures always start with two dashes and a space in a separate link. This allows many email clients to automatically strip signatures from quotes when replying.</p></note>
++<note style="tip"><p>Per <link href="http://tools.ietf.org/html/rfc3676#section-4.3">long-standing convention</link>, signatures always start with two dashes and a space in a separate line. This allows many email clients to automatically strip signatures from quotes when replying.</p></note>
+ </page>
+-- 
+2.15.0
+

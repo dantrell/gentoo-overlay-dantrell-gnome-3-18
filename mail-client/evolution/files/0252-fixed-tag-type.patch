@@ -1,0 +1,25 @@
+From 6bd1ff5eba6ad8315808d2048a139f36837dab3d Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marek=20=C4=8Cernock=C3=BD?= <marek@manet.cz>
+Date: Thu, 5 Feb 2015 11:41:28 +0100
+Subject: [PATCH 0252/1800] Fixed tag type
+
+---
+ help/C/tasks-usage-edit-task.page | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/help/C/tasks-usage-edit-task.page b/help/C/tasks-usage-edit-task.page
+index 7b9f1f0cfd..4ee38f61d3 100644
+--- a/help/C/tasks-usage-edit-task.page
++++ b/help/C/tasks-usage-edit-task.page
+@@ -22,7 +22,7 @@
+ <p>If you want to change a task that already exists in your task lists,</p>
+ 
+ <steps>
+-<item><p>Double-click on the task that you want to edit in the list of tasks, or right-click on the task and click <key>Open Task</key>.</p></item>
++<item><p>Double-click on the task that you want to edit in the list of tasks, or right-click on the task and click <gui>Open Task</gui>.</p></item>
+ <item><p>Edit the task information.</p></item>
+ <item><p>Click the <gui style="button">Save</gui> button, or <guiseq><gui>File</gui><gui>Save</gui></guiseq>.</p></item>
+ </steps>
+-- 
+2.15.0
+

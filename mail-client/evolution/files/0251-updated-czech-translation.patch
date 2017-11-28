@@ -1,0 +1,25 @@
+From 71e5d498996745cfa2df25e207561f5540ffc8df Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marek=20=C4=8Cernock=C3=BD?= <marek@manet.cz>
+Date: Thu, 5 Feb 2015 10:08:08 +0100
+Subject: [PATCH 0251/1800] Updated Czech translation
+
+---
+ po/cs.po | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/po/cs.po b/po/cs.po
+index 48b2b27484..1c148d4e0a 100644
+--- a/po/cs.po
++++ b/po/cs.po
+@@ -12392,7 +12392,7 @@ msgstr "Nebyla nalezena žádná shoda"
+ #: ../e-util/e-html-editor-find-dialog.c:160
+ #: ../e-util/e-html-editor-replace-dialog.c:229
+ msgid "Search _backwards"
+-msgstr "Hledat od _konce"
++msgstr "Hledat směrem _k začátku"
+ 
+ #: ../e-util/e-html-editor-find-dialog.c:167
+ msgid "Case _Sensitive"
+-- 
+2.15.0
+

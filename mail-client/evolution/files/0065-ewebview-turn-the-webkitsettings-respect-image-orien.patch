@@ -1,0 +1,25 @@
+From 13a65b70a1433132ebeb112ea6f28d3ff4efec2c Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 16 Sep 2014 15:35:47 +0200
+Subject: [PATCH 0065/1800] EWebView - Turn the WebKitSettings
+ respect-image-orientation option on
+
+---
+ e-util/e-web-view.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/e-util/e-web-view.c b/e-util/e-web-view.c
+index 838f2124b4..04ff176a1f 100644
+--- a/e-util/e-web-view.c
++++ b/e-util/e-web-view.c
+@@ -3480,6 +3480,7 @@ e_web_view_get_default_webkit_settings (void)
+ 		"enable-private-browsing", TRUE,
+ 		"enable-smooth-scrolling", TRUE,
+ 		"media-playback-allows-inline", FALSE,
++		"respect-image-orientation", TRUE,
+ 		NULL);
+ }
+ 
+-- 
+2.15.0
+

@@ -1,0 +1,40 @@
+From 133f48e0dbe99ace15773dd091085f8db79f0917 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 7 Nov 2014 09:52:18 +0100
+Subject: [PATCH 0049/1800] EHTMLEditorView - Fix logic that prevents the text
+ blocks when processing the content into the composer
+
+End block if the current line has less than 62 characters and the
+length of the first word on the next line (if presented) plus the
+length of the current line is less than 72 characters (that means that
+the line was wrapped as there was not enough space left for that word).
+Also end block if the line has more than 72 characters.
+---
+ e-util/e-html-editor-view.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 5ee780dcae..96137a665c 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -4070,7 +4070,7 @@ check_if_end_paragraph (const gchar *input,
+ 		if (length_next_word > 0 && next_br < next_space)
+ 			length_next_word = 0;
+ 
+-		if (length_next_word + length < 62)
++		if (length_next_word + length < 72)
+ 			return TRUE;
+ 	}
+ 
+@@ -4238,7 +4238,7 @@ parse_html_into_paragraphs (EHTMLEditorView *view,
+ 				if (length < 62 && check_if_end_paragraph (next_br, length))
+ 					append_new_paragraph (blockquote, &paragraph);
+ 
+-				if (length > 76)
++				if (length > 72)
+ 					append_new_paragraph (blockquote, &paragraph);
+ 			}
+ 
+-- 
+2.15.0
+

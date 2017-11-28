@@ -1,0 +1,27 @@
+From ce99a648a85f72ed3b290ed78909dd050462210f Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 16:44:19 +0100
+Subject: [PATCH 0334/1800] EHTMLEditorSelection - Try to remove the link only
+ when we find anchor
+
+---
+ web-extensions/e-html-editor-selection-dom-functions.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index da6c1033e4..a4279ec946 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -436,6 +436,9 @@ dom_unlink (WebKitDOMDocument *document)
+ 		dom_exec_command (document, E_HTML_EDITOR_VIEW_COMMAND_UNLINK, NULL);
+ 	}
+ 
++	if (!link)
++		return;
++
+ 	text = webkit_dom_html_element_get_inner_text (
+ 		WEBKIT_DOM_HTML_ELEMENT (link));
+ 	webkit_dom_html_element_set_outer_html (
+-- 
+2.15.0
+

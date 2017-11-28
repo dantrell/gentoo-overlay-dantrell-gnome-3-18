@@ -1,0 +1,27 @@
+From f771ac3b6fcb628dc1bef8e17ea3d005383f514b Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 29 Feb 2016 19:52:07 +0100
+Subject: [PATCH 0961/1800] EHTMLEditorSelection - Remove unneeded code
+
+---
+ web-extensions/composer/e-html-editor-selection-dom-functions.c | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index c00351efb7..c7bef7662f 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -2173,10 +2173,6 @@ wrap_lines (WebKitDOMDocument *document,
+ 			return WEBKIT_DOM_ELEMENT (block);
+ 
+ 		block_clone = webkit_dom_node_clone_node (block, TRUE);
+-		element = webkit_dom_element_query_selector (
+-			WEBKIT_DOM_ELEMENT (block_clone),
+-			"span#-x-evo-caret-position",
+-			NULL);
+ 
+ 		/* When we wrap, we are wrapping just the text after caret, text
+ 		 * before the caret is already wrapped, so unwrap the text after
+-- 
+2.15.0
+

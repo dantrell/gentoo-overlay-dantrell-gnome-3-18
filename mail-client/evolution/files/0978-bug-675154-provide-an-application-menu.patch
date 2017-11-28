@@ -1,0 +1,532 @@
+From 7949c9a229e2322cf26bef76db67d004e59b41bc Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 1 Sep 2015 16:24:24 +0200
+Subject: [PATCH 0978/1800] Bug 675154 - Provide an application menu
+
+---
+ shell/e-shell-utils.c          | 191 ++++++++++++++++++++++++++++++++++++++++-
+ shell/e-shell-utils.h          |   8 ++
+ shell/e-shell-window-actions.c | 140 ++----------------------------
+ shell/e-shell.c                |  84 ++++++++++++++++++
+ 4 files changed, 287 insertions(+), 136 deletions(-)
+
+diff --git a/shell/e-shell-utils.c b/shell/e-shell-utils.c
+index 56430ab5f1..7b493e4044 100644
+--- a/shell/e-shell-utils.c
++++ b/shell/e-shell-utils.c
+@@ -28,12 +28,14 @@
+ #include <config.h>
+ #endif
+ 
+-#include "e-shell-utils.h"
+-
+ #include <glib/gi18n-lib.h>
+ 
+ #include <libedataserver/libedataserver.h>
+ 
++#include "e-shell-view.h"
++#include "e-shell-window.h"
++#include "e-shell-utils.h"
++
+ /**
+  * e_shell_run_open_dialog:
+  * @shell: an #EShell
+@@ -261,3 +263,188 @@ e_shell_utils_import_uris (EShell *shell,
+ 	return g_strv_length ((gchar **) uris);
+ }
+ 
++void
++e_shell_utils_run_preferences (EShell *shell)
++{
++	GtkWidget *preferences_window;
++	GtkWindow *window;
++
++	preferences_window = e_shell_get_preferences_window (shell);
++	e_preferences_window_setup (E_PREFERENCES_WINDOW (preferences_window));
++
++	window = e_shell_get_active_window (shell);
++	g_return_if_fail (GTK_IS_WINDOW (window));
++
++	gtk_window_set_transient_for (
++		GTK_WINDOW (preferences_window),
++		window);
++	gtk_window_set_position (
++		GTK_WINDOW (preferences_window),
++		GTK_WIN_POS_CENTER_ON_PARENT);
++	gtk_window_present (GTK_WINDOW (preferences_window));
++
++	if (E_IS_SHELL_WINDOW (window)) {
++		EShellView *shell_view;
++		EShellWindow *shell_window;
++		EShellBackend *shell_backend;
++		EShellBackendClass *shell_backend_class;
++		const gchar *view_name;
++
++		shell_window = E_SHELL_WINDOW (window);
++		view_name = e_shell_window_get_active_view (shell_window);
++		shell_view = e_shell_window_get_shell_view (shell_window, view_name);
++
++		shell_backend = e_shell_view_get_shell_backend (shell_view);
++		shell_backend_class = E_SHELL_BACKEND_GET_CLASS (shell_backend);
++
++		if (shell_backend_class->preferences_page != NULL)
++			e_preferences_window_show_page (
++				E_PREFERENCES_WINDOW (preferences_window),
++				shell_backend_class->preferences_page);
++	}
++}
++
++static gboolean
++shell_utils_manage_quick_reference (EShell *shell,
++				    gboolean only_test)
++{
++	const gchar * const *language_names;
++	gboolean app_launched = FALSE;
++	gboolean found_any = FALSE;
++
++	language_names = g_get_language_names ();
++	while (*language_names != NULL && !app_launched) {
++		const gchar *language = *language_names++;
++		gchar *filename;
++
++		/* This must be a valid language AND a language with
++		 * no encoding suffix.  The next language should have
++		 * no encoding suffix. */
++		if (language == NULL || strchr (language, '.') != NULL)
++			continue;
++
++		filename = g_build_filename (
++			EVOLUTION_HELPDIR, "quickref",
++			language, "quickref.pdf", NULL);
++
++		if (g_file_test (filename, G_FILE_TEST_EXISTS)) {
++			found_any = TRUE;
++
++			if (!only_test) {
++				GFile *file;
++				gchar *uri;
++				GError *error = NULL;
++
++				file = g_file_new_for_path (filename);
++				uri = g_file_get_uri (file);
++
++				app_launched = g_app_info_launch_default_for_uri (
++					uri, NULL, &error);
++
++				if (error != NULL) {
++					/* FIXME Show an error dialog. */
++					g_warning ("%s", error->message);
++					g_error_free (error);
++				}
++
++				g_object_unref (file);
++				g_free (uri);
++			}
++		}
++
++		g_free (filename);
++	}
++
++	return found_any;
++}
++
++gboolean
++e_shell_utils_is_quick_reference_available (EShell *shell)
++{
++	return shell_utils_manage_quick_reference (shell, TRUE);
++}
++
++void
++e_shell_utils_run_quick_reference (EShell *shell)
++{
++	shell_utils_manage_quick_reference (shell, FALSE);
++}
++
++void
++e_shell_utils_run_help_about (EShell *shell)
++{
++	#define EVOLUTION_COPYRIGHT \
++		"Copyright \xC2\xA9 1999 - 2008 Novell, Inc. and Others\n" \
++		"Copyright \xC2\xA9 2008 - 2014 The Evolution Team"
++
++	/* Authors and Documenters
++	 *
++	 * The names below must be in UTF-8.  The breaking of escaped strings
++	 * is so the hexadecimal sequences don't swallow too many characters.
++	 *
++	 * SO THAT MEANS, FOR 8-BIT CHARACTERS USE \xXX HEX ENCODING ONLY!
++	 *
++	 * Not all environments are UTF-8 and not all editors can handle it.
++	 */
++	static const gchar *authors[] = {
++		"The Evolution Team",
++		"",
++		"Milan Crha <mcrha@redhat.com>",
++		"Fabiano Fid\xC3\xAAncio <fabiano@fidencio.org>",
++		"",
++		"and many past contributors",
++		NULL
++	};
++
++	static const gchar *documenters[] = {
++		"Andre Klapper",
++		NULL
++	};
++
++	gchar *translator_credits;
++
++	/* The translator-credits string is for translators to list
++	 * per-language credits for translation, displayed in the
++	 * about dialog. */
++	translator_credits = _("translator-credits");
++	if (strcmp (translator_credits, "translator-credits") == 0)
++		translator_credits = NULL;
++
++	gtk_show_about_dialog (
++		e_shell_get_active_window (shell),
++		"program-name", "Evolution",
++		"version", VERSION,
++		"copyright", EVOLUTION_COPYRIGHT,
++		"comments", _("Groupware Suite"),
++		"website", PACKAGE_URL,
++		"website-label", _("Evolution Website"),
++		"authors", authors,
++		"documenters", documenters,
++		"translator-credits", translator_credits,
++		"logo-icon-name", "evolution",
++		"license-type", GTK_LICENSE_GPL_2_0,
++		NULL);
++}
++
++void
++e_shell_utils_run_help_contents (EShell *shell)
++{
++#ifdef G_OS_WIN32
++	gchar *online_help_url;
++#endif
++	GtkWindow *window;
++
++	window = e_shell_get_active_window (shell);
++#ifdef G_OS_WIN32
++	/* On Windows, link to online help instead.
++	 * See https://bugzilla.gnome.org/show_bug.cgi?id=576478 */
++
++	online_help_url = g_strconcat (
++		"http://library.gnome.org/users/evolution/",
++		BASE_VERSION, NULL);
++	e_show_uri (window, online_help_url);
++	g_free (online_help_url);
++#else
++	e_display_help (window, NULL);
++#endif
++}
+diff --git a/shell/e-shell-utils.h b/shell/e-shell-utils.h
+index 077f074ddc..c3cc64068c 100644
+--- a/shell/e-shell-utils.h
++++ b/shell/e-shell-utils.h
+@@ -40,6 +40,14 @@ GFile *		e_shell_run_save_dialog		(EShell *shell,
+ guint		e_shell_utils_import_uris	(EShell *shell,
+ 						 const gchar * const *uris);
+ 
++void		e_shell_utils_run_preferences	(EShell *shell);
++gboolean	e_shell_utils_is_quick_reference_available
++						(EShell *shell);
++void		e_shell_utils_run_quick_reference
++						(EShell *shell);
++void		e_shell_utils_run_help_about	(EShell *shell);
++void		e_shell_utils_run_help_contents	(EShell *shell);
++
+ G_END_DECLS
+ 
+ #endif /* E_SHELL_UTILS_H */
+diff --git a/shell/e-shell-window-actions.c b/shell/e-shell-window-actions.c
+index e76f63baec..4590afcf78 100644
+--- a/shell/e-shell-window-actions.c
++++ b/shell/e-shell-window-actions.c
+@@ -24,34 +24,6 @@
+ 
+ #include "e-shell-window-private.h"
+ 
+-#define EVOLUTION_COPYRIGHT \
+-	"Copyright \xC2\xA9 1999 - 2008 Novell, Inc. and Others\n" \
+-	"Copyright \xC2\xA9 2008 - 2014 The Evolution Team"
+-
+-/* Authors and Documenters
+- *
+- * The names below must be in UTF-8.  The breaking of escaped strings
+- * is so the hexadecimal sequences don't swallow too many characters.
+- *
+- * SO THAT MEANS, FOR 8-BIT CHARACTERS USE \xXX HEX ENCODING ONLY!
+- *
+- * Not all environments are UTF-8 and not all editors can handle it.
+- */
+-static const gchar *authors[] = {
+-	"The Evolution Team",
+-	"",
+-	"Milan Crha <mcrha@redhat.com>",
+-	"Fabiano Fid\xC3\xAAncio <fabiano@fidencio.org>",
+-	"",
+-	"and many past contributors",
+-	NULL
+-};
+-
+-static const gchar *documenters[] = {
+-	"Andre Klapper",
+-	NULL
+-};
+-
+ /**
+  * E_SHELL_WINDOW_ACTION_ABOUT:
+  * @window: an #EShellWindow
+@@ -64,29 +36,7 @@ static void
+ action_about_cb (GtkAction *action,
+                  EShellWindow *shell_window)
+ {
+-	gchar *translator_credits;
+-
+-	/* The translator-credits string is for translators to list
+-	 * per-language credits for translation, displayed in the
+-	 * about dialog. */
+-	translator_credits = _("translator-credits");
+-	if (strcmp (translator_credits, "translator-credits") == 0)
+-		translator_credits = NULL;
+-
+-	gtk_show_about_dialog (
+-		GTK_WINDOW (shell_window),
+-		"program-name", "Evolution",
+-		"version", VERSION,
+-		"copyright", EVOLUTION_COPYRIGHT,
+-		"comments", _("Groupware Suite"),
+-		"website", PACKAGE_URL,
+-		"website-label", _("Evolution Website"),
+-		"authors", authors,
+-		"documenters", documenters,
+-		"translator-credits", translator_credits,
+-		"logo-icon-name", "evolution",
+-		"license-type", GTK_LICENSE_GPL_2_0,
+-		NULL);
++	e_shell_utils_run_help_about (e_shell_window_get_shell (shell_window));
+ }
+ 
+ /**
+@@ -129,19 +79,7 @@ static void
+ action_contents_cb (GtkAction *action,
+                     EShellWindow *shell_window)
+ {
+-#ifdef G_OS_WIN32
+-	/* On Windows, link to online help instead.
+-	 * See https://bugzilla.gnome.org/show_bug.cgi?id=576478 */
+-	gchar *online_help_url;
+-
+-	online_help_url = g_strconcat (
+-		"http://library.gnome.org/users/evolution/",
+-		BASE_VERSION, NULL);
+-	e_show_uri (GTK_WINDOW (shell_window), online_help_url);
+-	g_free (online_help_url);
+-#else
+-	e_display_help (GTK_WINDOW (shell_window), NULL);
+-#endif
++	e_shell_utils_run_help_contents (e_shell_window_get_shell (shell_window));
+ }
+ 
+ static void
+@@ -363,35 +301,7 @@ static void
+ action_preferences_cb (GtkAction *action,
+                        EShellWindow *shell_window)
+ {
+-	EShell *shell;
+-	GtkWidget *preferences_window;
+-	EShellView *shell_view;
+-	EShellBackend *shell_backend;
+-	EShellBackendClass *shell_backend_class;
+-	const gchar *view_name;
+-
+-	shell = e_shell_window_get_shell (shell_window);
+-	preferences_window = e_shell_get_preferences_window (shell);
+-	e_preferences_window_setup (E_PREFERENCES_WINDOW (preferences_window));
+-
+-	gtk_window_set_transient_for (
+-		GTK_WINDOW (preferences_window),
+-		GTK_WINDOW (shell_window));
+-	gtk_window_set_position (
+-		GTK_WINDOW (preferences_window),
+-		GTK_WIN_POS_CENTER_ON_PARENT);
+-	gtk_window_present (GTK_WINDOW (preferences_window));
+-
+-	view_name = e_shell_window_get_active_view (shell_window);
+-	shell_view = e_shell_window_get_shell_view (shell_window, view_name);
+-
+-	shell_backend = e_shell_view_get_shell_backend (shell_view);
+-	shell_backend_class = E_SHELL_BACKEND_GET_CLASS (shell_backend);
+-
+-	if (shell_backend_class->preferences_page != NULL)
+-		e_preferences_window_show_page (
+-			E_PREFERENCES_WINDOW (preferences_window),
+-			shell_backend_class->preferences_page);
++	e_shell_utils_run_preferences (e_shell_window_get_shell (shell_window));
+ }
+ 
+ /**
+@@ -407,47 +317,7 @@ static void
+ action_quick_reference_cb (GtkAction *action,
+                            EShellWindow *shell_window)
+ {
+-	const gchar * const *language_names;
+-	gboolean app_launched = FALSE;
+-
+-	language_names = g_get_language_names ();
+-	while (*language_names != NULL && !app_launched) {
+-		const gchar *language = *language_names++;
+-		gchar *filename;
+-
+-		/* This must be a valid language AND a language with
+-		 * no encoding suffix.  The next language should have
+-		 * no encoding suffix. */
+-		if (language == NULL || strchr (language, '.') != NULL)
+-			continue;
+-
+-		filename = g_build_filename (
+-			EVOLUTION_HELPDIR, "quickref",
+-			language, "quickref.pdf", NULL);
+-
+-		if (g_file_test (filename, G_FILE_TEST_EXISTS)) {
+-			GFile *file;
+-			gchar *uri;
+-			GError *error = NULL;
+-
+-			file = g_file_new_for_path (filename);
+-			uri = g_file_get_uri (file);
+-
+-			app_launched = g_app_info_launch_default_for_uri (
+-				uri, NULL, &error);
+-
+-			if (error != NULL) {
+-				/* FIXME Show an error dialog. */
+-				g_warning ("%s", error->message);
+-				g_error_free (error);
+-			}
+-
+-			g_object_unref (file);
+-			g_free (uri);
+-		}
+-
+-		g_free (filename);
+-	}
++	e_shell_utils_run_quick_reference (e_shell_window_get_shell (shell_window));
+ }
+ 
+ /**
+@@ -1398,6 +1268,8 @@ e_shell_window_actions_init (EShellWindow *shell_window)
+ 	/* Fine tuning. */
+ 
+ 	gtk_action_set_sensitive (ACTION (SEARCH_QUICK), FALSE);
++	gtk_action_set_visible (ACTION (QUICK_REFERENCE),
++		e_shell_utils_is_quick_reference_available (e_shell_window_get_shell (shell_window)));
+ 
+ 	e_binding_bind_property (
+ 		shell_window, "sidebar-visible",
+diff --git a/shell/e-shell.c b/shell/e-shell.c
+index 6c2aba2e47..f21b1289ac 100644
+--- a/shell/e-shell.c
++++ b/shell/e-shell.c
+@@ -1143,6 +1143,87 @@ shell_get_dialog_parent_cb (ECredentialsPrompter *prompter,
+ 	return NULL;
+ }
+ 
++static void
++shell_app_menu_activate_cb (GSimpleAction *action,
++			    GVariant *parameter,
++			    gpointer user_data)
++{
++	EShell *shell = user_data;
++	const gchar *name;
++
++	g_return_if_fail (G_IS_ACTION (action));
++	g_return_if_fail (E_IS_SHELL (shell));
++
++	name = g_action_get_name (G_ACTION (action));
++	g_return_if_fail (name != NULL);
++
++	if (g_str_equal (name, "new-window")) {
++		GtkWindow *window;
++
++		window = e_shell_get_active_window (shell);
++
++		if (E_IS_SHELL_WINDOW (window))
++			e_shell_create_shell_window (shell,
++				e_shell_window_get_active_view (E_SHELL_WINDOW (window)));
++		else
++			e_shell_create_shell_window (shell, NULL);
++	} else if (g_str_equal (name, "preferences")) {
++		e_shell_utils_run_preferences (shell);
++	} else if (g_str_equal (name, "quick-reference")) {
++		e_shell_utils_run_quick_reference (shell);
++	} else if (g_str_equal (name, "help")) {
++		e_shell_utils_run_help_contents (shell);
++	} else if (g_str_equal (name, "about")) {
++		e_shell_utils_run_help_about (shell);
++	} else if (g_str_equal (name, "quit")) {
++		e_shell_quit (shell, E_SHELL_QUIT_ACTION);
++	} else {
++		g_warning ("%s: Unknown app-menu action '%s'", G_STRFUNC, name);
++	}
++}
++
++static void
++shell_create_app_menu (GtkApplication *application)
++{
++	const GActionEntry actions[] = {
++		{ "new-window", shell_app_menu_activate_cb, NULL, NULL, NULL },
++		{ "preferences", shell_app_menu_activate_cb, NULL, NULL, NULL },
++		{ "quick-reference", shell_app_menu_activate_cb, NULL, NULL, NULL },
++		{ "help", shell_app_menu_activate_cb, NULL, NULL, NULL },
++		{ "about", shell_app_menu_activate_cb, NULL, NULL, NULL },
++		{ "quit", shell_app_menu_activate_cb, NULL, NULL, NULL }
++	};
++	GMenu *app_menu, *section;
++
++	g_return_if_fail (GTK_IS_APPLICATION (application));
++
++	app_menu = g_menu_new ();
++
++	section = g_menu_new ();
++	g_menu_append (section, _("New _Window"), "app.new-window");
++	g_menu_append_section (app_menu, NULL, G_MENU_MODEL (section));
++	g_object_unref (section);
++
++	section = g_menu_new ();
++	g_menu_append (section, _("_Preferences"), "app.preferences");
++	g_menu_append_section (app_menu, NULL, G_MENU_MODEL (section));
++	g_object_unref (section);
++
++	section = g_menu_new ();
++	if (e_shell_utils_is_quick_reference_available (E_SHELL (application)))
++		g_menu_append (section, _("Quick _Reference"), "app.quick-reference");
++	g_menu_append (section, _("_Help"), "app.help");
++	g_menu_append (section, _("_About"), "app.about");
++	g_menu_append (section, _("_Quit"), "app.quit");
++	g_menu_append_section (app_menu, NULL, G_MENU_MODEL (section));
++	g_object_unref (section);
++
++	gtk_application_set_app_menu (application, G_MENU_MODEL (app_menu));
++	g_action_map_add_action_entries (G_ACTION_MAP (application), actions, G_N_ELEMENTS (actions), application);
++
++	g_object_unref (app_menu);
++}
++
+ static void
+ shell_sm_quit_cb (EShell *shell,
+                   gpointer user_data)
+@@ -1408,6 +1489,9 @@ shell_startup (GApplication *application)
+ 
+ 	/* Chain up to parent's startup() method. */
+ 	G_APPLICATION_CLASS (e_shell_parent_class)->startup (application);
++
++	if (e_util_is_running_gnome ())
++		shell_create_app_menu (GTK_APPLICATION (application));
+ }
+ 
+ static void
+-- 
+2.15.0
+

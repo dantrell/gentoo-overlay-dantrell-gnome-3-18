@@ -1,0 +1,135 @@
+From 84c68e036a5ac5a2f1b67225d2981393383565d8 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 15 Jul 2015 12:40:28 +0200
+Subject: [PATCH 0888/1800] Bug 692361 - e_cal_client_get_free_busy() broken
+
+---
+ calendar/gui/e-meeting-store.c               | 30 +---------------------
+ plugins/publish-calendar/publish-format-fb.c | 37 +---------------------------
+ 2 files changed, 2 insertions(+), 65 deletions(-)
+
+diff --git a/calendar/gui/e-meeting-store.c b/calendar/gui/e-meeting-store.c
+index 7101fa8cf3..5bd652f40f 100644
+--- a/calendar/gui/e-meeting-store.c
++++ b/calendar/gui/e-meeting-store.c
+@@ -1525,24 +1525,6 @@ typedef struct {
+ #define USER_SUB   "%u"
+ #define DOMAIN_SUB "%d"
+ 
+-static void
+-client_free_busy_data_cb (ECalClient *client,
+-                          const GSList *ecalcomps,
+-                          FreeBusyAsyncData *fbd)
+-{
+-	const GSList *iter;
+-
+-	g_return_if_fail (fbd != NULL);
+-
+-	for (iter = ecalcomps; iter != NULL; iter = iter->next) {
+-		ECalComponent *comp = iter->data;
+-
+-		if (comp != NULL)
+-			fbd->fb_data = g_slist_prepend (
+-				fbd->fb_data, g_object_ref (comp));
+-	}
+-}
+-
+ static gboolean
+ freebusy_async (gpointer data)
+ {
+@@ -1554,24 +1536,14 @@ freebusy_async (gpointer data)
+ 	EMeetingStorePrivate *priv = fbd->store->priv;
+ 
+ 	if (fbd->client) {
+-		guint sigid;
+ 		/* FIXME This a workaround for getting all the free busy
+ 		 *       information for the users.  We should be able to
+ 		 *       get free busy asynchronously. */
+ 		g_mutex_lock (&mutex);
+ 		priv->num_queries++;
+-		sigid = g_signal_connect (
+-			fbd->client, "free-busy-data",
+-			G_CALLBACK (client_free_busy_data_cb), fbd);
+ 		e_cal_client_get_free_busy_sync (
+ 			fbd->client, fbd->startt,
+-			fbd->endt, fbd->users, NULL, NULL);
+-		/* This is to workaround broken dispatch of "free-busy-data" signal,
+-		 * introduced in 3.8.0. This code can be removed once the below bug is
+-		 * properly fixed: https://bugzilla.gnome.org/show_bug.cgi?id=692361
+-		*/
+-		g_usleep (G_USEC_PER_SEC / 10);
+-		g_signal_handler_disconnect (fbd->client, sigid);
++			fbd->endt, fbd->users, &fbd->fb_data, NULL, NULL);
+ 		priv->num_queries--;
+ 		g_mutex_unlock (&mutex);
+ 
+diff --git a/plugins/publish-calendar/publish-format-fb.c b/plugins/publish-calendar/publish-format-fb.c
+index 96f0441466..2181193726 100644
+--- a/plugins/publish-calendar/publish-format-fb.c
++++ b/plugins/publish-calendar/publish-format-fb.c
+@@ -31,23 +31,6 @@
+ 
+ #include "publish-format-fb.h"
+ 
+-static void
+-free_busy_data_cb (ECalClient *client,
+-                   const GSList *free_busy_ecalcomps,
+-                   GSList **pobjects)
+-{
+-	const GSList *iter;
+-
+-	g_return_if_fail (pobjects != NULL);
+-
+-	for (iter = free_busy_ecalcomps; iter != NULL; iter = iter->next) {
+-		ECalComponent *comp = iter->data;
+-
+-		if (comp)
+-			*pobjects = g_slist_prepend (*pobjects, g_object_ref (comp));
+-	}
+-}
+-
+ static gboolean
+ write_calendar (const gchar *uid,
+                 GOutputStream *stream,
+@@ -65,7 +48,6 @@ write_calendar (const gchar *uid,
+ 	icalcomponent *top_level;
+ 	gchar *email = NULL;
+ 	GSList *users = NULL;
+-	gulong handler_id;
+ 	gboolean success = FALSE;
+ 
+ 	utc = icaltimezone_get_utc_timezone ();
+@@ -112,29 +94,12 @@ write_calendar (const gchar *uid,
+ 
+ 	top_level = e_cal_util_new_top_level ();
+ 
+-	handler_id = g_signal_connect (
+-		client, "free-busy-data",
+-		G_CALLBACK (free_busy_data_cb), &objects);
+-
+ 	success = e_cal_client_get_free_busy_sync (
+-		E_CAL_CLIENT (client), start, end, users, NULL, error);
+-
+-	if (handler_id > 0)
+-		g_signal_handler_disconnect (client, handler_id);
++		E_CAL_CLIENT (client), start, end, users, &objects, NULL, error);
+ 
+ 	if (success) {
+ 		gchar *ical_string;
+ 		GSList *iter;
+-		gboolean done = FALSE;
+-
+-		/* This is to workaround broken dispatch of "free-busy-data" signal,
+-		 * introduced in 3.8.0. This code can be removed once the below bug is
+-		 * properly fixed: https://bugzilla.gnome.org/show_bug.cgi?id=692361
+-		*/
+-		while (!done) {
+-			g_usleep (G_USEC_PER_SEC / 10);
+-			done = !g_main_context_iteration (NULL, FALSE);
+-		}
+ 
+ 		for (iter = objects; iter; iter = iter->next) {
+ 			ECalComponent *comp = iter->data;
+-- 
+2.15.0
+

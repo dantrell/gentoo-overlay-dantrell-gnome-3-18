@@ -1,0 +1,96 @@
+From 6e1b89e62f3376b9352b5035f1180d060597b9bc Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 30 Mar 2015 13:37:20 +0200
+Subject: [PATCH 0490/1800] EHTMLEditorView - Fix Table Delete->Cell Contents
+ action
+
+It was trying to remove the cell instead of its content.
+---
+ e-util/e-html-editor-actions.c                      |  6 +++---
+ .../e-html-editor-actions-dom-functions.c           | 21 ++++-----------------
+ .../e-html-editor-actions-dom-functions.h           |  2 +-
+ 3 files changed, 8 insertions(+), 21 deletions(-)
+
+diff --git a/e-util/e-html-editor-actions.c b/e-util/e-html-editor-actions.c
+index 7dd4e116cc..eb7e17a4b5 100644
+--- a/e-util/e-html-editor-actions.c
++++ b/e-util/e-html-editor-actions.c
+@@ -138,11 +138,11 @@ html_editor_call_simple_extension_function (EHTMLEditor *editor,
+ }
+ 
+ static void
+-action_context_delete_cell_cb (GtkAction *action,
++action_context_delete_cell_contents_cb (GtkAction *action,
+                                EHTMLEditor *editor)
+ {
+ 	html_editor_call_simple_extension_function (
+-		editor, "EHTMLEditorDialogDeleteCell");
++		editor, "EHTMLEditorDialogDeleteCellContents");
+ }
+ 
+ static void
+@@ -1332,7 +1332,7 @@ static GtkActionEntry context_entries[] = {
+ 	  N_("Cell Contents"),
+ 	  NULL,
+ 	  NULL,
+-	  G_CALLBACK (action_context_delete_cell_cb) },
++	  G_CALLBACK (action_context_delete_cell_contents_cb) },
+ 
+ 	{ "context-delete-column",
+ 	  NULL,
+diff --git a/web-extensions/e-html-editor-actions-dom-functions.c b/web-extensions/e-html-editor-actions-dom-functions.c
+index 7d8780053a..e2980fd882 100644
+--- a/web-extensions/e-html-editor-actions-dom-functions.c
++++ b/web-extensions/e-html-editor-actions-dom-functions.c
+@@ -27,9 +27,9 @@ get_table_cell_element (WebKitDOMDocument *document)
+ }
+ 
+ void
+-e_html_editor_dialog_delete_cell (WebKitDOMDocument *document)
++e_html_editor_dialog_delete_cell_contents (WebKitDOMDocument *document)
+ {
+-	WebKitDOMNode *sibling;
++	WebKitDOMNode *node;
+ 	WebKitDOMElement *cell, *table_cell;
+ 
+ 	table_cell = get_table_cell_element (document);
+@@ -40,21 +40,8 @@ e_html_editor_dialog_delete_cell (WebKitDOMDocument *document)
+ 		cell = dom_node_find_parent_element (WEBKIT_DOM_NODE (table_cell), "TH");
+ 	g_return_if_fail (cell != NULL);
+ 
+-	sibling = webkit_dom_node_get_previous_sibling (WEBKIT_DOM_NODE (cell));
+-	if (!sibling) {
+-		sibling = webkit_dom_node_get_next_sibling (WEBKIT_DOM_NODE (cell));
+-	}
+-
+-	webkit_dom_node_remove_child (
+-		webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (cell)),
+-		WEBKIT_DOM_NODE (cell), NULL);
+-
+-	if (sibling) {
+-		webkit_dom_html_table_cell_element_set_col_span (
+-			WEBKIT_DOM_HTML_TABLE_CELL_ELEMENT (sibling),
+-			webkit_dom_html_table_cell_element_get_col_span (
+-				WEBKIT_DOM_HTML_TABLE_CELL_ELEMENT (sibling)) + 1);
+-	}
++	while ((node = webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (cell))))
++		remove_node (node);
+ }
+ 
+ void
+diff --git a/web-extensions/e-html-editor-actions-dom-functions.h b/web-extensions/e-html-editor-actions-dom-functions.h
+index 0489929827..ce7632a724 100644
+--- a/web-extensions/e-html-editor-actions-dom-functions.h
++++ b/web-extensions/e-html-editor-actions-dom-functions.h
+@@ -23,7 +23,7 @@
+ 
+ G_BEGIN_DECLS
+ 
+-void		e_html_editor_dialog_delete_cell
++void		e_html_editor_dialog_delete_cell_contents
+ 						(WebKitDOMDocument *document);
+ 
+ void		e_html_editor_dialog_delete_column
+-- 
+2.15.0
+

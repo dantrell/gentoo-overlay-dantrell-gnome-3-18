@@ -1,0 +1,406 @@
+From a4e68086adb46d8c2b5eaa6903703e925cbbcc21 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 9 Dec 2015 16:11:21 +0100
+Subject: [PATCH 0598/1800] WebExtensions - Adapt to latest deprecations
+
+---
+ .../composer/e-composer-private-dom-functions.c    | 24 +++---
+ .../e-html-editor-selection-dom-functions.c        |  2 +-
+ .../composer/e-msg-composer-dom-functions.c        |  8 +-
+ web-extensions/e-dom-utils.c                       | 85 +++++++++++-----------
+ 4 files changed, 58 insertions(+), 61 deletions(-)
+
+diff --git a/web-extensions/composer/e-composer-private-dom-functions.c b/web-extensions/composer/e-composer-private-dom-functions.c
+index 66f56058a6..58dfce3310 100644
+--- a/web-extensions/composer/e-composer-private-dom-functions.c
++++ b/web-extensions/composer/e-composer-private-dom-functions.c
+@@ -37,20 +37,20 @@ dom_remove_signatures (WebKitDOMDocument *document,
+                        gboolean top_signature)
+ {
+ 	gchar *ret_val = NULL;
+-	gulong list_length, ii;
+-	WebKitDOMNodeList *signatures;
++	gulong length, ii;
++	WebKitDOMHTMLCollection *signatures;
+ 
+ 	g_return_val_if_fail (WEBKIT_DOM_IS_HTML_DOCUMENT (document), NULL);
+ 	g_return_val_if_fail (E_IS_HTML_EDITOR_WEB_EXTENSION (extension), NULL);
+ 
+-	signatures = webkit_dom_document_get_elements_by_class_name (
++	signatures = webkit_dom_document_get_elements_by_class_name_as_html_collection (
+ 		document, "-x-evo-signature-wrapper");
+-	list_length = webkit_dom_node_list_get_length (signatures);
+-	for (ii = 0; ii < list_length; ii++) {
++	length = webkit_dom_html_collection_get_length (signatures);
++	for (ii = 0; ii < length; ii++) {
+ 		WebKitDOMNode *wrapper, *signature;
+ 		gchar *id;
+ 
+-		wrapper = webkit_dom_node_list_item (signatures, ii);
++		wrapper = webkit_dom_html_collection_item (signatures, ii);
+ 		signature = webkit_dom_node_get_first_child (wrapper);
+ 		id = webkit_dom_element_get_id (WEBKIT_DOM_ELEMENT (signature));
+ 
+@@ -115,7 +115,7 @@ composer_move_caret (WebKitDOMDocument *document,
+ 	WebKitDOMDOMSelection *dom_selection;
+ 	WebKitDOMElement *element, *signature;
+ 	WebKitDOMHTMLElement *body;
+-	WebKitDOMNodeList *list;
++	WebKitDOMHTMLCollection *paragraphs;
+ 	WebKitDOMRange *new_range;
+ 
+ 	is_message_from_draft = e_html_editor_web_extension_is_message_from_draft (extension);
+@@ -158,10 +158,10 @@ composer_move_caret (WebKitDOMDocument *document,
+ 		webkit_dom_element_set_attribute (
+ 			WEBKIT_DOM_ELEMENT (body), "data-new-message", "", NULL);
+ 
+-	list = webkit_dom_document_get_elements_by_class_name (document, "-x-evo-paragraph");
++	paragraphs = webkit_dom_document_get_elements_by_class_name_as_html_collection (document, "-x-evo-paragraph");
+ 	signature = webkit_dom_document_query_selector (document, ".-x-evo-signature-wrapper", NULL);
+ 	/* Situation when wrapped paragraph is just in signature and not in message body */
+-	if (webkit_dom_node_list_get_length (list) == 1)
++	if (webkit_dom_html_collection_get_length (paragraphs) == 1)
+ 		if (signature && webkit_dom_element_query_selector (signature, ".-x-evo-paragraph", NULL))
+ 			has_paragraphs_in_body = FALSE;
+ 
+@@ -189,7 +189,7 @@ composer_move_caret (WebKitDOMDocument *document,
+ 			NULL);
+ 	}
+ 
+-	if (webkit_dom_node_list_get_length (list) == 0)
++	if (webkit_dom_html_collection_get_length (paragraphs) == 0)
+ 		has_paragraphs_in_body = FALSE;
+ 
+ 	element = webkit_dom_document_get_element_by_id (document, "-x-evo-input-start");
+@@ -206,7 +206,7 @@ composer_move_caret (WebKitDOMDocument *document,
+ 		} else
+ 			element = WEBKIT_DOM_ELEMENT (body);
+ 
+-		g_object_unref (list);
++		g_object_unref (paragraphs);
+ 		goto move_caret;
+ 	}
+ 
+@@ -266,7 +266,7 @@ composer_move_caret (WebKitDOMDocument *document,
+ 			element = WEBKIT_DOM_ELEMENT (body);
+ 	}
+ 
+-	g_object_unref (list);
++	g_object_unref (paragraphs);
+  move_caret:
+ 	if (element) {
+ 		webkit_dom_range_select_node_contents (
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 4764734773..9a9ee05f77 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -2958,7 +2958,7 @@ set_font_style (WebKitDOMDocument *document,
+ 	} else {
+ 		WebKitDOMNode *node;
+ 
+-		node = webkit_dom_node_get_previous_sibling (WEBKIT_DOM_NODE (element));+
++		node = webkit_dom_node_get_previous_sibling (WEBKIT_DOM_NODE (element));
+ 
+ 		/* Turning the formatting in the middle of element. */
+ 		if (webkit_dom_node_get_next_sibling (WEBKIT_DOM_NODE (element))) {
+diff --git a/web-extensions/composer/e-msg-composer-dom-functions.c b/web-extensions/composer/e-msg-composer-dom-functions.c
+index 3a3d33d0d0..cadb88e684 100644
+--- a/web-extensions/composer/e-msg-composer-dom-functions.c
++++ b/web-extensions/composer/e-msg-composer-dom-functions.c
+@@ -25,16 +25,16 @@ dom_get_active_signature_uid (WebKitDOMDocument *document)
+ {
+ 	gchar *uid = NULL;
+ 	gulong ii, length;
+-	WebKitDOMNodeList *nodes;
++	WebKitDOMHTMLCollection *nodes;
+ 
+-	nodes = webkit_dom_document_get_elements_by_class_name (
++	nodes = webkit_dom_document_get_elements_by_class_name_as_html_collection (
+ 		document, "-x-evo-signature");
+-	length = webkit_dom_node_list_get_length (nodes);
++	length = webkit_dom_html_collection_get_length (nodes);
+ 	for (ii = 0; ii < length; ii++) {
+ 		WebKitDOMNode *node;
+ 		gchar *id;
+ 
+-		node = webkit_dom_node_list_item (nodes, ii);
++		node = webkit_dom_html_collection_item (nodes, ii);
+ 		id = webkit_dom_element_get_id (WEBKIT_DOM_ELEMENT (node));
+ 		if (id && (strlen (id) == 1) && (*id == '1')) {
+ 			uid = webkit_dom_element_get_attribute (
+diff --git a/web-extensions/e-dom-utils.c b/web-extensions/e-dom-utils.c
+index ddef6b26c8..32d2ac8ea9 100644
+--- a/web-extensions/e-dom-utils.c
++++ b/web-extensions/e-dom-utils.c
+@@ -122,16 +122,16 @@ e_dom_utils_document_has_selection (WebKitDOMDocument *document)
+ 	g_clear_object (&dom_selection);
+ 
+ 	if (!ret_val) {
+-		WebKitDOMNodeList *frames;
++		WebKitDOMHTMLCollection *frames;
+ 		gulong ii, length;
+ 
+-		frames = webkit_dom_document_get_elements_by_tag_name (document, "iframe");
+-		length = webkit_dom_node_list_get_length (frames);
++		frames = webkit_dom_document_get_elements_by_tag_name_as_html_collection (document, "iframe");
++		length = webkit_dom_html_collection_get_length (frames);
+ 		for (ii = 0; ii < length; ii++) {
+ 			WebKitDOMNode *node;
+ 			WebKitDOMDocument *content_document;
+ 
+-			node = webkit_dom_node_list_item (frames, ii);
++			node = webkit_dom_html_collection_item (frames, ii);
+ 			content_document = webkit_dom_html_iframe_element_get_content_document (
+ 				WEBKIT_DOM_HTML_IFRAME_ELEMENT (node));
+ 
+@@ -187,7 +187,7 @@ get_frame_selection_html (WebKitDOMElement *iframe)
+ 	WebKitDOMDocument *content_document;
+ 	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMDOMSelection *dom_selection;
+-	WebKitDOMNodeList *frames;
++	WebKitDOMHTMLCollection *frames;
+ 	gulong ii, length;
+ 
+ 	content_document = webkit_dom_html_iframe_element_get_content_document (
+@@ -235,14 +235,13 @@ get_frame_selection_html (WebKitDOMElement *iframe)
+ 
+ 	g_object_unref (dom_selection);
+ 
+-	frames = webkit_dom_document_get_elements_by_tag_name (
+-		content_document, "IFRAME");
+-	length = webkit_dom_node_list_get_length (frames);
++	frames = webkit_dom_document_get_elements_by_tag_name_as_html_collection (content_document, "iframe");
++	length = webkit_dom_html_collection_get_length (frames);
+ 	for (ii = 0; ii < length; ii++) {
+ 		WebKitDOMNode *node;
+ 		gchar *text;
+ 
+-		node = webkit_dom_node_list_item (frames, ii);
++		node = webkit_dom_html_collection_item (frames, ii);
+ 
+ 		text = get_frame_selection_html (
+ 			WEBKIT_DOM_ELEMENT (node));
+@@ -262,20 +261,20 @@ get_frame_selection_html (WebKitDOMElement *iframe)
+ gchar *
+ e_dom_utils_get_selection_content_html (WebKitDOMDocument *document)
+ {
+-	WebKitDOMNodeList *frames;
++	WebKitDOMHTMLCollection *frames;
+ 	gulong ii, length;
+ 
+ 	if (!e_dom_utils_document_has_selection (document))
+ 		return NULL;
+ 
+-	frames = webkit_dom_document_get_elements_by_tag_name (document, "IFRAME");
+-	length = webkit_dom_node_list_get_length (frames);
++	frames = webkit_dom_document_get_elements_by_tag_name_as_html_collection (document, "iframe");
++	length = webkit_dom_html_collection_get_length (frames);
+ 
+ 	for (ii = 0; ii < length; ii++) {
+ 		gchar *text;
+ 		WebKitDOMNode *node;
+ 
+-		node = webkit_dom_node_list_item (frames, ii);
++		node = webkit_dom_html_collection_item (frames, ii);
+ 
+ 		text = get_frame_selection_html (
+ 			WEBKIT_DOM_ELEMENT (node));
+@@ -297,7 +296,7 @@ get_frame_selection_content_text (WebKitDOMElement *iframe)
+ 	WebKitDOMDocument *content_document;
+ 	WebKitDOMDOMWindow *window;
+ 	WebKitDOMDOMSelection *selection;
+-	WebKitDOMNodeList *frames;
++	WebKitDOMHTMLCollection *frames;
+ 	gulong ii, length;
+ 
+ 	content_document = webkit_dom_html_iframe_element_get_content_document (
+@@ -316,14 +315,13 @@ get_frame_selection_content_text (WebKitDOMElement *iframe)
+ 			return webkit_dom_range_to_string (range, NULL);
+ 	}
+ 
+-	frames = webkit_dom_document_get_elements_by_tag_name (
+-		content_document, "IFRAME");
+-	length = webkit_dom_node_list_get_length (frames);
++	frames = webkit_dom_document_get_elements_by_tag_name_as_html_collection (content_document, "iframe");
++	length = webkit_dom_html_collection_get_length (frames);
+ 	for (ii = 0; ii < length; ii++) {
+ 		WebKitDOMNode *node;
+ 		gchar *text;
+ 
+-		node = webkit_dom_node_list_item (frames, ii);
++		node = webkit_dom_html_collection_item (frames, ii);
+ 
+ 		text = get_frame_selection_content_text (
+ 			WEBKIT_DOM_ELEMENT (node));
+@@ -342,17 +340,17 @@ get_frame_selection_content_text (WebKitDOMElement *iframe)
+ gchar *
+ e_dom_utils_get_selection_content_text (WebKitDOMDocument *document)
+ {
+-	WebKitDOMNodeList *frames;
++	WebKitDOMHTMLCollection *frames;
+ 	gulong ii, length;
+ 
+-	frames = webkit_dom_document_get_elements_by_tag_name (document, "IFRAME");
+-	length = webkit_dom_node_list_get_length (frames);
++	frames = webkit_dom_document_get_elements_by_tag_name_as_html_collection (document, "iframe");
++	length = webkit_dom_html_collection_get_length (frames);
+ 
+ 	for (ii = 0; ii < length; ii++) {
+ 		gchar *text;
+ 		WebKitDOMNode *node;
+ 
+-		node = webkit_dom_node_list_item (frames, ii);
++		node = webkit_dom_html_collection_item (frames, ii);
+ 
+ 		text = get_frame_selection_content_text (
+ 			WEBKIT_DOM_ELEMENT (node));
+@@ -479,7 +477,7 @@ add_css_rule_into_style_sheet_recursive (WebKitDOMDocument *document,
+                                          const gchar *selector,
+                                          const gchar *style)
+ {
+-	WebKitDOMNodeList *frames;
++	WebKitDOMHTMLCollection *frames;
+ 	gint ii, length;
+ 
+ 	/* Add rule to document */
+@@ -489,15 +487,15 @@ add_css_rule_into_style_sheet_recursive (WebKitDOMDocument *document,
+ 		selector,
+ 		style);
+ 
+-	frames = webkit_dom_document_query_selector_all (document, "iframe", NULL);
+-	length = webkit_dom_node_list_get_length (frames);
++	frames = webkit_dom_document_get_elements_by_tag_name_as_html_collection (document, "iframe");
++	length = webkit_dom_html_collection_get_length (frames);
+ 
+ 	/* Add rules to every sub document */
+ 	for (ii = 0; ii < length; ii++) {
+ 		WebKitDOMDocument *content_document = NULL;
+ 		WebKitDOMNode *node;
+ 
+-		node = webkit_dom_node_list_item (frames, ii);
++		node = webkit_dom_html_collection_item (frames, ii);
+ 		content_document =
+ 			webkit_dom_html_iframe_element_get_content_document (
+ 				WEBKIT_DOM_HTML_IFRAME_ELEMENT (node));
+@@ -736,6 +734,7 @@ e_dom_utils_bind_elements_recursively (WebKitDOMDocument *document,
+                                        gpointer user_data)
+ {
+ 	WebKitDOMNodeList *nodes;
++	WebKitDOMHTMLCollection *frames;
+ 	gulong ii, length;
+ 
+ 	nodes = webkit_dom_document_query_selector_all (
+@@ -752,15 +751,15 @@ e_dom_utils_bind_elements_recursively (WebKitDOMDocument *document,
+ 	}
+ 	g_object_unref (nodes);
+ 
+-	nodes = webkit_dom_document_query_selector_all (document, "iframe", NULL);
+-	length = webkit_dom_node_list_get_length (nodes);
++	frames = webkit_dom_document_get_elements_by_tag_name_as_html_collection (document, "iframe");
++	length = webkit_dom_html_collection_get_length (frames);
+ 
+ 	/* Add rules to every sub document */
+ 	for (ii = 0; ii < length; ii++) {
+ 		WebKitDOMDocument *content_document = NULL;
+ 		WebKitDOMNode *node;
+ 
+-		node = webkit_dom_node_list_item (nodes, ii);
++		node = webkit_dom_html_collection_item (frames, ii);
+ 		content_document =
+ 			webkit_dom_html_iframe_element_get_content_document (
+ 				WEBKIT_DOM_HTML_IFRAME_ELEMENT (node));
+@@ -775,7 +774,7 @@ e_dom_utils_bind_elements_recursively (WebKitDOMDocument *document,
+ 			callback,
+ 			user_data);
+ 	}
+-	g_object_unref (nodes);
++	g_object_unref (frames);
+ }
+ 
+ static void
+@@ -884,7 +883,7 @@ WebKitDOMElement *
+ e_dom_utils_find_element_by_selector (WebKitDOMDocument *document,
+                                       const gchar *selector)
+ {
+-	WebKitDOMNodeList *frames;
++	WebKitDOMHTMLCollection *frames;
+ 	WebKitDOMElement *element;
+ 	gulong ii, length;
+ 
+@@ -894,14 +893,14 @@ e_dom_utils_find_element_by_selector (WebKitDOMDocument *document,
+ 		return element;
+ 
+ 	/* If the element is not here then recursively scan all frames */
+-	frames = webkit_dom_document_get_elements_by_tag_name (document, "iframe");
+-	length = webkit_dom_node_list_get_length (frames);
++	frames = webkit_dom_document_get_elements_by_tag_name_as_html_collection (document, "iframe");
++	length = webkit_dom_html_collection_get_length (frames);
+ 	for (ii = 0; ii < length; ii++) {
+ 		WebKitDOMHTMLIFrameElement *iframe;
+ 		WebKitDOMDocument *content_document;
+ 
+ 		iframe = WEBKIT_DOM_HTML_IFRAME_ELEMENT (
+-			webkit_dom_node_list_item (frames, ii));
++			webkit_dom_html_collection_item (frames, ii));
+ 
+ 		content_document = webkit_dom_html_iframe_element_get_content_document (iframe);
+ 		if (!content_document)
+@@ -923,7 +922,7 @@ WebKitDOMElement *
+ e_dom_utils_find_element_by_id (WebKitDOMDocument *document,
+                                 const gchar *id)
+ {
+-	WebKitDOMNodeList *frames;
++	WebKitDOMHTMLCollection *frames;
+ 	WebKitDOMElement *element;
+ 	gulong ii, length;
+ 
+@@ -933,15 +932,14 @@ e_dom_utils_find_element_by_id (WebKitDOMDocument *document,
+ 		return element;
+ 
+ 	/* If the element is not here then recursively scan all frames */
+-	frames = webkit_dom_document_get_elements_by_tag_name (
+-		document, "iframe");
+-	length = webkit_dom_node_list_get_length (frames);
++	frames = webkit_dom_document_get_elements_by_tag_name_as_html_collection (document, "iframe");
++	length = webkit_dom_html_collection_get_length (frames);
+ 	for (ii = 0; ii < length; ii++) {
+ 		WebKitDOMHTMLIFrameElement *iframe;
+ 		WebKitDOMDocument *content_document;
+ 
+ 		iframe = WEBKIT_DOM_HTML_IFRAME_ELEMENT (
+-			webkit_dom_node_list_item (frames, ii));
++			webkit_dom_html_collection_item (frames, ii));
+ 
+ 		content_document = webkit_dom_html_iframe_element_get_content_document (iframe);
+ 		if (!content_document)
+@@ -962,7 +960,7 @@ gboolean
+ e_dom_utils_element_exists (WebKitDOMDocument *document,
+                             const gchar *element_id)
+ {
+-	WebKitDOMNodeList *frames;
++	WebKitDOMHTMLCollection *frames;
+ 	gboolean element_exists = FALSE;
+ 	gulong ii, length;
+ 
+@@ -971,15 +969,14 @@ e_dom_utils_element_exists (WebKitDOMDocument *document,
+ 		return TRUE;
+ 
+ 	/* If the element is not here then recursively scan all frames */
+-	frames = webkit_dom_document_get_elements_by_tag_name (
+-		document, "iframe");
+-	length = webkit_dom_node_list_get_length (frames);
++	frames = webkit_dom_document_get_elements_by_tag_name_as_html_collection (document, "iframe");
++	length = webkit_dom_html_collection_get_length (frames);
+ 	for (ii = 0; ii < length; ii++) {
+ 		WebKitDOMHTMLIFrameElement *iframe;
+ 		WebKitDOMDocument *content_document;
+ 
+ 		iframe = WEBKIT_DOM_HTML_IFRAME_ELEMENT (
+-			webkit_dom_node_list_item (frames, ii));
++			webkit_dom_html_collection_item (frames, ii));
+ 
+ 		content_document = webkit_dom_html_iframe_element_get_content_document (iframe);
+ 		if (!content_document)
+-- 
+2.15.0
+

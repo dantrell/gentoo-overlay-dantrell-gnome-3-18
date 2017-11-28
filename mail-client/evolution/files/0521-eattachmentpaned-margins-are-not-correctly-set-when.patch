@@ -1,0 +1,26 @@
+From a8ba4c30d0324316a41c364e6a2974ee6a1278b3 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 13 Mar 2015 13:41:19 +0100
+Subject: [PATCH 0521/1800] EAttachmentPaned - Margins are not correctly set
+ when composer is opened
+
+---
+ e-util/e-attachment-paned.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/e-util/e-attachment-paned.c b/e-util/e-attachment-paned.c
+index 77fcdc8284..767f497588 100644
+--- a/e-util/e-attachment-paned.c
++++ b/e-util/e-attachment-paned.c
+@@ -791,6 +791,8 @@ e_attachment_paned_init (EAttachmentPaned *paned)
+ 		G_CALLBACK (attachment_paned_update_status), paned);
+ 
+ 	g_object_unref (size_group);
++
++	attachment_paned_notify_cb (paned, NULL, GTK_EXPANDER (paned->priv->expander));
+ }
+ 
+ static void
+-- 
+2.15.0
+

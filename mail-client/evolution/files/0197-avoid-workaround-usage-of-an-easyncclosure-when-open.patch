@@ -1,0 +1,139 @@
+From 8d4167bf62c2f4255dd223d26305c52ed15cbe6c Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 27 Jan 2015 15:04:18 +0100
+Subject: [PATCH 0197/1800] Avoid/workaround usage of an EAsyncClosure when
+ opening an EClient
+
+The EAsyncClosure pushes its own thread default main context, which
+the EClient took as the one to use for any notifications, like about
+property changes of the related D-Bus object, but this main context
+doesn't live for long, it's effectively dead shortly after
+the EClient open, thus the property changes are not received anymore,
+which may eventually mean a stuck property value, like for
+the 'read-only' state.
+---
+ e-util/e-client-cache.c    | 43 ++++++++++++++++++++++++++++++++++++++-----
+ e-util/e-client-selector.c | 22 ++++++++++++----------
+ 2 files changed, 50 insertions(+), 15 deletions(-)
+
+diff --git a/e-util/e-client-cache.c b/e-util/e-client-cache.c
+index a10b59a2e5..39d670fdee 100644
+--- a/e-util/e-client-cache.c
++++ b/e-util/e-client-cache.c
+@@ -1067,6 +1067,28 @@ e_client_cache_ref_registry (EClientCache *client_cache)
+ 	return g_object_ref (client_cache->priv->registry);
+ }
+ 
++typedef struct _GetClientSyncData {
++	GMutex mutex;
++	EAsyncClosure *closure;
++} GetClientSyncData;
++
++static void
++client_cache_get_client_sync_cb (GObject *source_object,
++				 GAsyncResult *result,
++				 gpointer user_data)
++{
++	GetClientSyncData *data = user_data;
++
++	g_return_if_fail (E_IS_CLIENT_CACHE (source_object));
++	g_return_if_fail (data != NULL);
++
++	g_mutex_lock (&data->mutex);
++
++	e_async_closure_callback (source_object, result, data->closure);
++
++	g_mutex_unlock (&data->mutex);
++}
++
+ /**
+  * e_client_cache_get_client_sync:
+  * @client_cache: an #EClientCache
+@@ -1114,7 +1136,7 @@ e_client_cache_get_client_sync (EClientCache *client_cache,
+                                 GCancellable *cancellable,
+                                 GError **error)
+ {
+-	EAsyncClosure *closure;
++	GetClientSyncData data;
+ 	GAsyncResult *result;
+ 	EClient *client;
+ 
+@@ -1122,18 +1144,29 @@ e_client_cache_get_client_sync (EClientCache *client_cache,
+ 	g_return_val_if_fail (E_IS_SOURCE (source), NULL);
+ 	g_return_val_if_fail (extension_name != NULL, NULL);
+ 
+-	closure = e_async_closure_new ();
++	g_mutex_init (&data.mutex);
++	g_mutex_lock (&data.mutex);
+ 
+ 	e_client_cache_get_client (
+ 		client_cache, source, extension_name,cancellable,
+-		e_async_closure_callback, closure);
++		client_cache_get_client_sync_cb, &data);
+ 
+-	result = e_async_closure_wait (closure);
++	/* This is needed, because e_async_closure_new() pushes its own thread default main context,
++	   which was later taken into an EClient within e_client_cache_get_client(), but that's wrong,
++	   because that main context effectively dies at the end of this function. */
++	data.closure = e_async_closure_new ();
++
++	g_mutex_unlock (&data.mutex);
++
++	result = e_async_closure_wait (data.closure);
+ 
+ 	client = e_client_cache_get_client_finish (
+ 		client_cache, result, error);
+ 
+-	e_async_closure_free (closure);
++	g_mutex_lock (&data.mutex);
++	e_async_closure_free (data.closure);
++	g_mutex_unlock (&data.mutex);
++	g_mutex_clear (&data.mutex);
+ 
+ 	return client;
+ }
+diff --git a/e-util/e-client-selector.c b/e-util/e-client-selector.c
+index 9951ae3298..6b65735200 100644
+--- a/e-util/e-client-selector.c
++++ b/e-util/e-client-selector.c
+@@ -544,25 +544,27 @@ e_client_selector_get_client_sync (EClientSelector *selector,
+                                    GCancellable *cancellable,
+                                    GError **error)
+ {
+-	EAsyncClosure *closure;
+-	GAsyncResult *result;
++	EClientCache *client_cache;
++	const gchar *extension_name;
+ 	EClient *client;
+ 
+ 	g_return_val_if_fail (E_IS_CLIENT_SELECTOR (selector), NULL);
+ 	g_return_val_if_fail (E_IS_SOURCE (source), NULL);
+ 
+-	closure = e_async_closure_new ();
++	if (call_allow_auth_prompt) {
++		if (!e_source_allow_auth_prompt_sync (source, cancellable, error))
++			return NULL;
++	}
+ 
+-	e_client_selector_get_client (
+-		selector, source, call_allow_auth_prompt, cancellable,
+-		e_async_closure_callback, closure);
++	extension_name = e_source_selector_get_extension_name (E_SOURCE_SELECTOR (selector));
+ 
+-	result = e_async_closure_wait (closure);
++	client_cache = e_client_selector_ref_client_cache (selector);
+ 
+-	client = e_client_selector_get_client_finish (
+-		selector, result, error);
++	client = e_client_cache_get_client_sync (
++		client_cache, source,
++		extension_name, cancellable, error);
+ 
+-	e_async_closure_free (closure);
++	g_object_unref (client_cache);
+ 
+ 	return client;
+ }
+-- 
+2.15.0
+

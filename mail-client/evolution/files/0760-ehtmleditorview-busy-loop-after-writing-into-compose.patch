@@ -1,0 +1,100 @@
+From 522738106f48fc8f0fb734f17e74183cc42ff981 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 15:44:17 +0100
+Subject: [PATCH 0760/1800] EHTMLEditorView - Busy loop after writing ";)" into
+ composer
+
+---
+ .../composer/e-html-editor-undo-redo-manager.c     | 28 ++++++++--------------
+ .../composer/e-html-editor-view-dom-functions.c    | 18 +++++++-------
+ 2 files changed, 20 insertions(+), 26 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-undo-redo-manager.c b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+index 7944765c85..deeb901aea 100644
+--- a/web-extensions/composer/e-html-editor-undo-redo-manager.c
++++ b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+@@ -1708,37 +1708,29 @@ e_html_editor_undo_redo_manager_insert_dash_history_event (EHTMLEditorUndoRedoMa
+ 	event->after.end.y = last->after.end.y;
+ 
+ 	history = manager->priv->history;
+-	while (history) {
++	if (history) {
+ 		EHTMLEditorHistoryEvent *item;
+ 		WebKitDOMNode *first_child;
+ 
+ 		item = history->data;
+ 
+ 		if (item->type != HISTORY_INPUT)
+-			break;
++			return;
+ 
+ 		first_child = webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (item->data.fragment));
+ 		if (WEBKIT_DOM_IS_TEXT (first_child)) {
+-			gchar *text;
++			guint diff;
+ 
+-			text = webkit_dom_node_get_text_content (first_child);
+-			if (text && *text == ':') {
+-				guint diff;
++			diff = event->after.start.x - item->after.start.x;
+ 
+-				diff = event->after.start.x - item->after.start.x;
++			/* We need to move the coordinate of the last
++			 * event by one character. */
++			last->after.start.x += diff;
++			last->after.end.x += diff;
+ 
+-				/* We need to move the coordinate of the last
+-				 * event by one character. */
+-				last->after.start.x += diff;
+-				last->after.end.x += diff;
+-
+-				manager->priv->history = g_list_insert_before (
+-					manager->priv->history, history, event);
+-			}
+-			g_free (text);
+-			break;
++			manager->priv->history = g_list_insert_before (
++				manager->priv->history, history, event);
+ 		}
+-		history = history->next;
+ 	}
+ }
+ 
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index de30e5fa1a..e2757727fe 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -1445,19 +1445,21 @@ emoticon_insert_span (EEmoticon *emoticon,
+ 
+ 				/* Try to recognize smileys without the dash e.g. :). */
+ 				while (emoticon_start[ii] && emoticon->text_face[jj]) {
+-					if (emoticon_start[ii] == ':' && emoticon->text_face[jj] == ':') {
+-						if (emoticon->text_face[jj+1] && emoticon->text_face[jj+1] == '-')
++					if (emoticon_start[ii] == emoticon->text_face[jj]) {
++						if (emoticon->text_face[jj+1] && emoticon->text_face[jj+1] == '-') {
+ 							ii++;
+ 							jj+=2;
+ 							compensate = TRUE;
+-							continue;
+-					}
+-					if (emoticon_start[ii] == emoticon->text_face[jj]) {
+-						ii++;
+-						jj++;
+-					} else
++						} else {
++							ii++;
++							jj++;
++						}
++					} else {
+ 						same = FALSE;
++						break;
++					}
+ 				}
++
+ 				if (same) {
+ 					webkit_dom_character_data_delete_data (
+ 						WEBKIT_DOM_CHARACTER_DATA (node),
+-- 
+2.15.0
+

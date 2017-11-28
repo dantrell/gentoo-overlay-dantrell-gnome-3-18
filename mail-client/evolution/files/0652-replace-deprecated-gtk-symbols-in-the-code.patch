@@ -1,0 +1,385 @@
+From 86de60ba76bdc5b68dcf21c70d1190f53c4a5b70 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 7 Apr 2015 17:38:18 +0200
+Subject: [PATCH 0652/1800] Replace deprecated gtk+ symbols in the code
+
+There are still some in the .ui files, but the code is currently
+free of deprecated gtk+ symbols for the version the configure.ac
+declares.
+---
+ calendar/gui/e-timezone-entry.c           | 3 ++-
+ e-util/e-attachment-bar.c                 | 3 ++-
+ e-util/e-attachment-button.c              | 4 +++-
+ e-util/e-attachment-paned.c               | 4 +++-
+ e-util/e-dateedit.c                       | 4 +++-
+ e-util/e-emoticon-tool-button.c           | 6 +++---
+ e-util/e-image-chooser.c                  | 4 +++-
+ e-util/e-preview-pane.c                   | 3 ++-
+ e-util/e-search-bar.c                     | 3 ++-
+ e-util/e-table-field-chooser.c            | 4 +++-
+ e-util/e-web-view-preview.c               | 4 +++-
+ mail/e-mail-paned-view.c                  | 2 +-
+ mail/e-mail-view.c                        | 3 ++-
+ modules/calendar/e-calendar-preferences.c | 3 ++-
+ modules/mail/em-composer-prefs.c          | 3 ++-
+ modules/mail/em-mailer-prefs.c            | 4 +++-
+ shell/e-shell-taskbar.c                   | 3 ++-
+ 17 files changed, 41 insertions(+), 19 deletions(-)
+
+diff --git a/calendar/gui/e-timezone-entry.c b/calendar/gui/e-timezone-entry.c
+index 1f7db1f9b6..3dd84b5b44 100644
+--- a/calendar/gui/e-timezone-entry.c
++++ b/calendar/gui/e-timezone-entry.c
+@@ -69,7 +69,7 @@ enum {
+ 
+ static guint signals[LAST_SIGNAL];
+ 
+-G_DEFINE_TYPE (ETimezoneEntry, e_timezone_entry, GTK_TYPE_HBOX)
++G_DEFINE_TYPE (ETimezoneEntry, e_timezone_entry, GTK_TYPE_BOX)
+ 
+ static void
+ timezone_entry_emit_changed (ETimezoneEntry *timezone_entry)
+@@ -309,6 +309,7 @@ e_timezone_entry_init (ETimezoneEntry *timezone_entry)
+ 	timezone_entry->priv = E_TIMEZONE_ENTRY_GET_PRIVATE (timezone_entry);
+ 
+ 	gtk_widget_set_can_focus (GTK_WIDGET (timezone_entry), TRUE);
++	gtk_orientable_set_orientation (GTK_ORIENTABLE (timezone_entry), GTK_ORIENTATION_HORIZONTAL);
+ 
+ 	widget = gtk_entry_new ();
+ 	gtk_editable_set_editable (GTK_EDITABLE (widget), FALSE);
+diff --git a/e-util/e-attachment-bar.c b/e-util/e-attachment-bar.c
+index 422d3e29d9..8b850e557e 100644
+--- a/e-util/e-attachment-bar.c
++++ b/e-util/e-attachment-bar.c
+@@ -71,7 +71,7 @@ static void	e_attachment_bar_interface_init
+ G_DEFINE_TYPE_WITH_CODE (
+ 	EAttachmentBar,
+ 	e_attachment_bar,
+-	GTK_TYPE_VBOX,
++	GTK_TYPE_BOX,
+ 	G_IMPLEMENT_INTERFACE (
+ 		E_TYPE_ATTACHMENT_VIEW,
+ 		e_attachment_bar_interface_init))
+@@ -564,6 +564,7 @@ e_attachment_bar_init (EAttachmentBar *bar)
+ 	bar->priv = E_ATTACHMENT_BAR_GET_PRIVATE (bar);
+ 
+ 	gtk_box_set_spacing (GTK_BOX (bar), 6);
++	gtk_orientable_set_orientation (GTK_ORIENTABLE (bar), GTK_ORIENTATION_VERTICAL);
+ 
+ 	/* Keep the expander label and save button the same height. */
+ 	size_group = gtk_size_group_new (GTK_SIZE_GROUP_VERTICAL);
+diff --git a/e-util/e-attachment-button.c b/e-util/e-attachment-button.c
+index 1e259a2c71..4d8af488f3 100644
+--- a/e-util/e-attachment-button.c
++++ b/e-util/e-attachment-button.c
+@@ -63,7 +63,7 @@ enum {
+ G_DEFINE_TYPE (
+ 	EAttachmentButton,
+ 	e_attachment_button,
+-	GTK_TYPE_HBOX)
++	GTK_TYPE_BOX)
+ 
+ static void
+ attachment_button_menu_deactivate_cb (EAttachmentButton *button)
+@@ -591,6 +591,8 @@ e_attachment_button_init (EAttachmentButton *button)
+ 
+ 	button->priv = E_ATTACHMENT_BUTTON_GET_PRIVATE (button);
+ 
++	gtk_orientable_set_orientation (GTK_ORIENTABLE (button), GTK_ORIENTATION_HORIZONTAL);
++
+ 	/* Configure Widgets */
+ 
+ 	container = GTK_WIDGET (button);
+diff --git a/e-util/e-attachment-paned.c b/e-util/e-attachment-paned.c
+index 767f497588..3db37605d8 100644
+--- a/e-util/e-attachment-paned.c
++++ b/e-util/e-attachment-paned.c
+@@ -76,7 +76,7 @@ static void	e_attachment_paned_interface_init
+ G_DEFINE_TYPE_WITH_CODE (
+ 	EAttachmentPaned,
+ 	e_attachment_paned,
+-	GTK_TYPE_VPANED,
++	GTK_TYPE_PANED,
+ 	G_IMPLEMENT_INTERFACE (
+ 		E_TYPE_ATTACHMENT_VIEW,
+ 		e_attachment_paned_interface_init))
+@@ -631,6 +631,8 @@ e_attachment_paned_init (EAttachmentPaned *paned)
+ 	paned->priv = E_ATTACHMENT_PANED_GET_PRIVATE (paned);
+ 	paned->priv->model = e_attachment_store_new ();
+ 
++	gtk_orientable_set_orientation (GTK_ORIENTABLE (paned), GTK_ORIENTATION_VERTICAL);
++
+ 	/* Keep the expander label and combo box the same height. */
+ 	size_group = gtk_size_group_new (GTK_SIZE_GROUP_VERTICAL);
+ 
+diff --git a/e-util/e-dateedit.c b/e-util/e-dateedit.c
+index ccf83f4ac5..86878b5cc5 100644
+--- a/e-util/e-dateedit.c
++++ b/e-util/e-dateedit.c
+@@ -213,7 +213,7 @@ static gint signals[LAST_SIGNAL];
+ G_DEFINE_TYPE_WITH_CODE (
+ 	EDateEdit,
+ 	e_date_edit,
+-	GTK_TYPE_HBOX,
++	GTK_TYPE_BOX,
+ 	G_IMPLEMENT_INTERFACE (
+ 		E_TYPE_EXTENSIBLE, NULL))
+ 
+@@ -496,6 +496,8 @@ e_date_edit_init (EDateEdit *dedit)
+ 	dedit->priv->twodigit_year_can_future = TRUE;
+ 	dedit->priv->has_been_changed = FALSE;
+ 
++	gtk_orientable_set_orientation (GTK_ORIENTABLE (dedit), GTK_ORIENTATION_HORIZONTAL);
++
+ 	create_children (dedit);
+ 
+ 	/* Set it to the current time. */
+diff --git a/e-util/e-emoticon-tool-button.c b/e-util/e-emoticon-tool-button.c
+index 54f99c94b0..f15e2dbb64 100644
+--- a/e-util/e-emoticon-tool-button.c
++++ b/e-util/e-emoticon-tool-button.c
+@@ -167,11 +167,11 @@ emoticon_tool_button_emoticon_release_event_cb (EEmoticonToolButton *button,
+                                                 GdkEventButton *event,
+                                                 GtkButton *emoticon_button)
+ {
+-	GtkStateType state;
++	GtkStateFlags state;
+ 
+-	state = gtk_widget_get_state (GTK_WIDGET (button));
++	state = gtk_widget_get_state_flags (GTK_WIDGET (button));
+ 
+-	if (state != GTK_STATE_NORMAL)
++	if (state != GTK_STATE_FLAG_NORMAL)
+ 		gtk_button_clicked (emoticon_button);
+ 
+ 	return FALSE;
+diff --git a/e-util/e-image-chooser.c b/e-util/e-image-chooser.c
+index cd7d663456..92c436523e 100644
+--- a/e-util/e-image-chooser.c
++++ b/e-util/e-image-chooser.c
+@@ -65,7 +65,7 @@ static guint signals[LAST_SIGNAL];
+ G_DEFINE_TYPE (
+ 	EImageChooser,
+ 	e_image_chooser,
+-	GTK_TYPE_VBOX)
++	GTK_TYPE_BOX)
+ 
+ static gboolean
+ set_image_from_data (EImageChooser *chooser,
+@@ -446,6 +446,8 @@ e_image_chooser_init (EImageChooser *chooser)
+ 
+ 	chooser->priv = E_IMAGE_CHOOSER_GET_PRIVATE (chooser);
+ 
++	gtk_orientable_set_orientation (GTK_ORIENTABLE (chooser), GTK_ORIENTATION_VERTICAL);
++
+ 	container = GTK_WIDGET (chooser);
+ 
+ 	widget = gtk_frame_new ("");
+diff --git a/e-util/e-preview-pane.c b/e-util/e-preview-pane.c
+index 22ca775efb..a61cfeb639 100644
+--- a/e-util/e-preview-pane.c
++++ b/e-util/e-preview-pane.c
+@@ -55,7 +55,7 @@ static void	e_preview_pane_alert_sink_init
+ G_DEFINE_TYPE_WITH_CODE (
+ 	EPreviewPane,
+ 	e_preview_pane,
+-	GTK_TYPE_VBOX,
++	GTK_TYPE_BOX,
+ 	G_IMPLEMENT_INTERFACE (
+ 		E_TYPE_ALERT_SINK,
+ 		e_preview_pane_alert_sink_init))
+@@ -284,6 +284,7 @@ e_preview_pane_init (EPreviewPane *preview_pane)
+ 	preview_pane->priv = E_PREVIEW_PANE_GET_PRIVATE (preview_pane);
+ 
+ 	gtk_box_set_spacing (GTK_BOX (preview_pane), 1);
++	gtk_orientable_set_orientation (GTK_ORIENTABLE (preview_pane), GTK_ORIENTATION_VERTICAL);
+ }
+ 
+ GtkWidget *
+diff --git a/e-util/e-search-bar.c b/e-util/e-search-bar.c
+index 8c54ce9d16..e0814cbcd5 100644
+--- a/e-util/e-search-bar.c
++++ b/e-util/e-search-bar.c
+@@ -70,7 +70,7 @@ static guint signals[LAST_SIGNAL];
+ G_DEFINE_TYPE (
+ 	ESearchBar,
+ 	e_search_bar,
+-	GTK_TYPE_HBOX)
++	GTK_TYPE_BOX)
+ 
+ static void
+ search_bar_update_matches (ESearchBar *search_bar,
+@@ -589,6 +589,7 @@ e_search_bar_init (ESearchBar *search_bar)
+ 	search_bar->priv = E_SEARCH_BAR_GET_PRIVATE (search_bar);
+ 
+ 	gtk_box_set_spacing (GTK_BOX (search_bar), 12);
++	gtk_orientable_set_orientation (GTK_ORIENTABLE (search_bar), GTK_ORIENTATION_HORIZONTAL);
+ 
+ 	container = GTK_WIDGET (search_bar);
+ 
+diff --git a/e-util/e-table-field-chooser.c b/e-util/e-table-field-chooser.c
+index feebe8b267..d36fccbe60 100644
+--- a/e-util/e-table-field-chooser.c
++++ b/e-util/e-table-field-chooser.c
+@@ -47,7 +47,7 @@ enum {
+ G_DEFINE_TYPE (
+ 	ETableFieldChooser,
+ 	e_table_field_chooser,
+-	GTK_TYPE_VBOX)
++	GTK_TYPE_BOX)
+ 
+ static void
+ e_table_field_chooser_class_init (ETableFieldChooserClass *class)
+@@ -190,6 +190,8 @@ e_table_field_chooser_init (ETableFieldChooser *etfc)
+ {
+ 	GtkWidget *widget;
+ 
++	gtk_orientable_set_orientation (GTK_ORIENTABLE (etfc), GTK_ORIENTATION_VERTICAL);
++
+ 	widget = create_content (&etfc->canvas);
+ 	if (!widget) {
+ 		return;
+diff --git a/e-util/e-web-view-preview.c b/e-util/e-web-view-preview.c
+index 5c0dabe665..13fd32d26c 100644
+--- a/e-util/e-web-view-preview.c
++++ b/e-util/e-web-view-preview.c
+@@ -46,7 +46,7 @@ enum {
+ G_DEFINE_TYPE (
+ 	EWebViewPreview,
+ 	e_web_view_preview,
+-	GTK_TYPE_VPANED);
++	GTK_TYPE_PANED);
+ 
+ static void
+ web_view_preview_set_property (GObject *object,
+@@ -178,6 +178,8 @@ e_web_view_preview_init (EWebViewPreview *preview)
+ 	preview->priv = E_WEB_VIEW_PREVIEW_GET_PRIVATE (preview);
+ 	preview->priv->escape_values = TRUE;
+ 
++	gtk_orientable_set_orientation (GTK_ORIENTABLE (preview), GTK_ORIENTATION_VERTICAL);
++
+ 	tree_view_sw = in_scrolled_window (gtk_tree_view_new ());
+ 	web_view = e_web_view_new ();
+ 
+diff --git a/mail/e-mail-paned-view.c b/mail/e-mail-paned-view.c
+index 8b6bd63ea7..228fd13cef 100644
+--- a/mail/e-mail-paned-view.c
++++ b/mail/e-mail-paned-view.c
+@@ -699,7 +699,7 @@ mail_paned_view_constructed (GObject *object)
+ 	container = GTK_WIDGET (object);
+ 
+ 	widget = e_paned_new (GTK_ORIENTATION_VERTICAL);
+-	gtk_container_add (GTK_CONTAINER (container), widget);
++	gtk_box_pack_start (GTK_BOX (container), widget, TRUE, TRUE, 0);
+ 	priv->paned = g_object_ref (widget);
+ 	gtk_widget_show (widget);
+ 
+diff --git a/mail/e-mail-view.c b/mail/e-mail-view.c
+index 36b9d69026..0779eb532d 100644
+--- a/mail/e-mail-view.c
++++ b/mail/e-mail-view.c
+@@ -58,7 +58,7 @@ enum {
+ 
+ static guint signals[LAST_SIGNAL];
+ 
+-G_DEFINE_TYPE (EMailView, e_mail_view, GTK_TYPE_VBOX)
++G_DEFINE_TYPE (EMailView, e_mail_view, GTK_TYPE_BOX)
+ 
+ static void
+ mail_view_set_shell_view (EMailView *view,
+@@ -332,6 +332,7 @@ static void
+ e_mail_view_init (EMailView *view)
+ {
+ 	view->priv = E_MAIL_VIEW_GET_PRIVATE (view);
++	view->priv->orientation = GTK_ORIENTATION_VERTICAL;
+ }
+ 
+ EShellView *
+diff --git a/modules/calendar/e-calendar-preferences.c b/modules/calendar/e-calendar-preferences.c
+index 09b85dba2b..19d8735656 100644
+--- a/modules/calendar/e-calendar-preferences.c
++++ b/modules/calendar/e-calendar-preferences.c
+@@ -43,7 +43,7 @@ static const gint default_reminder_units_map[] = {
+ G_DEFINE_DYNAMIC_TYPE (
+ 	ECalendarPreferences,
+ 	e_calendar_preferences,
+-	GTK_TYPE_VBOX)
++	GTK_TYPE_BOX)
+ 
+ static gboolean
+ calendar_preferences_map_string_to_integer (GValue *value,
+@@ -277,6 +277,7 @@ e_calendar_preferences_class_finalize (ECalendarPreferencesClass *class)
+ static void
+ e_calendar_preferences_init (ECalendarPreferences *preferences)
+ {
++	gtk_orientable_set_orientation (GTK_ORIENTABLE (preferences), GTK_ORIENTATION_VERTICAL);
+ }
+ 
+ static GtkWidget *
+diff --git a/modules/mail/em-composer-prefs.c b/modules/mail/em-composer-prefs.c
+index 213c1567db..09c0e05e2c 100644
+--- a/modules/mail/em-composer-prefs.c
++++ b/modules/mail/em-composer-prefs.c
+@@ -50,7 +50,7 @@
+ G_DEFINE_TYPE (
+ 	EMComposerPrefs,
+ 	em_composer_prefs,
+-	GTK_TYPE_VBOX)
++	GTK_TYPE_BOX)
+ 
+ static void
+ composer_prefs_dispose (GObject *object)
+@@ -78,6 +78,7 @@ em_composer_prefs_class_init (EMComposerPrefsClass *class)
+ static void
+ em_composer_prefs_init (EMComposerPrefs *prefs)
+ {
++	gtk_orientable_set_orientation (GTK_ORIENTABLE (prefs), GTK_ORIENTATION_VERTICAL);
+ }
+ 
+ static void
+diff --git a/modules/mail/em-mailer-prefs.c b/modules/mail/em-mailer-prefs.c
+index 86894e60f5..24a92c21e6 100644
+--- a/modules/mail/em-mailer-prefs.c
++++ b/modules/mail/em-mailer-prefs.c
+@@ -145,7 +145,7 @@ struct _EMMailerPrefsPrivate {
+ G_DEFINE_TYPE (
+ 	EMMailerPrefs,
+ 	em_mailer_prefs,
+-	GTK_TYPE_VBOX)
++	GTK_TYPE_BOX)
+ 
+ static void
+ em_mailer_prefs_finalize (GObject *object)
+@@ -175,6 +175,8 @@ em_mailer_prefs_init (EMMailerPrefs *preferences)
+ {
+ 	preferences->priv = G_TYPE_INSTANCE_GET_PRIVATE (preferences, EM_TYPE_MAILER_PREFS, EMMailerPrefsPrivate);
+ 	preferences->priv->settings = e_util_ref_settings ("org.gnome.evolution.mail");
++
++	gtk_orientable_set_orientation (GTK_ORIENTABLE (preferences), GTK_ORIENTATION_VERTICAL);
+ }
+ 
+ static gboolean
+diff --git a/shell/e-shell-taskbar.c b/shell/e-shell-taskbar.c
+index 9300367ada..5138478f41 100644
+--- a/shell/e-shell-taskbar.c
++++ b/shell/e-shell-taskbar.c
+@@ -67,7 +67,7 @@ enum {
+ G_DEFINE_TYPE_WITH_CODE (
+ 	EShellTaskbar,
+ 	e_shell_taskbar,
+-	GTK_TYPE_HBOX,
++	GTK_TYPE_BOX,
+ 	G_IMPLEMENT_INTERFACE (
+ 		E_TYPE_EXTENSIBLE, NULL))
+ 
+@@ -481,6 +481,7 @@ e_shell_taskbar_init (EShellTaskbar *shell_taskbar)
+ 	shell_taskbar->priv->main_thread = g_thread_self ();
+ 
+ 	gtk_box_set_spacing (GTK_BOX (shell_taskbar), 12);
++	gtk_orientable_set_orientation (GTK_ORIENTABLE (shell_taskbar), GTK_ORIENTATION_HORIZONTAL);
+ 
+ 	widget = gtk_label_new (NULL);
+ 	gtk_label_set_ellipsize (GTK_LABEL (widget), PANGO_ELLIPSIZE_END);
+-- 
+2.15.0
+

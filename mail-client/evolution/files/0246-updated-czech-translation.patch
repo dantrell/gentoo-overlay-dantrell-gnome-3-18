@@ -1,0 +1,53 @@
+From 5f678e3842aba07f9a6bc81dd8a65b6afda979e7 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marek=20=C4=8Cernock=C3=BD?= <marek@manet.cz>
+Date: Wed, 4 Feb 2015 22:38:52 +0100
+Subject: [PATCH 0246/1800] Updated Czech translation
+
+---
+ po/cs.po | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/po/cs.po b/po/cs.po
+index 3275d16f0c..2e8f606e16 100644
+--- a/po/cs.po
++++ b/po/cs.po
+@@ -3629,7 +3629,7 @@ msgstr "Vybrat datum"
+ #: ../calendar/gui/dialogs/goto-dialog.ui.h:14
+ #: ../modules/calendar/e-cal-shell-view-actions.c:1219
+ msgid "Select _Today"
+-msgstr "Vybrat _dnešek"
++msgstr "Vybrat _dnešní den"
+ 
+ #: ../calendar/gui/dialogs/memo-editor.c:105 ../calendar/gui/print.c:3490
+ msgid "Memo"
+@@ -4125,11 +4125,11 @@ msgstr "Nová schůzka"
+ 
+ #: ../calendar/gui/ea-cal-view.c:287
+ msgid "Go to Today"
+-msgstr "Jít na dnešek"
++msgstr "Přejít na dnešní den"
+ 
+ #: ../calendar/gui/ea-cal-view.c:288
+ msgid "Go to Date"
+-msgstr "Jít na datum"
++msgstr "Přejít na datum"
+ 
+ #: ../calendar/gui/ea-cal-view-event.c:234
+ msgid "It has reminders."
+@@ -19275,11 +19275,11 @@ msgstr "Jít zpět"
+ 
+ #: ../modules/calendar/e-cal-shell-view-actions.c:1214
+ msgid "Go Forward"
+-msgstr "Jít dopředu"
++msgstr "Jít vpřed"
+ 
+ #: ../modules/calendar/e-cal-shell-view-actions.c:1221
+ msgid "Select today"
+-msgstr "Vybrat dnešek"
++msgstr "Vybrat dnešní den"
+ 
+ #: ../modules/calendar/e-cal-shell-view-actions.c:1226
+ msgid "Select _Date"
+-- 
+2.15.0
+

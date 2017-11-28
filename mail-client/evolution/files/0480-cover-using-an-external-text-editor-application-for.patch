@@ -1,0 +1,47 @@
+From a1b8efc8886d639a52033beaf5f2bbf8dfe5e4ee Mon Sep 17 00:00:00 2001
+From: Andre Klapper <a9016009@gmx.de>
+Date: Tue, 10 Mar 2015 19:27:10 +0100
+Subject: [PATCH 0480/1800] Cover using an external text editor application for
+ composing mail
+
+Bug 677745
+---
+ help/C/mail-composer-external-editor.page | 26 ++++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+ create mode 100644 help/C/mail-composer-external-editor.page
+
+diff --git a/help/C/mail-composer-external-editor.page b/help/C/mail-composer-external-editor.page
+new file mode 100644
+index 0000000000..0c0ddb8dee
+--- /dev/null
++++ b/help/C/mail-composer-external-editor.page
+@@ -0,0 +1,26 @@
++<page xmlns="http://projectmallard.org/1.0/" xmlns:its="http://www.w3.org/2005/11/its"
++      type="topic" id="mail-composer-external-editor">
++
++  <info>
++    <desc>Using a text editor application instead of the default mail composer.</desc>
++    
++    <link type="guide" xref="index#mail-composing-advanced" />
++
++    <revision pkgversion="3.13.91" version="0.1" date="2015-03-10" status="draft"/>
++    <credit type="author">
++      <name its:translate="no">Andre Klapper</name>
++      <email its:translate="no">ak-47@gmx.net</email>
++    </credit>
++    
++    <include href="legal.xml" xmlns="http://www.w3.org/2001/XInclude"/>
++    
++
++  </info>
++
++<title>Using an external editor</title>
++
++<p>You can compose the body of your message externally in your favorite text editor application so you can use its specific functionality. Enable <guiseq><gui>Edit</gui><gui>Plugins</gui><gui>External Editor</gui></guiseq> and set the corresponding <gui>Command</gui> to start the application under <gui>Configuration</gui>.</p>
++<p>If <gui>Automatically launch when a new mail is edited</gui> is not set, you need to select <guiseq><gui>File</gui><gui>Compose in External Editor</gui></guiseq> in the mail composer.</p>
++
++</page>
++
+-- 
+2.15.0
+

@@ -1,0 +1,38 @@
+From 432c1d15e18b56da0a856f5618e69255a7b1bb8d Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 22 Apr 2015 11:04:18 +0200
+Subject: [PATCH 0508/1800] EHTMLEditorSelection - Not possible to remove
+ smiley if selected
+
+---
+ web-extensions/e-html-editor-selection-dom-functions.c | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index 8ae732e91e..1ee5f81aca 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -1629,12 +1629,14 @@ dom_selection_save (WebKitDOMDocument *document)
+ 		WebKitDOMNode *node;
+ 
+ 		node = webkit_dom_node_get_parent_node (parent_node);
+-		marker_node = webkit_dom_node_insert_before (
+-			webkit_dom_node_get_parent_node (node),
+-			WEBKIT_DOM_NODE (start_marker),
+-			webkit_dom_node_get_next_sibling (node),
+-			NULL);
+-		goto insert_end_marker;
++		if (offset == 0) {
++			marker_node = webkit_dom_node_insert_before (
++				webkit_dom_node_get_parent_node (node),
++				WEBKIT_DOM_NODE (start_marker),
++				webkit_dom_node_get_next_sibling (node),
++				NULL);
++			goto insert_end_marker;
++		}
+ 	}
+ 
+ 	if (WEBKIT_DOM_IS_TEXT (container)) {
+-- 
+2.15.0
+

@@ -1,0 +1,60 @@
+From a5513b3ea6ea52c4625edfd2b86eff9823c39e4c Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 6 Nov 2014 10:36:42 +0100
+Subject: [PATCH 0042/1800] Provide descriptive error message when an e-mail is
+ not available in offline
+
+---
+ mail/e-mail-reader.c | 16 ++++++++++++----
+ mail/mail.error.xml  |  8 ++++++++
+ 2 files changed, 20 insertions(+), 4 deletions(-)
+
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index 202ec2dfee..033c2fb915 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -2981,10 +2981,18 @@ exit:
+ 		preview_pane = e_mail_reader_get_preview_pane (reader);
+ 		web_view = e_preview_pane_get_web_view (preview_pane);
+ 
+-		e_alert_submit (
+-			E_ALERT_SINK (web_view),
+-			"mail:no-retrieve-message",
+-			error->message, NULL);
++		if (g_error_matches (error, CAMEL_SERVICE_ERROR, CAMEL_SERVICE_ERROR_UNAVAILABLE) &&
++		    CAMEL_IS_OFFLINE_FOLDER (folder) &&
++		    camel_service_get_connection_status (CAMEL_SERVICE (camel_folder_get_parent_store (folder))) != CAMEL_SERVICE_CONNECTED)
++			e_alert_submit (
++				E_ALERT_SINK (web_view),
++				"mail:no-retrieve-message-offline",
++				NULL);
++		else
++			e_alert_submit (
++				E_ALERT_SINK (web_view),
++				"mail:no-retrieve-message",
++				error->message, NULL);
+ 	}
+ 
+ 	g_clear_error (&error);
+diff --git a/mail/mail.error.xml b/mail/mail.error.xml
+index c248a1a727..7c1b51d3a0 100644
+--- a/mail/mail.error.xml
++++ b/mail/mail.error.xml
+@@ -476,6 +476,14 @@ An mbox account will be created to preserve the old mbox folders. You can delete
+     <_secondary xml:space="preserve">{0}</_secondary>
+   </error>
+ 
++  <error id="no-retrieve-message-offline" type="warning">
++    <_primary>Message is not available in offline.</_primary>
++    <_secondary>This can be due to the message not being downloaded yet. The folder, or the account, can be marked
++for offline synchronization. Then, once the account is online again, use File-&gt;Download
++Messages for Offline Usage, when this folder is selected, to make sure that all the messages
++in the folder will be available in offline.</_secondary>
++  </error>
++
+   <error id="folder-open" type="error">
+     <_primary>Failed to open folder.</_primary>
+     <_secondary>The reported error was &quot;{0}&quot;.</_secondary>
+-- 
+2.15.0
+

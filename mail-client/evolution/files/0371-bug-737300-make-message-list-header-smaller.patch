@@ -1,0 +1,25 @@
+From 91002747429dc575ac78d978515bb29347fdfeb1 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 26 Feb 2015 17:11:41 +0100
+Subject: [PATCH 0371/1800] Bug 737300 - Make message list header smaller
+
+---
+ e-util/e-table-defines.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/e-util/e-table-defines.h b/e-util/e-table-defines.h
+index 920d98e10f..5d5188defe 100644
+--- a/e-util/e-table-defines.h
++++ b/e-util/e-table-defines.h
+@@ -34,7 +34,7 @@ G_BEGIN_DECLS
+ #define GROUP_INDENT         (BUTTON_HEIGHT + (BUTTON_PADDING * 2))
+ 
+ /* Padding around the contents of a header button */
+-#define HEADER_PADDING 3
++#define HEADER_PADDING 1
+ 
+ #define MIN_ARROW_SIZE 10
+ 
+-- 
+2.15.0
+

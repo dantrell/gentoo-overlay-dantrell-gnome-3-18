@@ -1,0 +1,45 @@
+From fb41583059d4cd003b8eb51e1618307ca567d866 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 1 Apr 2015 13:53:56 +0200
+Subject: [PATCH 0613/1800] EMailSignatureEditor - Use correct alert sink
+
+The EMailSignatureEditor is no an alert sink, it's the inner HTML editor,
+thus use it for alerts.
+---
+ e-util/e-mail-signature-editor.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/e-util/e-mail-signature-editor.c b/e-util/e-mail-signature-editor.c
+index 9b0f29e67d..cd67fc0027 100644
+--- a/e-util/e-mail-signature-editor.c
++++ b/e-util/e-mail-signature-editor.c
+@@ -127,7 +127,7 @@ mail_signature_editor_loaded_cb (GObject *object,
+ 	} else if (error != NULL) {
+ 		g_warn_if_fail (contents == NULL);
+ 		e_alert_submit (
+-			E_ALERT_SINK (window),
++			E_ALERT_SINK (e_mail_signature_editor_get_editor (window)),
+ 			"widgets:no-load-signature",
+ 			error->message, NULL);
+ 		g_object_unref (window);
+@@ -250,7 +250,7 @@ action_save_and_close_cb (GtkAction *action,
+ 	/* Make sure the signature name is not blank. */
+ 	if (*display_name == '\0') {
+ 		e_alert_submit (
+-			E_ALERT_SINK (editor),
++			E_ALERT_SINK (e_mail_signature_editor_get_editor (editor)),
+ 			"widgets:blank-signature", NULL);
+ 		gtk_widget_grab_focus (GTK_WIDGET (entry));
+ 		g_free (display_name);
+@@ -287,7 +287,7 @@ action_save_and_close_cb (GtkAction *action,
+ 
+ 	} else if (error != NULL) {
+ 		e_alert_submit (
+-			E_ALERT_SINK (editor),
++			E_ALERT_SINK (e_mail_signature_editor_get_editor (editor)),
+ 			"widgets:no-save-signature",
+ 			error->message, NULL);
+ 		g_error_free (error);
+-- 
+2.15.0
+

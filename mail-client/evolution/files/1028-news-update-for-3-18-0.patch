@@ -1,0 +1,43 @@
+From cad38de365a62fd55fad73e56fe21485fab2eed1 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 21 Sep 2015 11:40:32 +0200
+Subject: [PATCH 1028/1800] NEWS update for 3.18.0
+
+---
+ ChangeLog |  2 +-
+ NEWS      | 12 ++++++++++++
+ 2 files changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/ChangeLog b/ChangeLog
+index c26f1f78cf..81bef8028a 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -4,4 +4,4 @@
+ 	Get a clone of git repository and list changes with 'git log' there,
+ 	   $ git clone git://git.gnome.org/evolution
+ 	or browse changes online at
+-	   http://git.gnome.org/browse/evolution/log/?h=master
++	   http://git.gnome.org/browse/evolution/log/?h=gnome-3-18
+diff --git a/NEWS b/NEWS
+index dd45646b4a..c4e2d678e8 100644
+--- a/NEWS
++++ b/NEWS
+@@ -1,3 +1,15 @@
++Evolution 3.18.0 2015-09-21
++---------------------------
++
++Translations:
++	Fran Dieguez (gl)
++	Bernd Homuth (de)
++	Alexandre Franke (fr)
++	Wolfgang Stöggl (de)
++	Cheng-Chia Tseng (zh_TW)
++	Tom Tryfonidis (el)
++	Muhammet Kara (tr)
++
+ Evolution 3.17.92 2015-09-14
+ ----------------------------
+ 
+-- 
+2.15.0
+

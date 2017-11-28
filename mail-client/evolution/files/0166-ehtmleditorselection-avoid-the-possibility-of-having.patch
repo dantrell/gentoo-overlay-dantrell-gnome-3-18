@@ -1,0 +1,119 @@
+From 1e74603081eee8d7442864a08fc500a8510932e3 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 23 Mar 2015 13:34:41 +0100
+Subject: [PATCH 0166/1800] EHTMLEditorSelection - Avoid the possibility of
+ having multiple selection markers
+
+---
+ .../e-html-editor-selection-dom-functions.c        | 30 ++++++++++++++--------
+ web-extensions/e-html-editor-view-dom-functions.c  | 17 ++++++++++++
+ 2 files changed, 37 insertions(+), 10 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index 74b484f480..d0344ccaa2 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -934,6 +934,21 @@ create_selection_marker (WebKitDOMDocument *document,
+ 	return element;
+ }
+ 
++static void
++remove_selection_markers (WebKitDOMDocument *document)
++{
++	WebKitDOMElement *marker;
++
++	marker = webkit_dom_document_get_element_by_id (
++		document, "-x-evo-selection-start-marker");
++	if (marker)
++		remove_node (WEBKIT_DOM_NODE (marker));
++	marker = webkit_dom_document_get_element_by_id (
++		document, "-x-evo-selection-end-marker");
++	if (marker)
++		remove_node (WEBKIT_DOM_NODE (marker));
++}
++
+ static void
+ add_selection_markers_into_element_start (WebKitDOMDocument *document,
+                                           WebKitDOMElement *element,
+@@ -942,6 +957,7 @@ add_selection_markers_into_element_start (WebKitDOMDocument *document,
+ {
+ 	WebKitDOMElement *marker;
+ 
++	remove_selection_markers (document);
+ 	marker = create_selection_marker (document, FALSE);
+ 	webkit_dom_node_insert_before (
+ 		WEBKIT_DOM_NODE (element),
+@@ -1449,15 +1465,7 @@ dom_selection_save (WebKitDOMDocument *document)
+ 	WebKitDOMElement *marker;
+ 
+ 	/* First remove all markers (if present) */
+-	marker = webkit_dom_document_get_element_by_id (
+-		document, "-x-evo-selection-start-marker");
+-	if (marker != NULL)
+-		remove_node (WEBKIT_DOM_NODE (marker));
+-
+-	marker = webkit_dom_document_get_element_by_id (
+-		document, "-x-evo-selection-end-marker");
+-	if (marker != NULL)
+-		remove_node (WEBKIT_DOM_NODE (marker));
++	remove_selection_markers (document);
+ 
+ 	range = dom_get_current_range (document);
+ 
+@@ -1685,8 +1693,10 @@ dom_selection_restore (WebKitDOMDocument *document)
+ 	window = webkit_dom_document_get_default_view (document);
+ 	dom_selection = webkit_dom_dom_window_get_selection (window);
+ 	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+-	if (!range)
++	if (!range) {
++		remove_selection_markers (document);
+ 		return;
++	}
+ 
+ 	selection_start_marker = webkit_dom_range_get_start_container (range, NULL);
+ 	if (selection_start_marker) {
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 46f164505b..62fdb6b003 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -247,6 +247,21 @@ create_selection_marker (WebKitDOMDocument *document,
+ 	return element;
+ }
+ 
++static void
++remove_selection_markers (WebKitDOMDocument *document)
++{
++	WebKitDOMElement *marker;
++
++	marker = webkit_dom_document_get_element_by_id (
++		document, "-x-evo-selection-start-marker");
++	if (marker)
++		remove_node (WEBKIT_DOM_NODE (marker));
++	marker = webkit_dom_document_get_element_by_id (
++		document, "-x-evo-selection-end-marker");
++	if (marker)
++		remove_node (WEBKIT_DOM_NODE (marker));
++}
++
+ static void
+ add_selection_markers_into_element_start (WebKitDOMDocument *document,
+                                           WebKitDOMElement *element,
+@@ -255,6 +270,7 @@ add_selection_markers_into_element_start (WebKitDOMDocument *document,
+ {
+ 	WebKitDOMElement *marker;
+ 
++	remove_selection_markers (document);
+ 	marker = create_selection_marker (document, FALSE);
+ 	webkit_dom_node_insert_before (
+ 		WEBKIT_DOM_NODE (element),
+@@ -282,6 +298,7 @@ add_selection_markers_into_element_end (WebKitDOMDocument *document,
+ {
+ 	WebKitDOMElement *marker;
+ 
++	remove_selection_markers (document);
+ 	marker = create_selection_marker (document, TRUE);
+ 	webkit_dom_node_append_child (
+ 		WEBKIT_DOM_NODE (element), WEBKIT_DOM_NODE (marker), NULL);
+-- 
+2.15.0
+

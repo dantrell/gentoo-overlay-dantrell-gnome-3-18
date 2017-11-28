@@ -1,0 +1,29 @@
+From c5c210d0d6b53dc203f3ac2a6f8529771e92ae87 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 23 Feb 2016 19:57:09 +0100
+Subject: [PATCH 0608/1800] EHTMLEditorView - Caret is moved on end of block
+ when pressing Backspace on its start
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 367176e5c7..da408fbfa4 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -706,8 +706,9 @@ dom_insert_new_line_into_citation (WebKitDOMDocument *document,
+ 		paragraph = dom_prepare_paragraph (document, extension, FALSE);
+ 		webkit_dom_element_set_inner_html (
+ 			paragraph, html_to_insert, NULL);
+-		dom_add_selection_markers_into_element_end (
+-			document, paragraph, NULL, NULL);
++		if (!webkit_dom_element_query_selector (paragraph, "#-x-evo-selection-start-marker", NULL))
++			dom_add_selection_markers_into_element_end (
++				document, paragraph, NULL, NULL);
+ 	} else
+ 		paragraph = dom_prepare_paragraph (document, extension, TRUE);
+ 
+-- 
+2.15.0
+

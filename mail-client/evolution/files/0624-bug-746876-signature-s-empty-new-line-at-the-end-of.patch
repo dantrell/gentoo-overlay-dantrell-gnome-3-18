@@ -1,0 +1,28 @@
+From 0cc631dfba06104a7e8a79be3462fb216af93de8 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 24 Feb 2016 11:14:53 +0100
+Subject: [PATCH 0624/1800] Bug 746876 - Signature's empty new line at the end
+ of text/plain lost on edit
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index c4cee667e8..b935f99e20 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -4056,7 +4056,9 @@ parse_html_into_paragraphs (WebKitDOMDocument *document,
+ 					element_add_class (
+ 						WEBKIT_DOM_ELEMENT (child),
+ 						"-x-evo-last-br");
+-				}
++				} else
++					create_and_append_new_paragraph (
++						document, extension, blockquote, block, "<br>");
+ 			} else
+ 				create_and_append_new_paragraph (
+ 					document, extension, blockquote, block, "<br>");
+-- 
+2.15.0
+

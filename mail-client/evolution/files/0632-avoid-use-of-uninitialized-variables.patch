@@ -1,0 +1,484 @@
+From 6244205950a612fd6794da3156bf88d55e6ba86b Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 24 Feb 2016 12:10:41 +0100
+Subject: [PATCH 0632/1800] Avoid use of uninitialized variables
+
+---
+ .../gui/contact-editor/e-contact-editor-dyntable.c |  9 ++-
+ calendar/gui/e-cal-data-model.c                    |  4 +-
+ calendar/gui/e-cal-model.c                         |  2 +-
+ calendar/gui/e-calendar-view.c                     |  4 +-
+ calendar/gui/itip-utils.c                          |  4 +-
+ composer/e-msg-composer.c                          |  8 ++-
+ e-util/e-html-editor-image-dialog.c                | 12 ++--
+ e-util/e-name-selector-entry.c                     | 10 +--
+ mail/em-folder-tree-model.c                        |  2 +-
+ mail/test-mail-autoconfig.c                        |  4 +-
+ modules/calendar/e-cal-base-shell-content.c        |  2 +-
+ modules/calendar/e-cal-base-shell-sidebar.c        |  8 +--
+ .../e-html-editor-selection-dom-functions.c        | 79 ++++++++++++----------
+ ...-html-editor-spell-check-dialog-dom-functions.c |  4 +-
+ .../composer/e-html-editor-view-dom-functions.c    |  2 +-
+ 15 files changed, 83 insertions(+), 71 deletions(-)
+
+diff --git a/addressbook/gui/contact-editor/e-contact-editor-dyntable.c b/addressbook/gui/contact-editor/e-contact-editor-dyntable.c
+index 68f298cdc9..7bfa11bc81 100644
+--- a/addressbook/gui/contact-editor/e-contact-editor-dyntable.c
++++ b/addressbook/gui/contact-editor/e-contact-editor-dyntable.c
+@@ -299,7 +299,7 @@ add_empty_entry (EContactEditorDynTable *dyntable)
+ static void
+ remove_empty_entries (EContactEditorDynTable *dyntable, gboolean fillup)
+ {
+-	guint row, col, pos;
++	guint row, col = G_MAXUINT, pos;
+ 	GtkGrid* grid;
+ 	GtkWidget* w;
+ 	EContactEditorDynTableClass *class;
+@@ -334,11 +334,10 @@ remove_empty_entries (EContactEditorDynTable *dyntable, gboolean fillup)
+ 
+ 	}
+ 
+-	if (fillup
+-		&& (dyntable->priv->curr_entries < dyntable->priv->show_min_entries
+-			    || (dyntable->priv->justified && col < dyntable->priv->columns-1)))
++	if (fillup &&
++	    (dyntable->priv->curr_entries < dyntable->priv->show_min_entries ||
++	    (dyntable->priv->justified && col < dyntable->priv->columns-1)))
+ 		add_empty_entry (dyntable);
+-
+ }
+ 
+ /* clears data, not the combo box list store */
+diff --git a/calendar/gui/e-cal-data-model.c b/calendar/gui/e-cal-data-model.c
+index 5b2599b407..ea6430a9ee 100644
+--- a/calendar/gui/e-cal-data-model.c
++++ b/calendar/gui/e-cal-data-model.c
+@@ -1527,8 +1527,8 @@ cal_data_model_update_client_view (ECalDataModel *data_model,
+ 	ESource *source;
+ 	ViewData *view_data;
+ 	CreateViewData *cv_data;
+-	const gchar *alert_ident;
+-	gchar *description;
++	const gchar *alert_ident = NULL;
++	gchar *description = NULL;
+ 
+ 	LOCK_PROPS ();
+ 
+diff --git a/calendar/gui/e-cal-model.c b/calendar/gui/e-cal-model.c
+index b4f399ef67..893ba537b7 100644
+--- a/calendar/gui/e-cal-model.c
++++ b/calendar/gui/e-cal-model.c
+@@ -2961,7 +2961,7 @@ e_cal_model_create_component_with_defaults_sync (ECalModel *model,
+ 						 GCancellable *cancellable,
+ 						 GError **error)
+ {
+-	ECalComponent *comp;
++	ECalComponent *comp = NULL;
+ 	icalcomponent *icalcomp;
+ 
+ 	g_return_val_if_fail (E_IS_CAL_MODEL (model), NULL);
+diff --git a/calendar/gui/e-calendar-view.c b/calendar/gui/e-calendar-view.c
+index 799054e998..d04ea5a54b 100644
+--- a/calendar/gui/e-calendar-view.c
++++ b/calendar/gui/e-calendar-view.c
+@@ -792,7 +792,7 @@ cal_view_paste_clipboard_thread (EAlertSinkThreadJobData *job_data,
+ 	icaltimezone *default_zone;
+ 	ECalModel *model;
+ 	ESourceRegistry *registry;
+-	ESource *source, *default_source;
++	ESource *source = NULL, *default_source = NULL;
+ 	EClientCache *client_cache;
+ 	EClient *e_client;
+ 	ECalClient *client = NULL;
+@@ -1702,7 +1702,7 @@ e_calendar_view_get_tooltips (const ECalendarViewEventData *data)
+ {
+ 	GtkWidget *label, *box, *hbox, *ebox, *frame;
+ 	const gchar *str;
+-	gchar *tmp, *tmp1, *tmp2;
++	gchar *tmp, *tmp1 = NULL, *tmp2 = NULL;
+ 	ECalComponentOrganizer organiser;
+ 	ECalComponentDateTime dtstart, dtend;
+ 	icalcomponent *clone_comp;
+diff --git a/calendar/gui/itip-utils.c b/calendar/gui/itip-utils.c
+index a043bd43b4..dab30cead5 100644
+--- a/calendar/gui/itip-utils.c
++++ b/calendar/gui/itip-utils.c
+@@ -1904,8 +1904,8 @@ itip_send_component (ECalModel *model,
+ 	ESourceRegistry *registry;
+ 	ECalDataModel *data_model;
+ 	ESource *source;
+-	const gchar *alert_ident;
+-	const gchar *description;
++	const gchar *alert_ident = NULL;
++	const gchar *description = NULL;
+ 	GCancellable *cancellable;
+ 	ItipSendComponentData *isc;
+ 
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 217b8852d4..7181851b70 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -3231,8 +3231,8 @@ handle_multipart (EMsgComposer *composer,
+ 		} else if (depth == 0 && i == 0) {
+ 			EHTMLEditor *editor;
+ 			gboolean is_message_from_draft, is_html = FALSE;
+-			gchar *html;
+-			gssize length;
++			gchar *html = NULL;
++			gssize length = 0;
+ 
+ 			editor = e_msg_composer_get_editor (composer);
+ 			is_message_from_draft = e_html_editor_view_is_message_from_draft (
+@@ -3266,7 +3266,9 @@ handle_multipart (EMsgComposer *composer,
+ 				html = emcu_part_to_html (
+ 					composer, mime_part, &length, keep_signature, cancellable);
+ 			}
+-			e_msg_composer_set_pending_body (composer, html, length, is_html);
++
++			if (html)
++				e_msg_composer_set_pending_body (composer, html, length, is_html);
+ 
+ 		} else if (camel_mime_part_get_content_id (mime_part) ||
+ 			   camel_mime_part_get_content_location (mime_part)) {
+diff --git a/e-util/e-html-editor-image-dialog.c b/e-util/e-html-editor-image-dialog.c
+index 4030986797..bd7fd715a1 100644
+--- a/e-util/e-html-editor-image-dialog.c
++++ b/e-util/e-html-editor-image-dialog.c
+@@ -127,9 +127,7 @@ html_editor_image_dialog_set_width (EHTMLEditorImageDialog *dialog)
+ 	requested = gtk_spin_button_get_value_as_int (
+ 			GTK_SPIN_BUTTON (dialog->priv->width_edit));
+ 
+-	switch (gtk_combo_box_get_active (
+-		GTK_COMBO_BOX (dialog->priv->width_units))) {
+-
++	switch (gtk_combo_box_get_active (GTK_COMBO_BOX (dialog->priv->width_units))) {
+ 		case 0:	/* px */
+ 			width = requested;
+ 			break;
+@@ -142,6 +140,8 @@ html_editor_image_dialog_set_width (EHTMLEditorImageDialog *dialog)
+ 			width = natural;
+ 			break;
+ 
++		default:
++			return;
+ 	}
+ 
+ 	g_dbus_proxy_call (
+@@ -270,9 +270,7 @@ html_editor_image_dialog_set_height (EHTMLEditorImageDialog *dialog)
+ 	requested = gtk_spin_button_get_value_as_int (
+ 			GTK_SPIN_BUTTON (dialog->priv->height_edit));
+ 
+-	switch (gtk_combo_box_get_active (
+-		GTK_COMBO_BOX (dialog->priv->height_units))) {
+-
++	switch (gtk_combo_box_get_active (GTK_COMBO_BOX (dialog->priv->height_units))) {
+ 		case 0:	/* px */
+ 			height = requested;
+ 			break;
+@@ -285,6 +283,8 @@ html_editor_image_dialog_set_height (EHTMLEditorImageDialog *dialog)
+ 			height = natural;
+ 			break;
+ 
++		default:
++			return;
+ 	}
+ 
+ 	g_dbus_proxy_call (
+diff --git a/e-util/e-name-selector-entry.c b/e-util/e-name-selector-entry.c
+index 0b53b35419..a82b04faf3 100644
+--- a/e-util/e-name-selector-entry.c
++++ b/e-util/e-name-selector-entry.c
+@@ -1055,9 +1055,9 @@ find_existing_completion (ENameSelectorEntry *name_selector_entry,
+ 
+ 	do {
+ 		EContact      *current_contact;
+-		gint           current_field_rank;
+-		gint           current_email_num;
+-		EContactField  current_field;
++		gint           current_field_rank = best_field_rank;
++		gint           current_email_num = best_email_num;
++		EContactField  current_field = best_field;
+ 		gboolean       matches;
+ 
+ 		current_contact = e_contact_store_get_contact (name_selector_entry->priv->contact_store, &iter);
+@@ -1153,9 +1153,9 @@ type_ahead_complete (ENameSelectorEntry *name_selector_entry)
+ {
+ 	EContact      *contact;
+ 	EBookClient   *book_client = NULL;
+-	EContactField  matched_field;
++	EContactField  matched_field = E_CONTACT_FIELD_LAST;
+ 	EDestination  *destination;
+-	gint           matched_email_num;
++	gint           matched_email_num = -1;
+ 	gint           cursor_pos;
+ 	gint           range_start = 0;
+ 	gint           range_end = 0;
+diff --git a/mail/em-folder-tree-model.c b/mail/em-folder-tree-model.c
+index bdbaebf8eb..ebe61b8bfe 100644
+--- a/mail/em-folder-tree-model.c
++++ b/mail/em-folder-tree-model.c
+@@ -1480,7 +1480,7 @@ folder_tree_model_update_status_icon (StoreInfo *si)
+ 	GtkTreePath *path;
+ 	GtkTreeIter iter;
+ 	GIcon *icon = NULL;
+-	const gchar *icon_name;
++	const gchar *icon_name = NULL;
+ 	gboolean was_connecting;
+ 	gboolean host_reachable;
+ 
+diff --git a/mail/test-mail-autoconfig.c b/mail/test-mail-autoconfig.c
+index 9c96a67484..80163843a9 100644
+--- a/mail/test-mail-autoconfig.c
++++ b/mail/test-mail-autoconfig.c
+@@ -25,7 +25,7 @@ main (gint argc,
+       gchar **argv)
+ {
+ 	ESourceRegistry *registry;
+-	EMailAutoconfig *autoconfig;
++	EMailAutoconfig *autoconfig = NULL;
+ 	GError *error = NULL;
+ 
+ 	if (argc < 2) {
+@@ -54,7 +54,7 @@ main (gint argc,
+ 
+ 	e_mail_autoconfig_dump_results (autoconfig);
+ 
+-	g_object_unref (autoconfig);
++	g_clear_object (&autoconfig);
+ 
+ 	return EXIT_SUCCESS;
+ }
+diff --git a/modules/calendar/e-cal-base-shell-content.c b/modules/calendar/e-cal-base-shell-content.c
+index 70cda06c23..399aa85d13 100644
+--- a/modules/calendar/e-cal-base-shell-content.c
++++ b/modules/calendar/e-cal-base-shell-content.c
+@@ -302,7 +302,7 @@ cal_base_shell_content_constructed (GObject *object)
+ 	ECalBaseShellContentClass *klass;
+ 	ESourceRegistry *registry;
+ 	ESource *default_source = NULL;
+-	const gchar *created_signal_name;
++	const gchar *created_signal_name = NULL;
+ 
+ 	/* Chain up to parent's method. */
+ 	G_OBJECT_CLASS (e_cal_base_shell_content_parent_class)->constructed (object);
+diff --git a/modules/calendar/e-cal-base-shell-sidebar.c b/modules/calendar/e-cal-base-shell-sidebar.c
+index 83fe540679..03a2ba8646 100644
+--- a/modules/calendar/e-cal-base-shell-sidebar.c
++++ b/modules/calendar/e-cal-base-shell-sidebar.c
+@@ -108,7 +108,7 @@ cal_base_shell_sidebar_restore_state_cb (EShellWindow *shell_window,
+ 	ESourceRegistry *registry;
+ 	ESourceSelector *selector;
+ 	GSettings *settings;
+-	const gchar *primary_source_key;
++	const gchar *primary_source_key = NULL;
+ 
+ 	priv = E_CAL_BASE_SHELL_SIDEBAR (shell_sidebar)->priv;
+ 
+@@ -337,7 +337,7 @@ e_cal_base_shell_sidebar_ensure_source_opened (ECalBaseShellSidebar *sidebar,
+ 	EShellView *shell_view;
+ 	EActivity *activity;
+ 	gchar *description = NULL, *alert_ident = NULL, *alert_arg_0 = NULL;
+-	const gchar *extension_name;
++	const gchar *extension_name = NULL;
+ 
+ 	g_return_if_fail (E_IS_CAL_BASE_SHELL_SIDEBAR (sidebar));
+ 	g_return_if_fail (E_IS_SOURCE (source));
+@@ -503,7 +503,7 @@ e_cal_base_shell_sidebar_selector_data_dropped (ESourceSelector *selector,
+ 	gchar **segments;
+ 	gchar *source_uid = NULL;
+ 	gchar *message = NULL;
+-	const gchar *display_name, *alert_ident;
++	const gchar *display_name, *alert_ident = NULL;
+ 	const guchar *data;
+ 	gboolean do_copy;
+ 	TransferItemToData *titd;
+@@ -629,7 +629,7 @@ cal_base_shell_sidebar_constructed (GObject *object)
+ 	EShellBackend *shell_backend;
+ 	EShell *shell;
+ 	EClientCache *client_cache;
+-	const gchar *source_extension, *selector_name, *restore_state_signal;
++	const gchar *source_extension = NULL, *selector_name = NULL, *restore_state_signal = NULL;
+ 	ECalBaseShellSidebar *cal_base_shell_sidebar;
+ 	GtkWidget *container, *widget;
+ 	AtkObject *a11y;
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index fbc22b2c86..55612323aa 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -1122,7 +1122,7 @@ unindent_block (WebKitDOMDocument *document,
+ 	EHTMLEditorSelectionAlignment alignment;
+ 	WebKitDOMElement *element;
+ 	WebKitDOMElement *prev_blockquote = NULL, *next_blockquote = NULL;
+-	WebKitDOMNode *block_to_process, *node_clone, *child;
++	WebKitDOMNode *block_to_process, *node_clone = NULL, *child;
+ 
+ 	block_to_process = block;
+ 
+@@ -1167,33 +1167,37 @@ unindent_block (WebKitDOMDocument *document,
+ 			NULL);
+ 	}
+ 
+-	element_remove_class (WEBKIT_DOM_ELEMENT (node_clone), "-x-evo-to-unindent");
++	if (node_clone) {
++		element_remove_class (WEBKIT_DOM_ELEMENT (node_clone), "-x-evo-to-unindent");
+ 
+-	/* Insert blockqoute with nodes that were before the element that we want to unindent */
+-	if (prev_blockquote) {
+-		if (webkit_dom_node_has_child_nodes (WEBKIT_DOM_NODE (prev_blockquote))) {
+-			webkit_dom_node_insert_before (
+-				webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (element)),
+-				WEBKIT_DOM_NODE (prev_blockquote),
+-				WEBKIT_DOM_NODE (element),
+-				NULL);
++		/* Insert blockqoute with nodes that were before the element that we want to unindent */
++		if (prev_blockquote) {
++			if (webkit_dom_node_has_child_nodes (WEBKIT_DOM_NODE (prev_blockquote))) {
++				webkit_dom_node_insert_before (
++					webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (element)),
++					WEBKIT_DOM_NODE (prev_blockquote),
++					WEBKIT_DOM_NODE (element),
++					NULL);
++			}
+ 		}
+-	}
+ 
+-	if (level == 1 && element_has_class (WEBKIT_DOM_ELEMENT (node_clone), "-x-evo-paragraph")) {
+-		dom_set_paragraph_style (
+-			document, extension, WEBKIT_DOM_ELEMENT (node_clone), word_wrap_length, 0, "");
+-		element_add_class (
+-			WEBKIT_DOM_ELEMENT (node_clone),
+-			get_css_alignment_value_class (alignment));
+-	}
++		if (level == 1 && element_has_class (WEBKIT_DOM_ELEMENT (node_clone), "-x-evo-paragraph")) {
++			dom_set_paragraph_style (
++				document, extension, WEBKIT_DOM_ELEMENT (node_clone), word_wrap_length, 0, "");
++			element_add_class (
++				WEBKIT_DOM_ELEMENT (node_clone),
++				get_css_alignment_value_class (alignment));
++		}
+ 
+-	/* Insert the unindented element */
+-	webkit_dom_node_insert_before (
+-		webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (element)),
+-		node_clone,
+-		WEBKIT_DOM_NODE (element),
+-		NULL);
++		/* Insert the unindented element */
++		webkit_dom_node_insert_before (
++			webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (element)),
++			node_clone,
++			WEBKIT_DOM_NODE (element),
++			NULL);
++	} else {
++		g_warn_if_reached ();
++	}
+ 
+ 	/* Insert blockqoute with nodes that were after the element that we want to unindent */
+ 	if (next_blockquote) {
+@@ -1411,7 +1415,7 @@ dom_selection_save (WebKitDOMDocument *document)
+ 	WebKitDOMRange *range;
+ 	WebKitDOMNode *container, *next_sibling, *marker_node;
+ 	WebKitDOMNode *split_node, *parent_node, *anchor;
+-	WebKitDOMElement *start_marker, *end_marker;
++	WebKitDOMElement *start_marker = NULL, *end_marker = NULL;
+ 
+ 	/* First remove all markers (if present) */
+ 	remove_selection_markers (document);
+@@ -1716,8 +1720,12 @@ dom_selection_save (WebKitDOMDocument *document)
+ 	}
+  out:
+ 	if (!collapsed) {
+-		webkit_dom_range_set_start_after (range, WEBKIT_DOM_NODE (start_marker), NULL);
+-		webkit_dom_range_set_end_before (range, WEBKIT_DOM_NODE (end_marker), NULL);
++		if (start_marker && end_marker) {
++			webkit_dom_range_set_start_after (range, WEBKIT_DOM_NODE (start_marker), NULL);
++			webkit_dom_range_set_end_before (range, WEBKIT_DOM_NODE (end_marker), NULL);
++		} else {
++			g_warn_if_reached ();
++		}
+ 
+ 		webkit_dom_dom_selection_remove_all_ranges (dom_selection);
+ 		webkit_dom_dom_selection_add_range (dom_selection, range);
+@@ -2808,7 +2816,7 @@ html_editor_selection_modify (WebKitDOMDocument *document,
+ {
+ 	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMDOMSelection *dom_selection;
+-	const gchar *granularity_str;
++	const gchar *granularity_str = NULL;
+ 
+ 	dom_window = webkit_dom_document_get_default_view (document);
+ 	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
+@@ -2822,10 +2830,12 @@ html_editor_selection_modify (WebKitDOMDocument *document,
+ 			break;
+ 	}
+ 
+-	webkit_dom_dom_selection_modify (
+-		dom_selection, alter,
+-		forward ? "forward" : "backward",
+-		granularity_str);
++	if (granularity_str) {
++		webkit_dom_dom_selection_modify (
++			dom_selection, alter,
++			forward ? "forward" : "backward",
++			granularity_str);
++	}
+ 
+ 	g_object_unref (dom_selection);
+ 	g_object_unref (dom_window);
+@@ -3083,7 +3093,7 @@ selection_set_font_style (WebKitDOMDocument *document,
+ 	}
+ 
+ 	if (dom_selection_is_collapsed (document)) {
+-		const gchar *element_name;
++		const gchar *element_name = NULL;
+ 
+ 		if (command == E_HTML_EDITOR_VIEW_COMMAND_BOLD)
+ 			element_name = "b";
+@@ -3094,7 +3104,8 @@ selection_set_font_style (WebKitDOMDocument *document,
+ 		else if (command == E_HTML_EDITOR_VIEW_COMMAND_STRIKETHROUGH)
+ 			element_name = "strike";
+ 
+-		set_font_style (document, element_name, value);
++		if (element_name)
++			set_font_style (document, element_name, value);
+ 		dom_selection_restore (document);
+ 
+ 		goto exit;
+diff --git a/web-extensions/composer/e-html-editor-spell-check-dialog-dom-functions.c b/web-extensions/composer/e-html-editor-spell-check-dialog-dom-functions.c
+index 1ef842290f..f536d2047f 100644
+--- a/web-extensions/composer/e-html-editor-spell-check-dialog-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-spell-check-dialog-dom-functions.c
+@@ -55,7 +55,7 @@ gchar *
+ e_html_editor_spell_check_dialog_next (WebKitDOMDocument *document,
+                                        const gchar *word)
+ {
+-	gulong start_offset, end_offset;
++	gulong start_offset = 0, end_offset = 0;
+ 	WebKitDOMDOMSelection *dom_selection;
+ 	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMNode *start = NULL, *end = NULL;
+@@ -140,7 +140,7 @@ gchar *
+ e_html_editor_spell_check_dialog_prev (WebKitDOMDocument *document,
+                                        const gchar *word)
+ {
+-	gulong start_offset, end_offset;
++	gulong start_offset = 0, end_offset = 0;
+ 	WebKitDOMDOMSelection *dom_selection;
+ 	WebKitDOMDOMWindow *dom_window;
+ 	WebKitDOMNode *start = NULL, *end = NULL;
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index b935f99e20..0bb09abb02 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -61,7 +61,7 @@ dom_exec_command (WebKitDOMDocument *document,
+                   const gchar *value)
+ {
+ 	const gchar *cmd_str = 0;
+-	gboolean has_value;
++	gboolean has_value = FALSE;
+ 
+ #define CHECK_COMMAND(cmd,str,val) case cmd:\
+ 	if (val) {\
+-- 
+2.15.0
+

@@ -1,0 +1,86 @@
+From ba8b76ffa9561ccbc45494cccf265c4332489ea7 Mon Sep 17 00:00:00 2001
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Tue, 5 May 2015 16:45:28 +0200
+Subject: [PATCH 0730/1800] Bug 748774 - Act on encrypt-by-default from
+ ESourceOpenPGP
+
+---
+ composer/e-msg-composer.c          |  8 ++++++++
+ mail/e-mail-config-security-page.c | 16 ++++++++++++++--
+ 2 files changed, 22 insertions(+), 2 deletions(-)
+
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 0ffa0ca06f..d3f7db8346 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -1609,6 +1609,7 @@ msg_composer_mail_identity_changed_cb (EMsgComposer *composer)
+ 	gboolean active;
+ 	gboolean can_sign;
+ 	gboolean pgp_sign;
++	gboolean pgp_encrypt;
+ 	gboolean smime_sign;
+ 	gboolean smime_encrypt;
+ 	gboolean is_message_from_edit_as_new;
+@@ -1631,6 +1632,7 @@ msg_composer_mail_identity_changed_cb (EMsgComposer *composer)
+ 	extension_name = E_SOURCE_EXTENSION_OPENPGP;
+ 	pgp = e_source_get_extension (source, extension_name);
+ 	pgp_sign = e_source_openpgp_get_sign_by_default (pgp);
++	pgp_encrypt = e_source_openpgp_get_encrypt_by_default (pgp);
+ 
+ 	extension_name = E_SOURCE_EXTENSION_SMIME;
+ 	smime = e_source_get_extension (source, extension_name);
+@@ -1655,6 +1657,12 @@ msg_composer_mail_identity_changed_cb (EMsgComposer *composer)
+ 	active |= (can_sign && pgp_sign);
+ 	gtk_toggle_action_set_active (action, active);
+ 
++	action = GTK_TOGGLE_ACTION (ACTION (PGP_ENCRYPT));
++	active = gtk_toggle_action_get_active (action);
++	active &= is_message_from_edit_as_new;
++	active |= pgp_encrypt;
++	gtk_toggle_action_set_active (action, active);
++
+ 	action = GTK_TOGGLE_ACTION (ACTION (SMIME_SIGN));
+ 	active = gtk_toggle_action_get_active (action);
+ 	active &= is_message_from_edit_as_new;
+diff --git a/mail/e-mail-config-security-page.c b/mail/e-mail-config-security-page.c
+index f3f5af0280..2542453999 100644
+--- a/mail/e-mail-config-security-page.c
++++ b/mail/e-mail-config-security-page.c
+@@ -463,12 +463,24 @@ mail_config_security_page_constructed (GObject *object)
+ 		G_BINDING_SYNC_CREATE |
+ 		G_BINDING_BIDIRECTIONAL);
+ 
+-	text = _("Always encrypt to _myself when sending encrypted messages");
++	text = _("Always enc_rypt outgoing messages when using this account");
+ 	widget = gtk_check_button_new_with_mnemonic (text);
+ 	gtk_widget_set_margin_left (widget, 12);
+ 	gtk_grid_attach (GTK_GRID (container), widget, 0, 4, 2, 1);
+ 	gtk_widget_show (widget);
+ 
++	e_binding_bind_property (
++		openpgp_ext, "encrypt-by-default",
++		widget, "active",
++		G_BINDING_SYNC_CREATE |
++		G_BINDING_BIDIRECTIONAL);
++
++	text = _("Always encrypt to _myself when sending encrypted messages");
++	widget = gtk_check_button_new_with_mnemonic (text);
++	gtk_widget_set_margin_left (widget, 12);
++	gtk_grid_attach (GTK_GRID (container), widget, 0, 5, 2, 1);
++	gtk_widget_show (widget);
++
+ 	e_binding_bind_property (
+ 		openpgp_ext, "encrypt-to-self",
+ 		widget, "active",
+@@ -478,7 +490,7 @@ mail_config_security_page_constructed (GObject *object)
+ 	text = _("Always _trust keys in my keyring when encrypting");
+ 	widget = gtk_check_button_new_with_mnemonic (text);
+ 	gtk_widget_set_margin_left (widget, 12);
+-	gtk_grid_attach (GTK_GRID (container), widget, 0, 5, 2, 1);
++	gtk_grid_attach (GTK_GRID (container), widget, 0, 6, 2, 1);
+ 	gtk_widget_show (widget);
+ 
+ 	e_binding_bind_property (
+-- 
+2.15.0
+

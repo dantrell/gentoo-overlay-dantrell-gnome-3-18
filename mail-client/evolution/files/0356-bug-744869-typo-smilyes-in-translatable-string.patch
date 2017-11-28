@@ -1,0 +1,25 @@
+From d05d7bd382b8af7e73f05c8687af6204e0c123ed Mon Sep 17 00:00:00 2001
+From: Anders Jonsson <anders.jonsson@norsjovallen.se>
+Date: Mon, 23 Feb 2015 10:23:58 +0100
+Subject: [PATCH 0356/1800] Bug 744869 - Typo (smilyes) in translatable string
+
+---
+ composer/e-composer-actions.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/composer/e-composer-actions.c b/composer/e-composer-actions.c
+index dbb15def87..dab3d449d0 100644
+--- a/composer/e-composer-actions.c
++++ b/composer/e-composer-actions.c
+@@ -573,7 +573,7 @@ static GtkToggleActionEntry toggle_entries[] = {
+ 
+ 	{ "unicode-smileys",
+ 	  NULL,
+-	  N_("Unicode smilyes"),
++	  N_("Unicode smileys"),
+ 	  NULL,
+ 	  N_("Use Unicode characters for smileys."),
+ 	  G_CALLBACK (action_unicode_smileys_cb),
+-- 
+2.15.0
+

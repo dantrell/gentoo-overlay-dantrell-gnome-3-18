@@ -1,0 +1,126 @@
+From ab7811d438b195e96b31966d5c4f1a0a2a722c33 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 26 Feb 2015 17:56:49 +0100
+Subject: [PATCH 0372/1800] [ETree/ETable] Implement
+ GtkScrollableInterface::get_border() for Gtk 3.15.9+
+
+---
+ e-util/e-table.c | 37 ++++++++++++++++++++++++++++++++++++-
+ e-util/e-tree.c  | 37 ++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 72 insertions(+), 2 deletions(-)
+
+diff --git a/e-util/e-table.c b/e-util/e-table.c
+index 5780c238cc..9cb4c26759 100644
+--- a/e-util/e-table.c
++++ b/e-util/e-table.c
+@@ -169,8 +169,10 @@ static gint et_focus (GtkWidget *container, GtkDirectionType direction);
+ static void scroll_off (ETable *et);
+ static void scroll_on (ETable *et, guint scroll_direction);
+ 
++static void e_table_scrollable_init (GtkScrollableInterface *iface);
++
+ G_DEFINE_TYPE_WITH_CODE (ETable, e_table, GTK_TYPE_TABLE,
+-			 G_IMPLEMENT_INTERFACE (GTK_TYPE_SCROLLABLE, NULL))
++			 G_IMPLEMENT_INTERFACE (GTK_TYPE_SCROLLABLE, e_table_scrollable_init))
+ 
+ static void
+ et_disconnect_model (ETable *et)
+@@ -3511,6 +3513,39 @@ e_table_class_init (ETableClass *class)
+ 		GAL_A11Y_TYPE_E_TABLE);
+ }
+ 
++#if GTK_CHECK_VERSION (3, 15, 9)
++static gboolean
++e_table_scrollable_get_border (GtkScrollable *scrollable,
++			       GtkBorder *border)
++{
++	ETable *table;
++	ETableHeaderItem *header_item;
++
++	g_return_val_if_fail (E_IS_TABLE (scrollable), FALSE);
++	g_return_val_if_fail (border != NULL, FALSE);
++
++	table = E_TABLE (scrollable);
++	if (!table->header_item)
++		return FALSE;
++
++	g_return_val_if_fail (E_IS_TABLE_HEADER_ITEM (table->header_item), FALSE);
++
++	header_item = E_TABLE_HEADER_ITEM (table->header_item);
++
++	border->top = header_item->height;
++
++	return TRUE;
++}
++#endif
++
++static void
++e_table_scrollable_init (GtkScrollableInterface *iface)
++{
++#if GTK_CHECK_VERSION (3, 15, 9)
++	iface->get_border = e_table_scrollable_get_border;
++#endif
++}
++
+ void
+ e_table_freeze_state_change (ETable *table)
+ {
+diff --git a/e-util/e-tree.c b/e-util/e-tree.c
+index 9d10773e2b..ee537a3e10 100644
+--- a/e-util/e-tree.c
++++ b/e-util/e-tree.c
+@@ -261,8 +261,10 @@ static void hover_off (ETree *tree);
+ static void hover_on (ETree *tree, gint x, gint y);
+ static void context_destroyed (gpointer data, GObject *ctx);
+ 
++static void e_tree_scrollable_init (GtkScrollableInterface *iface);
++
+ G_DEFINE_TYPE_WITH_CODE (ETree, e_tree, GTK_TYPE_TABLE,
+-			 G_IMPLEMENT_INTERFACE (GTK_TYPE_SCROLLABLE, NULL))
++			 G_IMPLEMENT_INTERFACE (GTK_TYPE_SCROLLABLE, e_tree_scrollable_init))
+ 
+ static void
+ tree_item_is_editing_changed_cb (ETableItem *item,
+@@ -3202,6 +3204,39 @@ e_tree_class_init (ETreeClass *class)
+ 		GAL_A11Y_TYPE_E_TREE);
+ }
+ 
++#if GTK_CHECK_VERSION (3, 15, 9)
++static gboolean
++e_tree_scrollable_get_border (GtkScrollable *scrollable,
++			      GtkBorder *border)
++{
++	ETree *tree;
++	ETableHeaderItem *header_item;
++
++	g_return_val_if_fail (E_IS_TREE (scrollable), FALSE);
++	g_return_val_if_fail (border != NULL, FALSE);
++
++	tree = E_TREE (scrollable);
++	if (!tree->priv->header_item)
++		return FALSE;
++
++	g_return_val_if_fail (E_IS_TABLE_HEADER_ITEM (tree->priv->header_item), FALSE);
++
++	header_item = E_TABLE_HEADER_ITEM (tree->priv->header_item);
++
++	border->top = header_item->height;
++
++	return TRUE;
++}
++#endif
++
++static void
++e_tree_scrollable_init (GtkScrollableInterface *iface)
++{
++#if GTK_CHECK_VERSION (3, 15, 9)
++	iface->get_border = e_tree_scrollable_get_border;
++#endif
++}
++
+ static void
+ tree_size_allocate (GtkWidget *widget,
+                     GtkAllocation *alloc,
+-- 
+2.15.0
+

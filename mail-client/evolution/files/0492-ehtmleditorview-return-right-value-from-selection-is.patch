@@ -1,0 +1,33 @@
+From 0ecde04550d32a028530fa609bf2c428faa9d3de Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 30 Mar 2015 13:40:07 +0200
+Subject: [PATCH 0492/1800] EHTMLEditorView - Return right value from
+ selection_is_in_table when no parameters are passed
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 302a6ffa57..7fe9102fd0 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -6410,11 +6410,14 @@ selection_is_in_table (WebKitDOMDocument *document,
+ 								*first_cell = TRUE;
+ 					}
+ 				}
+-			}
++			} else
++				return TRUE;
+ 		}
+ 		if (WEBKIT_DOM_IS_HTML_TABLE_ELEMENT (parent)) {
+ 			if (table_node != NULL)
+ 				*table_node = parent;
++			else
++				return TRUE;
+ 		}
+ 		parent = webkit_dom_node_get_parent_node (parent);
+ 	}
+-- 
+2.15.0
+

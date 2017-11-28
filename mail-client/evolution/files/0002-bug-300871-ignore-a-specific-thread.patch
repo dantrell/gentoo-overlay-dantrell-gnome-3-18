@@ -1,0 +1,1148 @@
+From 4a8c3fa737a35331136a58be9caee19774dc8fdb Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 27 Oct 2014 22:26:29 +0100
+Subject: [PATCH 0002/1800] Bug 300871 - Ignore a specific thread
+
+---
+ e-util/e-cell-text.c                |  68 ++++++---
+ e-util/e-cell-text.h                |   1 +
+ libemail-engine/mail-folder-cache.c | 123 ++++++++++++++-
+ libemail-engine/mail-ops.c          |  83 ++++++++++
+ libemail-engine/mail-ops.h          |  10 ++
+ mail/e-mail-reader-utils.c          | 296 ++++++++++++++++++++++++++++++++++++
+ mail/e-mail-reader-utils.h          |  10 ++
+ mail/e-mail-reader.c                | 113 ++++++++++++++
+ mail/e-mail-reader.h                |   4 +-
+ mail/mail.error.xml                 |  19 +++
+ mail/message-list.c                 |   9 ++
+ mail/message-list.h                 |   3 +-
+ ui/evolution-mail-reader.ui         |   5 +
+ ui/evolution-mail.ui                |   4 +
+ 14 files changed, 721 insertions(+), 27 deletions(-)
+
+diff --git a/e-util/e-cell-text.c b/e-util/e-cell-text.c
+index 362dbaecbd..d12d36d3e6 100644
+--- a/e-util/e-cell-text.c
++++ b/e-util/e-cell-text.c
+@@ -82,6 +82,7 @@ enum {
+ 	PROP_UNDERLINE_COLUMN,
+ 	PROP_BOLD_COLUMN,
+ 	PROP_COLOR_COLUMN,
++	PROP_ITALIC_COLUMN,
+ 	PROP_EDITABLE,
+ 	PROP_BG_COLOR_COLUMN
+ };
+@@ -411,7 +412,7 @@ build_attr_list (ECellTextView *text_view,
+ 	ECellView *ecell_view = (ECellView *) text_view;
+ 	ECellText *ect = E_CELL_TEXT (ecell_view->ecell);
+ 	PangoAttrList *attrs = pango_attr_list_new ();
+-	gboolean bold, strikeout, underline;
++	gboolean bold, strikeout, underline, italic;
+ 
+ 	bold = ect->bold_column >= 0 &&
+ 		row >= 0 &&
+@@ -422,29 +423,37 @@ build_attr_list (ECellTextView *text_view,
+ 	underline = ect->underline_column >= 0 &&
+ 		row >= 0 &&
+ 		e_table_model_value_at (ecell_view->e_table_model, ect->underline_column, row);
++	italic = ect->italic_column >= 0 &&
++		row >= 0 &&
++		e_table_model_value_at (ecell_view->e_table_model, ect->italic_column, row);
+ 
+-	if (bold || strikeout || underline) {
+-		if (bold) {
+-			PangoAttribute *attr = pango_attr_weight_new (PANGO_WEIGHT_BOLD);
+-			attr->start_index = 0;
+-			attr->end_index = text_length;
++	if (bold) {
++		PangoAttribute *attr = pango_attr_weight_new (PANGO_WEIGHT_BOLD);
++		attr->start_index = 0;
++		attr->end_index = text_length;
+ 
+-			pango_attr_list_insert_before (attrs, attr);
+-		}
+-		if (strikeout) {
+-			PangoAttribute *attr = pango_attr_strikethrough_new (TRUE);
+-			attr->start_index = 0;
+-			attr->end_index = text_length;
++		pango_attr_list_insert_before (attrs, attr);
++	}
++	if (strikeout) {
++		PangoAttribute *attr = pango_attr_strikethrough_new (TRUE);
++		attr->start_index = 0;
++		attr->end_index = text_length;
+ 
+-			pango_attr_list_insert_before (attrs, attr);
+-		}
+-		if (underline) {
+-			PangoAttribute *attr = pango_attr_underline_new (TRUE);
+-			attr->start_index = 0;
+-			attr->end_index = text_length;
++		pango_attr_list_insert_before (attrs, attr);
++	}
++	if (underline) {
++		PangoAttribute *attr = pango_attr_underline_new (TRUE);
++		attr->start_index = 0;
++		attr->end_index = text_length;
+ 
+-			pango_attr_list_insert_before (attrs, attr);
+-		}
++		pango_attr_list_insert_before (attrs, attr);
++	}
++	if (italic) {
++		PangoAttribute *attr = pango_attr_style_new (PANGO_STYLE_ITALIC);
++		attr->start_index = 0;
++		attr->end_index = text_length;
++
++		pango_attr_list_insert_before (attrs, attr);
+ 	}
+ 	return attrs;
+ }
+@@ -1566,6 +1575,10 @@ ect_set_property (GObject *object,
+ 		text->bold_column = g_value_get_int (value);
+ 		break;
+ 
++	case PROP_ITALIC_COLUMN:
++		text->italic_column = g_value_get_int (value);
++		break;
++
+ 	case PROP_COLOR_COLUMN:
+ 		text->color_column = g_value_get_int (value);
+ 		break;
+@@ -1607,6 +1620,10 @@ ect_get_property (GObject *object,
+ 		g_value_set_int (value, text->bold_column);
+ 		break;
+ 
++	case PROP_ITALIC_COLUMN:
++		g_value_set_int (value, text->italic_column);
++		break;
++
+ 	case PROP_COLOR_COLUMN:
+ 		g_value_set_int (value, text->color_column);
+ 		break;
+@@ -1720,6 +1737,16 @@ e_cell_text_class_init (ECellTextClass *class)
+ 			-1, G_MAXINT, -1,
+ 			G_PARAM_READWRITE));
+ 
++	g_object_class_install_property (
++		object_class,
++		PROP_ITALIC_COLUMN,
++		g_param_spec_int (
++			"italic-column",
++			"Italic Column",
++			NULL,
++			-1, G_MAXINT, -1,
++			G_PARAM_READWRITE));
++
+ 	g_object_class_install_property (
+ 		object_class,
+ 		PROP_COLOR_COLUMN,
+@@ -1916,6 +1943,7 @@ e_cell_text_init (ECellText *ect)
+ 	ect->strikeout_column = -1;
+ 	ect->underline_column = -1;
+ 	ect->bold_column = -1;
++	ect->italic_column = -1;
+ 	ect->color_column = -1;
+ 	ect->bg_color_column = -1;
+ 	ect->editable = TRUE;
+diff --git a/e-util/e-cell-text.h b/e-util/e-cell-text.h
+index 0d8a04c402..fe7bec5736 100644
+--- a/e-util/e-cell-text.h
++++ b/e-util/e-cell-text.h
+@@ -89,6 +89,7 @@ struct _ECellText {
+ 	gint strikeout_column;
+ 	gint underline_column;
+ 	gint bold_column;
++	gint italic_column;
+ 
+ 	/* This column in the ETable should return a string specifying a color,
+ 	 * either a color name like "red" or a color spec like "rgb:F/0/0".
+diff --git a/libemail-engine/mail-folder-cache.c b/libemail-engine/mail-folder-cache.c
+index f5d49a3ca7..2244c04390 100644
+--- a/libemail-engine/mail-folder-cache.c
++++ b/libemail-engine/mail-folder-cache.c
+@@ -43,6 +43,7 @@
+ #include <libemail-engine/mail-mt.h>
+ 
+ #include "mail-folder-cache.h"
++#include "mail-ops.h"
+ #include "e-mail-utils.h"
+ #include "e-mail-folder-utils.h"
+ #include "e-mail-session.h"
+@@ -854,12 +855,87 @@ update_1folder (MailFolderCache *cache,
+ 	}
+ }
+ 
++static gboolean
++folder_cache_check_ignore_thread (CamelFolder *folder,
++				  CamelMessageInfo *info,
++				  GCancellable *cancellable,
++				  GError **error)
++{
++	const CamelSummaryReferences *references;
++	gboolean has_ignore_thread = FALSE, first_ignore_thread = FALSE, found_first_msgid = FALSE;
++	guint64 first_msgid;
++	GString *expr = NULL;
++	gint ii;
++
++	g_return_val_if_fail (CAMEL_IS_FOLDER (folder), FALSE);
++	g_return_val_if_fail (info != NULL, FALSE);
++
++	references = camel_message_info_references (info);
++	if (!references || references->size <= 0)
++		return FALSE;
++
++	first_msgid = references->references[0].id.id;
++
++	for (ii = 0; ii < references->size; ii++) {
++		if (references->references[ii].id.id == 0)
++			continue;
++
++		if (!expr)
++			expr = g_string_new ("(match-all (or ");
++
++		g_string_append_printf (expr, "(= \"msgid\" \"%lu %lu\")",
++			(gulong) references->references[ii].id.part.hi,
++			(gulong) references->references[ii].id.part.lo);
++	}
++
++	if (expr) {
++		GPtrArray *uids;
++
++		g_string_append (expr, "))");
++
++		uids = camel_folder_search_by_expression (folder, expr->str, cancellable, error);
++		if (uids) {
++			for (ii = 0; ii < uids->len; ii++) {
++				const gchar *refruid = uids->pdata[ii];
++				CamelMessageInfo *refrinfo;
++
++				refrinfo = camel_folder_get_message_info (folder, refruid);
++				if (!refrinfo)
++					continue;
++
++				if (first_msgid && camel_message_info_message_id (refrinfo) &&
++				    camel_message_info_message_id (refrinfo)->id.id == first_msgid) {
++					/* The first msgid in the references is In-ReplyTo, which is the master;
++					   the rest is just a guess. */
++					found_first_msgid = TRUE;
++					first_ignore_thread = camel_message_info_user_flag (refrinfo, "ignore-thread");
++					break;
++				}
++
++				has_ignore_thread = has_ignore_thread || camel_message_info_user_flag (refrinfo, "ignore-thread");
++
++				camel_message_info_unref (refrinfo);
++			}
++
++			camel_folder_search_free (folder, uids);
++		}
++
++		g_string_free (expr, TRUE);
++	}
++
++	return (found_first_msgid && first_ignore_thread) || (!found_first_msgid && has_ignore_thread);
++}
++
+ static void
+-folder_changed_cb (CamelFolder *folder,
+-                   CamelFolderChangeInfo *changes,
+-                   MailFolderCache *cache)
++folder_cache_process_folder_changes_thread (CamelFolder *folder,
++					    CamelFolderChangeInfo *changes,
++					    GCancellable *cancellable,
++					    GError **error,
++					    gpointer user_data)
+ {
+ 	static GHashTable *last_newmail_per_folder = NULL;
++	static GMutex last_newmail_per_folder_mutex;
++	MailFolderCache *cache = user_data;
+ 	time_t latest_received, new_latest_received;
+ 	CamelFolder *local_drafts;
+ 	CamelFolder *local_outbox;
+@@ -874,10 +950,15 @@ folder_changed_cb (CamelFolder *folder,
+ 	guint32 flags;
+ 	gchar *uid = NULL, *sender = NULL, *subject = NULL;
+ 
++	g_return_if_fail (CAMEL_IS_FOLDER (folder));
++	g_return_if_fail (changes != NULL);
++	g_return_if_fail (MAIL_IS_FOLDER_CACHE (cache));
++
+ 	full_name = camel_folder_get_full_name (folder);
+ 	parent_store = camel_folder_get_parent_store (folder);
+ 	session = camel_service_ref_session (CAMEL_SERVICE (parent_store));
+ 
++	g_mutex_lock (&last_newmail_per_folder_mutex);
+ 	if (last_newmail_per_folder == NULL)
+ 		last_newmail_per_folder = g_hash_table_new (
+ 			g_direct_hash, g_direct_equal);
+@@ -886,6 +967,7 @@ folder_changed_cb (CamelFolder *folder,
+ 	latest_received = GPOINTER_TO_INT (
+ 		g_hash_table_lookup (last_newmail_per_folder, folder));
+ 	new_latest_received = latest_received;
++	g_mutex_unlock (&last_newmail_per_folder_mutex);
+ 
+ 	local_drafts = e_mail_session_get_local_folder (
+ 		E_MAIL_SESSION (session), E_MAIL_LOCAL_FOLDER_DRAFTS);
+@@ -901,11 +983,21 @@ folder_changed_cb (CamelFolder *folder,
+ 	    && changes && (changes->uid_added->len > 0)) {
+ 		/* for each added message, check to see that it is
+ 		 * brand new, not junk and not already deleted */
+-		for (i = 0; i < changes->uid_added->len; i++) {
++		for (i = 0; i < changes->uid_added->len && !g_cancellable_is_cancelled (cancellable); i++) {
+ 			info = camel_folder_get_message_info (
+ 				folder, changes->uid_added->pdata[i]);
+ 			if (info) {
++				GError *local_error = NULL;
++
+ 				flags = camel_message_info_flags (info);
++				if (((flags & CAMEL_MESSAGE_SEEN) == 0) &&
++				    ((flags & CAMEL_MESSAGE_DELETED) == 0) &&
++				    folder_cache_check_ignore_thread (folder, info, cancellable, &local_error)) {
++					camel_message_info_set_flags (info, CAMEL_MESSAGE_SEEN, CAMEL_MESSAGE_SEEN);
++					camel_message_info_set_user_flag (info, "ignore-thread", TRUE);
++					flags = flags | CAMEL_MESSAGE_SEEN;
++				}
++
+ 				if (((flags & CAMEL_MESSAGE_SEEN) == 0) &&
+ 				    ((flags & CAMEL_MESSAGE_JUNK) == 0) &&
+ 				    ((flags & CAMEL_MESSAGE_DELETED) == 0) &&
+@@ -929,14 +1021,22 @@ folder_changed_cb (CamelFolder *folder,
+ 				}
+ 
+ 				camel_message_info_unref (info);
++
++				if (local_error) {
++					g_propagate_error (error, local_error);
++					break;
++				}
+ 			}
+ 		}
+ 	}
+ 
+-	if (new > 0)
++	if (new > 0) {
++		g_mutex_lock (&last_newmail_per_folder_mutex);
+ 		g_hash_table_insert (
+ 			last_newmail_per_folder, folder,
+ 			GINT_TO_POINTER (new_latest_received));
++		g_mutex_unlock (&last_newmail_per_folder_mutex);
++	}
+ 
+ 	folder_info = mail_folder_cache_ref_folder_info (
+ 		cache, parent_store, full_name);
+@@ -954,6 +1054,19 @@ folder_changed_cb (CamelFolder *folder,
+ 	g_object_unref (session);
+ }
+ 
++static void
++folder_changed_cb (CamelFolder *folder,
++                   CamelFolderChangeInfo *changes,
++                   MailFolderCache *cache)
++{
++	if (!changes)
++		return;
++
++	mail_process_folder_changes (folder, changes,
++		folder_cache_process_folder_changes_thread,
++		g_object_unref, g_object_ref (cache));
++}
++
+ static void
+ unset_folder_info (MailFolderCache *cache,
+                    FolderInfo *folder_info,
+diff --git a/libemail-engine/mail-ops.c b/libemail-engine/mail-ops.c
+index a2b3bf1f7d..af4cd9a0b3 100644
+--- a/libemail-engine/mail-ops.c
++++ b/libemail-engine/mail-ops.c
+@@ -1532,3 +1532,86 @@ mail_execute_shell_command (CamelFilterDriver *driver,
+ 	g_spawn_async (NULL, argv, NULL, 0, NULL, data, NULL, NULL);
+ }
+ 
++/* ** Process Folder Changes *********************************************** */
++
++struct _process_folder_changes_msg {
++	MailMsg base;
++
++	CamelFolder *folder;
++	CamelFolderChangeInfo *changes;
++	void (*process) (CamelFolder *folder,
++			 CamelFolderChangeInfo *changes,
++			 GCancellable *cancellable,
++			 GError **error,
++			 gpointer user_data);
++	void (* done) (gpointer user_data);
++	gpointer user_data;
++};
++
++static gchar *
++process_folder_changes_desc (struct _process_folder_changes_msg *m)
++{
++	return g_strdup_printf (
++		_("Processing folder changes in '%s'"), camel_folder_get_full_name (m->folder));
++}
++
++static void
++process_folder_changes_exec (struct _process_folder_changes_msg *m,
++			     GCancellable *cancellable,
++			     GError **error)
++{
++	m->process (m->folder, m->changes, cancellable, error, m->user_data);
++}
++
++static void
++process_folder_changes_done (struct _process_folder_changes_msg *m)
++{
++	if (m->done)
++		m->done (m->user_data);
++}
++
++static void
++process_folder_changes_free (struct _process_folder_changes_msg *m)
++{
++	g_clear_object (&m->folder);
++	camel_folder_change_info_free (m->changes);
++}
++
++static MailMsgInfo process_folder_changes_info = {
++	sizeof (struct _process_folder_changes_msg),
++	(MailMsgDescFunc) process_folder_changes_desc,
++	(MailMsgExecFunc) process_folder_changes_exec,
++	(MailMsgDoneFunc) process_folder_changes_done,
++	(MailMsgFreeFunc) process_folder_changes_free
++};
++
++void
++mail_process_folder_changes (CamelFolder *folder,
++			     CamelFolderChangeInfo *changes,
++			     void (*process) (CamelFolder *folder,
++					      CamelFolderChangeInfo *changes,
++					      GCancellable *cancellable,
++					      GError **error,
++					      gpointer user_data),
++			     void (* done) (gpointer user_data),
++			     gpointer user_data)
++{
++	struct _process_folder_changes_msg *m;
++	CamelFolderChangeInfo *changes_copy;
++
++	g_return_if_fail (CAMEL_IS_FOLDER (folder));
++	g_return_if_fail (changes != NULL);
++	g_return_if_fail (process != NULL);
++
++	changes_copy = camel_folder_change_info_new ();
++	camel_folder_change_info_cat (changes_copy, changes);
++
++	m = mail_msg_new (&process_folder_changes_info);
++	m->folder = g_object_ref (folder);
++	m->changes = changes_copy;
++	m->process = process;
++	m->done = done;
++	m->user_data = user_data;
++
++	mail_msg_unordered_push (m);
++}
+diff --git a/libemail-engine/mail-ops.h b/libemail-engine/mail-ops.h
+index 12680cf510..cfc0831a97 100644
+--- a/libemail-engine/mail-ops.h
++++ b/libemail-engine/mail-ops.h
+@@ -90,6 +90,16 @@ void		mail_filter_folder		(EMailSession *session,
+ 						 const gchar *type,
+ 						 gboolean notify);
+ 
++void		mail_process_folder_changes	(CamelFolder *folder,
++						 CamelFolderChangeInfo *changes,
++						 void (*process) (CamelFolder *folder,
++								  CamelFolderChangeInfo *changes,
++								  GCancellable *cancellable,
++								  GError **error,
++								  gpointer user_data),
++						 void (* done) (gpointer user_data),
++						 gpointer user_data);
++
+ /* filter driver execute shell command async callback */
+ void mail_execute_shell_command (CamelFilterDriver *driver, gint argc, gchar **argv, gpointer data);
+ 
+diff --git a/mail/e-mail-reader-utils.c b/mail/e-mail-reader-utils.c
+index 4a959ba85a..9fccee8e2b 100644
+--- a/mail/e-mail-reader-utils.c
++++ b/mail/e-mail-reader-utils.c
+@@ -773,6 +773,302 @@ e_mail_reader_mark_selected (EMailReader *reader,
+ 	return ii;
+ }
+ 
++static guint
++summary_msgid_hash (gconstpointer key)
++{
++	const CamelSummaryMessageID *id = (const CamelSummaryMessageID *) key;
++
++	return id->id.part.lo;
++}
++
++static gboolean
++summary_msgid_equal (gconstpointer a,
++		     gconstpointer b)
++{
++	return ((const CamelSummaryMessageID *) a)->id.id == ((const CamelSummaryMessageID *) b)->id.id;
++}
++
++typedef struct {
++	CamelFolder *folder;
++	GSList *uids;
++	EIgnoreThreadKind kind;
++} MarkIgnoreThreadData;
++
++static void
++mark_ignore_thread_data_free (gpointer ptr)
++{
++	MarkIgnoreThreadData *mit = ptr;
++
++	if (mit) {
++		g_clear_object (&mit->folder);
++		g_slist_free_full (mit->uids, (GDestroyNotify) camel_pstring_free);
++		g_free (mit);
++	}
++}
++
++static void
++insert_to_checked_msgids (GHashTable *checked_msgids,
++			  const CamelSummaryMessageID *msgid)
++{
++	CamelSummaryMessageID *msgid_copy;
++
++	if (!msgid)
++		return;
++
++	msgid_copy = g_new0 (CamelSummaryMessageID, 1);
++	memcpy (msgid_copy, msgid, sizeof (CamelSummaryMessageID));
++
++	g_hash_table_insert (checked_msgids, msgid_copy, GINT_TO_POINTER (1));
++}
++
++static gboolean
++mark_ignore_thread_traverse_uids (CamelFolder *folder,
++				  const gchar *uid,
++				  GHashTable *checked_uids,
++				  GHashTable *checked_msgids,
++				  gboolean whole_thread,
++				  gboolean ignore_thread,
++				  GCancellable *cancellable,
++				  GError **error)
++{
++	GSList *to_check;
++	GPtrArray *uids;
++	gint ii;
++	gboolean success;
++
++	success = !g_cancellable_set_error_if_cancelled (cancellable, error);
++	if (!success)
++		return success;
++
++	if (g_hash_table_contains (checked_uids, uid))
++		return success;
++
++	to_check = g_slist_prepend (NULL, (gpointer) camel_pstring_strdup (uid));
++
++	while (to_check != NULL && !g_cancellable_set_error_if_cancelled (cancellable, error)) {
++		CamelMessageInfo *mi;
++		const CamelSummaryMessageID *msgid;
++		const CamelSummaryReferences *references;
++		const gchar *uid = to_check->data;
++		gchar *sexp;
++		GError *local_error = NULL;
++
++		to_check = g_slist_remove (to_check, uid);
++
++		if (!uid || g_hash_table_contains (checked_uids, uid)) {
++			camel_pstring_free (uid);
++			continue;
++		}
++
++		g_hash_table_insert (checked_uids, (gpointer) camel_pstring_strdup (uid), GINT_TO_POINTER (1));
++
++		mi = camel_folder_get_message_info (folder, uid);
++		if (!mi || !camel_message_info_message_id (mi)) {
++			camel_pstring_free (uid);
++			continue;
++		}
++
++		camel_message_info_set_user_flag (mi, "ignore-thread", ignore_thread);
++
++		msgid = camel_message_info_message_id (mi);
++		insert_to_checked_msgids (checked_msgids, msgid);
++
++		if (whole_thread) {
++			/* Search for parents */
++			references = camel_message_info_references (mi);
++			if (references) {
++				GString *expr = NULL;
++
++				for (ii = 0; ii < references->size; ii++) {
++					if (references->references[ii].id.id == 0 ||
++					    g_hash_table_contains (checked_msgids, &references->references[ii]))
++						continue;
++
++					insert_to_checked_msgids (checked_msgids, &references->references[ii]);
++
++					if (!expr)
++						expr = g_string_new ("(match-all (or ");
++
++					g_string_append_printf (expr, "(= \"msgid\" \"%lu %lu\")",
++						(gulong) references->references[ii].id.part.hi,
++						(gulong) references->references[ii].id.part.lo);
++				}
++
++				if (expr) {
++					g_string_append (expr, "))");
++
++					uids = camel_folder_search_by_expression (folder, expr->str, cancellable, &local_error);
++					if (uids) {
++						for (ii = 0; ii < uids->len; ii++) {
++							const gchar *refruid = uids->pdata[ii];
++
++							if (refruid && !g_hash_table_contains (checked_uids, refruid))
++								to_check = g_slist_prepend (to_check, (gpointer) camel_pstring_strdup (refruid));
++						}
++
++						camel_folder_search_free (folder, uids);
++					}
++
++					g_string_free (expr, TRUE);
++
++					if (local_error) {
++						g_propagate_error (error, local_error);
++						camel_message_info_unref (mi);
++						camel_pstring_free (uid);
++						success = FALSE;
++						break;
++					}
++				}
++			}
++		}
++
++		/* Search for children */
++		sexp = g_strdup_printf ("(match-all (= \"references\" \"%lu %lu\"))", (gulong) msgid->id.part.hi, (gulong) msgid->id.part.lo);
++		uids = camel_folder_search_by_expression (folder, sexp, cancellable, &local_error);
++		if (uids) {
++			for (ii = 0; ii < uids->len; ii++) {
++				const gchar *refruid = uids->pdata[ii];
++
++				if (refruid && !g_hash_table_contains (checked_uids, refruid)) {
++					CamelMessageInfo *refrmi = camel_folder_get_message_info (folder, refruid);
++
++					if (refrmi && camel_message_info_message_id (refrmi) &&
++					    !g_hash_table_contains (checked_msgids, camel_message_info_message_id (refrmi))) {
++						/* The 'references' filter search can return false positives */
++						references = camel_message_info_references (refrmi);
++						if (references) {
++							gint jj;
++
++							for (jj = 0; jj < references->size; jj++) {
++								if (references->references[jj].id.id == msgid->id.id) {
++									to_check = g_slist_prepend (to_check, (gpointer) camel_pstring_strdup (refruid));
++									break;
++								}
++							}
++						}
++					}
++
++					if (refrmi)
++						camel_message_info_unref (refrmi);
++				}
++			}
++
++			camel_folder_search_free (folder, uids);
++		}
++		g_free (sexp);
++
++		camel_message_info_unref (mi);
++		camel_pstring_free (uid);
++
++		if (local_error) {
++			g_propagate_error (error, local_error);
++			success = FALSE;
++			break;
++		}
++	}
++
++	g_slist_free_full (to_check, (GDestroyNotify) camel_pstring_free);
++
++	return success;
++}
++
++static void
++mail_reader_utils_mark_ignore_thread_thread (EAlertSinkThreadJobData *job_data,
++					     gpointer user_data,
++					     GCancellable *cancellable,
++					     GError **error)
++{
++	MarkIgnoreThreadData *mit = user_data;
++	GHashTable *checked_uids; /* gchar * (UID) ~> 1 */
++	GHashTable *checked_msgids; /* CamelSummaryMessageID * ~> 1 */
++	gboolean ignore_thread, whole_thread;
++	GSList *link;
++
++	g_return_if_fail (mit != NULL);
++
++	camel_folder_freeze (mit->folder);
++
++	whole_thread = mit->kind == E_IGNORE_THREAD_WHOLE_SET || mit->kind == E_IGNORE_THREAD_WHOLE_UNSET;
++	ignore_thread = mit->kind == E_IGNORE_THREAD_WHOLE_SET || mit->kind == E_IGNORE_THREAD_SUBSET_SET;
++
++	checked_uids = g_hash_table_new_full (g_str_hash, g_str_equal, (GDestroyNotify) camel_pstring_free, NULL);
++	checked_msgids = g_hash_table_new_full (summary_msgid_hash, summary_msgid_equal, g_free, NULL);
++
++	for (link = mit->uids; link; link = g_slist_next (link)) {
++		if (!mark_ignore_thread_traverse_uids (mit->folder, link->data, checked_uids, checked_msgids,
++			whole_thread, ignore_thread, cancellable, error)) {
++			break;
++		}
++	}
++
++	camel_folder_thaw (mit->folder);
++
++	g_hash_table_destroy (checked_msgids);
++	g_hash_table_destroy (checked_uids);
++}
++
++void
++e_mail_reader_mark_selected_ignore_thread (EMailReader *reader,
++					   EIgnoreThreadKind kind)
++{
++	CamelFolder *folder;
++
++	g_return_if_fail (E_IS_MAIL_READER (reader));
++
++	folder = e_mail_reader_ref_folder (reader);
++
++	if (folder != NULL) {
++		GPtrArray *uids;
++		guint ii;
++
++		uids = e_mail_reader_get_selected_uids (reader);
++		if (uids && uids->len > 0) {
++			MarkIgnoreThreadData *mit;
++			EAlertSink *alert_sink;
++			EActivity *activity;
++			const gchar *description = NULL, *alert_id = NULL;
++
++			switch (kind) {
++			case E_IGNORE_THREAD_WHOLE_SET:
++				description = _("Marking thread to be ignored");
++				alert_id = "mail:failed-mark-ignore-thread";
++				break;
++			case E_IGNORE_THREAD_WHOLE_UNSET:
++				description = _("Unmarking thread from being ignored");
++				alert_id = "mail:failed-mark-unignore-thread";
++				break;
++			case E_IGNORE_THREAD_SUBSET_SET:
++				description = _("Marking sub-thread to be ignored");
++				alert_id = "mail:failed-mark-ignore-subthread";
++				break;
++			case E_IGNORE_THREAD_SUBSET_UNSET:
++				description = _("Unmarking sub-thread from being ignored");
++				alert_id = "mail:failed-mark-unignore-subthread";
++				break;
++			}
++
++			mit = g_new0 (MarkIgnoreThreadData, 1);
++			mit->folder = g_object_ref (folder);
++			mit->kind = kind;
++
++			for (ii = 0; ii < uids->len; ii++) {
++				mit->uids = g_slist_prepend (mit->uids, (gpointer) camel_pstring_strdup (uids->pdata[ii]));
++			}
++
++			alert_sink = e_mail_reader_get_alert_sink (reader);
++
++			activity = e_alert_sink_submit_thread_job (alert_sink, description, alert_id,
++				camel_folder_get_full_name (folder), mail_reader_utils_mark_ignore_thread_thread,
++				mit, mark_ignore_thread_data_free);
++
++			g_clear_object (&activity);
++		}
++
++		g_ptr_array_unref (uids);
++		g_object_unref (folder);
++	}
++}
++
+ static void
+ copy_tree_state (EMailReader *src_reader,
+                  EMailReader *des_reader)
+diff --git a/mail/e-mail-reader-utils.h b/mail/e-mail-reader-utils.h
+index 32c6ae049b..a1366f8449 100644
+--- a/mail/e-mail-reader-utils.h
++++ b/mail/e-mail-reader-utils.h
+@@ -53,6 +53,16 @@ void		e_mail_reader_unsubscribe_folder_name
+ guint		e_mail_reader_mark_selected	(EMailReader *reader,
+ 						 guint32 mask,
+ 						 guint32 set);
++typedef enum {
++	E_IGNORE_THREAD_WHOLE_SET,
++	E_IGNORE_THREAD_WHOLE_UNSET,
++	E_IGNORE_THREAD_SUBSET_SET,
++	E_IGNORE_THREAD_SUBSET_UNSET
++} EIgnoreThreadKind;
++
++void		e_mail_reader_mark_selected_ignore_thread
++						(EMailReader *reader,
++						 EIgnoreThreadKind kind);
+ guint		e_mail_reader_open_selected	(EMailReader *reader);
+ void		e_mail_reader_print		(EMailReader *reader,
+ 						 GtkPrintOperationAction action);
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index c269a501ca..202ec2dfee 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -733,6 +733,34 @@ action_mail_mark_unimportant_cb (GtkAction *action,
+ 	e_mail_reader_mark_selected (reader, mask, set);
+ }
+ 
++static void
++action_mail_mark_ignore_thread_sub_cb (GtkAction *action,
++					 EMailReader *reader)
++{
++	e_mail_reader_mark_selected_ignore_thread (reader, E_IGNORE_THREAD_SUBSET_SET);
++}
++
++static void
++action_mail_mark_unignore_thread_sub_cb (GtkAction *action,
++					 EMailReader *reader)
++{
++	e_mail_reader_mark_selected_ignore_thread (reader, E_IGNORE_THREAD_SUBSET_UNSET);
++}
++
++static void
++action_mail_mark_ignore_thread_whole_cb (GtkAction *action,
++					 EMailReader *reader)
++{
++	e_mail_reader_mark_selected_ignore_thread (reader, E_IGNORE_THREAD_WHOLE_SET);
++}
++
++static void
++action_mail_mark_unignore_thread_whole_cb (GtkAction *action,
++					   EMailReader *reader)
++{
++	e_mail_reader_mark_selected_ignore_thread (reader, E_IGNORE_THREAD_WHOLE_UNSET);
++}
++
+ static void
+ action_mail_mark_unread_cb (GtkAction *action,
+                             EMailReader *reader)
+@@ -2110,6 +2138,20 @@ static GtkActionEntry mail_reader_entries[] = {
+ 	  N_("Force images in HTML mail to be loaded"),
+ 	  G_CALLBACK (action_mail_load_images_cb) },
+ 
++	{ "mail-mark-ignore-thread-sub",
++	  NULL,
++	  N_("_Ignore Sub-Thread"),
++	  NULL,
++	  N_("Mark new mails in a sub-thread as read automatically"),
++	  G_CALLBACK (action_mail_mark_ignore_thread_sub_cb) },
++
++	{ "mail-mark-ignore-thread-whole",
++	  NULL,
++	  N_("_Ignore Thread"),
++	  NULL,
++	  N_("Mark new mails in this thread as read automatically"),
++	  G_CALLBACK (action_mail_mark_ignore_thread_whole_cb) },
++
+ 	{ "mail-mark-important",
+ 	  "mail-mark-important",
+ 	  N_("_Important"),
+@@ -2138,6 +2180,20 @@ static GtkActionEntry mail_reader_entries[] = {
+ 	  N_("Mark the selected messages as having been read"),
+ 	  G_CALLBACK (action_mail_mark_read_cb) },
+ 
++	{ "mail-mark-unignore-thread-sub",
++	  NULL,
++	  N_("Do not _Ignore Sub-Thread"),
++	  NULL,
++	  N_("Do not mark new mails in a sub-thread as read automatically"),
++	  G_CALLBACK (action_mail_mark_unignore_thread_sub_cb) },
++
++	{ "mail-mark-unignore-thread-whole",
++	  NULL,
++	  N_("Do not _Ignore Thread"),
++	  NULL,
++	  N_("Do not mark new mails in this thread as read automatically"),
++	  G_CALLBACK (action_mail_mark_unignore_thread_whole_cb) },
++
+ 	{ "mail-mark-unimportant",
+ 	  NULL,
+ 	  N_("Uni_mportant"),
+@@ -2461,6 +2517,14 @@ static EPopupActionEntry mail_reader_popup_entries[] = {
+ 	  NULL,
+ 	  "mail-forward" },
+ 
++	{ "mail-popup-mark-ignore-thread-sub",
++	  N_("_Ignore Sub-Thread"),
++	  "mail-mark-ignore-thread-sub" },
++
++	{ "mail-popup-mark-ignore-thread-whole",
++	  N_("_Ignore Thread"),
++	  "mail-mark-ignore-thread-whole" },
++
+ 	{ "mail-popup-mark-important",
+ 	  N_("Mark as _Important"),
+ 	  "mail-mark-important" },
+@@ -2477,6 +2541,14 @@ static EPopupActionEntry mail_reader_popup_entries[] = {
+ 	  N_("Mar_k as Read"),
+ 	  "mail-mark-read" },
+ 
++	{ "mail-popup-mark-unignore-thread-sub",
++	  N_("Do not _Ignore Sub-Thread"),
++	  "mail-mark-unignore-thread-sub" },
++
++	{ "mail-popup-mark-unignore-thread-whole",
++	  N_("Do not _Ignore Thread"),
++	  "mail-mark-unignore-thread-whole" },
++
+ 	{ "mail-popup-mark-unimportant",
+ 	  N_("Mark as Uni_mportant"),
+ 	  "mail-mark-unimportant" },
+@@ -3396,6 +3468,8 @@ mail_reader_update_actions (EMailReader *reader,
+ 	gboolean multiple_messages_selected;
+ 	gboolean selection_has_attachment_messages;
+ 	gboolean selection_has_deleted_messages;
++	gboolean selection_has_ignore_thread_messages;
++	gboolean selection_has_notignore_thread_messages;
+ 	gboolean selection_has_important_messages;
+ 	gboolean selection_has_junk_messages;
+ 	gboolean selection_has_not_junk_messages;
+@@ -3425,6 +3499,10 @@ mail_reader_update_actions (EMailReader *reader,
+ 		(state & E_MAIL_READER_SELECTION_HAS_ATTACHMENTS);
+ 	selection_has_deleted_messages =
+ 		(state & E_MAIL_READER_SELECTION_HAS_DELETED);
++	selection_has_ignore_thread_messages =
++		(state & E_MAIL_READER_SELECTION_HAS_IGNORE_THREAD);
++	selection_has_notignore_thread_messages =
++		(state & E_MAIL_READER_SELECTION_HAS_NOTIGNORE_THREAD);
+ 	selection_has_important_messages =
+ 		(state & E_MAIL_READER_SELECTION_HAS_IMPORTANT);
+ 	selection_has_junk_messages =
+@@ -3584,6 +3662,18 @@ mail_reader_update_actions (EMailReader *reader,
+ 	action = e_mail_reader_get_action (reader, action_name);
+ 	gtk_action_set_sensitive (action, sensitive);
+ 
++	action_name = "mail-mark-ignore-thread-sub";
++	sensitive = selection_has_notignore_thread_messages;
++	action = e_mail_reader_get_action (reader, action_name);
++	gtk_action_set_sensitive (action, sensitive);
++	gtk_action_set_visible (action, sensitive);
++
++	action_name = "mail-mark-ignore-thread-whole";
++	sensitive = selection_has_notignore_thread_messages;
++	action = e_mail_reader_get_action (reader, action_name);
++	gtk_action_set_sensitive (action, sensitive);
++	gtk_action_set_visible (action, sensitive);
++
+ 	action_name = "mail-mark-important";
+ 	sensitive = selection_has_unimportant_messages;
+ 	action = e_mail_reader_get_action (reader, action_name);
+@@ -3606,6 +3696,18 @@ mail_reader_update_actions (EMailReader *reader,
+ 	action = e_mail_reader_get_action (reader, action_name);
+ 	gtk_action_set_sensitive (action, sensitive);
+ 
++	action_name = "mail-mark-unignore-thread-sub";
++	sensitive = selection_has_ignore_thread_messages;
++	action = e_mail_reader_get_action (reader, action_name);
++	gtk_action_set_sensitive (action, sensitive);
++	gtk_action_set_visible (action, sensitive);
++
++	action_name = "mail-mark-unignore-thread-whole";
++	sensitive = selection_has_ignore_thread_messages;
++	action = e_mail_reader_get_action (reader, action_name);
++	gtk_action_set_sensitive (action, sensitive);
++	gtk_action_set_visible (action, sensitive);
++
+ 	action_name = "mail-mark-unimportant";
+ 	sensitive = selection_has_important_messages;
+ 	action = e_mail_reader_get_action (reader, action_name);
+@@ -4203,6 +4305,8 @@ e_mail_reader_check_state (EMailReader *reader)
+ 	gboolean can_flag_for_followup = FALSE;
+ 	gboolean has_attachments = FALSE;
+ 	gboolean has_deleted = FALSE;
++	gboolean has_ignore_thread = FALSE;
++	gboolean has_notignore_thread = FALSE;
+ 	gboolean has_important = FALSE;
+ 	gboolean has_junk = FALSE;
+ 	gboolean has_not_junk = FALSE;
+@@ -4330,6 +4434,11 @@ e_mail_reader_check_state (EMailReader *reader)
+ 		string = camel_message_info_mlist (info);
+ 		is_mailing_list &= (string != NULL && *string != '\0');
+ 
++		has_ignore_thread = has_ignore_thread ||
++			camel_message_info_user_flag (info, "ignore-thread");
++		has_notignore_thread = has_notignore_thread ||
++			!camel_message_info_user_flag (info, "ignore-thread");
++
+ 		camel_message_info_unref (info);
+ 	}
+ 
+@@ -4355,6 +4464,10 @@ e_mail_reader_check_state (EMailReader *reader)
+ 		state |= E_MAIL_READER_SELECTION_HAS_ATTACHMENTS;
+ 	if (has_deleted)
+ 		state |= E_MAIL_READER_SELECTION_HAS_DELETED;
++	if (has_ignore_thread)
++		state |= E_MAIL_READER_SELECTION_HAS_IGNORE_THREAD;
++	if (has_notignore_thread)
++		state |= E_MAIL_READER_SELECTION_HAS_NOTIGNORE_THREAD;
+ 	if (has_important)
+ 		state |= E_MAIL_READER_SELECTION_HAS_IMPORTANT;
+ 	if (has_junk)
+diff --git a/mail/e-mail-reader.h b/mail/e-mail-reader.h
+index 0d83e8192c..baae723fb5 100644
+--- a/mail/e-mail-reader.h
++++ b/mail/e-mail-reader.h
+@@ -88,7 +88,9 @@ enum {
+ 	E_MAIL_READER_SELECTION_IS_MAILING_LIST = 1 << 16,
+ 	E_MAIL_READER_FOLDER_IS_JUNK = 1 << 17,
+ 	E_MAIL_READER_FOLDER_IS_VTRASH = 1 << 18,
+-	E_MAIL_READER_FOLDER_ARCHIVE_FOLDER_SET = 1 << 19
++	E_MAIL_READER_FOLDER_ARCHIVE_FOLDER_SET = 1 << 19,
++	E_MAIL_READER_SELECTION_HAS_IGNORE_THREAD = 1 << 20,
++	E_MAIL_READER_SELECTION_HAS_NOTIGNORE_THREAD = 1 << 21
+ };
+ 
+ struct _EMailReaderInterface {
+diff --git a/mail/mail.error.xml b/mail/mail.error.xml
+index c3e12fde92..c248a1a727 100644
+--- a/mail/mail.error.xml
++++ b/mail/mail.error.xml
+@@ -541,5 +541,24 @@ An mbox account will be created to preserve the old mbox folders. You can delete
+     <secondary>{1}</secondary>
+   </error>
+ 
++  <error id="failed-mark-ignore-thread" type="error" default="GTK_RESPONSE_YES">
++    <_primary>Failed to mark thread to be ignored in folder '{0}'</_primary>
++    <secondary>{1}</secondary>
++  </error>
++
++  <error id="failed-mark-unignore-thread" type="error" default="GTK_RESPONSE_YES">
++    <_primary>Failed to unmark thread from being ignored in folder '{0}'</_primary>
++    <secondary>{1}</secondary>
++  </error>
++
++  <error id="failed-mark-ignore-subthread" type="error" default="GTK_RESPONSE_YES">
++    <_primary>Failed to mark sub-thread to be ignored in folder '{0}'</_primary>
++    <secondary>{1}</secondary>
++  </error>
++
++  <error id="failed-mark-unignore-subthread" type="error" default="GTK_RESPONSE_YES">
++    <_primary>Failed to unmark sub-thread from being ignored in folder '{0}'</_primary>
++    <secondary>{1}</secondary>
++  </error>
+ </error-list>
+ 
+diff --git a/mail/message-list.c b/mail/message-list.c
+index 43a0750b00..a47e6ff81a 100644
+--- a/mail/message-list.c
++++ b/mail/message-list.c
+@@ -1792,6 +1792,9 @@ ml_tree_value_at_ex (ETreeModel *etm,
+ 
+ 		return (gpointer) colour;
+ 	}
++	case COL_ITALIC: {
++		return GINT_TO_POINTER (camel_message_info_user_flag (msg_info, "ignore-thread") ? 1 : 0);
++	}
+ 	case COL_LOCATION: {
+ 		/* Fixme : freeing memory stuff (mem leaks) */
+ 		CamelStore *store;
+@@ -1961,6 +1964,7 @@ static ECell * create_composite_cell (gint col)
+ 	g_object_set (
+ 		cell_date,
+ 		"bold_column", COL_UNREAD,
++		"italic-column", COL_ITALIC,
+ 		"color_column", COL_COLOUR,
+ 		NULL);
+ 
+@@ -1968,6 +1972,7 @@ static ECell * create_composite_cell (gint col)
+ 	g_object_set (
+ 		cell_from,
+ 		"bold_column", COL_UNREAD,
++		"italic-column", COL_ITALIC,
+ 		"color_column", COL_COLOUR,
+ 		NULL);
+ 
+@@ -2053,6 +2058,7 @@ message_list_create_extras (void)
+ 	g_object_set (
+ 		cell,
+ 		"bold_column", COL_UNREAD,
++		"italic-column", COL_ITALIC,
+ 		"color_column", COL_COLOUR,
+ 		NULL);
+ 	e_table_extras_add_cell (extras, "render_date", cell);
+@@ -2063,6 +2069,7 @@ message_list_create_extras (void)
+ 	g_object_set (
+ 		cell,
+ 		"bold_column", COL_UNREAD,
++		"italic-column", COL_ITALIC,
+ 		"color_column", COL_COLOUR,
+ 		NULL);
+ 	e_table_extras_add_cell (extras, "render_text", cell);
+@@ -2077,6 +2084,7 @@ message_list_create_extras (void)
+ 	g_object_set (
+ 		cell,
+ 		"bold_column", COL_UNREAD,
++		"italic-column", COL_ITALIC,
+ 		"color_column", COL_COLOUR,
+ 		NULL);
+ 	e_table_extras_add_cell (extras, "render_size", cell);
+@@ -3057,6 +3065,7 @@ message_list_free_value (ETreeModel *tree_model,
+ 		case COL_SUBJECT_NORM:
+ 		case COL_SUBJECT_TRIMMED:
+ 		case COL_COLOUR:
++		case COL_ITALIC:
+ 			break;
+ 
+ 		case COL_LOCATION:
+diff --git a/mail/message-list.h b/mail/message-list.h
+index 6309c7ef90..ebc8a4ecc4 100644
+--- a/mail/message-list.h
++++ b/mail/message-list.h
+@@ -83,7 +83,8 @@ enum {
+ 	/* Invisible columns */
+ 	COL_DELETED,
+ 	COL_UNREAD,
+-	COL_COLOUR
++	COL_COLOUR,
++	COL_ITALIC
+ };
+ 
+ #define MESSAGE_LIST_COLUMN_IS_ACTIVE(col) (col == COL_MESSAGE_STATUS || \
+diff --git a/ui/evolution-mail-reader.ui b/ui/evolution-mail-reader.ui
+index 0e772b6ebb..041c2955b2 100644
+--- a/ui/evolution-mail-reader.ui
++++ b/ui/evolution-mail-reader.ui
+@@ -87,6 +87,11 @@
+           <menuitem action="mail-flag-for-followup"/>
+           <menuitem action="mail-flag-clear"/>
+           <menuitem action="mail-flag-completed"/>
++          <separator/>
++          <menuitem action="mail-mark-ignore-thread-whole"/>
++          <menuitem action="mail-mark-ignore-thread-sub"/>
++          <menuitem action="mail-mark-unignore-thread-whole"/>
++          <menuitem action="mail-mark-unignore-thread-sub"/>
+         </menu>
+         <menuitem action='mail-filters-apply'/>
+         <menuitem action='mail-check-for-junk'/>
+diff --git a/ui/evolution-mail.ui b/ui/evolution-mail.ui
+index c8fc9f215d..e3d5dca99b 100644
+--- a/ui/evolution-mail.ui
++++ b/ui/evolution-mail.ui
+@@ -112,6 +112,10 @@
+     <menuitem action='mail-popup-flag-for-followup'/>
+     <menuitem action="mail-popup-flag-clear"/>
+     <menuitem action="mail-popup-flag-completed"/>
++    <menuitem action='mail-popup-mark-ignore-thread-whole'/>
++    <menuitem action='mail-popup-mark-ignore-thread-sub'/>
++    <menuitem action='mail-popup-mark-unignore-thread-whole'/>
++    <menuitem action='mail-popup-mark-unignore-thread-sub'/>
+     <menu action='mail-label-menu'>
+       <menuitem action='mail-label-none'/>
+       <separator/>
+-- 
+2.15.0
+

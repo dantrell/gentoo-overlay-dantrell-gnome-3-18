@@ -1,0 +1,30 @@
+From 6bea23e637babd0b0c4d4751855ace26dd26a27f Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 11 May 2015 18:26:25 +0200
+Subject: [PATCH 0743/1800] Bug 749060 - Help->Contents does not open in yelp
+
+---
+ e-util/e-misc-utils.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/e-util/e-misc-utils.c b/e-util/e-misc-utils.c
+index 9da55f3855..84a24efba6 100644
+--- a/e-util/e-misc-utils.c
++++ b/e-util/e-misc-utils.c
+@@ -316,10 +316,11 @@ e_display_help (GtkWindow *parent,
+ 	if (parent != NULL)
+ 		screen = gtk_widget_get_screen (GTK_WIDGET (parent));
+ 
+-	g_string_append (uri, "/");
+ 
+-	if (link_id != NULL)
++	if (link_id != NULL) {
++		g_string_append (uri, "/");
+ 		g_string_append (uri, link_id);
++	}
+ 
+ 	if (gtk_show_uri (screen, uri->str, timestamp, &error))
+ 		goto exit;
+-- 
+2.15.0
+

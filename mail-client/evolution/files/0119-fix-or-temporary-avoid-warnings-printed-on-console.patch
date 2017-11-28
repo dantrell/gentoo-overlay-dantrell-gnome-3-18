@@ -1,0 +1,97 @@
+From 288b512ac52dc7b30c7ef628fa0e9c98b60524fa Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 15 Jan 2015 15:59:19 +0100
+Subject: [PATCH 0119/1800] Fix (or temporary avoid) warnings printed on
+ console
+
+---
+ e-util/e-html-editor-selection.c |  6 +++---
+ e-util/e-html-editor-view.c      | 20 ++++++++------------
+ 2 files changed, 11 insertions(+), 15 deletions(-)
+
+diff --git a/e-util/e-html-editor-selection.c b/e-util/e-html-editor-selection.c
+index b8eccb8292..1c9b841dce 100644
+--- a/e-util/e-html-editor-selection.c
++++ b/e-util/e-html-editor-selection.c
+@@ -152,16 +152,16 @@ static void
+ html_editor_selection_set_html_editor_view (EHTMLEditorSelection *selection,
+                                             EHTMLEditorView *view)
+ {
+-	gulong handler_id;
++	gulong handler_id = 0;
+ 
+ 	g_return_if_fail (E_IS_HTML_EDITOR_VIEW (view));
+ 
+ 	g_weak_ref_set (&selection->priv->html_editor_view, view);
+-
++/* FIXME WK2
+ 	handler_id = g_signal_connect (
+ 		view, "selection-changed",
+ 		G_CALLBACK (html_editor_selection_selection_changed_cb),
+-		selection);
++		selection);*/
+ 
+ 	selection->priv->selection_changed_handler_id = handler_id;
+ }
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 9ecb795f5b..25fce5d6e1 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -286,7 +286,8 @@ html_editor_view_selection_changed_cb (EHTMLEditorView *view)
+ 	 * the signal further to EHTMLEditorSelection and others and wait until
+ 	 * the load is finished. */
+ 	if (view->priv->reload_in_progress) {
+-		g_signal_stop_emission_by_name (view, "selection-changed");
++		/* FIXME WK2
++		g_signal_stop_emission_by_name (view, "selection-changed"); */
+ 		return;
+ 	}
+ 
+@@ -573,11 +574,8 @@ html_editor_view_constructed (GObject *object)
+ 
+ 	web_settings = webkit_web_view_get_settings (WEBKIT_WEB_VIEW (object));
+ 
+-	g_object_set (
+-		G_OBJECT (web_settings),
+-		"enable-scripts", FALSE,
+-		"enable-plugins", FALSE,
+-		NULL);
++	e_html_editor_view_update_fonts (E_HTML_EDITOR_VIEW (object));
++
+ /* FIXME WK2
+ 	g_object_set (
+ 		G_OBJECT (web_settings),
+@@ -585,6 +583,10 @@ html_editor_view_constructed (GObject *object)
+ 		"enable-file-access-from-file-uris", TRUE,
+ 		"enable-spell-checking", TRUE,
+ 		NULL);*/
++
++	/* Make WebKit think we are displaying a local file, so that it
++	 * does not block loading resources from file:// protocol */
++	webkit_web_view_load_html (WEBKIT_WEB_VIEW (object), "", "file://");
+ }
+ static gboolean
+ html_editor_view_button_press_event (GtkWidget *widget,
+@@ -1552,8 +1554,6 @@ e_html_editor_view_init (EHTMLEditorView *view)
+ 		view->priv->aliasing_settings = g_settings;
+ 	}
+ 
+-	e_html_editor_view_update_fonts (view);
+-
+ 	/* Give spell check languages to WebKit */
+ /* FIXME WK2
+ 	languages = e_spell_checker_list_active_languages (checker, NULL);
+@@ -1573,10 +1573,6 @@ e_html_editor_view_init (EHTMLEditorView *view)
+ 	view->priv->is_message_from_edit_as_new = FALSE;
+ 	view->priv->remove_initial_input_line = FALSE;
+ 	view->priv->convert_in_situ = FALSE;
+-
+-	/* Make WebKit think we are displaying a local file, so that it
+-	 * does not block loading resources from file:// protocol */
+-	webkit_web_view_load_html (WEBKIT_WEB_VIEW (view), "", "file://");
+ }
+ 
+ void
+-- 
+2.15.0
+

@@ -1,0 +1,600 @@
+From eac77e38ca1a855ffd2f96c57a5d139caa9940c5 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 26 Feb 2016 12:17:24 +0100
+Subject: [PATCH 0898/1800] Bug 752497 - [itip-formatter] Two libraries provide
+ the same symbol
+
+---
+ configure.ac                                       |   1 -
+ e-util/Makefile.am                                 |   4 +
+ .../e-conflict-search-selector.c                   |   7 +-
+ .../e-conflict-search-selector.h                   |   4 +
+ .../e-source-conflict-search.c                     |   0
+ .../e-source-conflict-search.h                     |   4 +
+ e-util/e-util.h                                    |   2 +
+ modules/calendar/e-calendar-preferences.c          | 119 ++++++++++++++++
+ modules/itip-formatter/Makefile.am                 |   6 +-
+ modules/itip-formatter/itip-view.c                 |   2 -
+ modules/itip-formatter/plugin/Makefile.am          |  42 ------
+ modules/itip-formatter/plugin/config-ui.c          | 158 ---------------------
+ .../plugin/org-gnome-itip-formatter.eplug.xml      |  15 --
+ po/POTFILES.in                                     |   2 -
+ 14 files changed, 135 insertions(+), 231 deletions(-)
+ rename {modules/itip-formatter => e-util}/e-conflict-search-selector.c (92%)
+ rename {modules/itip-formatter => e-util}/e-conflict-search-selector.h (93%)
+ rename {modules/itip-formatter => e-util}/e-source-conflict-search.c (100%)
+ rename {modules/itip-formatter => e-util}/e-source-conflict-search.h (95%)
+ delete mode 100644 modules/itip-formatter/plugin/Makefile.am
+ delete mode 100644 modules/itip-formatter/plugin/config-ui.c
+ delete mode 100644 modules/itip-formatter/plugin/org-gnome-itip-formatter.eplug.xml
+
+diff --git a/configure.ac b/configure.ac
+index ff480c0f65..ee5b9d25c2 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1587,7 +1587,6 @@ modules/composer-autosave/Makefile
+ modules/contact-photos/Makefile
+ modules/gravatar/Makefile
+ modules/itip-formatter/Makefile
+-modules/itip-formatter/plugin/Makefile
+ modules/itip-formatter/web-extension/Makefile
+ modules/mail-config/Makefile
+ modules/mail/Makefile
+diff --git a/e-util/Makefile.am b/e-util/Makefile.am
+index 010ca6a0d9..449308bb27 100644
+--- a/e-util/Makefile.am
++++ b/e-util/Makefile.am
+@@ -172,6 +172,7 @@ evolution_util_include_HEADERS =  \
+ 	e-color-chooser-widget.h \
+ 	e-color-combo.h \
+ 	e-config.h \
++	e-conflict-search-selector.h \
+ 	e-contact-store.h \
+ 	e-data-capture.h \
+ 	e-dateedit.h \
+@@ -277,6 +278,7 @@ evolution_util_include_HEADERS =  \
+ 	e-source-config-backend.h \
+ 	e-source-config-dialog.h \
+ 	e-source-config.h \
++	e-source-conflict-search.h \
+ 	e-source-selector-dialog.h \
+ 	e-source-selector.h \
+ 	e-source-util.h \
+@@ -441,6 +443,7 @@ libevolution_util_la_SOURCES = \
+ 	e-color-chooser-widget.c \
+ 	e-color-combo.c \
+ 	e-config.c \
++	e-conflict-search-selector.c \
+ 	e-contact-store.c \
+ 	e-data-capture.c \
+ 	e-dateedit.c \
+@@ -547,6 +550,7 @@ libevolution_util_la_SOURCES = \
+ 	e-source-config-backend.c \
+ 	e-source-config-dialog.c \
+ 	e-source-config.c \
++	e-source-conflict-search.c \
+ 	e-source-selector-dialog.c \
+ 	e-source-selector.c \
+ 	e-source-util.c \
+diff --git a/modules/itip-formatter/e-conflict-search-selector.c b/e-util/e-conflict-search-selector.c
+similarity index 92%
+rename from modules/itip-formatter/e-conflict-search-selector.c
+rename to e-util/e-conflict-search-selector.c
+index 229a2ba3e7..481e360dbb 100644
+--- a/modules/itip-formatter/e-conflict-search-selector.c
++++ b/e-util/e-conflict-search-selector.c
+@@ -19,11 +19,6 @@
+ 
+ #include "e-source-conflict-search.h"
+ 
+-/* This forces the GType to be registered in a way that
+- * avoids a "statement with no effect" compiler warning. */
+-#define REGISTER_TYPE(type) \
+-	(g_type_class_unref (g_type_class_ref (type)))
+-
+ G_DEFINE_TYPE (
+ 	EConflictSearchSelector,
+ 	e_conflict_search_selector,
+@@ -86,7 +81,7 @@ e_conflict_search_selector_class_init (EConflictSearchSelectorClass *class)
+ 	source_selector_class->set_source_selected =
+ 				conflict_search_selector_set_source_selected;
+ 
+-	REGISTER_TYPE (E_TYPE_SOURCE_CONFLICT_SEARCH);
++	g_type_ensure (E_TYPE_SOURCE_CONFLICT_SEARCH);
+ }
+ 
+ static void
+diff --git a/modules/itip-formatter/e-conflict-search-selector.h b/e-util/e-conflict-search-selector.h
+similarity index 93%
+rename from modules/itip-formatter/e-conflict-search-selector.h
+rename to e-util/e-conflict-search-selector.h
+index 58bf0fc18f..38f65c3d5c 100644
+--- a/modules/itip-formatter/e-conflict-search-selector.h
++++ b/e-util/e-conflict-search-selector.h
+@@ -15,6 +15,10 @@
+  *
+  */
+ 
++#if !defined (__E_UTIL_H_INSIDE__) && !defined (LIBEUTIL_COMPILATION)
++#error "Only <e-util/e-util.h> should be included directly."
++#endif
++
+ #ifndef E_CONFLICT_SEARCH_SELECTOR_H
+ #define E_CONFLICT_SEARCH_SELECTOR_H
+ 
+diff --git a/modules/itip-formatter/e-source-conflict-search.c b/e-util/e-source-conflict-search.c
+similarity index 100%
+rename from modules/itip-formatter/e-source-conflict-search.c
+rename to e-util/e-source-conflict-search.c
+diff --git a/modules/itip-formatter/e-source-conflict-search.h b/e-util/e-source-conflict-search.h
+similarity index 95%
+rename from modules/itip-formatter/e-source-conflict-search.h
+rename to e-util/e-source-conflict-search.h
+index 7809c12eb4..a43f758aa3 100644
+--- a/modules/itip-formatter/e-source-conflict-search.h
++++ b/e-util/e-source-conflict-search.h
+@@ -15,6 +15,10 @@
+  *
+  */
+ 
++#if !defined (__E_UTIL_H_INSIDE__) && !defined (LIBEUTIL_COMPILATION)
++#error "Only <e-util/e-util.h> should be included directly."
++#endif
++
+ #ifndef E_SOURCE_CONFLICT_SEARCH_H
+ #define E_SOURCE_CONFLICT_SEARCH_H
+ 
+diff --git a/e-util/e-util.h b/e-util/e-util.h
+index e8597f1fae..f30cd0b02e 100644
+--- a/e-util/e-util.h
++++ b/e-util/e-util.h
+@@ -84,6 +84,7 @@
+ #include <e-util/e-color-chooser-widget.h>
+ #include <e-util/e-color-combo.h>
+ #include <e-util/e-config.h>
++#include <e-util/e-conflict-search-selector.h>
+ #include <e-util/e-contact-store.h>
+ #include <e-util/e-data-capture.h>
+ #include <e-util/e-dateedit.h>
+@@ -188,6 +189,7 @@
+ #include <e-util/e-source-config-backend.h>
+ #include <e-util/e-source-config-dialog.h>
+ #include <e-util/e-source-config.h>
++#include <e-util/e-source-conflict-search.h>
+ #include <e-util/e-source-selector-dialog.h>
+ #include <e-util/e-source-selector.h>
+ #include <e-util/e-source-util.h>
+diff --git a/modules/calendar/e-calendar-preferences.c b/modules/calendar/e-calendar-preferences.c
+index be75bac07f..0d52166344 100644
+--- a/modules/calendar/e-calendar-preferences.c
++++ b/modules/calendar/e-calendar-preferences.c
+@@ -35,6 +35,8 @@
+ #include "calendar/gui/calendar-config.h"
+ #include "shell/e-shell-utils.h"
+ 
++#define ITIP_FORMATTER_CONF_KEY_DELETE "delete-processed"
++
+ /* same is used for Birthdays & Anniversaries calendar */
+ static const gint default_reminder_units_map[] = {
+ 	E_DURATION_MINUTES, E_DURATION_HOURS, E_DURATION_DAYS, -1
+@@ -573,6 +575,121 @@ eccp_free (EConfig *ec,
+ 	g_slist_free (items);
+ }
+ 
++static void
++itip_formatter_delete_toggled_cb (GtkWidget *widget)
++{
++	GSettings *settings;
++	gboolean active;
++
++	settings = e_util_ref_settings ("org.gnome.evolution.plugin.itip");
++	active = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
++	g_settings_set_boolean (settings, ITIP_FORMATTER_CONF_KEY_DELETE, active);
++	g_object_unref (settings);
++}
++
++static void
++calendar_preferences_add_itip_formatter_page (EShell *shell,
++					      GtkWidget *notebook)
++{
++	ESourceRegistry *registry;
++	GtkWidget *page;
++	GtkWidget *tab_label;
++	GtkWidget *frame;
++	GtkWidget *frame_label;
++	GtkWidget *padding_label;
++	GtkWidget *hbox;
++	GtkWidget *inner_vbox;
++	GtkWidget *check;
++	GtkWidget *label;
++	GtkWidget *ess;
++	GtkWidget *scrolledwin;
++	gchar *str;
++	GSettings *settings;
++
++	g_return_if_fail (GTK_IS_NOTEBOOK (notebook));
++
++	registry = e_shell_get_registry (shell);
++
++	/* Create a new notebook page */
++	page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
++	gtk_container_set_border_width (GTK_CONTAINER (page), 12);
++	tab_label = gtk_label_new (_("Meeting Invitations"));
++	gtk_notebook_append_page (GTK_NOTEBOOK (notebook), page, tab_label);
++
++	/* Frame */
++	frame = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6);
++	gtk_box_pack_start (GTK_BOX (page), frame, FALSE, FALSE, 0);
++
++	/* "General" */
++	frame_label = gtk_label_new ("");
++	str = g_strdup_printf ("<span weight=\"bold\">%s</span>", _("General"));
++	gtk_label_set_markup (GTK_LABEL (frame_label), str);
++	g_free (str);
++	gtk_misc_set_alignment (GTK_MISC (frame_label), 0.0, 0.5);
++	gtk_box_pack_start (GTK_BOX (frame), frame_label, FALSE, FALSE, 0);
++
++	/* Indent/padding */
++	hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
++	gtk_box_pack_start (GTK_BOX (frame), hbox, FALSE, TRUE, 0);
++	padding_label = gtk_label_new ("");
++	gtk_box_pack_start (GTK_BOX (hbox), padding_label, FALSE, FALSE, 0);
++	inner_vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6);
++	gtk_box_pack_start (GTK_BOX (hbox), inner_vbox, FALSE, FALSE, 0);
++
++	/* Delete message after acting */
++	settings = e_util_ref_settings ("org.gnome.evolution.plugin.itip");
++
++	check = gtk_check_button_new_with_mnemonic (_("_Delete message after acting"));
++	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (check), g_settings_get_boolean (settings, ITIP_FORMATTER_CONF_KEY_DELETE));
++	g_signal_connect (
++		check, "toggled",
++		G_CALLBACK (itip_formatter_delete_toggled_cb), NULL);
++	gtk_box_pack_start (GTK_BOX (inner_vbox), check, FALSE, FALSE, 0);
++
++	g_object_unref (settings);
++
++	/* "Conflict searching" */
++	frame = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6);
++	gtk_box_pack_start (GTK_BOX (page), frame, TRUE, TRUE, 24);
++
++	frame_label = gtk_label_new ("");
++	str = g_strdup_printf ("<span weight=\"bold\">%s</span>", _("Conflict Search"));
++	gtk_label_set_markup (GTK_LABEL (frame_label), str);
++	g_free (str);
++	gtk_misc_set_alignment (GTK_MISC (frame_label), 0.0, 0.5);
++	gtk_box_pack_start (GTK_BOX (frame), frame_label, FALSE, FALSE, 0);
++
++	/* Indent/padding */
++	hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
++	gtk_box_pack_start (GTK_BOX (frame), hbox, TRUE, TRUE, 0);
++	padding_label = gtk_label_new ("");
++	gtk_box_pack_start (GTK_BOX (hbox), padding_label, FALSE, FALSE, 0);
++	inner_vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6);
++	gtk_box_pack_start (GTK_BOX (hbox), inner_vbox, TRUE, TRUE, 0);
++
++	/* Source selector */
++	label = gtk_label_new (_("Select the calendars to search for meeting conflicts"));
++	gtk_misc_set_alignment (GTK_MISC (label), 0, 0.5);
++	gtk_box_pack_start (GTK_BOX (inner_vbox), label, FALSE, FALSE, 0);
++
++	scrolledwin = gtk_scrolled_window_new (NULL, NULL);
++
++	gtk_scrolled_window_set_policy (
++		GTK_SCROLLED_WINDOW (scrolledwin),
++		GTK_POLICY_AUTOMATIC,
++		GTK_POLICY_AUTOMATIC);
++	gtk_scrolled_window_set_shadow_type (
++		GTK_SCROLLED_WINDOW (scrolledwin),
++		GTK_SHADOW_IN);
++	gtk_box_pack_start (GTK_BOX (inner_vbox), scrolledwin, TRUE, TRUE, 0);
++
++	ess = e_conflict_search_selector_new (registry);
++	atk_object_set_name (gtk_widget_get_accessible (ess), _("Conflict Search"));
++	gtk_container_add (GTK_CONTAINER (scrolledwin), ess);
++
++	gtk_widget_show_all (page);
++}
++
+ static void
+ calendar_preferences_construct (ECalendarPreferences *prefs,
+                                 EShell *shell)
+@@ -618,6 +735,8 @@ calendar_preferences_construct (ECalendarPreferences *prefs,
+ 		l = g_slist_prepend (l, &eccp_items[i]);
+ 	e_config_add_items ((EConfig *) ec, l, eccp_free, prefs);
+ 
++	calendar_preferences_add_itip_formatter_page (shell, e_builder_get_widget (prefs->builder, "toplevel-notebook"));
++
+ 	widget = e_builder_get_widget (prefs->builder, "use-system-tz-check");
+ 	g_settings_bind (
+ 		settings, "use-system-timezone",
+diff --git a/modules/itip-formatter/Makefile.am b/modules/itip-formatter/Makefile.am
+index a49cea61f7..f8a6241fdb 100644
+--- a/modules/itip-formatter/Makefile.am
++++ b/modules/itip-formatter/Makefile.am
+@@ -1,4 +1,4 @@
+-SUBDIRS = plugin web-extension
++SUBDIRS = web-extension
+ 
+ @EVO_PLUGIN_RULE@
+ 
+@@ -15,16 +15,12 @@ module_itip_formatter_la_CPPFLAGS =					\
+ 	$(NULL)
+ 
+ module_itip_formatter_la_SOURCES =					\
+-	e-conflict-search-selector.c					\
+-	e-conflict-search-selector.h					\
+ 	e-mail-formatter-itip.c						\
+ 	e-mail-formatter-itip.h						\
+ 	e-mail-parser-itip.c						\
+ 	e-mail-parser-itip.h						\
+ 	e-mail-part-itip.c						\
+ 	e-mail-part-itip.h						\
+-	e-source-conflict-search.c					\
+-	e-source-conflict-search.h					\
+ 	itip-view.c							\
+ 	itip-view.h							\
+ 	evolution-module-itip-formatter.c				\
+diff --git a/modules/itip-formatter/itip-view.c b/modules/itip-formatter/itip-view.c
+index fdd47a41f3..5504a4fb38 100644
+--- a/modules/itip-formatter/itip-view.c
++++ b/modules/itip-formatter/itip-view.c
+@@ -36,8 +36,6 @@
+ #include <mail/em-utils.h>
+ #include <em-format/e-mail-formatter-utils.h>
+ 
+-#include "e-conflict-search-selector.h"
+-#include "e-source-conflict-search.h"
+ #include "itip-view.h"
+ #include "e-mail-part-itip.h"
+ 
+diff --git a/modules/itip-formatter/plugin/Makefile.am b/modules/itip-formatter/plugin/Makefile.am
+deleted file mode 100644
+index 30c75b83e3..0000000000
+--- a/modules/itip-formatter/plugin/Makefile.am
++++ /dev/null
+@@ -1,42 +0,0 @@
+-@EVO_PLUGIN_RULE@
+-
+-plugin_DATA = org-gnome-itip-formatter.eplug
+-plugin_LTLIBRARIES = liborg-gnome-itip-formatter.la
+-
+-liborg_gnome_itip_formatter_la_CPPFLAGS =		\
+-	$(AM_CPPFLAGS)					\
+-	-I$(top_srcdir)					\
+-	-I$(top_srcdir)/modules/itip-formatter		\
+-	-DEVOLUTION_PRIVDATADIR=\""$(privdatadir)"\"	\
+-	$(EVOLUTION_DATA_SERVER_CFLAGS)			\
+-	$(GNOME_PLATFORM_CFLAGS)			\
+-	$(CODE_COVERAGE_CFLAGS)				\
+-	$(NULL)
+-
+-liborg_gnome_itip_formatter_la_SOURCES =		\
+-	config-ui.c					\
+-	../e-conflict-search-selector.c			\
+-	../e-conflict-search-selector.h			\
+-	../e-source-conflict-search.c			\
+-	../e-source-conflict-search.h
+-
+-liborg_gnome_itip_formatter_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED) $(CODE_COVERAGE_LDFLAGS)
+-
+-liborg_gnome_itip_formatter_la_LIBADD =				\
+-	$(top_builddir)/e-util/libevolution-util.la		\
+-	$(top_builddir)/calendar/gui/libevolution-calendar.la	\
+-	$(top_builddir)/mail/libevolution-mail.la		\
+-	$(top_builddir)/shell/libevolution-shell.la		\
+-	$(top_builddir)/em-format/libevolution-mail-formatter.la \
+-	$(EVOLUTION_DATA_SERVER_LIBS)				\
+-	$(GNOME_PLATFORM_LIBS)					\
+-	$(NULL)
+-
+-BUILT_SOURCES = $(plugin_DATA)
+-
+-CLEANFILES = $(BUILT_SOURCES)
+-
+-EXTRA_DIST = \
+-	org-gnome-itip-formatter.eplug.xml
+-
+--include $(top_srcdir)/git.mk
+diff --git a/modules/itip-formatter/plugin/config-ui.c b/modules/itip-formatter/plugin/config-ui.c
+deleted file mode 100644
+index 4891ba5f7b..0000000000
+--- a/modules/itip-formatter/plugin/config-ui.c
++++ /dev/null
+@@ -1,158 +0,0 @@
+-/*
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU Lesser General Public License as published by
+- * the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+- * for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public License
+- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+- *
+- */
+-
+-#ifdef HAVE_CONFIG_H
+-#include <config.h>
+-#endif
+-
+-#include <gtk/gtk.h>
+-#include <glib/gi18n.h>
+-
+-#include <mail/em-config.h>
+-
+-#include <shell/e-shell.h>
+-#include <libedataserver/libedataserver.h>
+-#include <libecal/libecal.h>
+-#include <modules/itip-formatter/e-conflict-search-selector.h>
+-#include <modules/itip-formatter/e-source-conflict-search.h>
+-
+-#define CONF_KEY_DELETE "delete-processed"
+-
+-GtkWidget *itip_formatter_page_factory (EPlugin *ep, EConfigHookItemFactoryData *hook_data);
+-gint e_plugin_lib_enable (EPlugin *ep, gint enable);
+-
+-gint
+-e_plugin_lib_enable (EPlugin *ep,
+-                     gint enable)
+-{
+-	return 0;
+-}
+-
+-static void
+-delete_toggled_cb (GtkWidget *widget)
+-{
+-	GSettings *settings;
+-	gboolean active;
+-
+-	settings = e_util_ref_settings ("org.gnome.evolution.plugin.itip");
+-	active = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (widget));
+-	g_settings_set_boolean (settings, CONF_KEY_DELETE, active);
+-	g_object_unref (settings);
+-}
+-
+-GtkWidget *
+-itip_formatter_page_factory (EPlugin *ep,
+-                             EConfigHookItemFactoryData *hook_data)
+-{
+-	EShell *shell;
+-	ESourceRegistry *registry;
+-	GtkWidget *page;
+-	GtkWidget *tab_label;
+-	GtkWidget *frame;
+-	GtkWidget *frame_label;
+-	GtkWidget *padding_label;
+-	GtkWidget *hbox;
+-	GtkWidget *inner_vbox;
+-	GtkWidget *check;
+-	GtkWidget *label;
+-	GtkWidget *ess;
+-	GtkWidget *scrolledwin;
+-	gchar *str;
+-	GSettings *settings;
+-
+-	shell = e_shell_get_default ();
+-	registry = e_shell_get_registry (shell);
+-
+-	/* Create a new notebook page */
+-	page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+-	gtk_container_set_border_width (GTK_CONTAINER (page), 12);
+-	tab_label = gtk_label_new (_("Meeting Invitations"));
+-	gtk_notebook_append_page (GTK_NOTEBOOK (hook_data->parent), page, tab_label);
+-
+-	/* Frame */
+-	frame = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6);
+-	gtk_box_pack_start (GTK_BOX (page), frame, FALSE, FALSE, 0);
+-
+-	/* "General" */
+-	frame_label = gtk_label_new ("");
+-	str = g_strdup_printf ("<span weight=\"bold\">%s</span>", _("General"));
+-	gtk_label_set_markup (GTK_LABEL (frame_label), str);
+-	g_free (str);
+-	gtk_misc_set_alignment (GTK_MISC (frame_label), 0.0, 0.5);
+-	gtk_box_pack_start (GTK_BOX (frame), frame_label, FALSE, FALSE, 0);
+-
+-	/* Indent/padding */
+-	hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
+-	gtk_box_pack_start (GTK_BOX (frame), hbox, FALSE, TRUE, 0);
+-	padding_label = gtk_label_new ("");
+-	gtk_box_pack_start (GTK_BOX (hbox), padding_label, FALSE, FALSE, 0);
+-	inner_vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6);
+-	gtk_box_pack_start (GTK_BOX (hbox), inner_vbox, FALSE, FALSE, 0);
+-
+-	/* Delete message after acting */
+-	settings = e_util_ref_settings ("org.gnome.evolution.plugin.itip");
+-
+-	check = gtk_check_button_new_with_mnemonic (_("_Delete message after acting"));
+-	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (check), g_settings_get_boolean (settings, CONF_KEY_DELETE));
+-	g_signal_connect (
+-		check, "toggled",
+-		G_CALLBACK (delete_toggled_cb), NULL);
+-	gtk_box_pack_start (GTK_BOX (inner_vbox), check, FALSE, FALSE, 0);
+-
+-	g_object_unref (settings);
+-
+-	/* "Conflict searching" */
+-	frame = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6);
+-	gtk_box_pack_start (GTK_BOX (page), frame, TRUE, TRUE, 24);
+-
+-	frame_label = gtk_label_new ("");
+-	str = g_strdup_printf ("<span weight=\"bold\">%s</span>", _("Conflict Search"));
+-	gtk_label_set_markup (GTK_LABEL (frame_label), str);
+-	g_free (str);
+-	gtk_misc_set_alignment (GTK_MISC (frame_label), 0.0, 0.5);
+-	gtk_box_pack_start (GTK_BOX (frame), frame_label, FALSE, FALSE, 0);
+-
+-	/* Indent/padding */
+-	hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
+-	gtk_box_pack_start (GTK_BOX (frame), hbox, TRUE, TRUE, 0);
+-	padding_label = gtk_label_new ("");
+-	gtk_box_pack_start (GTK_BOX (hbox), padding_label, FALSE, FALSE, 0);
+-	inner_vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6);
+-	gtk_box_pack_start (GTK_BOX (hbox), inner_vbox, TRUE, TRUE, 0);
+-
+-	/* Source selector */
+-	label = gtk_label_new (_("Select the calendars to search for meeting conflicts"));
+-	gtk_misc_set_alignment (GTK_MISC (label), 0, 0.5);
+-	gtk_box_pack_start (GTK_BOX (inner_vbox), label, FALSE, FALSE, 0);
+-
+-	scrolledwin = gtk_scrolled_window_new (NULL, NULL);
+-
+-	gtk_scrolled_window_set_policy (
+-		GTK_SCROLLED_WINDOW (scrolledwin),
+-		GTK_POLICY_AUTOMATIC,
+-		GTK_POLICY_AUTOMATIC);
+-	gtk_scrolled_window_set_shadow_type (
+-		GTK_SCROLLED_WINDOW (scrolledwin),
+-		GTK_SHADOW_IN);
+-	gtk_box_pack_start (GTK_BOX (inner_vbox), scrolledwin, TRUE, TRUE, 0);
+-
+-	ess = e_conflict_search_selector_new (registry);
+-	atk_object_set_name (gtk_widget_get_accessible (ess), _("Conflict Search"));
+-	gtk_container_add (GTK_CONTAINER (scrolledwin), ess);
+-
+-	gtk_widget_show_all (page);
+-
+-	return page;
+-}
+diff --git a/modules/itip-formatter/plugin/org-gnome-itip-formatter.eplug.xml b/modules/itip-formatter/plugin/org-gnome-itip-formatter.eplug.xml
+deleted file mode 100644
+index b60b0e129f..0000000000
+--- a/modules/itip-formatter/plugin/org-gnome-itip-formatter.eplug.xml
++++ /dev/null
+@@ -1,15 +0,0 @@
+-<?xml version="1.0"?>
+-<e-plugin-list>
+-	<e-plugin id="org.gnome.evolution.itip_formatter"
+-		type="shlib" _name="Itip Formatter"
+-		location="@PLUGINDIR@/liborg-gnome-itip-formatter@SOEXT@">
+-		<_description>Display "text/calendar" MIME parts in mail messages.</_description>
+-		<author name="JP Rosevear" email="jpr@novell.com"/>
+-
+-		<hook class="org.gnome.evolution.calendar.config:1.0">
+-			<group id="org.gnome.evolution.calendar.prefs" target="prefs">
+-				<item type="page" path="90.itip" label="itip" factory="itip_formatter_page_factory"/>
+-			</group>
+-		</hook>
+-	</e-plugin>
+-</e-plugin-list>
+\ No newline at end of file
+diff --git a/po/POTFILES.in b/po/POTFILES.in
+index 32f342e1f1..c27ac9e78f 100644
+--- a/po/POTFILES.in
++++ b/po/POTFILES.in
+@@ -446,8 +446,6 @@ modules/calendar/e-task-shell-view-private.c
+ modules/itip-formatter/e-mail-formatter-itip.c
+ modules/itip-formatter/itip-view.c
+ modules/itip-formatter/org-gnome-itip-formatter.error.xml
+-modules/itip-formatter/plugin/config-ui.c
+-modules/itip-formatter/plugin/org-gnome-itip-formatter.eplug.xml
+ modules/mail-config/e-mail-config-google-summary.c
+ modules/mail-config/e-mail-config-local-accounts.c
+ modules/mail-config/e-mail-config-remote-accounts.c
+-- 
+2.15.0
+

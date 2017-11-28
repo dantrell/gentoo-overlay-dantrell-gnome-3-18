@@ -1,0 +1,25 @@
+From 695ca37bc3d47104217d9266add30b1b7a586f98 Mon Sep 17 00:00:00 2001
+From: Joakim Tjernlund <Joakim.Tjernlund@transmode.se>
+Date: Mon, 5 Jan 2015 14:24:37 +0100
+Subject: [PATCH 0154/1800] Autostart evolution-alarm-notify in MATE as well
+
+---
+ data/evolution-alarm-notify.desktop.in.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/data/evolution-alarm-notify.desktop.in.in b/data/evolution-alarm-notify.desktop.in.in
+index ca71d7e5db..24ac615afb 100644
+--- a/data/evolution-alarm-notify.desktop.in.in
++++ b/data/evolution-alarm-notify.desktop.in.in
+@@ -7,7 +7,7 @@ Exec=@PRIVLIBEXECDIR@/evolution-alarm-notify
+ Terminal=false
+ Type=Application
+ Categories=
+-OnlyShowIn=GNOME;Unity;XFCE;Dawati;
++OnlyShowIn=GNOME;Unity;XFCE;Dawati;MATE;
+ X-Meego-Priority=Low
+ X-GNOME-Bugzilla-Bugzilla=GNOME
+ X-GNOME-Bugzilla-Product=evolution
+-- 
+2.15.0
+

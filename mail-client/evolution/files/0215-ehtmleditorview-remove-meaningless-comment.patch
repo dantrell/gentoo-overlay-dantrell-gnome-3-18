@@ -1,0 +1,24 @@
+From d8f1ebdd7783a81c869c7f22e0a69c0e7245313e Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 08:47:10 +0100
+Subject: [PATCH 0215/1800] EHTMLEditorView - Remove meaningless comment
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 95cf2435e7..e4804d9737 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -3835,7 +3835,6 @@ dom_convert_content (WebKitDOMDocument *document,
+ 	if (inner_html && !*inner_html)
+ 		empty = TRUE;
+ 
+-	/* FIXME XXX */
+ 	length = webkit_dom_element_get_child_element_count (WEBKIT_DOM_ELEMENT (body));
+ 	if (length <= 1) {
+ 		empty = TRUE;
+-- 
+2.15.0
+

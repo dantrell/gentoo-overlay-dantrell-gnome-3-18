@@ -1,0 +1,119 @@
+From 7847ac305fc9f38b1f503a1380601181bcce6bd1 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 6 Nov 2014 16:43:53 +0100
+Subject: [PATCH 0048/1800] EMsgComposer - Don't insert unnecessary new line
+ into body, when forwarding an iCal event
+
+Also don't format the body text as bold.
+---
+ composer/e-msg-composer.c        | 11 ++++-------
+ e-util/e-html-editor-view.c      | 12 ++++++------
+ e-util/e-html-editor-view.h      |  2 +-
+ e-util/e-mail-signature-editor.c |  2 +-
+ 4 files changed, 12 insertions(+), 15 deletions(-)
+
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index b0dc783eb2..fce51234cc 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -4352,7 +4352,7 @@ e_msg_composer_set_body (EMsgComposer *composer,
+ 	EHTMLEditorView *view;
+ 	ESource *source;
+ 	const gchar *identity_uid;
+-	gchar *buff;
++	const gchar *content;
+ 
+ 	g_return_if_fail (E_IS_MSG_COMPOSER (composer));
+ 
+@@ -4366,14 +4366,11 @@ e_msg_composer_set_body (EMsgComposer *composer,
+ 	identity_uid = e_composer_header_table_get_identity_uid (table);
+ 	source = e_composer_header_table_ref_source (table, identity_uid);
+ 
+-	buff = g_markup_printf_escaped (
+-		"<b>%s</b>",
+-		_("The composer contains a non-text "
+-		"message body, which cannot be edited."));
+-	set_editor_text (composer, buff, TRUE, FALSE);
+-	g_free (buff);
++	content = _("The composer contains a non-text message body, which cannot be edited.");
++	set_editor_text (composer, content, TRUE, FALSE);
+ 
+ 	e_html_editor_view_set_html_mode (view, FALSE);
++	e_html_editor_view_set_remove_initial_input_line (view, TRUE);
+ 	webkit_web_view_set_editable (WEBKIT_WEB_VIEW (view), FALSE);
+ 
+ 	g_free (priv->mime_body);
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 314e4cb7ea..5ee780dcae 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -89,7 +89,7 @@ struct _EHTMLEditorViewPrivate {
+ 	gboolean is_message_from_draft;
+ 	gboolean is_message_from_edit_as_new;
+ 	gboolean is_message_from_selection;
+-	gboolean is_editting_signature;
++	gboolean remove_initial_input_line;
+ 
+ 	GHashTable *old_settings;
+ 
+@@ -4647,7 +4647,7 @@ html_editor_convert_view_content (EHTMLEditorView *view,
+ 		remove_node (WEBKIT_DOM_NODE (content_wrapper));
+ 	}
+ 
+-	if (view->priv->is_message_from_edit_as_new || view->priv->is_editting_signature) {
++	if (view->priv->is_message_from_edit_as_new || view->priv->remove_initial_input_line) {
+ 		WebKitDOMNode *child;
+ 
+ 		remove_node (WEBKIT_DOM_NODE (paragraph));
+@@ -7162,7 +7162,7 @@ e_html_editor_view_init (EHTMLEditorView *view)
+ 	view->priv->is_message_from_draft = FALSE;
+ 	view->priv->is_message_from_selection = FALSE;
+ 	view->priv->is_message_from_edit_as_new = FALSE;
+-	view->priv->is_editting_signature = FALSE;
++	view->priv->remove_initial_input_line = FALSE;
+ 	view->priv->convert_in_situ = FALSE;
+ 
+ 	g_object_set (
+@@ -8275,10 +8275,10 @@ e_html_editor_view_set_is_message_from_edit_as_new (EHTMLEditorView *view,
+ }
+ 
+ void
+-e_html_editor_view_set_is_editting_signature (EHTMLEditorView *view,
+-                                              gboolean value)
++e_html_editor_view_set_remove_initial_input_line (EHTMLEditorView *view,
++                                                  gboolean value)
+ {
+ 	g_return_if_fail (E_IS_HTML_EDITOR_VIEW (view));
+ 
+-	view->priv->is_editting_signature = value;
++	view->priv->remove_initial_input_line = value;
+ }
+diff --git a/e-util/e-html-editor-view.h b/e-util/e-html-editor-view.h
+index f43775d801..260bd25c8e 100644
+--- a/e-util/e-html-editor-view.h
++++ b/e-util/e-html-editor-view.h
+@@ -180,7 +180,7 @@ gboolean	e_html_editor_view_is_message_from_edit_as_new
+ void		e_html_editor_view_set_is_message_from_edit_as_new
+ 						(EHTMLEditorView *view,
+ 						 gboolean value);
+-void		e_html_editor_view_set_is_editting_signature
++void		e_html_editor_view_set_remove_initial_input_line
+ 						(EHTMLEditorView *view,
+ 						 gboolean value);
+ G_END_DECLS
+diff --git a/e-util/e-mail-signature-editor.c b/e-util/e-mail-signature-editor.c
+index 5c58b5eeb3..45c4999815 100644
+--- a/e-util/e-mail-signature-editor.c
++++ b/e-util/e-mail-signature-editor.c
+@@ -499,7 +499,7 @@ mail_signature_editor_constructed (GObject *object)
+ 	editor = e_mail_signature_editor_get_editor (window);
+ 	view = e_html_editor_get_view (editor);
+ 
+-	e_html_editor_view_set_is_editting_signature (view, TRUE);
++	e_html_editor_view_set_remove_initial_input_line (view, TRUE);
+ 
+ 	ui_manager = e_html_editor_get_ui_manager (editor);
+ 
+-- 
+2.15.0
+

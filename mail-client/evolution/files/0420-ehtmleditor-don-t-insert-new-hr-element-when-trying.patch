@@ -1,0 +1,553 @@
+From 2e7932bae64cd7ed6ff21bfcf30c8f953b0b5e6b Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 27 Mar 2015 13:44:49 +0100
+Subject: [PATCH 0420/1800] EHTMLEditor - Don't insert new HR element when
+ trying to change properties of existing one
+
+---
+ e-util/e-html-editor.c                             | 18 +++--
+ e-util/e-html-editor.h                             |  4 +-
+ web-extensions/e-dom-utils.c                       | 20 ++++++
+ web-extensions/e-dom-utils.h                       |  2 +
+ web-extensions/e-html-editor-dom-functions.c       | 80 ----------------------
+ web-extensions/e-html-editor-dom-functions.h       | 33 ---------
+ .../e-html-editor-hrule-dialog-dom-functions.c     | 56 +++++----------
+ .../e-html-editor-hrule-dialog-dom-functions.h     |  6 +-
+ web-extensions/e-html-editor-view-dom-functions.c  | 20 ------
+ web-extensions/e-html-editor-web-extension.c       | 80 ++++++++++++++++++++--
+ 10 files changed, 136 insertions(+), 183 deletions(-)
+ delete mode 100644 web-extensions/e-html-editor-dom-functions.c
+ delete mode 100644 web-extensions/e-html-editor-dom-functions.h
+
+diff --git a/e-util/e-html-editor.c b/e-util/e-html-editor.c
+index 1918320c6e..2b7775f0ea 100644
+--- a/e-util/e-html-editor.c
++++ b/e-util/e-html-editor.c
+@@ -307,14 +307,12 @@ html_editor_spell_checkers_foreach (EHTMLEditor *editor,
+ }
+ 
+ static void
+-html_editor_update_actions (EHTMLEditor *editor,
+-                            guint flags)
++html_editor_update_actions (EHTMLEditor *editor)
+ {
+ //	WebKitSpellChecker *checker;
+-	WebKitHitTestResult *hit_test;
+-	WebKitHitTestResultContext context;
+ 	EHTMLEditorSelection *selection;
+ 	EHTMLEditorView *view;
++	GDBusProxy *web_extension;
+ 	ESpellChecker *spell_checker;
+ 	GtkUIManager *manager;
+ 	GtkActionGroup *action_group;
+@@ -324,8 +322,20 @@ html_editor_update_actions (EHTMLEditor *editor,
+ 	gboolean visible;
+ 	guint merge_id;
+ 	gint loc, len;
++	guint flags = 0;
+ 
+ 	view = e_html_editor_get_view (editor);
++	web_extension = e_html_editor_view_get_web_extension_proxy (view);
++	if (web_extension) {
++		GVariant *result;
++
++		result = g_dbus_proxy_get_cached_property (web_extension, "NodeUnderMouseClickFlags");
++		if (result) {
++			flags = g_variant_get_uint32 (result);
++			g_variant_unref (result);
++		}
++	}
++
+ 	spell_checker = e_html_editor_view_get_spell_checker (view);
+ 
+ 	manager = e_html_editor_get_ui_manager (editor);
+diff --git a/e-util/e-html-editor.h b/e-util/e-html-editor.h
+index 5071435684..a8e06e89e8 100644
+--- a/e-util/e-html-editor.h
++++ b/e-util/e-html-editor.h
+@@ -63,8 +63,8 @@ struct _EHTMLEditor {
+ struct _EHTMLEditorClass {
+ 	GtkGridClass parent_class;
+ 
+-	void		(*update_actions)	(EHTMLEditor *editor,
+-						 guint flags);
++	void		(*update_actions)	(EHTMLEditor *editor);
++
+ 	void		(*spell_languages_changed)
+ 						(EHTMLEditor *editor);
+ };
+diff --git a/web-extensions/e-dom-utils.c b/web-extensions/e-dom-utils.c
+index 8598deb040..1603467fb2 100644
+--- a/web-extensions/e-dom-utils.c
++++ b/web-extensions/e-dom-utils.c
+@@ -1595,3 +1595,23 @@ remove_node_if_empty (WebKitDOMNode *node)
+ 		g_free (text_content);
+ 	}
+ }
++
++WebKitDOMElement *
++get_parent_block_element (WebKitDOMNode *node)
++{
++	WebKitDOMElement *parent = webkit_dom_node_get_parent_element (node);
++
++	while (parent &&
++	       !WEBKIT_DOM_IS_HTML_DIV_ELEMENT (parent) &&
++	       !WEBKIT_DOM_IS_HTML_QUOTE_ELEMENT (parent) &&
++	       !WEBKIT_DOM_IS_HTML_U_LIST_ELEMENT (parent) &&
++	       !WEBKIT_DOM_IS_HTML_O_LIST_ELEMENT (parent) &&
++	       !WEBKIT_DOM_IS_HTML_PRE_ELEMENT (parent) &&
++	       !WEBKIT_DOM_IS_HTML_HEADING_ELEMENT (parent) &&
++	       !element_has_tag (parent, "address")) {
++		parent = webkit_dom_node_get_parent_element (
++			WEBKIT_DOM_NODE (parent));
++	}
++
++	return parent;
++}
+diff --git a/web-extensions/e-dom-utils.h b/web-extensions/e-dom-utils.h
+index 14521b44df..912223b8c2 100644
+--- a/web-extensions/e-dom-utils.h
++++ b/web-extensions/e-dom-utils.h
+@@ -120,6 +120,8 @@ void		element_remove_class		(WebKitDOMElement *element,
+ 						 const gchar* class);
+ void		remove_node			(WebKitDOMNode *node);
+ void		remove_node_if_empty		(WebKitDOMNode *node);
++WebKitDOMElement *
++		get_parent_block_element	(WebKitDOMNode *node);
+ G_END_DECLS
+ 
+ #endif /* E_DOM_UTILS_H */
+diff --git a/web-extensions/e-html-editor-dom-functions.c b/web-extensions/e-html-editor-dom-functions.c
+deleted file mode 100644
+index 12e9c23c61..0000000000
+--- a/web-extensions/e-html-editor-dom-functions.c
++++ /dev/null
+@@ -1,80 +0,0 @@
+-/*
+- * e-html-editor-dom-functions.c
+- *
+- * This program is free software; you can redistribute it and/or
+- * modify it under the terms of the GNU Lesser General Public
+- * License as published by the Free Software Foundation; either
+- * version 2 of the License, or (at your option) version 3.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+- * Lesser General Public License for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public
+- * License along with the program; if not, see <http://www.gnu.org/licenses/>
+- *
+- */
+-
+-#include "e-html-editor-dom-functions.h"
+-#include "e-html-editor-defines.h"
+-
+-#include "e-dom-utils.h"
+-
+-guint
+-e_html_editor_get_flags_for_element_on_coordinates (WebKitDOMDocument *document,
+-                                                    gint32 x,
+-                                                    gint32 y)
+-{
+-	guint flags = 0;
+-	WebKitDOMElement *element, *tmp;
+-
+-	tmp = webkit_dom_document_get_element_by_id (document, "-x-evo-current-image");
+-	if (tmp)
+-		webkit_dom_element_remove_attribute (tmp, "id");
+-	tmp = webkit_dom_document_get_element_by_id (document, "-x-evo-table-cell");
+-	if (tmp)
+-		webkit_dom_element_remove_attribute (tmp, "id");
+-
+-	element = e_dom_utils_get_element_from_point (document, x, y);
+-	if (!element) {
+-		flags |= E_HTML_EDITOR_NODE_IS_TEXT;
+-		return flags;
+-	}
+-
+-	if (WEBKIT_DOM_IS_HTML_HR_ELEMENT (element))
+-		flags |= E_HTML_EDITOR_NODE_IS_HR;
+-
+-	if (WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (element) ||
+-	    (dom_node_find_parent_element (WEBKIT_DOM_NODE (element), "A") != NULL))
+-		flags |= E_HTML_EDITOR_NODE_IS_ANCHOR;
+-
+-	if (WEBKIT_DOM_IS_HTML_IMAGE_ELEMENT (element) ||
+-	    (dom_node_find_parent_element (WEBKIT_DOM_NODE (element), "IMG") != NULL)) {
+-
+-		flags |= E_HTML_EDITOR_NODE_IS_IMAGE;
+-
+-		webkit_dom_element_set_id (element, "-x-evo-current-image");
+-	}
+-
+-	if (WEBKIT_DOM_IS_HTML_TABLE_CELL_ELEMENT (element) ||
+-	    (dom_node_find_parent_element (WEBKIT_DOM_NODE (element), "TD") != NULL) ||
+-	    (dom_node_find_parent_element (WEBKIT_DOM_NODE (element), "TH") != NULL)) {
+-
+-		flags |= E_HTML_EDITOR_NODE_IS_TABLE_CELL;
+-
+-		webkit_dom_element_set_id (element, "-x-evo-table-cell");
+-	}
+-
+-	if (flags && E_HTML_EDITOR_NODE_IS_TABLE_CELL &&
+-	    (WEBKIT_DOM_IS_HTML_TABLE_ELEMENT (element) ||
+-	    (dom_node_find_parent_element (WEBKIT_DOM_NODE (element), "TABLE") != NULL));
+-
+-		flags |= E_HTML_EDITOR_NODE_IS_TABLE;
+-	}
+-
+-	if (flags == 0)
+-		flags |= E_HTML_EDITOR_NODE_IS_TEXT;
+-
+-	return flags;
+-}
+diff --git a/web-extensions/e-html-editor-dom-functions.h b/web-extensions/e-html-editor-dom-functions.h
+deleted file mode 100644
+index 1c00e3737f..0000000000
+--- a/web-extensions/e-html-editor-dom-functions.h
++++ /dev/null
+@@ -1,33 +0,0 @@
+-/*
+- * e-html-editor-dom-functions.h
+- *
+- * This program is free software; you can redistribute it and/or
+- * modify it under the terms of the GNU Lesser General Public
+- * License as published by the Free Software Foundation; either
+- * version 2 of the License, or (at your option) version 3.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+- * Lesser General Public License for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public
+- * License along with the program; if not, see <http://www.gnu.org/licenses/>
+- *
+- */
+-
+-#ifndef E_HTML_EDITOR_DOM_FUNCTIONS_H
+-#define E_HTML_EDITOR_DOM_FUNCTIONS_H
+-
+-#include <webkitdom/webkitdom.h>
+-
+-G_BEGIN_DECLS
+-
+-guint		e_html_editor_get_flags_for_element_on_coordinates
+-						(WebKitDOMDocument *document,
+-						 gint32 x,
+-						 gint32 y);
+-
+-G_END_DECLS
+-
+-#endif /* E_HTML_EDITOR_DOM_FUNCTIONS_H */
+diff --git a/web-extensions/e-html-editor-hrule-dialog-dom-functions.c b/web-extensions/e-html-editor-hrule-dialog-dom-functions.c
+index ac1adf907f..ef158b20cb 100644
+--- a/web-extensions/e-html-editor-hrule-dialog-dom-functions.c
++++ b/web-extensions/e-html-editor-hrule-dialog-dom-functions.c
+@@ -18,6 +18,7 @@
+ 
+ #include "e-html-editor-hrule-dialog-dom-functions.h"
+ 
++#include "e-dom-utils.h"
+ #include "e-html-editor-selection-dom-functions.h"
+ 
+ #define WEBKIT_DOM_USE_UNSTABLE_API
+@@ -25,57 +26,36 @@
+ #include <webkitdom/WebKitDOMDOMWindowUnstable.h>
+ 
+ gboolean
+-e_html_editor_hrule_dialog_find_hrule (WebKitDOMDocument *document)
++e_html_editor_hrule_dialog_find_hrule (WebKitDOMDocument *document,
++                                       EHTMLEditorWebExtension *extension,
++                                       WebKitDOMNode *node_under_mouse_click)
+ {
+-	gboolean found = TRUE;
+-	WebKitDOMDOMWindow *window;
+-	WebKitDOMDOMSelection *selection;
+-	WebKitDOMElement *rule = NULL;
+-	WebKitDOMRange *range;
+-	WebKitDOMNode *node;
++	if (node_under_mouse_click && WEBKIT_DOM_IS_HTML_HR_ELEMENT (node_under_mouse_click)) {
++		webkit_dom_element_set_id (WEBKIT_DOM_ELEMENT (node_under_mouse_click), "-x-evo-current-hr");
+ 
+-	window = webkit_dom_document_get_default_view (document);
+-	selection = webkit_dom_dom_window_get_selection (window);
+-	if (webkit_dom_dom_selection_get_range_count (selection) < 1)
+ 		return FALSE;
++	} else {
++		WebKitDOMElement *selection_start, *parent, *rule;
+ 
+-	range = webkit_dom_dom_selection_get_range_at (selection, 0, NULL);
+-	node = webkit_dom_range_get_common_ancestor_container (range, NULL);
+-	if (node && !WEBKIT_DOM_IS_HTML_HR_ELEMENT (node)) {
+-		rule = dom_node_find_parent_element (node, "A");
+-		if (rule && !WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (rule))
+-			rule = NULL;
+-	} else
+-		rule = WEBKIT_DOM_ELEMENT (node);
++		dom_selection_save (document);
+ 
+-	if (!rule) {
+-		WebKitDOMElement *caret, *parent, *element;
+-
+-		caret = dom_save_caret_position (document);
+-		parent = webkit_dom_node_get_parent_element (WEBKIT_DOM_NODE (caret));
+-		element = caret;
+-
+-		while (!WEBKIT_DOM_IS_HTML_BODY_ELEMENT (parent)) {
+-			element = parent;
+-			parent = webkit_dom_node_get_parent_element (
+-				WEBKIT_DOM_NODE (parent));
+-		}
++		selection_start = webkit_dom_document_get_element_by_id (
++			document, "-x-evo-selection-start-marker");
++		parent = get_parent_block_element (WEBKIT_DOM_NODE (selection_start));
+ 
+ 		rule = webkit_dom_document_create_element (document, "HR", NULL);
++		webkit_dom_element_set_id (rule, "-x-evo-current-hr");
+ 
+ 		/* Insert horizontal rule into body below the caret */
+ 		webkit_dom_node_insert_before (
+-			WEBKIT_DOM_NODE (parent),
++			webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (parent)),
+ 			WEBKIT_DOM_NODE (rule),
+-			webkit_dom_node_get_next_sibling (WEBKIT_DOM_NODE (element)),
++			webkit_dom_node_get_next_sibling (WEBKIT_DOM_NODE (parent)),
+ 			NULL);
+ 
+-		dom_clear_caret_position_marker (document);
++		dom_selection_restore (document);
+ 
+-		found = FALSE;
++		e_html_editor_web_extension_set_content_changed (extension);
+ 	}
+-
+-	webkit_dom_element_set_id (rule, "-x-evo-current-hr");
+-
+-	return found;
++	return TRUE;
+ }
+diff --git a/web-extensions/e-html-editor-hrule-dialog-dom-functions.h b/web-extensions/e-html-editor-hrule-dialog-dom-functions.h
+index 4f6e57cabe..1d7c55a923 100644
+--- a/web-extensions/e-html-editor-hrule-dialog-dom-functions.h
++++ b/web-extensions/e-html-editor-hrule-dialog-dom-functions.h
+@@ -21,10 +21,14 @@
+ 
+ #include <webkitdom/webkitdom.h>
+ 
++#include "e-html-editor-web-extension.h"
++
+ G_BEGIN_DECLS
+ 
+ gboolean	e_html_editor_hrule_dialog_find_hrule
+-						(WebKitDOMDocument *document);
++						(WebKitDOMDocument *document,
++						 EHTMLEditorWebExtension *extension,
++						 WebKitDOMNode *node_under_mouse_click);
+ 
+ G_END_DECLS
+ 
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index e5043524ca..747b6f5f39 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -122,26 +122,6 @@ dom_exec_command (WebKitDOMDocument *document,
+ 		document, cmd_str, FALSE, has_value ? value : "" );
+ }
+ 
+-static WebKitDOMElement *
+-get_parent_block_element (WebKitDOMNode *node)
+-{
+-	WebKitDOMElement *parent = webkit_dom_node_get_parent_element (node);
+-
+-	while (parent &&
+-	       !WEBKIT_DOM_IS_HTML_DIV_ELEMENT (parent) &&
+-	       !WEBKIT_DOM_IS_HTML_QUOTE_ELEMENT (parent) &&
+-	       !WEBKIT_DOM_IS_HTML_U_LIST_ELEMENT (parent) &&
+-	       !WEBKIT_DOM_IS_HTML_O_LIST_ELEMENT (parent) &&
+-	       !WEBKIT_DOM_IS_HTML_PRE_ELEMENT (parent) &&
+-	       !WEBKIT_DOM_IS_HTML_HEADING_ELEMENT (parent) &&
+-	       !element_has_tag (parent, "address")) {
+-		parent = webkit_dom_node_get_parent_element (
+-			WEBKIT_DOM_NODE (parent));
+-	}
+-
+-	return parent;
+-}
+-
+ void
+ dom_force_spell_check_for_current_paragraph (WebKitDOMDocument *document,
+                                              EHTMLEditorWebExtension *extension)
+diff --git a/web-extensions/e-html-editor-web-extension.c b/web-extensions/e-html-editor-web-extension.c
+index f91ee23a48..526ff3241f 100644
+--- a/web-extensions/e-html-editor-web-extension.c
++++ b/web-extensions/e-html-editor-web-extension.c
+@@ -30,11 +30,12 @@
+ 
+ #include <e-util/e-misc-utils.h>
+ 
++#include <e-util/e-html-editor-defines.h>
++
+ #include "e-composer-private-dom-functions.h"
+ #include "e-dom-utils.h"
+ #include "e-html-editor-actions-dom-functions.h"
+ #include "e-html-editor-cell-dialog-dom-functions.h"
+-#include "e-html-editor-dom-functions.h"
+ #include "e-html-editor-hrule-dialog-dom-functions.h"
+ #include "e-html-editor-image-dialog-dom-functions.h"
+ #include "e-html-editor-link-dialog-dom-functions.h"
+@@ -92,6 +93,9 @@ struct _EHTMLEditorWebExtensionPrivate {
+ 	gboolean remove_initial_input_line;
+ 
+ 	GHashTable *inline_images;
++
++	WebKitDOMNode *node_under_mouse_click;
++	guint node_under_mouse_click_flags;
+ };
+ 
+ static CamelDataCache *emd_global_http_cache = NULL;
+@@ -111,6 +115,7 @@ static const char introspection_xml[] =
+ "    <property type='b' name='IsMessageFromSelection' access='readwrite'/>"
+ "    <property type='b' name='IsFromNewMessage' access='readwrite'/>"
+ "    <property type='b' name='RemoveInitialInputLine' access='readwrite'/>"
++"    <property type='b' name='NodeUnderMouseClickFlags' access='read'/>"
+ "<!-- ********************************************************* -->"
+ "<!-- These properties show the actual state of EHTMLEditorView -->"
+ "<!-- ********************************************************* -->"
+@@ -239,6 +244,7 @@ static const char introspection_xml[] =
+ "<!-- ********************************************************* -->"
+ "    <method name='EHTMLEditorHRuleDialogFindHRule'>"
+ "      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='b' name='created' direction='out'/>"
+ "    </method>"
+ "    <method name='HRElementSetNoShade'>"
+ "      <arg type='t' name='page_id' direction='in'/>"
+@@ -851,6 +857,7 @@ handle_method_call (GDBusConnection *connection,
+ 
+ 		g_dbus_method_invocation_return_value (invocation, NULL);
+ 	} else if (g_strcmp0 (method_name, "EHTMLEditorHRuleDialogFindHRule") == 0) {
++		gboolean created = FALSE;
+ 		g_variant_get (parameters, "(t)", &page_id);
+ 
+ 		web_page = get_webkit_web_page_or_return_dbus_error (
+@@ -859,9 +866,11 @@ handle_method_call (GDBusConnection *connection,
+ 			return;
+ 
+ 		document = webkit_web_page_get_dom_document (web_page);
+-		e_html_editor_hrule_dialog_find_hrule (document);
++		created = e_html_editor_hrule_dialog_find_hrule (
++			document, extension, extension->priv->node_under_mouse_click);
+ 
+-		g_dbus_method_invocation_return_value (invocation, NULL);
++		g_dbus_method_invocation_return_value (
++			invocation, g_variant_new_boolean (created));
+ 	} else if (g_strcmp0 (method_name, "HRElementSetNoShade") == 0) {
+ 		gboolean value = FALSE;
+ 		const gchar *element_id;
+@@ -1620,10 +1629,10 @@ handle_method_call (GDBusConnection *connection,
+ 			return;
+ 
+ 		document = webkit_web_page_get_dom_document (web_page);
+-		if (cancel_if_not_collapsed)
++		if (cancel_if_not_collapsed) {
+ 			if (dom_selection_is_collapsed (document))
+ 				dom_selection_set_on_point (document, x, y);
+-		else
++		} else
+ 			dom_selection_set_on_point (document, x, y);
+ 		g_dbus_method_invocation_return_value (invocation, NULL);
+ 	} else if (g_strcmp0 (method_name, "DOMSelectionIndent") == 0) {
+@@ -1807,6 +1816,8 @@ handle_get_property (GDBusConnection *connection,
+ 		variant = g_variant_new_boolean (extension->priv->underline);
+ 	else if (g_strcmp0 (property_name, "Text") == 0)
+ 		variant = g_variant_new_string (extension->priv->text);
++	else if (g_strcmp0 (property_name, "NodeUnderMouseClickFlags") == 0)
++		variant = g_variant_new_uint32 (extension->priv->node_under_mouse_click_flags);
+ 
+ 	return variant;
+ }
+@@ -2250,6 +2261,8 @@ e_html_editor_web_extension_init (EHTMLEditorWebExtension *extension)
+ 	extension->priv->is_message_from_selection = FALSE;
+ 	extension->priv->remove_initial_input_line = FALSE;
+ 
++	extension->priv->node_under_mouse_click = NULL;
++
+ 	extension->priv->inline_images = g_hash_table_new_full (
+ 		g_str_hash, g_str_equal,
+ 		(GDestroyNotify) g_free,
+@@ -2382,6 +2395,58 @@ web_page_document_loaded_cb (WebKitWebPage *web_page,
+ 	dom_process_content_after_load (document, web_extension);
+ }
+ 
++static gboolean
++web_page_context_menu_cb (WebKitWebPage *web_page,
++		          WebKitContextMenu *context_menu,
++			  WebKitWebHitTestResult *hit_test_result,
++                          EHTMLEditorWebExtension *web_extension)
++{
++	WebKitDOMNode *node;
++	guint flags = 0;
++
++	node = webkit_web_hit_test_result_get_node (hit_test_result);
++	web_extension->priv->node_under_mouse_click = node;
++
++	if (WEBKIT_DOM_IS_TEXT (node)) {
++		flags |= E_HTML_EDITOR_NODE_IS_TEXT;
++		return flags;
++	}
++
++	if (WEBKIT_DOM_IS_HTML_HR_ELEMENT (node))
++		flags |= E_HTML_EDITOR_NODE_IS_HR;
++
++	if (WEBKIT_DOM_IS_HTML_ANCHOR_ELEMENT (node) ||
++	    (dom_node_find_parent_element (node, "A") != NULL))
++		flags |= E_HTML_EDITOR_NODE_IS_ANCHOR;
++
++	if (WEBKIT_DOM_IS_HTML_IMAGE_ELEMENT (node) ||
++	    (dom_node_find_parent_element (node, "IMG") != NULL)) {
++
++		flags |= E_HTML_EDITOR_NODE_IS_IMAGE;
++	}
++
++	if (WEBKIT_DOM_IS_HTML_TABLE_CELL_ELEMENT (node) ||
++	    (dom_node_find_parent_element (node, "TD") != NULL) ||
++	    (dom_node_find_parent_element (node, "TH") != NULL)) {
++
++		flags |= E_HTML_EDITOR_NODE_IS_TABLE_CELL;
++	}
++
++	if (flags && E_HTML_EDITOR_NODE_IS_TABLE_CELL &&
++	    (WEBKIT_DOM_IS_HTML_TABLE_ELEMENT (node) ||
++	    dom_node_find_parent_element (node, "TABLE") != NULL)) {
++
++		flags |= E_HTML_EDITOR_NODE_IS_TABLE;
++	}
++
++	if (flags == 0)
++		flags |= E_HTML_EDITOR_NODE_IS_TEXT;
++
++	web_extension->priv->node_under_mouse_click_flags = flags;
++
++	return FALSE;
++}
++
+ static void
+ web_page_created_cb (WebKitWebExtension *wk_extension,
+                      WebKitWebPage *web_page,
+@@ -2396,6 +2461,11 @@ web_page_created_cb (WebKitWebExtension *wk_extension,
+ 		web_page, "document-loaded",
+ 		G_CALLBACK (web_page_document_loaded_cb),
+ 		extension, 0);
++
++	g_signal_connect_object (
++		web_page, "context-menu",
++		G_CALLBACK (web_page_context_menu_cb),
++		extension, 0);
+ }
+ 
+ void
+-- 
+2.15.0
+

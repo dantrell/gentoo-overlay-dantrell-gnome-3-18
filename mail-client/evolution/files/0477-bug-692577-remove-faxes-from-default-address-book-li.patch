@@ -1,0 +1,26 @@
+From 134ba2b057a5b581ac6c643e7cb47b50c2a850bc Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 10 Mar 2015 16:26:26 +0100
+Subject: [PATCH 0477/1800] Bug 692577 - Remove Faxes from default address book
+ List View
+
+---
+ views/addressbook/Phone_List.galview | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/views/addressbook/Phone_List.galview b/views/addressbook/Phone_List.galview
+index 3c091df1ad..3ab8fe7b10 100644
+--- a/views/addressbook/Phone_List.galview
++++ b/views/addressbook/Phone_List.galview
+@@ -4,8 +4,6 @@
+   <column source="5"/>
+   <column source="9"/>
+   <column source="15"/>
+-  <column source="11"/>
+-  <column source="17"/>
+   <column source="19"/>
+   <grouping>
+     <leaf column="4" ascending="true"/>
+-- 
+2.15.0
+

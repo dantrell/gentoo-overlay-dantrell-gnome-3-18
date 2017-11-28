@@ -1,0 +1,211 @@
+From 4c2826819141b6d1746c5fced40b3504d18e0058 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 23 Feb 2016 21:00:44 +0100
+Subject: [PATCH 0609/1800] Bug 747056 - Undoing deletion of the quote prefix
+ for a line does not do the right thing
+
+---
+ .../composer/e-html-editor-history-event.h         |  3 +-
+ .../composer/e-html-editor-undo-redo-manager.c     | 68 ++++++++++++++++++++++
+ .../composer/e-html-editor-view-dom-functions.c    | 26 ++++++++-
+ .../composer/e-html-editor-view-dom-functions.h    |  4 ++
+ 4 files changed, 97 insertions(+), 4 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-history-event.h b/web-extensions/composer/e-html-editor-history-event.h
+index 872f2b5e50..7aed032adb 100644
+--- a/web-extensions/composer/e-html-editor-history-event.h
++++ b/web-extensions/composer/e-html-editor-history-event.h
+@@ -54,7 +54,8 @@ enum EHTMLEditorHistoryEventType {
+ 	HISTORY_TABLE_DIALOG,
+ 	HISTORY_TABLE_INPUT,
+ 	HISTORY_UNDERLINE,
+-	HISTORY_WRAP
++	HISTORY_WRAP,
++	HISTORY_UNQUOTE
+ };
+ 
+ typedef struct {
+diff --git a/web-extensions/composer/e-html-editor-undo-redo-manager.c b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+index d8c6be38bb..3b00f9ec26 100644
+--- a/web-extensions/composer/e-html-editor-undo-redo-manager.c
++++ b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+@@ -244,6 +244,7 @@ print_history_event (EHTMLEditorHistoryEvent *event)
+ 		case HISTORY_CELL_DIALOG:
+ 		case HISTORY_TABLE_DIALOG:
+ 		case HISTORY_PAGE_DIALOG:
++		case HISTORY_UNQUOTE:
+ 			print_node_inner_html (event->data.dom.from);
+ 			print_node_inner_html (event->data.dom.to);
+ 			break;
+@@ -1437,6 +1438,66 @@ undo_redo_blockquote (WebKitDOMDocument *document,
+ 		dom_selection_restore (document);
+ }
+ 
++static void
++undo_redo_unquote (WebKitDOMDocument *document,
++		   EHTMLEditorWebExtension *extension,
++		   EHTMLEditorHistoryEvent *event,
++                   gboolean undo)
++{
++	WebKitDOMElement *element;
++
++	if (undo)
++		restore_selection_to_history_event_state (document, event->after);
++
++	dom_selection_save (document);
++	element = webkit_dom_document_get_element_by_id (
++		document, "-x-evo-selection-start-marker");
++
++	if (undo) {
++		WebKitDOMNode *next_sibling, *prev_sibling;
++		WebKitDOMElement *block;
++
++		block = get_parent_block_element (WEBKIT_DOM_NODE (element));
++
++		next_sibling = webkit_dom_node_get_next_sibling (WEBKIT_DOM_NODE (block));
++		prev_sibling = webkit_dom_node_get_previous_sibling (WEBKIT_DOM_NODE (block));
++
++		if (prev_sibling && dom_node_is_citation_node (prev_sibling)) {
++			webkit_dom_node_append_child (
++				prev_sibling,
++				webkit_dom_node_clone_node (event->data.dom.from, TRUE),
++				NULL);
++
++			if (next_sibling && dom_node_is_citation_node (next_sibling)) {
++				WebKitDOMNode *child;
++
++				while  ((child = webkit_dom_node_get_first_child (next_sibling)))
++					webkit_dom_node_append_child (
++						prev_sibling, child, NULL);
++
++				remove_node (next_sibling);
++			}
++		} else if (next_sibling && dom_node_is_citation_node (next_sibling)) {
++			webkit_dom_node_insert_before (
++				next_sibling,
++				webkit_dom_node_clone_node (event->data.dom.from, TRUE),
++				webkit_dom_node_get_first_child (next_sibling),
++				NULL);
++		}
++
++		remove_node (WEBKIT_DOM_NODE (block));
++	} else {
++		dom_change_quoted_block_to_normal (document, extension);
++	}
++
++	if (undo)
++		restore_selection_to_history_event_state (document, event->before);
++	else
++		dom_selection_restore (document);
++
++	dom_force_spell_check_for_current_paragraph (document, extension);
++}
++
+ gboolean
+ e_html_editor_undo_redo_manager_is_operation_in_progress (EHTMLEditorUndoRedoManager *manager)
+ {
+@@ -1486,6 +1547,7 @@ free_history_event_content (EHTMLEditorHistoryEvent *event)
+ 		case HISTORY_TABLE_DIALOG:
+ 		case HISTORY_TABLE_INPUT:
+ 		case HISTORY_PAGE_DIALOG:
++		case HISTORY_UNQUOTE:
+ 			if (event->data.dom.from != NULL)
+ 				g_object_unref (event->data.dom.from);
+ 			if (event->data.dom.to != NULL)
+@@ -1765,6 +1827,9 @@ e_html_editor_undo_redo_manager_undo (EHTMLEditorUndoRedoManager *manager)
+ 		case HISTORY_BLOCKQUOTE:
+ 			undo_redo_blockquote (document, extension, event, TRUE);
+ 			break;
++		case HISTORY_UNQUOTE:
++			undo_redo_unquote (document, extension, event, TRUE);
++			break;
+ 		default:
+ 			g_object_unref (extension);
+ 			return;
+@@ -1879,6 +1944,9 @@ e_html_editor_undo_redo_manager_redo (EHTMLEditorUndoRedoManager *manager)
+ 		case HISTORY_BLOCKQUOTE:
+ 			undo_redo_blockquote (document, extension, event, FALSE);
+ 			break;
++		case HISTORY_UNQUOTE:
++			undo_redo_unquote (document, extension, event, FALSE);
++			break;
+ 		default:
+ 			g_object_unref (extension);
+ 			return;
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index da408fbfa4..0ea7fc4ca3 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -2757,10 +2757,11 @@ dom_quote_and_insert_text_into_selection (WebKitDOMDocument *document,
+ 	g_free (escaped_text);
+ }
+ 
+-static gboolean
++gboolean
+ dom_change_quoted_block_to_normal (WebKitDOMDocument *document,
+                                    EHTMLEditorWebExtension *extension)
+ {
++	EHTMLEditorHistoryEvent *ev = NULL;
+ 	gboolean html_mode;
+ 	gint citation_level, success = FALSE;
+ 	WebKitDOMElement *selection_start_marker, *selection_end_marker, *block;
+@@ -2810,13 +2811,18 @@ dom_change_quoted_block_to_normal (WebKitDOMDocument *document,
+ 	if (!success)
+ 		return FALSE;
+ 
++	ev = g_new0 (EHTMLEditorHistoryEvent, 1);
++	ev->type = HISTORY_UNQUOTE;
++
++	dom_selection_get_coordinates (document, &ev->before.start.x, &ev->before.start.y, &ev->before.end.x, &ev->before.end.y);
++	ev->data.dom.from = webkit_dom_node_clone_node (WEBKIT_DOM_NODE (block), TRUE);
++
+ 	if (citation_level == 1) {
+ 		gchar *inner_html;
+ 		WebKitDOMElement *paragraph;
+ 
+ 		inner_html = webkit_dom_element_get_inner_html (block);
+-		webkit_dom_element_set_id (
+-			WEBKIT_DOM_ELEMENT (block), "-x-evo-to-remove");
++		webkit_dom_element_set_id (block, "-x-evo-to-remove");
+ 
+ 		paragraph = dom_insert_new_line_into_citation (document, extension, inner_html);
+ 		g_free (inner_html);
+@@ -2935,6 +2941,20 @@ dom_change_quoted_block_to_normal (WebKitDOMDocument *document,
+ 
+ 	}
+ 
++	if (ev) {
++		EHTMLEditorUndoRedoManager *manager;
++
++		manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
++
++		dom_selection_get_coordinates (
++			document,
++			&ev->after.start.x,
++			&ev->after.start.y,
++			&ev->after.end.x,
++			&ev->after.end.y);
++		e_html_editor_undo_redo_manager_insert_history_event (manager, ev);
++	}
++
+ 	return success;
+ }
+ 
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.h b/web-extensions/composer/e-html-editor-view-dom-functions.h
+index b5be126676..ae7270e1d2 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.h
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.h
+@@ -153,6 +153,10 @@ void		dom_drag_and_drop_end		(WebKitDOMDocument *document,
+ void		dom_set_link_color		(WebKitDOMDocument *document,
+ 						 const gchar *color);
+ 
++gboolean	dom_change_quoted_block_to_normal
++						(WebKitDOMDocument *document,
++						 EHTMLEditorWebExtension *extension);
++
+ G_END_DECLS
+ 
+ #endif /* E_HTML_EDITOR_VIEW_DOM_FUNCTIONS_H */
+-- 
+2.15.0
+

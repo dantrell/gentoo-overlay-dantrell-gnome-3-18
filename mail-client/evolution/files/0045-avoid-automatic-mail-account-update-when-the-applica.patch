@@ -1,0 +1,35 @@
+From ba8c7c259438e778b31fd99a77a838c998e5fbc8 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 7 Nov 2014 12:01:27 +0100
+Subject: [PATCH 0045/1800] Avoid automatic mail account update when the
+ application is exiting
+
+---
+ mail/e-mail-ui-session.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/mail/e-mail-ui-session.c b/mail/e-mail-ui-session.c
+index 96db4bbb12..3f12abc0e6 100644
+--- a/mail/e-mail-ui-session.c
++++ b/mail/e-mail-ui-session.c
+@@ -631,12 +631,16 @@ mail_ui_session_user_alert (CamelSession *session,
+ 	g_free (display_name);
+ }
+ 
++extern gint camel_application_is_exiting;
++
+ static void
+ mail_ui_session_refresh_service (EMailSession *session,
+                                  CamelService *service)
+ {
+-	if (camel_session_get_online (CAMEL_SESSION (session)))
++	if (!camel_application_is_exiting &&
++	    camel_session_get_online (CAMEL_SESSION (session))) {
+ 		mail_receive_service (service);
++	}
+ }
+ 
+ static EMVFolderContext *
+-- 
+2.15.0
+

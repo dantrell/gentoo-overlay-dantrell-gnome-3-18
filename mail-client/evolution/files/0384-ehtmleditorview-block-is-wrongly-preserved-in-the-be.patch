@@ -1,0 +1,51 @@
+From 02a7bb1b3090dcb66490688fff86219f40ccede5 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 26 Mar 2015 13:44:03 +0100
+Subject: [PATCH 0384/1800] EHTMLEditorView - Block is wrongly preserved in the
+ beginning of quoted content
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 1e9ce4e2c6..d18f1eb1ae 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -3344,8 +3344,10 @@ parse_html_into_paragraphs (WebKitDOMDocument *document,
+ 			rest = with_br ?
+ 				to_insert + 4 + (with_br - to_insert) : to_insert;
+ 
+-		if (!rest)
++		if (!rest) {
++			preserve_next_line = FALSE;
+ 			goto next;
++		}
+ 
+ 		if (*rest) {
+ 			gboolean empty = FALSE;
+@@ -3355,7 +3357,7 @@ parse_html_into_paragraphs (WebKitDOMDocument *document,
+ 			g_strchomp (truncated);
+ 			empty = !*truncated && strlen (rest) > 0;
+ 
+-			if (strchr (" +-@*=\t", *rest))
++			if (strchr (" +-@*=\t;#", *rest))
+ 				preserve_block = FALSE;
+ 
+ 			rest_to_insert = g_regex_replace_eval (
+@@ -3475,8 +3477,10 @@ parse_html_into_paragraphs (WebKitDOMDocument *document,
+ 					blockquote,
+ 					block,
+ 					"<br class=\"-x-evo-first-br\">");
+-			}
+-		}
++			} else
++				preserve_next_line = FALSE;
++		} else
++			preserve_next_line = FALSE;
+  next:
+ 		first_element = FALSE;
+ 		prev_br = next_br;
+-- 
+2.15.0
+

@@ -1,0 +1,36 @@
+From fc36fcb6377d832ac923174dae47b9ffb6df5321 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 19 Feb 2015 12:57:48 +0100
+Subject: [PATCH 0326/1800] Special-case Google 'caldav' calendars to use
+ 'google' editor
+
+When a user created a Google calendar, in a Google editor, then a CalDAV
+backend was created. Opening Properties of the Google calendar opened
+the CalDAV editor instead, because it was backend-driven which editor
+will be opened. This special-case addition makes sure that Google
+calendar properties will open Google editor, the same which was used
+to create the calendar.
+---
+ e-util/e-source-config.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/e-util/e-source-config.c b/e-util/e-source-config.c
+index 9d51718811..de0f7b7968 100644
+--- a/e-util/e-source-config.c
++++ b/e-util/e-source-config.c
+@@ -481,6 +481,12 @@ source_config_init_for_editing_source (ESourceConfig *config)
+ 	backend_name = e_source_backend_get_backend_name (extension);
+ 	g_return_if_fail (backend_name != NULL);
+ 
++	/* Special-case Google calendars to use 'google' editor, instead
++	   of the 'caldav' editor, even they use 'caldav' calendar backend. */
++	if (g_ascii_strcasecmp (backend_name, "caldav") == 0 &&
++	    g_strcmp0 (e_source_get_parent (original_source), "google-stub") == 0)
++		backend_name = "google";
++
+ 	backend = g_hash_table_lookup (config->priv->backends, backend_name);
+ 	g_return_if_fail (backend != NULL);
+ 
+-- 
+2.15.0
+

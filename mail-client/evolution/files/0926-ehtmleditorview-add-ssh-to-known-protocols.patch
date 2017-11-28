@@ -1,0 +1,25 @@
+From bc7af029671dceb12bf631335f8f8f32bce06a4f Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 29 Feb 2016 17:24:18 +0100
+Subject: [PATCH 0926/1800] EHTMLEditorView - Add ssh to known protocols
+
+---
+ web-extensions/composer/e-html-editor-selection-dom-functions.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.h b/web-extensions/composer/e-html-editor-selection-dom-functions.h
+index 61f3b12904..e668e4ad3c 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.h
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.h
+@@ -27,7 +27,7 @@
+ #define UNICODE_NBSP "\xc2\xa0"
+ 
+ /* stephenhay from https://mathiasbynens.be/demo/url-regex */
+-#define URL_PROTOCOLS "news|telnet|nntp|file|https?|s?ftp||webcal|localhost"
++#define URL_PROTOCOLS "news|telnet|nntp|file|https?|s?ftp||webcal|localhost|ssh"
+ #define URL_PATTERN "((((" URL_PROTOCOLS ")\\:\\/\\/)|(www\\.|ftp\\.))[^\\s\\/\\$\\.\\?#].[^\\s]*)"
+ 
+ #define URL_PATTERN_SPACE URL_PATTERN "\\s"
+-- 
+2.15.0
+

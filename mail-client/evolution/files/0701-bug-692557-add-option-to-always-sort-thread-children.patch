@@ -1,0 +1,421 @@
+From 855992bab702d35ba8920e6d9b8d885f4bc28e2a Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 24 Apr 2015 10:37:54 +0200
+Subject: [PATCH 0701/1800] Bug 692557 - Add option to always sort thread
+ children ascending
+
+---
+ data/org.gnome.evolution.mail.gschema.xml.in |  5 ++
+ e-util/e-table-sort-info.c                   | 10 ++-
+ e-util/e-tree-table-adapter.c                | 98 +++++++++++++++++++++++++++-
+ e-util/e-tree-table-adapter.h                |  5 ++
+ e-util/e-tree.c                              | 47 ++++++++++++-
+ e-util/e-tree.h                              |  5 ++
+ mail/message-list.c                          |  9 ++-
+ modules/settings/e-settings-message-list.c   |  5 ++
+ 8 files changed, 175 insertions(+), 9 deletions(-)
+
+diff --git a/data/org.gnome.evolution.mail.gschema.xml.in b/data/org.gnome.evolution.mail.gschema.xml.in
+index 33103ab85a..d1b153cde8 100644
+--- a/data/org.gnome.evolution.mail.gschema.xml.in
++++ b/data/org.gnome.evolution.mail.gschema.xml.in
+@@ -368,6 +368,11 @@
+       <_summary>Whether sort threads based on latest message in that thread</_summary>
+       <_description>This setting specifies whether the threads should be sorted based on latest message in each thread, rather than by message's date. Evolution requires a restart.</_description>
+     </key>
++    <key name="thread-children-ascending" type="b">
++      <default>true</default>
++      <_summary>Whether sort thread children always ascending</_summary>
++      <_description>This setting specifies whether the thread children should be sorted always ascending, rather than using the same sort order as in the thread root level.</_description>
++    </key>
+     <key name="sort-accounts-alpha" type="b">
+       <default>true</default>
+       <_summary>Sort accounts alphabetically in a folder tree</_summary>
+diff --git a/e-util/e-table-sort-info.c b/e-util/e-table-sort-info.c
+index caf571f811..ae1806d776 100644
+--- a/e-util/e-table-sort-info.c
++++ b/e-util/e-table-sort-info.c
+@@ -565,9 +565,12 @@ e_table_sort_info_grouping_set_nth (ETableSortInfo *sort_info,
+ 	g_array_set_size (array, MAX (n + 1, array->len));
+ 	column_data = &g_array_index (array, ColumnData, n);
+ 
++	/* In case it's setting the same specification, to not free it */
++	g_object_ref (spec);
++
+ 	column_data_clear (column_data);
+ 
+-	column_data->column_spec = g_object_ref (spec);
++	column_data->column_spec = spec;
+ 	column_data->sort_type = sort_type;
+ 
+ 	g_signal_emit (sort_info, signals[GROUP_INFO_CHANGED], 0);
+@@ -684,9 +687,12 @@ e_table_sort_info_sorting_set_nth (ETableSortInfo *sort_info,
+ 	g_array_set_size (array, MAX (n + 1, array->len));
+ 	column_data = &g_array_index (array, ColumnData, n);
+ 
++	/* In case it's setting the same specification, to not free it */
++	g_object_ref (spec);
++
+ 	column_data_clear (column_data);
+ 
+-	column_data->column_spec = g_object_ref (spec);
++	column_data->column_spec = spec;
+ 	column_data->sort_type = sort_type;
+ 
+ 	g_signal_emit (sort_info, signals[SORT_INFO_CHANGED], 0);
+diff --git a/e-util/e-tree-table-adapter.c b/e-util/e-tree-table-adapter.c
+index b81e385df2..6fa3974653 100644
+--- a/e-util/e-tree-table-adapter.c
++++ b/e-util/e-tree-table-adapter.c
+@@ -65,6 +65,8 @@ struct _ETreeTableAdapterPrivate {
+ 
+ 	ETableSortInfo *sort_info;
+ 	gulong sort_info_changed_handler_id;
++	ETableSortInfo *children_sort_info;
++	gboolean sort_children_ascending;
+ 
+ 	ETableHeader *header;
+ 
+@@ -88,7 +90,8 @@ enum {
+ 	PROP_0,
+ 	PROP_HEADER,
+ 	PROP_SORT_INFO,
+-	PROP_SOURCE_MODEL
++	PROP_SOURCE_MODEL,
++	PROP_SORT_CHILDREN_ASCENDING
+ };
+ 
+ enum {
+@@ -217,8 +220,36 @@ resort_node (ETreeTableAdapter *etta,
+ 	     path = e_tree_model_node_get_next (etta->priv->source_model, path), i++)
+ 		paths[i] = path;
+ 
+-	if (count > 1 && sort_needed)
+-		e_table_sorting_utils_tree_sort (etta->priv->source_model, etta->priv->sort_info, etta->priv->header, paths, count);
++	if (count > 1 && sort_needed) {
++		ETableSortInfo *use_sort_info;
++
++		use_sort_info = etta->priv->sort_info;
++
++		if (etta->priv->sort_children_ascending && gnode->parent) {
++			if (!etta->priv->children_sort_info) {
++				gint len;
++
++				etta->priv->children_sort_info = e_table_sort_info_duplicate (etta->priv->sort_info);
++
++				len = e_table_sort_info_sorting_get_count (etta->priv->children_sort_info);
++
++				for (i = 0; i < len; i++) {
++					ETableColumnSpecification *spec;
++					GtkSortType sort_type;
++
++					spec = e_table_sort_info_sorting_get_nth (etta->priv->children_sort_info, i, &sort_type);
++					if (spec) {
++						if (sort_type == GTK_SORT_DESCENDING)
++							e_table_sort_info_sorting_set_nth (etta->priv->children_sort_info, i, spec, GTK_SORT_ASCENDING);
++					}
++				}
++			}
++
++			use_sort_info = etta->priv->children_sort_info;
++		}
++
++		e_table_sorting_utils_tree_sort (etta->priv->source_model, use_sort_info, etta->priv->header, paths, count);
++	}
+ 
+ 	prev = NULL;
+ 	for (i = 0; i < count; i++) {
+@@ -525,6 +556,8 @@ static void
+ tree_table_adapter_sort_info_changed_cb (ETableSortInfo *sort_info,
+                                          ETreeTableAdapter *etta)
+ {
++	g_clear_object (&etta->priv->children_sort_info);
++
+ 	if (!etta->priv->root)
+ 		return;
+ 
+@@ -680,6 +713,12 @@ tree_table_adapter_set_property (GObject *object,
+ 				E_TREE_TABLE_ADAPTER (object),
+ 				g_value_get_object (value));
+ 			return;
++
++		case PROP_SORT_CHILDREN_ASCENDING:
++			e_tree_table_adapter_set_sort_children_ascending (
++				E_TREE_TABLE_ADAPTER (object),
++				g_value_get_boolean (value));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -712,6 +751,13 @@ tree_table_adapter_get_property (GObject *object,
+ 				e_tree_table_adapter_get_source_model (
+ 				E_TREE_TABLE_ADAPTER (object)));
+ 			return;
++
++		case PROP_SORT_CHILDREN_ASCENDING:
++			g_value_set_boolean (
++				value,
++				e_tree_table_adapter_get_sort_children_ascending (
++				E_TREE_TABLE_ADAPTER (object)));
++			return;
+ 	}
+ 
+ 	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+@@ -775,6 +821,7 @@ tree_table_adapter_dispose (GObject *object)
+ 
+ 	g_clear_object (&priv->source_model);
+ 	g_clear_object (&priv->sort_info);
++	g_clear_object (&priv->children_sort_info);
+ 	g_clear_object (&priv->header);
+ 
+ 	/* Chain up to parent's dispose() method. */
+@@ -1041,6 +1088,18 @@ e_tree_table_adapter_class_init (ETreeTableAdapterClass *class)
+ 			G_PARAM_CONSTRUCT_ONLY |
+ 			G_PARAM_STATIC_STRINGS));
+ 
++	g_object_class_install_property (
++		object_class,
++		PROP_SORT_CHILDREN_ASCENDING,
++		g_param_spec_boolean (
++			"sort-children-ascending",
++			"Sort Children Ascending",
++			NULL,
++			FALSE,
++			G_PARAM_READWRITE |
++			G_PARAM_CONSTRUCT |
++			G_PARAM_STATIC_STRINGS));
++
+ 	signals[SORTING_CHANGED] = g_signal_new (
+ 		"sorting_changed",
+ 		G_OBJECT_CLASS_TYPE (object_class),
+@@ -1153,6 +1212,8 @@ e_tree_table_adapter_set_sort_info (ETreeTableAdapter *etta,
+ 		etta->priv->sort_info_changed_handler_id = handler_id;
+ 	}
+ 
++	g_clear_object (&etta->priv->children_sort_info);
++
+ 	g_object_notify (G_OBJECT (etta), "sort-info");
+ 
+ 	if (etta->priv->root == NULL)
+@@ -1164,6 +1225,37 @@ e_tree_table_adapter_set_sort_info (ETreeTableAdapter *etta,
+ 	e_table_model_changed (E_TABLE_MODEL (etta));
+ }
+ 
++gboolean
++e_tree_table_adapter_get_sort_children_ascending (ETreeTableAdapter *etta)
++{
++	g_return_val_if_fail (E_IS_TREE_TABLE_ADAPTER (etta), FALSE);
++
++	return etta->priv->sort_children_ascending;
++}
++
++void
++e_tree_table_adapter_set_sort_children_ascending (ETreeTableAdapter *etta,
++						  gboolean sort_children_ascending)
++{
++	g_return_if_fail (E_IS_TREE_TABLE_ADAPTER (etta));
++
++	if ((etta->priv->sort_children_ascending ? 1 : 0) == (sort_children_ascending ? 1 : 0))
++		return;
++
++	etta->priv->sort_children_ascending = sort_children_ascending;
++	g_clear_object (&etta->priv->children_sort_info);
++
++	g_object_notify (G_OBJECT (etta), "sort-children-ascending");
++
++	if (!etta->priv->root)
++		return;
++
++	e_table_model_pre_change (E_TABLE_MODEL (etta));
++	resort_node (etta, etta->priv->root, TRUE);
++	fill_map (etta, 0, etta->priv->root);
++	e_table_model_changed (E_TABLE_MODEL (etta));
++}
++
+ ETreeModel *
+ e_tree_table_adapter_get_source_model (ETreeTableAdapter *etta)
+ {
+diff --git a/e-util/e-tree-table-adapter.h b/e-util/e-tree-table-adapter.h
+index 57005a896f..d9926f5e4c 100644
+--- a/e-util/e-tree-table-adapter.h
++++ b/e-util/e-tree-table-adapter.h
+@@ -81,6 +81,11 @@ ETableSortInfo *e_tree_table_adapter_get_sort_info
+ void		e_tree_table_adapter_set_sort_info
+ 						(ETreeTableAdapter *etta,
+ 						 ETableSortInfo *sort_info);
++gboolean	e_tree_table_adapter_get_sort_children_ascending
++						(ETreeTableAdapter *etta);
++void		e_tree_table_adapter_set_sort_children_ascending
++						(ETreeTableAdapter *etta,
++						 gboolean sort_children_ascending);
+ ETreeModel *	e_tree_table_adapter_get_source_model
+ 						(ETreeTableAdapter *etta);
+ 
+diff --git a/e-util/e-tree.c b/e-util/e-tree.c
+index 89076a14ed..502967a19c 100644
+--- a/e-util/e-tree.c
++++ b/e-util/e-tree.c
+@@ -103,7 +103,8 @@ enum {
+ 	PROP_HADJUSTMENT,
+ 	PROP_VADJUSTMENT,
+ 	PROP_HSCROLL_POLICY,
+-	PROP_VSCROLL_POLICY
++	PROP_VSCROLL_POLICY,
++	PROP_SORT_CHILDREN_ASCENDING
+ };
+ 
+ enum {
+@@ -208,6 +209,7 @@ struct _ETreePrivate {
+ 	gboolean is_dragging;
+ 
+ 	gboolean grouped_view;
++	gboolean sort_children_ascending;
+ };
+ 
+ static guint signals[LAST_SIGNAL];
+@@ -1575,6 +1577,9 @@ et_connect_to_etta (ETree *tree)
+ 		tree->priv->etta, "model_rows_deleted",
+ 		G_CALLBACK (et_table_rows_deleted), tree);
+ 
++	g_object_bind_property (tree, "sort-children-ascending",
++		tree->priv->etta, "sort-children-ascending",
++		G_BINDING_DEFAULT);
+ }
+ 
+ static gboolean
+@@ -1872,6 +1877,10 @@ et_get_property (GObject *object,
+ 			g_value_set_enum (value, 0);
+ 		break;
+ 
++	case PROP_SORT_CHILDREN_ASCENDING:
++		g_value_set_boolean (value, e_tree_get_sort_children_ascending (tree));
++		break;
++
+ 	default:
+ 		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+ 		break;
+@@ -1981,6 +1990,10 @@ et_set_property (GObject *object,
+ 				G_OBJECT (tree->priv->table_canvas),
+ 				"vscroll-policy", value);
+ 		break;
++
++	case PROP_SORT_CHILDREN_ASCENDING:
++		e_tree_set_sort_children_ascending (tree, g_value_get_boolean (value));
++		break;
+ 	}
+ }
+ 
+@@ -3162,6 +3175,16 @@ e_tree_class_init (ETreeClass *class)
+ 			FALSE,
+ 			G_PARAM_READWRITE));
+ 
++	g_object_class_install_property (
++		object_class,
++		PROP_SORT_CHILDREN_ASCENDING,
++		g_param_spec_boolean (
++			"sort-children-ascending",
++			"Sort Children Ascending",
++			"Always sort children tree nodes ascending",
++			FALSE,
++			G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
++
+ 	gtk_widget_class_install_style_property (
+ 		widget_class,
+ 		g_param_spec_int (
+@@ -3365,3 +3388,25 @@ e_tree_get_grouped_view (ETree *tree)
+ 
+ 	return tree->priv->grouped_view;
+ }
++
++gboolean
++e_tree_get_sort_children_ascending (ETree *tree)
++{
++	g_return_val_if_fail (E_IS_TREE (tree), FALSE);
++
++	return tree->priv->sort_children_ascending;
++}
++
++void
++e_tree_set_sort_children_ascending (ETree *tree,
++				    gboolean sort_children_ascending)
++{
++	g_return_if_fail (E_IS_TREE (tree));
++
++	if ((tree->priv->sort_children_ascending ? 1 : 0) == (sort_children_ascending ? 1 : 0))
++		return;
++
++	tree->priv->sort_children_ascending = sort_children_ascending;
++
++	g_object_notify (G_OBJECT (tree), "sort-children-ascending");
++}
+diff --git a/e-util/e-tree.h b/e-util/e-tree.h
+index a10ea954a3..35e20c8833 100644
+--- a/e-util/e-tree.h
++++ b/e-util/e-tree.h
+@@ -256,6 +256,11 @@ gboolean	e_tree_is_editing		(ETree *tree);
+ gboolean	e_tree_get_grouped_view		(ETree *tree);
+ void		e_tree_set_grouped_view		(ETree *tree,
+ 						 gboolean grouped_view);
++gboolean	e_tree_get_sort_children_ascending
++						(ETree *tree);
++void		e_tree_set_sort_children_ascending
++						(ETree *tree,
++						 gboolean sort_children_ascending);
+ 
+ G_END_DECLS
+ 
+diff --git a/mail/message-list.c b/mail/message-list.c
+index d9b5372ede..905d978cb5 100644
+--- a/mail/message-list.c
++++ b/mail/message-list.c
+@@ -3099,6 +3099,7 @@ message_list_sort_value_at (ETreeModel *tree_model,
+                             gint col)
+ {
+ 	MessageList *message_list;
++	GNode *path_node;
+ 	struct LatestData ld;
+ 	gint64 *res;
+ 
+@@ -3107,18 +3108,20 @@ message_list_sort_value_at (ETreeModel *tree_model,
+ 	if (!(col == COL_SENT || col == COL_RECEIVED))
+ 		return e_tree_model_value_at (tree_model, path, col);
+ 
+-	if (G_NODE_IS_ROOT ((GNode *) path))
++	path_node = (GNode *) path;
++
++	if (G_NODE_IS_ROOT (path_node))
+ 		return NULL;
+ 
+ 	ld.sent = (col == COL_SENT);
+ 	ld.latest = 0;
+ 
+ 	latest_foreach (tree_model, path, &ld);
+-	if (message_list->priv->thread_latest)
++	if (message_list->priv->thread_latest && (!e_tree_get_sort_children_ascending (E_TREE (message_list)) ||
++	    !path_node || !path_node->parent || !path_node->parent->parent))
+ 		e_tree_model_node_traverse (
+ 			tree_model, path, latest_foreach, &ld);
+ 
+-
+ 	res = g_new0 (gint64, 1);
+ 	*res = (gint64) ld.latest;
+ 
+diff --git a/modules/settings/e-settings-message-list.c b/modules/settings/e-settings-message-list.c
+index 5ea0df5858..9725455d88 100644
+--- a/modules/settings/e-settings-message-list.c
++++ b/modules/settings/e-settings-message-list.c
+@@ -61,6 +61,11 @@ settings_message_list_constructed (GObject *object)
+ 		message_list, "thread-subject",
+ 		G_SETTINGS_BIND_GET);
+ 
++	g_settings_bind (
++		settings, "thread-children-ascending",
++		message_list, "sort-children-ascending",
++		G_SETTINGS_BIND_GET);
++
+ 	/* This setting only controls the initial message list
+ 	 * state when in threaded mode, so just apply it here. */
+ 	message_list_set_expanded_default (
+-- 
+2.15.0
+

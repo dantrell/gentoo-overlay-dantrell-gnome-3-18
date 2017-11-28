@@ -1,0 +1,47 @@
+From 3f0b34cc0fbf188a917fb020128fd318a619582d Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 9 Mar 2015 17:05:23 +0100
+Subject: [PATCH 0464/1800] Bug 726539 - Skip Lookup button shown on subsequent
+ new account stages
+
+---
+ shell/e-shell.c | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/shell/e-shell.c b/shell/e-shell.c
+index 6faaeeed00..056c646f32 100644
+--- a/shell/e-shell.c
++++ b/shell/e-shell.c
+@@ -1338,14 +1338,6 @@ shell_window_added (GtkApplication *application,
+ 		(gintptr) window);
+ 	gtk_window_set_role (window, role);
+ 	g_free (role);
+-
+-#if GTK_CHECK_VERSION(3,11,5)
+-	/* Forbid header bars in stock GTK+ dialogs.
+-	 * They look very out of place in Evolution. */
+-	g_object_set (
+-		gtk_widget_get_settings (GTK_WIDGET (window)),
+-		"gtk-dialogs-use-header", FALSE, NULL);
+-#endif
+ }
+ 
+ static gboolean
+@@ -1403,6 +1395,14 @@ shell_initable_init (GInitable *initable,
+ 	g_object_unref (proxy_source);
+ 	g_object_unref (registry);
+ 
++#if GTK_CHECK_VERSION(3,11,5)
++	/* Forbid header bars in stock GTK+ dialogs.
++	 * They look very out of place in Evolution. */
++	g_object_set (
++		gtk_settings_get_default (),
++		"gtk-dialogs-use-header", FALSE, NULL);
++#endif
++
+ 	return TRUE;
+ }
+ 
+-- 
+2.15.0
+

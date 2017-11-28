@@ -1,0 +1,27 @@
+From 24591cf2e04b507740bd57f4c016c048f6abf848 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 08:48:06 +0100
+Subject: [PATCH 0216/1800] EComposerPrivate - Caret is in the beginning of the
+ quoted content when replying on HTML message with active signature and
+ choosing the Lose formatting option
+
+---
+ web-extensions/e-composer-private-dom-functions.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/web-extensions/e-composer-private-dom-functions.c b/web-extensions/e-composer-private-dom-functions.c
+index 365a51881f..30e96dad5d 100644
+--- a/web-extensions/e-composer-private-dom-functions.c
++++ b/web-extensions/e-composer-private-dom-functions.c
+@@ -257,6 +257,8 @@ composer_move_caret (WebKitDOMDocument *document,
+ 				WEBKIT_DOM_NODE (element),
+ 				WEBKIT_DOM_NODE (signature),
+ 				NULL);
++		} else if (element && start_bottom) {
++			/* Leave it how it is */
+ 		} else
+ 			element = WEBKIT_DOM_ELEMENT (body);
+ 	}
+-- 
+2.15.0
+

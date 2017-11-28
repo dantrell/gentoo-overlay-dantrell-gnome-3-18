@@ -1,0 +1,139 @@
+From 9bf9929f6f90d8dc24daac33b155996ae7ee1294 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 26 Mar 2015 15:05:15 +0100
+Subject: [PATCH 0419/1800] EHTMLEditor - Don't leak the
+ WebKitDOMHTMLCollection objects
+
+---
+ web-extensions/e-html-editor-actions-dom-functions.c  |  1 +
+ .../e-html-editor-cell-dialog-dom-functions.c         | 11 +++++++++++
+ .../e-html-editor-table-dialog-dom-functions.c        | 19 +++++++++++++++++--
+ 3 files changed, 29 insertions(+), 2 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-actions-dom-functions.c b/web-extensions/e-html-editor-actions-dom-functions.c
+index 8f54549e49..7d8780053a 100644
+--- a/web-extensions/e-html-editor-actions-dom-functions.c
++++ b/web-extensions/e-html-editor-actions-dom-functions.c
+@@ -90,6 +90,7 @@ e_html_editor_dialog_delete_column (WebKitDOMDocument *document)
+ 
+ 		webkit_dom_html_table_row_element_delete_cell (
+ 			WEBKIT_DOM_HTML_TABLE_ROW_ELEMENT (row), index, NULL);
++		g_object_unref (row);
+ 	}
+ 
+ 	g_object_unref (rows);
+diff --git a/web-extensions/e-html-editor-cell-dialog-dom-functions.c b/web-extensions/e-html-editor-cell-dialog-dom-functions.c
+index 9404fa9e37..91aa50b7e5 100644
+--- a/web-extensions/e-html-editor-cell-dialog-dom-functions.c
++++ b/web-extensions/e-html-editor-cell-dialog-dom-functions.c
+@@ -75,7 +75,9 @@ for_each_cell_do (WebKitDOMElement *row,
+ 
+ 		call_cell_dom_func (
+ 			WEBKIT_DOM_HTML_TABLE_CELL_ELEMENT (cell), func, value, user_data);
++		g_object_unref (cell);
+ 	}
++	g_object_unref (cells);
+ }
+ 
+ static void
+@@ -117,13 +119,19 @@ html_editor_cell_dialog_set_attribute (WebKitDOMDocument *document,
+ 					WEBKIT_DOM_HTML_TABLE_ROW_ELEMENT (row));
+ 			cell = webkit_dom_html_collection_item (cells, index);
+ 			if (!cell) {
++				g_object_unref (row);
++				g_object_unref (cells);
+ 				continue;
+ 			}
+ 
+ 			call_cell_dom_func (
+ 				WEBKIT_DOM_HTML_TABLE_CELL_ELEMENT (cell),
+ 				func, value, user_data);
++			g_object_unref (row);
++			g_object_unref (cells);
++			g_object_unref (cell);
+ 		}
++		g_object_unref (rows);
+ 
+ 	} else if (scope == SCOPE_ROW) {
+ 		WebKitDOMElement *row;
+@@ -153,12 +161,15 @@ html_editor_cell_dialog_set_attribute (WebKitDOMDocument *document,
+ 
+ 			row = webkit_dom_html_collection_item (rows, ii);
+ 			if (!row) {
++				g_object_unref (row);
+ 				continue;
+ 			}
+ 
+ 			for_each_cell_do (
+ 				WEBKIT_DOM_ELEMENT (row), func, value, user_data);
++			g_object_unref (row);
+ 		}
++		g_object_unref (rows);
+ 	}
+ }
+ 
+diff --git a/web-extensions/e-html-editor-table-dialog-dom-functions.c b/web-extensions/e-html-editor-table-dialog-dom-functions.c
+index e5d18352d5..d0d3bd1e9b 100644
+--- a/web-extensions/e-html-editor-table-dialog-dom-functions.c
++++ b/web-extensions/e-html-editor-table-dialog-dom-functions.c
+@@ -57,11 +57,13 @@ e_html_editor_table_dialog_set_row_count (WebKitDOMDocument *document,
+ 				table_element, -1, NULL);
+ 		}
+ 	}
++	g_object_unref (rows);
+ }
+ 
+ gulong
+ e_html_editor_table_dialog_get_row_count (WebKitDOMDocument *document)
+ {
++	glong count;
+ 	WebKitDOMHTMLTableElement *table_element;
+ 	WebKitDOMHTMLCollection *rows;
+ 
+@@ -71,7 +73,10 @@ e_html_editor_table_dialog_get_row_count (WebKitDOMDocument *document)
+ 
+ 	rows = webkit_dom_html_table_element_get_rows (table_element);
+ 
+-	return webkit_dom_html_collection_get_length (rows);
++	count = webkit_dom_html_collection_get_length (rows);
++	g_object_unref (rows);
++
++	return count;
+ }
+ 
+ void
+@@ -111,12 +116,16 @@ e_html_editor_table_dialog_set_column_count (WebKitDOMDocument *document,
+ 					row, -1, NULL);
+ 			}
+ 		}
++		g_object_unref (row);
++		g_object_unref (cells);
+ 	}
++	g_object_unref (rows);
+ }
+ 
+ gulong
+ e_html_editor_table_dialog_get_column_count (WebKitDOMDocument *document)
+ {
++	glong count;
+ 	WebKitDOMHTMLTableElement *table_element;
+ 	WebKitDOMHTMLCollection *rows, *columns;
+ 	WebKitDOMNode *row;
+@@ -131,7 +140,13 @@ e_html_editor_table_dialog_get_column_count (WebKitDOMDocument *document)
+ 	columns = webkit_dom_html_table_row_element_get_cells (
+ 		WEBKIT_DOM_HTML_TABLE_ROW_ELEMENT (row));
+ 
+-	return webkit_dom_html_collection_get_length (columns);
++	count = webkit_dom_html_collection_get_length (columns);
++
++	g_object_unref (row);
++	g_object_unref (rows);
++	g_object_unref (columns);
++
++	return count;
+ }
+ 
+ static void
+-- 
+2.15.0
+

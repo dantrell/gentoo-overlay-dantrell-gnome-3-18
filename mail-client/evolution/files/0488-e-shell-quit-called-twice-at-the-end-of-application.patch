@@ -1,0 +1,52 @@
+From 3aa8e31f8aa2e01a5afcb8b02c07c7d2970a41f9 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 11 Mar 2015 13:03:46 +0100
+Subject: [PATCH 0488/1800] e_shell_quit() called twice at the end of
+ application
+
+This could exhibit as a double-prompt whether wants to quit with
+pending messages in Outbox, where the second prompt, the one with
+the EShellWindow being destroyed, didn't make much sense.
+---
+ shell/e-shell.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/shell/e-shell.c b/shell/e-shell.c
+index 056c646f32..ba45ba1b25 100644
+--- a/shell/e-shell.c
++++ b/shell/e-shell.c
+@@ -84,6 +84,7 @@ struct _EShellPrivate {
+ 	guint network_available_locked : 1;
+ 	guint online : 1;
+ 	guint quit_cancelled : 1;
++	guint ready_to_quit : 1;
+ 	guint safe_mode : 1;
+ };
+ 
+@@ -151,7 +152,8 @@ shell_window_removed_cb (EShell *shell)
+ {
+ 	g_return_if_fail (E_IS_SHELL (shell));
+ 
+-	if (!gtk_application_get_windows (GTK_APPLICATION (shell)))
++	if (!gtk_application_get_windows (GTK_APPLICATION (shell)) &&
++	    !shell->priv->ready_to_quit)
+ 		e_shell_quit (shell, E_SHELL_QUIT_LAST_WINDOW);
+ }
+ 
+@@ -410,9 +412,13 @@ shell_ready_for_quit (EShell *shell,
+ 	GtkApplication *application;
+ 	GList *list;
+ 
++	g_return_if_fail (E_IS_SHELL (shell));
++
+ 	if (!is_last_ref)
+ 		return;
+ 
++	shell->priv->ready_to_quit = TRUE;
++
+ 	application = GTK_APPLICATION (shell);
+ 
+ 	/* Increment the reference count so we can safely emit
+-- 
+2.15.0
+

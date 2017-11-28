@@ -1,0 +1,25 @@
+From 8f2230fc5421f50f4fedd5eafd0f0c2ad7993075 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 17:21:06 +0100
+Subject: [PATCH 0790/1800] EHTMLEditorView - Don't try to unref non-existing
+ DOMRange object
+
+---
+ web-extensions/composer/e-html-editor-undo-redo-manager.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-undo-redo-manager.c b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+index deeb901aea..68f6b085ea 100644
+--- a/web-extensions/composer/e-html-editor-undo-redo-manager.c
++++ b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+@@ -110,7 +110,6 @@ get_range_for_point (WebKitDOMDocument *document,
+ 
+ 		scroll_left = webkit_dom_element_get_scroll_left (WEBKIT_DOM_ELEMENT (body));
+ 		scroll_top = webkit_dom_element_get_scroll_top (WEBKIT_DOM_ELEMENT (body));
+-		g_object_unref (range);
+ 		range = webkit_dom_document_caret_range_from_point (
+ 			document, point.x - scroll_left, point.y - scroll_top);
+ 		g_object_unref (dom_window);
+-- 
+2.15.0
+

@@ -1,0 +1,25 @@
+From e3dd5cf6a47c8db4d69150fdc8d0eddb63ed9669 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marek=20=C4=8Cernock=C3=BD?= <marek@manet.cz>
+Date: Thu, 18 Jun 2015 07:46:29 +0200
+Subject: [PATCH 0821/1800] Updated Czech translation
+
+---
+ po/cs.po | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/po/cs.po b/po/cs.po
+index eafc0a2a61..077753d93c 100644
+--- a/po/cs.po
++++ b/po/cs.po
+@@ -18069,7 +18069,7 @@ msgstr "Ruší se…"
+ 
+ #: ../mail/mail-send-recv.c:631
+ msgid "Send & Receive Mail"
+-msgstr "Odeslat a přijmout poštu"
++msgstr "Odeslání a přijem pošty"
+ 
+ #: ../mail/mail-send-recv.c:645
+ msgid "Cancel _All"
+-- 
+2.15.0
+

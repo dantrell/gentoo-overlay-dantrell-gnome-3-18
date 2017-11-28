@@ -1,0 +1,39 @@
+From 6450e59c4ad2126949885d93aff1e48131c78589 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 15 Jun 2015 18:27:17 +0200
+Subject: [PATCH 0813/1800] Bug 415261 - Show description for long Day View
+ events
+
+---
+ calendar/gui/e-day-view.c | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/calendar/gui/e-day-view.c b/calendar/gui/e-day-view.c
+index 2682daeaff..a02d8d583d 100644
+--- a/calendar/gui/e-day-view.c
++++ b/calendar/gui/e-day-view.c
+@@ -3292,13 +3292,19 @@ e_day_view_update_event_label (EDayView *day_view,
+ 
+ 	if (!editing_event) {
+ 		if (!short_event) {
+-			const gchar *location;
++			const gchar *description, *location;
+ 			gint days_shown;
+ 
+ 			days_shown = e_day_view_get_days_shown (day_view);
++			description = icalcomponent_get_description (event->comp_data->icalcomp);
+ 			location = icalcomponent_get_location (event->comp_data->icalcomp);
+ 
+-			if (location && *location)
++			if (description && *description) {
++				if (location && *location)
++					text = g_strdup_printf (" \n%s%c(%s)\n\n%s", text, days_shown == 1 ? ' ' : '\n', location, description);
++				else
++					text = g_strdup_printf (" \n%s\n\n%s", text, description);
++			} else if (location && *location)
+ 				text = g_strdup_printf (" \n%s%c(%s)", text, days_shown == 1 ? ' ' : '\n', location);
+ 			else
+ 				text = g_strdup_printf (" \n%s", text);
+-- 
+2.15.0
+

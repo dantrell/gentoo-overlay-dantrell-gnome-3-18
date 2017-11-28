@@ -1,0 +1,31 @@
+From 7b49d33fe08feabf35d713493eb74a09d4e1b2e3 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 13:30:58 +0100
+Subject: [PATCH 0741/1800] EHTMLEditorSelection - Selection markers are saved
+ on wrong position after Tabulator
+
+---
+ web-extensions/composer/e-html-editor-selection-dom-functions.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 217e870abc..7b80db93cc 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -1507,6 +1507,13 @@ dom_selection_save (WebKitDOMDocument *document)
+ 				NULL);
+ 			goto insert_end_marker;
+ 		}
++	} else if (element_has_class (WEBKIT_DOM_ELEMENT (parent_node), "Apple-tab-span") && offset == 1) {
++			marker_node = webkit_dom_node_insert_before (
++				webkit_dom_node_get_parent_node (parent_node),
++				WEBKIT_DOM_NODE (start_marker),
++				webkit_dom_node_get_next_sibling (parent_node),
++				NULL);
++			goto insert_end_marker;
+ 	}
+ 
+ 	if (WEBKIT_DOM_IS_TEXT (container)) {
+-- 
+2.15.0
+

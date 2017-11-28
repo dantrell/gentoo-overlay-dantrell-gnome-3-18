@@ -1,0 +1,59 @@
+From 6a34f240509b7e0afced73a6f9a0d61171457002 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 27 Mar 2015 13:56:20 +0100
+Subject: [PATCH 0422/1800] WebKit2 - Build fixes
+
+---
+ web-extensions/e-html-editor-selection-dom-functions.c | 8 +++-----
+ web-extensions/e-html-editor-web-extension.c           | 6 +++---
+ 2 files changed, 6 insertions(+), 8 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index bf73dac4a6..80702170ea 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -3848,11 +3848,9 @@ dom_selection_get_font_color (WebKitDOMDocument *document,
+ {
+ 	gchar *color;
+ 
+-	color = get_font_property (selection, "color");
+-	if (!(color && *color)) {
+-		*rgba = black;
+-		return;
+-	}
++	color = get_font_property (document, "color");
++	if (!(color && *color))
++		return g_strdup ("#000000");
+ 
+ 	return color;
+ }
+diff --git a/web-extensions/e-html-editor-web-extension.c b/web-extensions/e-html-editor-web-extension.c
+index 526ff3241f..5510cab3e5 100644
+--- a/web-extensions/e-html-editor-web-extension.c
++++ b/web-extensions/e-html-editor-web-extension.c
+@@ -857,7 +857,7 @@ handle_method_call (GDBusConnection *connection,
+ 
+ 		g_dbus_method_invocation_return_value (invocation, NULL);
+ 	} else if (g_strcmp0 (method_name, "EHTMLEditorHRuleDialogFindHRule") == 0) {
+-		gboolean created = FALSE;
++		gboolean created_new_hr = FALSE;
+ 		g_variant_get (parameters, "(t)", &page_id);
+ 
+ 		web_page = get_webkit_web_page_or_return_dbus_error (
+@@ -866,11 +866,11 @@ handle_method_call (GDBusConnection *connection,
+ 			return;
+ 
+ 		document = webkit_web_page_get_dom_document (web_page);
+-		created = e_html_editor_hrule_dialog_find_hrule (
++		created_new_hr = e_html_editor_hrule_dialog_find_hrule (
+ 			document, extension, extension->priv->node_under_mouse_click);
+ 
+ 		g_dbus_method_invocation_return_value (
+-			invocation, g_variant_new_boolean (created));
++			invocation, g_variant_new_boolean (created_new_hr));
+ 	} else if (g_strcmp0 (method_name, "HRElementSetNoShade") == 0) {
+ 		gboolean value = FALSE;
+ 		const gchar *element_id;
+-- 
+2.15.0
+

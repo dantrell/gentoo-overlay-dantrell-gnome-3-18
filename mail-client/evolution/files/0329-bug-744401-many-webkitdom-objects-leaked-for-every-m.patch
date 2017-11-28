@@ -1,0 +1,46 @@
+From 9385b081c6189f313d6050d9446c2245855decc3 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 16:36:10 +0100
+Subject: [PATCH 0329/1800] Bug 744401 - Many WebKitDom objects leaked for
+ every message viewed
+
+Don't leak the WebKitDOMCSSRuleList object and stop searching when we
+remove the rule to be more efficient.
+---
+ web-extensions/e-dom-utils.c | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
+
+diff --git a/web-extensions/e-dom-utils.c b/web-extensions/e-dom-utils.c
+index d4a2d5d37b..e94693c065 100644
+--- a/web-extensions/e-dom-utils.c
++++ b/web-extensions/e-dom-utils.c
+@@ -410,21 +410,19 @@ add_css_rule_into_style_sheet (WebKitDOMDocument *document,
+ 			webkit_dom_css_style_sheet_remove_rule (
+ 				WEBKIT_DOM_CSS_STYLE_SHEET (sheet),
+ 				ii, NULL);
++			length--;
++			break;
+ 		}
+ 
+ 		g_free (rule_selector);
+ 		g_free (rule_text);
+ 	}
+ 
++	g_object_unref (rules_list);
++
+ 	/* Insert the rule at the end, so it will override previously inserted */
+ 	webkit_dom_css_style_sheet_add_rule (
+-		WEBKIT_DOM_CSS_STYLE_SHEET (sheet),
+-		selector,
+-		style,
+-		webkit_dom_css_rule_list_get_length (
+-			webkit_dom_css_style_sheet_get_css_rules (
+-				WEBKIT_DOM_CSS_STYLE_SHEET (sheet))), /* Index */
+-		NULL);
++		WEBKIT_DOM_CSS_STYLE_SHEET (sheet), selector, style, length, NULL);
+ }
+ 
+ static void
+-- 
+2.15.0
+

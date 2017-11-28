@@ -1,0 +1,51 @@
+From d522075fed877baddab79588e64cf8f521421b90 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 5 Mar 2015 22:05:34 +0100
+Subject: [PATCH 0416/1800] Bug 723614 - Restore from GConf only once
+
+---
+ modules/backup-restore/evolution-backup-tool.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/modules/backup-restore/evolution-backup-tool.c b/modules/backup-restore/evolution-backup-tool.c
+index 7f87bd224c..9604513962 100644
+--- a/modules/backup-restore/evolution-backup-tool.c
++++ b/modules/backup-restore/evolution-backup-tool.c
+@@ -451,6 +451,16 @@ get_source_manager_reload_command (void)
+ 	return command;
+ }
+ 
++static void
++unset_eds_migrated_flag (void)
++{
++	GSettings *settings;
++
++	settings = g_settings_new ("org.gnome.evolution-data-server");
++	g_settings_set_boolean (settings, "migrated", FALSE);
++	g_object_unref (settings);
++}
++
+ static void
+ restore (const gchar *filename,
+          GCancellable *cancellable)
+@@ -573,6 +583,8 @@ restore (const gchar *filename,
+ 		/* new format has it in DATADIR... */
+ 		GString *file = replace_variables (EVOLUTION_DIR ANCIENT_GCONF_DUMP_FILE, TRUE);
+ 		if (file && g_file_test (file->str, G_FILE_TEST_EXISTS)) {
++			unset_eds_migrated_flag ();
++
+ 			/* ancient backup */
+ 			replace_in_file (
+ 				EVOLUTION_DIR ANCIENT_GCONF_DUMP_FILE,
+@@ -603,6 +615,8 @@ restore (const gchar *filename,
+ 	} else {
+ 		gchar *gconf_dump_file;
+ 
++		unset_eds_migrated_flag ();
++
+ 		/* ... old format in ~/.evolution */
+ 		gconf_dump_file = g_build_filename (
+ 			"$HOME", ".evolution", ANCIENT_GCONF_DUMP_FILE, NULL);
+-- 
+2.15.0
+

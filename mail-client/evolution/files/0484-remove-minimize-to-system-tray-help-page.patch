@@ -1,0 +1,66 @@
+From d0653906ff10b0b2b3ad23700ad05daa56c9996e Mon Sep 17 00:00:00 2001
+From: Andre Klapper <a9016009@gmx.de>
+Date: Tue, 10 Mar 2015 22:02:26 +0100
+Subject: [PATCH 0484/1800] Remove "Minimize to system tray" help page
+
+Four years after GNOME 3.0, this is not a common question anymore
+on mailing list / bugtracker / IRC, plus it has never been
+something application-specific anyway.
+---
+ help/C/minimize-to-system-tray.page | 31 -------------------------------
+ help/Makefile.am                    |  1 -
+ 2 files changed, 32 deletions(-)
+ delete mode 100644 help/C/minimize-to-system-tray.page
+
+diff --git a/help/C/minimize-to-system-tray.page b/help/C/minimize-to-system-tray.page
+deleted file mode 100644
+index 74fd3cd6c4..0000000000
+--- a/help/C/minimize-to-system-tray.page
++++ /dev/null
+@@ -1,31 +0,0 @@
+-<page xmlns="http://projectmallard.org/1.0/" xmlns:its="http://www.w3.org/2005/11/its"
+-      type="topic" id="minimize-to-system-tray">
+-
+-  <info>
+-    <desc>On minimizing Evolution to the notification area.</desc>
+-    
+-    <link type="guide" xref="index#common-other-problems" />
+-
+-    <revision pkgversion="3.5.4" version="0.4" date="2012-07-08" status="final"/>
+-    <credit type="author">
+-      <name its:translate="no">April Gonzales</name>
+-      <email its:translate="no">loonycookie@gmail.com</email>
+-    </credit>
+-    <credit type="author">
+-      <name its:translate="no">Andre Klapper</name>
+-      <email its:translate="no">ak-47@gmx.net</email>
+-    </credit>
+-    
+-    <include href="legal.xml" xmlns="http://www.w3.org/2001/XInclude"/>
+-    
+-
+-  </info>
+-
+-
+-<title>Minimizing Evolution to the system tray</title>
+-
+-<p>GNOME, by default, has a <link xref="mail-received-notification">notification area</link> which includes an applet that informs users of any system updates, changes, or events. This includes the arrival of email messages on Evolution. You can refer to this built-in feature of GNOME for any email notifications.</p>
+-
+-<p>In GNOME version 2 you may modify the notification area and set it up to become a system tray by using external applications which might be available for installation in the software management tool of your distribution. Available options are for example <link href="http://code.google.com/p/tint2/">Tint2</link>. This is no longer possible in GNOME 3.</p>
+-</page>
+-
+diff --git a/help/Makefile.am b/help/Makefile.am
+index 8a67ebdd85..622f7a90d7 100644
+--- a/help/Makefile.am
++++ b/help/Makefile.am
+@@ -217,7 +217,6 @@ HELP_FILES = \
+ 	memos-usage-delete-memo.page \
+ 	memos-usage-edit-memo.page \
+ 	memos-usage.page \
+-	minimize-to-system-tray.page \
+ 	offline.page \
+ 	organizing.page \
+ 	problems-debug-how-to.page \
+-- 
+2.15.0
+

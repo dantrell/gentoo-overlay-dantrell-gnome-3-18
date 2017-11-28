@@ -1,0 +1,133 @@
+From 3398d9eb11672367e462fb89fbc8224012784427 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 27 Nov 2014 17:29:14 +0100
+Subject: [PATCH 0091/1800] EHTMLEditorView - Remove unwanted attributes from
+ HTML, HEAD and BODY elements when converting from HTML to plain text message
+
+---
+ e-util/e-html-editor-view-dom-functions.c | 95 +++++++++++++++----------------
+ 1 file changed, 47 insertions(+), 48 deletions(-)
+
+diff --git a/e-util/e-html-editor-view-dom-functions.c b/e-util/e-html-editor-view-dom-functions.c
+index d5b51ca65f..fce2ca0e59 100644
+--- a/e-util/e-html-editor-view-dom-functions.c
++++ b/e-util/e-html-editor-view-dom-functions.c
+@@ -3282,6 +3282,51 @@ quote_plain_text_elements_after_wrapping_in_document (WebKitDOMDocument *documen
+ 	g_object_unref (list);
+ }
+ 
++static void
++clear_attributes (WebKitDOMDocument *document)
++{
++	gint length, ii;
++	WebKitDOMNamedNodeMap *attributes;
++	WebKitDOMHTMLElement *body = webkit_dom_document_get_body (document);
++	WebKitDOMHTMLHeadElement *head = webkit_dom_document_get_head (document);
++	WebKitDOMElement *document_element =
++		webkit_dom_document_get_document_element (document);
++
++	/* Remove all attributes from HTML element */
++	attributes = webkit_dom_element_get_attributes (document_element);
++	length = webkit_dom_named_node_map_get_length (attributes);
++	for (ii = length - 1; ii >= 0; ii--) {
++		WebKitDOMNode *node = webkit_dom_named_node_map_item (attributes, ii);
++
++		webkit_dom_element_remove_attribute_node (
++			document_element, WEBKIT_DOM_ATTR (node), NULL);
++	}
++	g_object_unref (attributes);
++
++	/* Remove everything from HEAD element */
++	while (webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (head)))
++		remove_node (webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (head)));
++
++	/* Remove non Evolution attributes from BODY element */
++	attributes = webkit_dom_element_get_attributes (WEBKIT_DOM_ELEMENT (body));
++	length = webkit_dom_named_node_map_get_length (attributes);
++	for (ii = length - 1; ii >= 0; ii--) {
++		gchar *name;
++		WebKitDOMNode *node = webkit_dom_named_node_map_item (attributes, ii);
++
++		name = webkit_dom_node_get_local_name (node);
++
++		if (!g_str_has_prefix (name, "data-"))
++			webkit_dom_element_remove_attribute_node (
++				WEBKIT_DOM_ELEMENT (body),
++				WEBKIT_DOM_ATTR (node),
++				NULL);
++
++		g_free (name);
++	}
++	g_object_unref (attributes);
++}
++
+ static void
+ html_editor_convert_view_content (EHTMLEditorWebExtension *extension,
+                                   WebKitDOMDocument *document,
+@@ -3510,6 +3555,8 @@ html_editor_convert_view_content (EHTMLEditorWebExtension *extension,
+ 		quote_plain_text_elements_after_wrapping_in_document (document);
+ 	}
+ 
++	clear_attributes (document);
++
+ 	dom_selection_restore (selection);
+ 	dom_force_spell_check (document);
+ 
+@@ -4957,54 +5004,6 @@ process_content_for_html (WebKitDOMDocument *document)
+ 	return html_content;
+ }
+ 
+-static void
+-clear_attributes (WebKitDOMDocument *document)
+-{
+-	gint length, ii;
+-	WebKitDOMNamedNodeMap *attributes;
+-	WebKitDOMHTMLElement *body = webkit_dom_document_get_body (document);
+-	WebKitDOMHTMLHeadElement *head = webkit_dom_document_get_head (document);
+-	WebKitDOMElement *document_element =
+-		webkit_dom_document_get_document_element (document);
+-
+-	/* Remove all attributes from HTML element */
+-	attributes = webkit_dom_element_get_attributes (document_element);
+-	length = webkit_dom_named_node_map_get_length (attributes);
+-	for (ii = length - 1; ii >= 0; ii--) {
+-		WebKitDOMNode *node = webkit_dom_named_node_map_item (attributes, ii);
+-
+-		webkit_dom_element_remove_attribute_node (
+-			document_element, WEBKIT_DOM_ATTR (node), NULL);
+-	}
+-	g_object_unref (attributes);
+-
+-	/* Remove everything from HEAD element */
+-	while (webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (head)))
+-		remove_node (webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (head)));
+-
+-	/* Remove non Evolution attributes from BODY element */
+-	attributes = webkit_dom_element_get_attributes (WEBKIT_DOM_ELEMENT (body));
+-	length = webkit_dom_named_node_map_get_length (attributes);
+-	for (ii = length - 1; ii >= 0; ii--) {
+-		gchar *name;
+-		WebKitDOMNode *node = webkit_dom_named_node_map_item (attributes, ii);
+-
+-		name = webkit_dom_node_get_local_name (node);
+-
+-		if (!g_str_has_prefix (name, "data-") ||
+-		    g_str_has_prefix (name, "data-inline") ||
+-		    g_str_has_prefix (name, "data-name")) {
+-			webkit_dom_element_remove_attribute_node (
+-				WEBKIT_DOM_ELEMENT (body),
+-				WEBKIT_DOM_ATTR (node),
+-				NULL);
+-		}
+-
+-		g_free (name);
+-	}
+-	g_object_unref (attributes);
+-}
+-
+ void
+ convert_when_changing_composer_mode (WebKitDOMDocument *document)
+ {
+-- 
+2.15.0
+

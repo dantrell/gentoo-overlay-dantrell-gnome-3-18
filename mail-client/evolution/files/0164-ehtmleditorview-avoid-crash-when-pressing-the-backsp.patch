@@ -1,0 +1,40 @@
+From 221ce86a6149977ce00a1dce0ab1b33928295edc Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 23 Mar 2015 13:25:57 +0100
+Subject: [PATCH 0164/1800] EHTMLEditorView - Avoid crash when pressing the
+ BackSpace in the beginning of quoted text
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 2bc68bf0af..46f164505b 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -2170,10 +2170,6 @@ dom_change_quoted_block_to_normal (WebKitDOMDocument *document,
+ 		dom_remove_quoting_from_element (block);
+ 		dom_remove_wrapping_from_element (block);
+ 
+-		block = dom_wrap_paragraph_length (document, extension, block, length);
+-		webkit_dom_node_normalize (WEBKIT_DOM_NODE (block));
+-		quote_plain_text_element_after_wrapping (document, block, citation_level - 1);
+-
+ 		parent = webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (block));
+ 
+ 		if (!webkit_dom_node_get_previous_sibling (WEBKIT_DOM_NODE (block))) {
+@@ -2221,6 +2217,11 @@ dom_change_quoted_block_to_normal (WebKitDOMDocument *document,
+ 				clone,
+ 				NULL);
+ 		}
++
++		block = dom_wrap_paragraph_length (document, extension, block, length);
++		webkit_dom_node_normalize (WEBKIT_DOM_NODE (block));
++		quote_plain_text_element_after_wrapping (document, block, citation_level - 1);
++
+ 	}
+ 
+ 	return success;
+-- 
+2.15.0
+

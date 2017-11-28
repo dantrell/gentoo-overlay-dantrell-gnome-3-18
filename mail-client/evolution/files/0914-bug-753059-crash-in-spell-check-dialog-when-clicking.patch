@@ -1,0 +1,53 @@
+From ed191a63d67f3ff024cdccd2580d804889a57950 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 26 Feb 2016 13:27:35 +0100
+Subject: [PATCH 0914/1800] Bug 753059 - Crash in spell check dialog when
+ clicking replace buttons with no suggestion selected
+
+---
+ e-util/e-html-editor-spell-check-dialog.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/e-util/e-html-editor-spell-check-dialog.c b/e-util/e-html-editor-spell-check-dialog.c
+index b652c9acbf..d997922c7b 100644
+--- a/e-util/e-html-editor-spell-check-dialog.c
++++ b/e-util/e-html-editor-spell-check-dialog.c
+@@ -92,6 +92,7 @@ html_editor_spell_check_dialog_set_word (EHTMLEditorSpellCheckDialog *dialog,
+ 	GtkListStore *store;
+ 	gchar *markup;
+ 	GList *list = NULL, *link;
++	gboolean empty;
+ 
+ 	if (word == NULL)
+ 		return;
+@@ -113,6 +114,8 @@ html_editor_spell_check_dialog_set_word (EHTMLEditorSpellCheckDialog *dialog,
+ 	list = e_spell_dictionary_get_suggestions (
+ 		dialog->priv->current_dict, word, -1);*/
+ 
++	empty = list == NULL;
++
+ 	for (link = list; link != NULL; link = g_list_next (link)) {
+ 		GtkTreeIter iter;
+ 		gchar *suggestion = link->data;
+@@ -121,6 +124,18 @@ html_editor_spell_check_dialog_set_word (EHTMLEditorSpellCheckDialog *dialog,
+ 		gtk_list_store_set (store, &iter, 0, suggestion, -1);
+ 	}
+ 
++	gtk_widget_set_sensitive (dialog->priv->replace_button, !empty);
++	gtk_widget_set_sensitive (dialog->priv->replace_all_button, !empty);
++
++	if (!empty) {
++		GtkTreeSelection *tree_selection;
++
++		/* Select the first suggestion */
++		tree_selection = gtk_tree_view_get_selection (
++			GTK_TREE_VIEW (dialog->priv->tree_view));
++		gtk_tree_selection_select_path (tree_selection, gtk_tree_path_new_first ());
++	}
++
+ 	g_list_free_full (list, (GDestroyNotify) g_free);
+ 
+ 	/* We give focus to WebKit so that the currently selected word
+-- 
+2.15.0
+

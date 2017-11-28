@@ -1,0 +1,91 @@
+From 22747e93b31f834890fe408e103b17e0377db05f Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 4 Feb 2015 16:52:07 +0100
+Subject: [PATCH 0240/1800] EWebView - When showing plain text template from
+ editor in the preview it shows the citation lines as well as ">"
+
+---
+ e-util/e-web-view.c | 32 ++++++++++++++++----------------
+ 1 file changed, 16 insertions(+), 16 deletions(-)
+
+diff --git a/e-util/e-web-view.c b/e-util/e-web-view.c
+index 1d2169eeac..a543ca7fd7 100644
+--- a/e-util/e-web-view.c
++++ b/e-util/e-web-view.c
+@@ -3223,7 +3223,7 @@ e_web_view_update_fonts_settings (GSettings *font_settings,
+ 
+ 		g_string_append (
+ 			stylesheet,
+-			"blockquote[type=cite] "
++			"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
+ 			"{\n"
+ 			"  padding: 0ch 1ch 0ch 1ch;\n"
+ 			"  margin: 0ch;\n"
+@@ -3235,7 +3235,7 @@ e_web_view_update_fonts_settings (GSettings *font_settings,
+ 		/* Block quote border colors are borrowed from Thunderbird. */
+ 		g_string_append_printf (
+ 			stylesheet,
+-			"blockquote[type=cite] "
++			"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
+ 			"{\n"
+ 			"  border-color: %s;\n"
+ 			"}\n",
+@@ -3243,8 +3243,8 @@ e_web_view_update_fonts_settings (GSettings *font_settings,
+ 
+ 		g_string_append_printf (
+ 			stylesheet,
+-			"blockquote[type=cite] "
+-			"blockquote[type=cite] "
++			"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
++			"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
+ 			"{\n"
+ 			"  border-color: %s;\n"
+ 			"}\n",
+@@ -3252,9 +3252,9 @@ e_web_view_update_fonts_settings (GSettings *font_settings,
+ 
+ 		g_string_append_printf (
+ 			stylesheet,
+-			"blockquote[type=cite] "
+-			"blockquote[type=cite] "
+-			"blockquote[type=cite] "
++			"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
++			"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
++			"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
+ 			"{\n"
+ 			"  border-color: %s;\n"
+ 			"}\n",
+@@ -3262,10 +3262,10 @@ e_web_view_update_fonts_settings (GSettings *font_settings,
+ 
+ 		g_string_append_printf (
+ 			stylesheet,
+-			"blockquote[type=cite] "
+-			"blockquote[type=cite] "
+-			"blockquote[type=cite] "
+-			"blockquote[type=cite] "
++			"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
++			"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
++			"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
++			"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
+ 			"{\n"
+ 			"  border-color: %s;\n"
+ 			"}\n",
+@@ -3273,11 +3273,11 @@ e_web_view_update_fonts_settings (GSettings *font_settings,
+ 
+ 		g_string_append_printf (
+ 			stylesheet,
+-			"blockquote[type=cite] "
+-			"blockquote[type=cite] "
+-			"blockquote[type=cite] "
+-			"blockquote[type=cite] "
+-			"blockquote[type=cite] "
++			"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
++			"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
++			"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
++			"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
++			"blockquote[type=cite]:not(.-x-evo-plaintext-quoted) "
+ 			"{\n"
+ 			"  border-color: %s;\n"
+ 			"}\n",
+-- 
+2.15.0
+

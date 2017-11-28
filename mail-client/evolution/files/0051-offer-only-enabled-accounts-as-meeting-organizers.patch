@@ -1,0 +1,25 @@
+From dbedc5b1c2d68716aa16f218e4b0805876fa7089 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 11 Nov 2014 12:10:55 +0100
+Subject: [PATCH 0051/1800] Offer only enabled accounts as meeting organizers
+
+---
+ calendar/gui/itip-utils.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/calendar/gui/itip-utils.c b/calendar/gui/itip-utils.c
+index 78b22fab8f..731fda71f0 100644
+--- a/calendar/gui/itip-utils.c
++++ b/calendar/gui/itip-utils.c
+@@ -132,7 +132,7 @@ itip_get_user_identities (ESourceRegistry *registry)
+ 
+ 	extension_name = E_SOURCE_EXTENSION_MAIL_IDENTITY;
+ 
+-	list = e_source_registry_list_sources (registry, extension_name);
++	list = e_source_registry_list_enabled (registry, extension_name);
+ 
+ 	identities = g_new0 (gchar *, g_list_length (list) + 1);
+ 
+-- 
+2.15.0
+

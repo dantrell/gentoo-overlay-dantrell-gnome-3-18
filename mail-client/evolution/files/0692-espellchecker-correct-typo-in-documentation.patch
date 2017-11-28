@@ -1,0 +1,25 @@
+From ef810bd4b7dd85a5ebe0ea3027ba5b3e30f15554 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 22 Apr 2015 10:19:09 +0200
+Subject: [PATCH 0692/1800] ESpellChecker - Correct typo in documentation
+
+---
+ e-util/e-spell-checker.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/e-util/e-spell-checker.c b/e-util/e-spell-checker.c
+index e631d85076..365524835f 100644
+--- a/e-util/e-spell-checker.c
++++ b/e-util/e-spell-checker.c
+@@ -550,7 +550,7 @@ e_spell_checker_free_global_memory (void)
+  *
+  * Returns: new copy of #GList of #ESpellDictionary. The dictionaries are
+  * owned by the @checker and should not be free'd. The list should be freed
+- * using g_list_free() when not neede anymore. [transfer-list]
++ * using g_list_free() when not needed anymore. [transfer-list]
+  */
+ GList *
+ e_spell_checker_list_available_dicts (ESpellChecker *checker)
+-- 
+2.15.0
+

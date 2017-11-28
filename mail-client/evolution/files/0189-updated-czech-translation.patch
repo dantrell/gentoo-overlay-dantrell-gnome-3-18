@@ -1,0 +1,25 @@
+From 84f30d0af97bdea05336c0046e90675f16b6c672 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marek=20=C4=8Cernock=C3=BD?= <marek@manet.cz>
+Date: Tue, 20 Jan 2015 23:23:29 +0100
+Subject: [PATCH 0189/1800] Updated Czech translation
+
+---
+ po/cs.po | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/po/cs.po b/po/cs.po
+index 82dc8fa5fe..0c59f27228 100644
+--- a/po/cs.po
++++ b/po/cs.po
+@@ -7417,7 +7417,7 @@ msgstr "Zobrazuje obrázky, které jste přetáhli do zprávy."
+ 
+ #: ../composer/e-composer-actions.c:483
+ msgid "_Prioritize Message"
+-msgstr "_Důležitost zprávy"
++msgstr "_Důležitá zpráva"
+ 
+ #: ../composer/e-composer-actions.c:485
+ msgid "Set the message priority to high"
+-- 
+2.15.0
+

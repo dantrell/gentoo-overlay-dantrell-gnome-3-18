@@ -1,0 +1,136 @@
+From 6eba0a6d813f5f652e8624c40b98092b25edeacd Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 26 Mar 2015 14:40:52 +0100
+Subject: [PATCH 0397/1800] EHTMLEditorView - Selection is lost when showing
+ context menu
+
+Only move to the pointer coordinates when the selection is collapsed.
+---
+ composer/e-msg-composer.c                    |  6 +++---
+ e-util/e-html-editor-view.c                  | 12 ++++++++----
+ e-util/e-html-editor-view.h                  |  3 ++-
+ web-extensions/e-html-editor-web-extension.c | 10 ++++++++--
+ 4 files changed, 21 insertions(+), 10 deletions(-)
+
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 6580df3c80..6132618b87 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -1950,7 +1950,7 @@ msg_composer_drag_data_received_cb (GtkWidget *widget,
+ 			return;
+ 		}
+ 
+-		e_html_editor_view_move_selection_on_point (view, x, y);
++		e_html_editor_view_move_selection_on_point (view, x, y, FALSE);
+ 
+ 		list_len = length;
+ 		do {
+@@ -1985,7 +1985,7 @@ msg_composer_drag_data_received_cb (GtkWidget *widget,
+ 			return;
+ 		}
+ 
+-		e_html_editor_view_move_selection_on_point (view, x, y);
++		e_html_editor_view_move_selection_on_point (view, x, y, FALSE);
+ 
+ 		list_len = length;
+ 		do {
+@@ -2008,7 +2008,7 @@ msg_composer_drag_data_received_cb (GtkWidget *widget,
+ 			return;
+ 		}
+ 
+-		e_html_editor_view_move_selection_on_point (view, x, y);
++		e_html_editor_view_move_selection_on_point (view, x, y, FALSE);
+ 
+ 		list_len = length;
+ 		do {
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index e3f473c7f7..5433b795ec 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -606,7 +606,8 @@ html_editor_view_constructed (GObject *object)
+ void
+ e_html_editor_view_move_selection_on_point (EHTMLEditorView *view,
+                                             gint x,
+-                                            gint y)
++                                            gint y,
++                                            gboolean cancel_if_not_collapsed)
+ {
+ 	GDBusProxy *web_extension;
+ 
+@@ -622,8 +623,11 @@ e_html_editor_view_move_selection_on_point (EHTMLEditorView *view,
+ 		web_extension,
+ 		"DOMMoveSelectionOnPoint",
+ 		g_variant_new (
+-			"(tii)",
+-			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view)), x, y),
++			"(tiib)",
++			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view)),
++			x,
++			y,
++			cancel_if_not_collapsed),
+ 		G_DBUS_CALL_FLAGS_NONE,
+ 		-1,
+ 		NULL,
+@@ -641,7 +645,7 @@ html_editor_view_move_selection_on_point (GtkWidget *widget)
+ 	pointer = gdk_device_manager_get_client_pointer (device_manager);
+ 	gdk_window_get_device_position (gtk_widget_get_window (widget), pointer, &x, &y, NULL);
+ 
+-	e_html_editor_view_move_selection_on_point (E_HTML_EDITOR_VIEW (widget), x, y);
++	e_html_editor_view_move_selection_on_point (E_HTML_EDITOR_VIEW (widget), x, y, TRUE);
+ }
+ 
+ static gboolean
+diff --git a/e-util/e-html-editor-view.h b/e-util/e-html-editor-view.h
+index 5bcd3945b9..e4ad31cb58 100644
+--- a/e-util/e-html-editor-view.h
++++ b/e-util/e-html-editor-view.h
+@@ -210,7 +210,8 @@ void		e_html_editor_view_save_selection
+ void		e_html_editor_view_move_selection_on_point
+ 						(EHTMLEditorView *view,
+ 						 gint x,
+-						 gint y);
++						 gint y,
++						 gboolean cancel_if_not_collapsed);
+ G_END_DECLS
+ 
+ #endif /* E_HTML_EDITOR_VIEW_H */
+diff --git a/web-extensions/e-html-editor-web-extension.c b/web-extensions/e-html-editor-web-extension.c
+index 4adefb7431..f91ee23a48 100644
+--- a/web-extensions/e-html-editor-web-extension.c
++++ b/web-extensions/e-html-editor-web-extension.c
+@@ -468,6 +468,7 @@ static const char introspection_xml[] =
+ "      <arg type='t' name='page_id' direction='in'/>"
+ "      <arg type='i' name='x' direction='in'/>"
+ "      <arg type='i' name='y' direction='in'/>"
++"      <arg type='b' name='cancel_if_not_collapsed' direction='in'/>"
+ "    </method>"
+ "<!-- ********************************************************* -->"
+ "<!--     Functions that are used in EHTMLEditorSelection       -->"
+@@ -1608,9 +1609,10 @@ handle_method_call (GDBusConnection *connection,
+ 		dom_drag_and_drop_end (document, extension);
+ 		g_dbus_method_invocation_return_value (invocation, NULL);
+ 	} else if (g_strcmp0 (method_name, "DOMMoveSelectionOnPoint") == 0) {
++		gboolean cancel_if_not_collapsed;
+ 		gint x, y;
+ 
+-		g_variant_get (parameters, "(tii)", &page_id, &x, &y);
++		g_variant_get (parameters, "(tiib)", &page_id, &x, &y, &cancel_if_not_collapsed);
+ 
+ 		web_page = get_webkit_web_page_or_return_dbus_error (
+ 			invocation, web_extension, page_id);
+@@ -1618,7 +1620,11 @@ handle_method_call (GDBusConnection *connection,
+ 			return;
+ 
+ 		document = webkit_web_page_get_dom_document (web_page);
+-		dom_selection_set_on_point (document, x, y);
++		if (cancel_if_not_collapsed)
++			if (dom_selection_is_collapsed (document))
++				dom_selection_set_on_point (document, x, y);
++		else
++			dom_selection_set_on_point (document, x, y);
+ 		g_dbus_method_invocation_return_value (invocation, NULL);
+ 	} else if (g_strcmp0 (method_name, "DOMSelectionIndent") == 0) {
+ 		g_variant_get (parameters, "(t)", &page_id);
+-- 
+2.15.0
+

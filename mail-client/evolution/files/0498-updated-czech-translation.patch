@@ -1,0 +1,25 @@
+From f24db0dac20fe6d81b0b07ae33df61df20ea9512 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marek=20=C4=8Cernock=C3=BD?= <marek@manet.cz>
+Date: Thu, 12 Mar 2015 10:52:36 +0100
+Subject: [PATCH 0498/1800] Updated Czech translation
+
+---
+ po/cs.po | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/po/cs.po b/po/cs.po
+index 78e07e72ec..2a47d26b0f 100644
+--- a/po/cs.po
++++ b/po/cs.po
+@@ -14671,7 +14671,7 @@ msgstr "Vždy posílat _slepou kopii (bcc) na:"
+ 
+ #: ../mail/e-mail-config-defaults-page.c:763
+ msgid "Message Receipts"
+-msgstr "Příjemci zprávy"
++msgstr "Potvrzování zpráv"
+ 
+ #: ../mail/e-mail-config-defaults-page.c:772
+ msgid "S_end message receipts:"
+-- 
+2.15.0
+

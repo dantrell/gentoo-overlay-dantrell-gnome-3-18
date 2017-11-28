@@ -1,0 +1,124 @@
+From 38157ec9a5472d696c534f3de040af7e998029b3 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 22 Jun 2015 19:26:17 +0200
+Subject: [PATCH 0828/1800] Bug 701483 - Inline GPG decryption sometimes hides
+ the decrypted text
+
+---
+ em-format/e-mail-parser-inlinepgp-encrypted.c         | 4 ++--
+ em-format/e-mail-parser-inlinepgp-signed.c            | 4 ++--
+ em-format/e-mail-parser-multipart-encrypted.c         | 4 ++--
+ em-format/e-mail-parser-multipart-signed.c            | 4 ++--
+ em-format/e-mail-parser.c                             | 6 +++---
+ modules/text-highlight/e-mail-parser-text-highlight.c | 2 +-
+ 6 files changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/em-format/e-mail-parser-inlinepgp-encrypted.c b/em-format/e-mail-parser-inlinepgp-encrypted.c
+index 30c437734a..56d5fc5304 100644
+--- a/em-format/e-mail-parser-inlinepgp-encrypted.c
++++ b/em-format/e-mail-parser-inlinepgp-encrypted.c
+@@ -118,10 +118,10 @@ empe_inlinepgp_encrypted_parse (EMailParserExtension *extension,
+ 	len = part_id->len;
+ 	g_string_append (part_id, ".inlinepgp_encrypted");
+ 
+-	e_mail_parser_parse_part_as (
++	g_warn_if_fail (e_mail_parser_parse_part_as (
+ 		parser, opart, part_id,
+ 		camel_data_wrapper_get_mime_type (dw),
+-		cancellable, &work_queue);
++		cancellable, &work_queue));
+ 
+ 	g_string_truncate (part_id, len);
+ 
+diff --git a/em-format/e-mail-parser-inlinepgp-signed.c b/em-format/e-mail-parser-inlinepgp-signed.c
+index d8620d33e9..9f08583059 100644
+--- a/em-format/e-mail-parser-inlinepgp-signed.c
++++ b/em-format/e-mail-parser-inlinepgp-signed.c
+@@ -132,8 +132,8 @@ empe_inlinepgp_signed_parse (EMailParserExtension *extension,
+ 	len = part_id->len;
+ 	g_string_append (part_id, ".inlinepgp_signed");
+ 
+-	e_mail_parser_parse_part (
+-		parser, opart, part_id, cancellable, &work_queue);
++	g_warn_if_fail (e_mail_parser_parse_part (
++		parser, opart, part_id, cancellable, &work_queue));
+ 
+ 	head = g_queue_peek_head_link (&work_queue);
+ 
+diff --git a/em-format/e-mail-parser-multipart-encrypted.c b/em-format/e-mail-parser-multipart-encrypted.c
+index 360e2f5dd8..dff97b35e4 100644
+--- a/em-format/e-mail-parser-multipart-encrypted.c
++++ b/em-format/e-mail-parser-multipart-encrypted.c
+@@ -114,8 +114,8 @@ empe_mp_encrypted_parse (EMailParserExtension *extension,
+ 	len = part_id->len;
+ 	g_string_append (part_id, ".encrypted");
+ 
+-	e_mail_parser_parse_part (
+-		parser, opart, part_id, cancellable, &work_queue);
++	g_warn_if_fail (e_mail_parser_parse_part (
++		parser, opart, part_id, cancellable, &work_queue));
+ 
+ 	g_string_truncate (part_id, len);
+ 
+diff --git a/em-format/e-mail-parser-multipart-signed.c b/em-format/e-mail-parser-multipart-signed.c
+index ab67ceee4a..c467ec7407 100644
+--- a/em-format/e-mail-parser-multipart-signed.c
++++ b/em-format/e-mail-parser-multipart-signed.c
+@@ -156,8 +156,8 @@ empe_mp_signed_parse (EMailParserExtension *extension,
+ 
+ 		g_string_append_printf (part_id, ".signed.%d", i);
+ 
+-		e_mail_parser_parse_part (
+-			parser, subpart, part_id, cancellable, &work_queue);
++		g_warn_if_fail (e_mail_parser_parse_part (
++			parser, subpart, part_id, cancellable, &work_queue));
+ 
+ 		g_string_truncate (part_id, len);
+ 
+diff --git a/em-format/e-mail-parser.c b/em-format/e-mail-parser.c
+index b0edd79b34..c686a9c01b 100644
+--- a/em-format/e-mail-parser.c
++++ b/em-format/e-mail-parser.c
+@@ -497,7 +497,7 @@ e_mail_parser_parse_part (EMailParser *parser,
+ {
+ 	CamelContentType *ct;
+ 	gchar *mime_type;
+-	gint n_parts_queued = 0;
++	gint handled;
+ 
+ 	ct = camel_mime_part_get_content_type (part);
+ 	if (!ct) {
+@@ -509,7 +509,7 @@ e_mail_parser_parse_part (EMailParser *parser,
+ 		g_free (tmp);
+ 	}
+ 
+-	n_parts_queued = e_mail_parser_parse_part_as (
++	handled = e_mail_parser_parse_part_as (
+ 		parser, part, part_id, mime_type,
+ 		cancellable, out_mail_parts);
+ 
+@@ -517,7 +517,7 @@ e_mail_parser_parse_part (EMailParser *parser,
+ 		g_free (mime_type);
+ 	}
+ 
+-	return n_parts_queued;
++	return handled;
+ }
+ 
+ gboolean
+diff --git a/modules/text-highlight/e-mail-parser-text-highlight.c b/modules/text-highlight/e-mail-parser-text-highlight.c
+index e27c2b3981..f1acc971fd 100644
+--- a/modules/text-highlight/e-mail-parser-text-highlight.c
++++ b/modules/text-highlight/e-mail-parser-text-highlight.c
+@@ -59,7 +59,7 @@ empe_text_highlight_parse (EMailParserExtension *extension,
+ 	gint len;
+ 
+ 	/* Prevent recursion */
+-	if (strstr (part_id->str, ".text-highlight") != NULL)
++	if (g_str_has_suffix (part_id->str, ".text-highlight"))
+ 		return FALSE;
+ 
+ 	/* Don't parse text/html if it's not an attachment */
+-- 
+2.15.0
+

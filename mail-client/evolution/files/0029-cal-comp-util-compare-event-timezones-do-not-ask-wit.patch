@@ -1,0 +1,47 @@
+From bd529829ca580d4992041d81ff4381ce4e2bce32 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 4 Nov 2014 06:52:05 +0100
+Subject: [PATCH 0029/1800] cal_comp_util_compare_event_timezones: Do not ask
+ with NULL tzid
+
+Asking an ECalClient for a timezone with NULL tzid only produces
+a runtime warning on a console.
+---
+ calendar/gui/comp-util.c | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/calendar/gui/comp-util.c b/calendar/gui/comp-util.c
+index babd7b124b..0bef22b2fa 100644
+--- a/calendar/gui/comp-util.c
++++ b/calendar/gui/comp-util.c
+@@ -150,8 +150,11 @@ cal_comp_util_compare_event_timezones (ECalComponent *comp,
+ 		/* If the TZIDs differ, we have to compare the UTC offsets
+ 		 * of the start and end times, using their own timezones and
+ 		 * the given timezone. */
+-		e_cal_client_get_timezone_sync (
+-			client, start_datetime.tzid, &start_zone, NULL, NULL);
++		if (start_datetime.tzid)
++			e_cal_client_get_timezone_sync (client, start_datetime.tzid, &start_zone, NULL, NULL);
++		else
++			start_zone = NULL;
++
+ 		if (start_zone == NULL)
+ 			goto out;
+ 
+@@ -168,8 +171,11 @@ cal_comp_util_compare_event_timezones (ECalComponent *comp,
+ 				goto out;
+ 		}
+ 
+-		e_cal_client_get_timezone_sync (
+-			client, end_datetime.tzid, &end_zone, NULL, NULL);
++		if (end_datetime.tzid)
++			e_cal_client_get_timezone_sync (client, end_datetime.tzid, &end_zone, NULL, NULL);
++		else
++			end_zone = NULL;
++
+ 		if (end_zone == NULL)
+ 			goto out;
+ 
+-- 
+2.15.0
+

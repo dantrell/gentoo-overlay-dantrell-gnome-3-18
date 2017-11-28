@@ -1,0 +1,27 @@
+From a4b47d45a28b4ff3ef85cc850f8da121c3b3d851 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 17 Feb 2015 17:10:50 +0100
+Subject: [PATCH 0314/1800] Avoid crash when validating a new filter rule
+
+A simple filter rule based on a Subject and a Move of the message
+to a certain folder caused a crash of the application on save.
+---
+ e-util/e-filter-input.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/e-util/e-filter-input.c b/e-util/e-filter-input.c
+index 1bfa029fd2..8fa31d0962 100644
+--- a/e-util/e-filter-input.c
++++ b/e-util/e-filter-input.c
+@@ -79,7 +79,7 @@ filter_input_validate (EFilterElement *element,
+ 
+ 	g_warn_if_fail (alert == NULL || *alert == NULL);
+ 
+-	if (input->values && !strcmp (input->type, "regex")) {
++	if (input->values && input->type && !strcmp (input->type, "regex")) {
+ 		const gchar *pattern;
+ 		regex_t regexpat;
+ 		gint regerr;
+-- 
+2.15.0
+

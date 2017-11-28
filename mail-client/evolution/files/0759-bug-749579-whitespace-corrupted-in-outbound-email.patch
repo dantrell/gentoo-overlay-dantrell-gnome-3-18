@@ -1,0 +1,141 @@
+From d87553708c206327755a53fdc2d9f3ed4e62aff7 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 15:39:30 +0100
+Subject: [PATCH 0759/1800] Bug 749579 - Whitespace corrupted in outbound email
+
+---
+ .../composer/e-html-editor-view-dom-functions.c    | 100 ++-------------------
+ 1 file changed, 8 insertions(+), 92 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index e463edd33f..de30e5fa1a 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -5597,22 +5597,6 @@ remove_evolution_attributes (WebKitDOMElement *element)
+ 	webkit_dom_element_remove_attribute (element, "spellcheck");
+ }
+ 
+-static gboolean
+-replace_to_whitespaces (const GMatchInfo *info,
+-                        GString *res,
+-                        gpointer data)
+-{
+-	gint ii, length = 0;
+-	gint chars_count = GPOINTER_TO_INT (data);
+-
+-	length = TAB_LENGTH - (chars_count %  TAB_LENGTH);
+-
+-	for (ii = 0; ii < length; ii++)
+-		g_string_append (res, " ");
+-
+-	return FALSE;
+-}
+-
+ static void
+ process_elements (EHTMLEditorWebExtension *extension,
+                   WebKitDOMNode *node,
+@@ -5684,41 +5668,8 @@ process_elements (EHTMLEditorWebExtension *extension,
+ 		if (WEBKIT_DOM_IS_TEXT (child)) {
+ 			gchar *content, *tmp;
+ 			GRegex *regex;
+-			gint char_count = 0;
+ 
+ 			content = webkit_dom_node_get_text_content (child);
+-			if (!changing_mode && to_plain_text) {
+-				/* Replace tabs with 8 whitespaces, otherwise they got
+-				 * replaced by single whitespace */
+-				if (strstr (content, "\x9")) {
+-					if (buffer->str && *buffer->str) {
+-						gchar *start_of_line = g_strrstr_len (
+-							buffer->str, -1, "\n") + 1;
+-
+-						if (start_of_line && *start_of_line)
+-								char_count = strlen (start_of_line);
+-					} else
+-						char_count = 0;
+-
+-					regex = g_regex_new ("\x9", 0, 0, NULL);
+-					tmp = g_regex_replace_eval (
+-						regex,
+-						content,
+-						-1,
+-						0,
+-						0,
+-						(GRegexEvalCallback) replace_to_whitespaces,
+-						GINT_TO_POINTER (char_count),
+-						NULL);
+-
+-					g_string_append (buffer, tmp);
+-					g_free (tmp);
+-					g_free (content);
+-					content = webkit_dom_node_get_text_content (child);
+-					g_regex_unref (regex);
+-				}
+-			}
+-
+ 			if (strstr (content, UNICODE_ZERO_WIDTH_SPACE)) {
+ 				regex = g_regex_new (UNICODE_ZERO_WIDTH_SPACE, 0, 0, NULL);
+ 				tmp = g_regex_replace (
+@@ -5800,51 +5751,16 @@ process_elements (EHTMLEditorWebExtension *extension,
+ 			goto next;
+ 
+ 		if (element_has_class (WEBKIT_DOM_ELEMENT (child), "Apple-tab-span")) {
+-			if (!changing_mode && to_plain_text) {
+-				gchar *content, *tmp;
+-				GRegex *regex;
+-				gint char_count = 0;
+-
+-				content = webkit_dom_node_get_text_content (child);
+-				/* Replace tabs with 8 whitespaces, otherwise they got
+-				 * replaced by single whitespace */
+-				if (strstr (content, "\x9")) {
+-					if (buffer->str && *buffer->str) {
+-						const gchar *start_of_line = g_strrstr_len (
+-							buffer->str, -1, "\n");
+-
+-						if (start_of_line && *start_of_line)
+-							char_count = strlen (start_of_line + 1);
+-					} else
+-						char_count = 0;
+-
+-					regex = g_regex_new ("\x9", 0, 0, NULL);
+-					tmp = g_regex_replace_eval (
+-						regex,
+-						content,
+-						-1,
+-						0,
+-						0,
+-						(GRegexEvalCallback) replace_to_whitespaces,
+-						GINT_TO_POINTER (char_count),
+-						NULL);
+-
+-					g_string_append (buffer, tmp);
+-					g_free (tmp);
+-					g_regex_unref (regex);
+-				} else if (content && *content) {
+-					/* Some it happens that some text is written inside
+-					 * the tab span element, so save it. */
++			if (!changing_mode) {
++				if (to_plain_text) {
++					content = webkit_dom_node_get_text_content (child);
+ 					g_string_append (buffer, content);
+-				}
+-				g_free (content);
++					g_free (content);
++				} else
++					element_remove_class (
++						WEBKIT_DOM_ELEMENT (child),
++						"Applet-tab-span");
+ 			}
+-			if (!to_plain_text) {
+-				element_remove_class (
+-					WEBKIT_DOM_ELEMENT (child),
+-					"Applet-tab-span");
+-			}
+-
+ 			skip_node = TRUE;
+ 			goto next;
+ 		}
+-- 
+2.15.0
+

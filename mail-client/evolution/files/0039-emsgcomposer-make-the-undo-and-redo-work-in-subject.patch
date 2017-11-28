@@ -1,0 +1,79 @@
+From a62947a2376a1dc510b84154de6fb06e2cd75556 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 5 Nov 2014 11:51:16 +0100
+Subject: [PATCH 0039/1800] EMsgComposer - Make the undo and redo work in
+ Subject and Reply-To input widgets
+
+---
+ composer/e-composer-private.c  | 15 +++++++++++++++
+ e-util/e-html-editor-actions.c | 12 ++++++++----
+ 2 files changed, 23 insertions(+), 4 deletions(-)
+
+diff --git a/composer/e-composer-private.c b/composer/e-composer-private.c
+index 4644c8ba69..0d1c9003e0 100644
+--- a/composer/e-composer-private.c
++++ b/composer/e-composer-private.c
+@@ -174,6 +174,12 @@ e_composer_private_constructed (EMsgComposer *composer)
+ 	action = e_html_editor_get_action (editor, "select-all");
+ 	e_focus_tracker_set_select_all_action (focus_tracker, action);
+ 
++	action = e_html_editor_get_action (editor, "undo");
++	e_focus_tracker_set_undo_action (focus_tracker, action);
++
++	action = e_html_editor_get_action (editor, "redo");
++	e_focus_tracker_set_redo_action (focus_tracker, action);
++
+ 	priv->focus_tracker = focus_tracker;
+ 
+ 	widget = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+@@ -298,8 +304,17 @@ e_composer_private_constructed (EMsgComposer *composer)
+ 
+ 			case E_COMPOSER_HEADER_REPLY_TO:
+ 				action = ACTION (VIEW_REPLY_TO);
++				e_widget_undo_attach (
++					GTK_WIDGET (header->input_widget),
++					focus_tracker);
+ 				break;
+ 
++			case E_COMPOSER_HEADER_SUBJECT:
++				e_widget_undo_attach (
++					GTK_WIDGET (header->input_widget),
++					focus_tracker);
++				continue;
++
+ 			default:
+ 				continue;
+ 		}
+diff --git a/e-util/e-html-editor-actions.c b/e-util/e-html-editor-actions.c
+index 3e9ea956a9..dcc2a50ba3 100644
+--- a/e-util/e-html-editor-actions.c
++++ b/e-util/e-html-editor-actions.c
+@@ -828,8 +828,10 @@ static void
+ action_redo_cb (GtkAction *action,
+                 EHTMLEditor *editor)
+ {
+-	webkit_web_view_redo (
+-		WEBKIT_WEB_VIEW (e_html_editor_get_view (editor)));
++	EHTMLEditorView *view = e_html_editor_get_view (editor);
++
++	if (gtk_widget_has_focus (GTK_WIDGET (view)))
++		webkit_web_view_redo (WEBKIT_WEB_VIEW (view));
+ }
+ 
+ static void
+@@ -892,8 +894,10 @@ static void
+ action_undo_cb (GtkAction *action,
+                 EHTMLEditor *editor)
+ {
+-	webkit_web_view_undo (
+-		WEBKIT_WEB_VIEW (e_html_editor_get_view (editor)));
++	EHTMLEditorView *view = e_html_editor_get_view (editor);
++
++	if (gtk_widget_has_focus (GTK_WIDGET (view)))
++		webkit_web_view_undo (WEBKIT_WEB_VIEW (view));
+ }
+ 
+ static void
+-- 
+2.15.0
+

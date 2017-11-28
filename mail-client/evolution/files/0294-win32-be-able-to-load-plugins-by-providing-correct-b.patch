@@ -1,0 +1,50 @@
+From c6739af28e30752379f4835c27736c047514adca Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 13 Feb 2015 20:28:32 +0100
+Subject: [PATCH 0294/1800] [Win32] Be able to load plugins by providing
+ correct build-time paths
+
+---
+ modules/plugin-lib/Makefile.am    | 2 ++
+ modules/plugin-lib/e-plugin-lib.c | 5 +++--
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/modules/plugin-lib/Makefile.am b/modules/plugin-lib/Makefile.am
+index d94320a7e6..803831d149 100644
+--- a/modules/plugin-lib/Makefile.am
++++ b/modules/plugin-lib/Makefile.am
+@@ -4,6 +4,8 @@ module_plugin_lib_la_CPPFLAGS = \
+ 	$(AM_CPPFLAGS)						\
+ 	-DG_LOG_DOMAIN=\"evolution-plugin-lib\"			\
+ 	-I$(top_srcdir)						\
++	-DEVOLUTION_PLUGINDIR="\"$(plugindir)\""		\
++	-DBUILDTIME_EVOLUTION_PLUGINDIR="\"$(plugindir)\""	\
+ 	-DEVOLUTION_PREFIX=\""$(prefix)"\"			\
+ 	$(EVOLUTION_DATA_SERVER_CFLAGS)				\
+ 	$(GNOME_PLATFORM_CFLAGS)				\
+diff --git a/modules/plugin-lib/e-plugin-lib.c b/modules/plugin-lib/e-plugin-lib.c
+index a97dd2476f..d4496f3c2e 100644
+--- a/modules/plugin-lib/e-plugin-lib.c
++++ b/modules/plugin-lib/e-plugin-lib.c
+@@ -26,6 +26,7 @@
+ 
+ #ifdef G_OS_WIN32
+ #include <libedataserver/libedataserver.h> /* for e_util_replace_prefix() */
++#include "e-util/e-util-private.h"
+ #endif
+ 
+ #include <string.h>
+@@ -153,8 +154,8 @@ plugin_lib_construct (EPlugin *plugin,
+ 	{
+ 		gchar *mapped_location =
+ 			e_util_replace_prefix (
+-				EVOLUTION_PREFIX,
+-				e_util_get_prefix (),
++				BUILDTIME_EVOLUTION_PLUGINDIR,
++				EVOLUTION_PLUGINDIR,
+ 				plugin_lib->location);
+ 		g_free (plugin_lib->location);
+ 		plugin_lib->location = mapped_location;
+-- 
+2.15.0
+

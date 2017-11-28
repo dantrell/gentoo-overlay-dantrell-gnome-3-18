@@ -1,0 +1,39 @@
+From a7dac0d80accfc4385864afa1801fbacc240e649 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 5 Feb 2015 15:12:42 +0100
+Subject: [PATCH 0256/1800] Ignore errors when searching for email address in
+ books
+
+There is no need to stop searching for an email address in available
+books when one book fails with an error after it was successfully
+opened.
+---
+ mail/e-mail-ui-session.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/mail/e-mail-ui-session.c b/mail/e-mail-ui-session.c
+index accecfceda..ac36bc2234 100644
+--- a/mail/e-mail-ui-session.c
++++ b/mail/e-mail-ui-session.c
+@@ -1220,13 +1220,16 @@ e_mail_ui_session_check_known_address_sync (EMailUISession *session,
+ 
+ 		success = e_book_client_get_contacts_uids_sync (
+ 			E_BOOK_CLIENT (client), book_query_string,
+-			&uids, cancellable, error);
++			&uids, cancellable, &local_error);
+ 
+ 		g_object_unref (client);
+ 
+ 		if (!success) {
+ 			g_warn_if_fail (uids == NULL);
+-			break;
++
++			/* ignore book-specific errors here and continue with the next */
++			g_clear_error (&local_error);
++			continue;
+ 		}
+ 
+ 		if (uids != NULL) {
+-- 
+2.15.0
+

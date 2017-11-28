@@ -1,0 +1,31 @@
+From 59e3ed502c13b6ee26f636feaf254e072a70ccab Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 12 Feb 2015 12:04:41 +0100
+Subject: [PATCH 0285/1800] S/MIME mail parser not used, but compiled
+
+Due to missing config.h the ENABLE_SMIME was not declared, thus the type
+for the S/MIME parser was not registered, neither used, which showed
+S/MIME signed or encrypted messages as attachments, instead of deciphering
+their content.
+---
+ em-format/e-mail-parser.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/em-format/e-mail-parser.c b/em-format/e-mail-parser.c
+index 17d5a817ee..b0edd79b34 100644
+--- a/em-format/e-mail-parser.c
++++ b/em-format/e-mail-parser.c
+@@ -15,6 +15,10 @@
+  *
+  */
+ 
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
+ #include "e-mail-parser.h"
+ 
+ #include <string.h>
+-- 
+2.15.0
+

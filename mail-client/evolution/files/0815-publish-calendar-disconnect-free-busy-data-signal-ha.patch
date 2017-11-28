@@ -1,0 +1,46 @@
+From eecc20d1cd879c3b15cedc987ba4931c462a396e Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 16 Jun 2015 08:29:24 +0200
+Subject: [PATCH 0815/1800] [Publish Calendar] Disconnect free-busy-data signal
+ handler
+
+Disconnect it when the free/busy query finished, because the ECalClient
+can be left alive longer that in this function, thus the callback could
+be called with already gone memory.
+---
+ plugins/publish-calendar/publish-format-fb.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/plugins/publish-calendar/publish-format-fb.c b/plugins/publish-calendar/publish-format-fb.c
+index a0cabdd85d..96f0441466 100644
+--- a/plugins/publish-calendar/publish-format-fb.c
++++ b/plugins/publish-calendar/publish-format-fb.c
+@@ -65,6 +65,7 @@ write_calendar (const gchar *uid,
+ 	icalcomponent *top_level;
+ 	gchar *email = NULL;
+ 	GSList *users = NULL;
++	gulong handler_id;
+ 	gboolean success = FALSE;
+ 
+ 	utc = icaltimezone_get_utc_timezone ();
+@@ -111,12 +112,16 @@ write_calendar (const gchar *uid,
+ 
+ 	top_level = e_cal_util_new_top_level ();
+ 
+-	g_signal_connect (
++	handler_id = g_signal_connect (
+ 		client, "free-busy-data",
+ 		G_CALLBACK (free_busy_data_cb), &objects);
+ 
+ 	success = e_cal_client_get_free_busy_sync (
+ 		E_CAL_CLIENT (client), start, end, users, NULL, error);
++
++	if (handler_id > 0)
++		g_signal_handler_disconnect (client, handler_id);
++
+ 	if (success) {
+ 		gchar *ical_string;
+ 		GSList *iter;
+-- 
+2.15.0
+

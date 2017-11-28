@@ -1,0 +1,27 @@
+From 5cf2e1d90449b360955d5ac5615ed01c775e19cb Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 26 Feb 2016 10:52:01 +0100
+Subject: [PATCH 0874/1800] EHTMLEditorView - Inserting space after the link
+ appends it to the link
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 80caf7da9b..6101c07a8a 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -987,7 +987,8 @@ dom_check_magic_links (WebKitDOMDocument *document,
+ 			text_to_append = webkit_dom_node_get_text_content (node);
+ 			if (text_to_append && *text_to_append &&
+ 			    !strstr (text_to_append, " ") &&
+-			    !strchr (URL_INVALID_TRAILING_CHARS, *text_to_append)) {
++			    !strchr (URL_INVALID_TRAILING_CHARS, *text_to_append) &&
++			    !g_str_has_prefix (text_to_append, UNICODE_NBSP)) {
+ 
+ 				appending_to_link = TRUE;
+ 				parent = WEBKIT_DOM_ELEMENT (prev_sibling);
+-- 
+2.15.0
+

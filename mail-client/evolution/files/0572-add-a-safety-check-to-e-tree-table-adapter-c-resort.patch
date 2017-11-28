@@ -1,0 +1,29 @@
+From 572bc1e72194643c356757cdc1ee4adcaed39dec Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 24 Mar 2015 09:07:45 +0100
+Subject: [PATCH 0572/1800] Add a safety check to
+ e-tree-table-adapter.c:resort_node() function
+
+There could happen a crash here, when a NULL was passed into
+the function, as reported downstream at:
+https://bugzilla.redhat.com/show_bug.cgi?id=1202741
+---
+ e-util/e-tree-table-adapter.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/e-util/e-tree-table-adapter.c b/e-util/e-tree-table-adapter.c
+index a62e4f38f4..b81e385df2 100644
+--- a/e-util/e-tree-table-adapter.c
++++ b/e-util/e-tree-table-adapter.c
+@@ -197,6 +197,8 @@ resort_node (ETreeTableAdapter *etta,
+ 	gint i, count;
+ 	gboolean sort_needed;
+ 
++	g_return_if_fail (node != NULL);
++
+ 	if (node->num_visible_children == 0)
+ 		return;
+ 
+-- 
+2.15.0
+

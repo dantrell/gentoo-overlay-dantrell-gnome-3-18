@@ -1,0 +1,86 @@
+From bf554c546a91e46a3b43a3e9a46e1aa5347291c0 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 3 Mar 2015 10:48:59 +0100
+Subject: [PATCH 0402/1800] Bug 440661 - vFolder "Status is Junk" doesn't show
+ Junk mails
+
+---
+ mail/message-list.c | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 48 insertions(+)
+
+diff --git a/mail/message-list.c b/mail/message-list.c
+index 4e12ccaa22..a4645b7b61 100644
+--- a/mail/message-list.c
++++ b/mail/message-list.c
+@@ -3767,6 +3767,42 @@ clear_tree (MessageList *message_list,
+ #endif
+ }
+ 
++static gboolean
++message_list_folder_filters_system_flag (const gchar *expr,
++					 const gchar *flag)
++{
++	const gchar *pos;
++
++	if (!expr || !*expr)
++		return FALSE;
++
++	g_return_val_if_fail (flag && *flag, FALSE);
++
++	while (pos = strstr (expr, flag), pos) {
++		/* This is searching for something like 'system-flag "' + flag + '"'
++		   in the expression, without fully parsing it. */
++		if (pos > expr && pos[-1] == '\"' && pos[strlen(flag)] == '\"') {
++			const gchar *system_flag = "system-flag";
++			gint ii = 2, jj = strlen (system_flag) - 1;
++
++			while (pos - ii >= expr && g_ascii_isspace (pos[-ii]))
++				ii++;
++
++			while (pos - ii >= expr && jj >= 0 && system_flag[jj] == pos[-ii]) {
++				ii++;
++				jj--;
++			}
++
++			if (jj == -1)
++				return TRUE;
++		}
++
++		expr = pos + 1;
++	}
++
++	return FALSE;
++}
++
+ static gboolean
+ folder_store_supports_vjunk_folder (CamelFolder *folder)
+ {
+@@ -3806,6 +3842,12 @@ message_list_get_hide_junk (MessageList *message_list,
+ 	if (folder->folder_flags & CAMEL_FOLDER_IS_TRASH)
+ 		return FALSE;
+ 
++	if (CAMEL_IS_VEE_FOLDER (folder)) {
++		const gchar *expr = camel_vee_folder_get_expression (CAMEL_VEE_FOLDER (folder));
++		if (message_list_folder_filters_system_flag (expr, "Junk"))
++			return FALSE;
++	}
++
+ 	return TRUE;
+ }
+ 
+@@ -3829,6 +3871,12 @@ message_list_get_hide_deleted (MessageList *message_list,
+ 		((store->flags & CAMEL_STORE_VTRASH) == 0) ||
+ 		((folder->folder_flags & CAMEL_FOLDER_IS_TRASH) == 0);
+ 
++	if (non_trash_folder && CAMEL_IS_VEE_FOLDER (folder)) {
++		const gchar *expr = camel_vee_folder_get_expression (CAMEL_VEE_FOLDER (folder));
++		if (message_list_folder_filters_system_flag (expr, "Deleted"))
++			return FALSE;
++	}
++
+ 	return non_trash_folder;
+ }
+ 
+-- 
+2.15.0
+

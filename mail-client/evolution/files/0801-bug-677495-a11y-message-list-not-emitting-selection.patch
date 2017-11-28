@@ -1,0 +1,127 @@
+From 598d3e9147eaf044402083e6cbdbb578034c79b3 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 10 Jun 2015 19:43:44 +0200
+Subject: [PATCH 0801/1800] Bug 677495 - [a11y] Message list not emitting
+ selection-changed signal
+
+---
+ e-util/e-tree-selection-model.c |  1 +
+ e-util/gal-a11y-e-table-item.c  | 49 +++++++++++++++++++++++++++++------------
+ 2 files changed, 36 insertions(+), 14 deletions(-)
+
+diff --git a/e-util/e-tree-selection-model.c b/e-util/e-tree-selection-model.c
+index 048c41f3b9..d19cbb43e9 100644
+--- a/e-util/e-tree-selection-model.c
++++ b/e-util/e-tree-selection-model.c
+@@ -820,6 +820,7 @@ e_tree_selection_model_change_cursor (ETreeSelectionModel *etsm,
+ 
+ 	E_SELECTION_MODEL (etsm)->old_selection = -1;
+ 
++	e_selection_model_selection_changed (E_SELECTION_MODEL (etsm));
+ 	e_selection_model_cursor_changed (
+ 		E_SELECTION_MODEL (etsm), row, etsm->priv->cursor_col);
+ 	e_selection_model_cursor_activated (
+diff --git a/e-util/gal-a11y-e-table-item.c b/e-util/gal-a11y-e-table-item.c
+index 49ccdb3cfe..84dbf1c1c4 100644
+--- a/e-util/gal-a11y-e-table-item.c
++++ b/e-util/gal-a11y-e-table-item.c
+@@ -56,8 +56,9 @@ struct _GalA11yETableItemPrivate {
+ 	ETableItem *item;
+ 	gint cols;
+ 	gint rows;
+-	gint selection_change_id;
+-	gint cursor_change_id;
++	gulong selection_changed_id;
++	gulong selection_row_changed_id;
++	gulong cursor_changed_id;
+ 	ETableCol ** columns;
+ 	ESelectionModel *selection;
+ 	AtkStateSet *state_set;
+@@ -1018,8 +1019,9 @@ eti_init (GalA11yETableItem *a11y)
+ 
+ 	priv = GET_PRIVATE (a11y);
+ 
+-	priv->selection_change_id = 0;
+-	priv->cursor_change_id = 0;
++	priv->selection_changed_id = 0;
++	priv->selection_row_changed_id = 0;
++	priv->cursor_changed_id = 0;
+ 	priv->selection = NULL;
+ }
+ 
+@@ -1045,6 +1047,9 @@ static void eti_a11y_selection_model_added_cb (ETableItem *eti,
+ 					       gpointer data);
+ static void eti_a11y_selection_changed_cb (ESelectionModel *selection,
+ 					   GalA11yETableItem *a11y);
++static void eti_a11y_selection_row_changed_cb (ESelectionModel *selection,
++					   gint row,
++					   GalA11yETableItem *a11y);
+ static void eti_a11y_cursor_changed_cb (ESelectionModel *selection,
+ 					gint row, gint col,
+ 					GalA11yETableItem *a11y);
+@@ -1196,11 +1201,14 @@ gal_a11y_e_table_item_ref_selection (GalA11yETableItem *a11y,
+ 	g_return_val_if_fail (a11y && selection, FALSE);
+ 
+ 	priv = GET_PRIVATE (a11y);
+-	priv->selection_change_id = g_signal_connect (
+-		selection, "selection_changed",
++	priv->selection_changed_id = g_signal_connect (
++		selection, "selection-changed",
+ 		G_CALLBACK (eti_a11y_selection_changed_cb), a11y);
+-	priv->cursor_change_id = g_signal_connect (
+-		selection, "cursor_changed",
++	priv->selection_row_changed_id = g_signal_connect (
++		selection, "selection-row-changed",
++		G_CALLBACK (eti_a11y_selection_row_changed_cb), a11y);
++	priv->cursor_changed_id = g_signal_connect (
++		selection, "cursor-changed",
+ 		G_CALLBACK (eti_a11y_cursor_changed_cb), a11y);
+ 
+ 	priv->selection = selection;
+@@ -1218,17 +1226,22 @@ gal_a11y_e_table_item_unref_selection (GalA11yETableItem *a11y)
+ 
+ 	priv = GET_PRIVATE (a11y);
+ 
+-	g_return_val_if_fail (priv->selection_change_id != 0, FALSE);
+-	g_return_val_if_fail (priv->cursor_change_id != 0, FALSE);
++	g_return_val_if_fail (priv->selection_changed_id != 0, FALSE);
++	g_return_val_if_fail (priv->selection_row_changed_id != 0, FALSE);
++	g_return_val_if_fail (priv->cursor_changed_id != 0, FALSE);
+ 
+ 	g_signal_handler_disconnect (
+ 		priv->selection,
+-		priv->selection_change_id);
++		priv->selection_changed_id);
+ 	g_signal_handler_disconnect (
+ 		priv->selection,
+-		priv->cursor_change_id);
+-	priv->cursor_change_id = 0;
+-	priv->selection_change_id = 0;
++		priv->selection_row_changed_id);
++	g_signal_handler_disconnect (
++		priv->selection,
++		priv->cursor_changed_id);
++	priv->cursor_changed_id = 0;
++	priv->selection_row_changed_id = 0;
++	priv->selection_changed_id = 0;
+ 
+ 	g_object_unref (priv->selection);
+ 	priv->selection = NULL;
+@@ -1289,6 +1302,14 @@ eti_a11y_selection_changed_cb (ESelectionModel *selection,
+ 	g_signal_emit_by_name (a11y, "selection_changed");
+ }
+ 
++static void
++eti_a11y_selection_row_changed_cb (ESelectionModel *selection,
++				   gint row,
++				   GalA11yETableItem *a11y)
++{
++	eti_a11y_selection_changed_cb (selection, a11y);
++}
++
+ static void
+ eti_a11y_cursor_changed_cb (ESelectionModel *selection,
+                             gint row,
+-- 
+2.15.0
+

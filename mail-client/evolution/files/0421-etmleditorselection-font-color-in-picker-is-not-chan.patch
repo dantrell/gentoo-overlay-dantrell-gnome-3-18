@@ -1,0 +1,35 @@
+From 93a34ba1d80b30c97fe3bb5fb91bc039df006086 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 27 Mar 2015 13:46:25 +0100
+Subject: [PATCH 0421/1800] ETMLEditorSelection - Font color in picker is not
+ changed when moving between different font colors
+
+---
+ web-extensions/e-html-editor-selection-dom-functions.c | 11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index 7d2914d606..bf73dac4a6 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -3848,13 +3848,10 @@ dom_selection_get_font_color (WebKitDOMDocument *document,
+ {
+ 	gchar *color;
+ 
+-	if (dom_selection_is_collapsed (document)) {
+-/* FIXME WK2
+-		color = g_strdup (selection->priv->font_color);*/
+-	} else {
+-		color = get_font_property (document, "color");
+-		if (!(color && *color))
+-			color = g_strdup ("#000000");
++	color = get_font_property (selection, "color");
++	if (!(color && *color)) {
++		*rgba = black;
++		return;
+ 	}
+ 
+ 	return color;
+-- 
+2.15.0
+

@@ -1,0 +1,37 @@
+From a0fb3c28383f87898be47ad58d43cbba50330719 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 11:36:24 +0100
+Subject: [PATCH 0726/1800] Bug 704824 - Dropdown list of calendars in ITIP
+ mail becomes empty after accepting appointment
+
+---
+ modules/itip-formatter/itip-view.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/modules/itip-formatter/itip-view.c b/modules/itip-formatter/itip-view.c
+index f2136a18b1..9abad9cdb4 100644
+--- a/modules/itip-formatter/itip-view.c
++++ b/modules/itip-formatter/itip-view.c
+@@ -1193,6 +1193,9 @@ itip_view_rebuild_source_list (ItipView *view)
+ 	registry = view->priv->registry;
+ 	extension_name = itip_view_get_extension_name (view);
+ 
++	if (extension_name == NULL)
++		return;
++
+ 	g_dbus_proxy_call (
+ 		view->priv->web_extension,
+ 		"ElementRemoveChildNodes",
+@@ -1203,9 +1206,6 @@ itip_view_rebuild_source_list (ItipView *view)
+ 		NULL,
+ 		NULL);
+ 
+-	if (extension_name == NULL)
+-		return;
+-
+ 	list = e_source_registry_list_enabled (registry, extension_name);
+ 
+ 	for (link = list; link != NULL; link = g_list_next (link)) {
+-- 
+2.15.0
+

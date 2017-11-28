@@ -1,0 +1,28 @@
+From 5378ad2db26d8d36582b1c9757acac7a02da0466 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 21 Nov 2014 11:12:21 +0100
+Subject: [PATCH 0096/1800] Bug 733518 - Make VOICE type optional for TEL in
+ EContact
+
+---
+ addressbook/util/eab-book-util.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/addressbook/util/eab-book-util.c b/addressbook/util/eab-book-util.c
+index 9eadb4435a..18c7ec09a5 100644
+--- a/addressbook/util/eab-book-util.c
++++ b/addressbook/util/eab-book-util.c
+@@ -245,7 +245,9 @@ eab_get_phone_type_index (EVCardAttribute *attr)
+ 
+ 	for (i = 0; i < G_N_ELEMENTS (eab_phone_types); i++) {
+ 		if (e_vcard_attribute_has_type (attr, eab_phone_types[i].type_1) &&
+-		    (eab_phone_types[i].type_2 == NULL || e_vcard_attribute_has_type (attr, eab_phone_types[i].type_2)))
++		    (eab_phone_types[i].type_2 == NULL || e_vcard_attribute_has_type (attr, eab_phone_types[i].type_2) ||
++		    (g_ascii_strcasecmp (eab_phone_types[i].type_2, "VOICE") == 0 &&
++		     g_list_length (e_vcard_attribute_get_param (attr, EVC_TYPE)) == 1)))
+ 			return i;
+ 	}
+ 
+-- 
+2.15.0
+

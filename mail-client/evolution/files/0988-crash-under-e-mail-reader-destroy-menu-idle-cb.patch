@@ -1,0 +1,42 @@
+From c1619e1d46ff3a33189d76cdf72b0b55f84013b2 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 3 Sep 2015 22:39:01 +0200
+Subject: [PATCH 0988/1800] Crash under e_mail_reader_destroy_menu_idle_cb()
+
+Reported downstream as https://bugzilla.redhat.com/show_bug.cgi?id=1259858
+---
+ mail/e-mail-reader.c | 11 +----------
+ 1 file changed, 1 insertion(+), 10 deletions(-)
+
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index 6e89950ad9..471047a181 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -5126,14 +5126,6 @@ e_mail_reader_remote_content_menu_position (GtkMenu *menu,
+ 	*push_in = FALSE;
+ }
+ 
+-static gboolean
+-e_mail_reader_destroy_menu_idle_cb (gpointer user_data)
+-{
+-	gtk_widget_destroy (user_data);
+-
+-	return FALSE;
+-}
+-
+ static void
+ e_mail_reader_remote_content_menu_deactivate_cb (GtkMenuShell *popup_menu,
+ 						 GtkToggleButton *toggle_button)
+@@ -5141,8 +5133,7 @@ e_mail_reader_remote_content_menu_deactivate_cb (GtkMenuShell *popup_menu,
+ 	g_return_if_fail (GTK_IS_TOGGLE_BUTTON (toggle_button));
+ 
+ 	gtk_toggle_button_set_active (toggle_button, FALSE);
+-
+-	g_idle_add (e_mail_reader_destroy_menu_idle_cb, popup_menu);
++	gtk_menu_detach (GTK_MENU (popup_menu));
+ }
+ 
+ #define REMOTE_CONTENT_KEY_IS_MAIL	"remote-content-key-is-mail"
+-- 
+2.15.0
+

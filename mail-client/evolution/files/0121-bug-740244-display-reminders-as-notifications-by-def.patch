@@ -1,0 +1,26 @@
+From 38c6dc27b72143135dacd8880471af31b741c51c Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 1 Dec 2014 08:57:57 +0100
+Subject: [PATCH 0121/1800] Bug 740244 - Display reminders as notifications by
+ default
+
+---
+ data/org.gnome.evolution.calendar.gschema.xml.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/data/org.gnome.evolution.calendar.gschema.xml.in b/data/org.gnome.evolution.calendar.gschema.xml.in
+index 4fd4a2e1c0..17a110647c 100644
+--- a/data/org.gnome.evolution.calendar.gschema.xml.in
++++ b/data/org.gnome.evolution.calendar.gschema.xml.in
+@@ -200,7 +200,7 @@
+       <_description>Programs that are allowed to be run by reminders</_description>
+     </key>
+     <key name="notify-with-tray" type="b">
+-      <default>false</default>
++      <default>true</default>
+       <_summary>Show display reminders in notification tray</_summary>
+       <_description>Whether or not to use the notification tray for display reminders</_description>
+     </key>
+-- 
+2.15.0
+

@@ -1,0 +1,157 @@
+From 84b32319b35b73126cd5fcb969ed0c09e65b4af1 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 29 Apr 2015 14:44:23 +0200
+Subject: [PATCH 0552/1800] Add missing implementation for saving history on
+ cut operation
+
+---
+ e-util/e-html-editor-actions.c                     |  5 ++-
+ .../e-html-editor-actions-dom-functions.c          | 52 ++++++++++++++++++++++
+ .../e-html-editor-actions-dom-functions.h          |  2 +
+ web-extensions/e-html-editor-web-extension.c       | 27 +++++++++++
+ 4 files changed, 85 insertions(+), 1 deletion(-)
+
+diff --git a/e-util/e-html-editor-actions.c b/e-util/e-html-editor-actions.c
+index 65a7d869a9..cac923d8da 100644
+--- a/e-util/e-html-editor-actions.c
++++ b/e-util/e-html-editor-actions.c
+@@ -264,7 +264,10 @@ action_cut_cb (GtkAction *action,
+ 	EHTMLEditorView *view = e_html_editor_get_view (editor);
+ 
+ 	if (!gtk_widget_has_focus (GTK_WIDGET (view)))
+-		gtk_widget_grab_focus (GTK_WIDGET (view));
++		return;
++
++	html_editor_call_simple_extension_function (
++		editor, "EHTMLEditorActionsSaveHistoryForCut");
+ 
+ 	webkit_web_view_execute_editing_command (
+ 		WEBKIT_WEB_VIEW (view), WEBKIT_EDITING_COMMAND_CUT);
+diff --git a/web-extensions/e-html-editor-actions-dom-functions.c b/web-extensions/e-html-editor-actions-dom-functions.c
+index fa64aec25d..03b4641e40 100644
+--- a/web-extensions/e-html-editor-actions-dom-functions.c
++++ b/web-extensions/e-html-editor-actions-dom-functions.c
+@@ -22,6 +22,12 @@
+ #include "e-html-editor-history-event.h"
+ #include "e-html-editor-selection-dom-functions.h"
+ 
++#define WEBKIT_DOM_USE_UNSTABLE_API
++#include <webkitdom/WebKitDOMDocumentFragmentUnstable.h>
++#include <webkitdom/WebKitDOMRangeUnstable.h>
++#include <webkitdom/WebKitDOMDOMSelection.h>
++#include <webkitdom/WebKitDOMDOMWindowUnstable.h>
++
+ static WebKitDOMElement *
+ get_table_cell_element (WebKitDOMDocument *document)
+ {
+@@ -353,3 +359,49 @@ e_html_editor_dialog_insert_row_below (WebKitDOMDocument *document,
+ 
+ 	save_history_for_table (document, extension, table, ev);
+ }
++
++void
++dom_save_history_for_cut (WebKitDOMDocument *document,
++                          EHTMLEditorWebExtension *extension)
++{
++	EHTMLEditorHistoryEvent *ev;
++	EHTMLEditorUndoRedoManager *manager;
++	WebKitDOMDocumentFragment *fragment;
++	WebKitDOMDOMWindow *dom_window;
++	WebKitDOMDOMSelection *dom_selection;
++	WebKitDOMRange *range;
++
++	dom_window = webkit_dom_document_get_default_view (document);
++	dom_selection = webkit_dom_dom_window_get_selection (dom_window);
++
++	if (!webkit_dom_dom_selection_get_range_count (dom_selection))
++		return;
++
++	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
++	if (webkit_dom_range_get_collapsed (range, NULL))
++		return;
++
++	ev = g_new0 (EHTMLEditorHistoryEvent, 1);
++	ev->type = HISTORY_DELETE;
++
++	dom_selection_get_coordinates (
++		document,
++		&ev->before.start.x,
++		&ev->before.start.y,
++		&ev->before.end.x,
++		&ev->before.end.y);
++
++	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
++
++	ev->after.start.x = ev->before.start.x;
++	ev->after.start.y = ev->before.start.y;
++	ev->after.end.x = ev->before.start.x;
++	ev->after.end.y = ev->before.start.y;
++
++	/* Save the fragment. */
++	fragment = webkit_dom_range_clone_contents (range, NULL);
++	ev->data.fragment = g_object_ref (fragment);
++
++	manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
++	e_html_editor_undo_redo_manager_insert_history_event (manager, ev);
++}
+diff --git a/web-extensions/e-html-editor-actions-dom-functions.h b/web-extensions/e-html-editor-actions-dom-functions.h
+index 1a780990e5..fa39cdae69 100644
+--- a/web-extensions/e-html-editor-actions-dom-functions.h
++++ b/web-extensions/e-html-editor-actions-dom-functions.h
+@@ -57,6 +57,8 @@ void		e_html_editor_dialog_insert_row_below
+ 						(WebKitDOMDocument *document,
+ 						 EHTMLEditorWebExtension *extension);
+ 
++void		dom_save_history_for_cut	(WebKitDOMDocument *document,
++						 EHTMLEditorWebExtension *extension);
+ G_END_DECLS
+ 
+ #endif /* E_HTML_EDITOR_ACTIONS_DOM_FUNCTIONS_H */
+diff --git a/web-extensions/e-html-editor-web-extension.c b/web-extensions/e-html-editor-web-extension.c
+index 9847bdd5cb..40254109f0 100644
+--- a/web-extensions/e-html-editor-web-extension.c
++++ b/web-extensions/e-html-editor-web-extension.c
+@@ -435,6 +435,9 @@ static const char introspection_xml[] =
+ "    <method name='EHTMLEditorDialogDOMUnlink'>"
+ "      <arg type='t' name='page_id' direction='in'/>"
+ "    </method>"
++"    <method name='EHTMLEditorDialogSaveHistoryForCut'>"
++"      <arg type='t' name='page_id' direction='in'/>"
++"    </method>"
+ "<!-- ********************************************************* -->"
+ "<!--     Functions that are used in EHTMLEditorView            -->"
+ "<!-- ********************************************************* -->"
+@@ -1543,6 +1546,30 @@ handle_method_call (GDBusConnection *connection,
+ 		document = webkit_web_page_get_dom_document (web_page);
+ 		dom_selection_unlink (document, extension);
+ 
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "EHTMLEditorDialogSaveHistoryForCut") == 0) {
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_selection_unlink (document, extension);
++
++		g_dbus_method_invocation_return_value (invocation, NULL);
++	} else if (g_strcmp0 (method_name, "EHTMLEditorDialogSaveHistoryForCut") == 0) {
++		g_variant_get (parameters, "(t)", &page_id);
++
++		web_page = get_webkit_web_page_or_return_dbus_error (
++			invocation, web_extension, page_id);
++		if (!web_page)
++			return;
++
++		document = webkit_web_page_get_dom_document (web_page);
++		dom_save_history_for_cut (document, extension);
++
+ 		g_dbus_method_invocation_return_value (invocation, NULL);
+ 	} else if (g_strcmp0 (method_name, "TableCellElementGetNoWrap") == 0) {
+ 		const gchar *element_id;
+-- 
+2.15.0
+

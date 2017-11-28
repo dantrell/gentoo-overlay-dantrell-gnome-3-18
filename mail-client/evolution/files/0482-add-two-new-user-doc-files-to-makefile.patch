@@ -1,0 +1,27 @@
+From 80df6d1ffaab13c75cfcd7a79b9c267d2142a6e3 Mon Sep 17 00:00:00 2001
+From: Andre Klapper <a9016009@gmx.de>
+Date: Tue, 10 Mar 2015 21:47:11 +0100
+Subject: [PATCH 0482/1800] Add two new user doc files to Makefile
+
+---
+ help/Makefile.am | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/help/Makefile.am b/help/Makefile.am
+index 3acdb3d4e1..60c1dc1514 100644
+--- a/help/Makefile.am
++++ b/help/Makefile.am
+@@ -118,8 +118,10 @@ HELP_FILES = \
+ 	mail-composer-change-quotation-string.page \
+ 	mail-composer-custom-header-lines.page \
+ 	mail-composer-enable-html-format.page \
++	mail-composer-external-editor.page \
+ 	mail-composer-forward.page \
+ 	mail-composer-forward-as-attachment.page \
++	mail-composer-from-field-override.page \
+ 	mail-composer-html-image.page \
+ 	mail-composer-html-link.page \
+ 	mail-composer-html.page \
+-- 
+2.15.0
+

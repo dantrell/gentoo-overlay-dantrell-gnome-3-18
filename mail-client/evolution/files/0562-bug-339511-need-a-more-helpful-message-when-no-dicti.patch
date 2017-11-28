@@ -1,0 +1,42 @@
+From 007015aa3af31fddfe4cbf61f01566e0dba30c48 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 19 Mar 2015 14:47:32 +0100
+Subject: [PATCH 0562/1800] Bug 339511 - Need a more helpful message when no
+ dictionary is installed
+
+Hide the spell check actions when no dictionary is installed.
+---
+ e-util/e-html-editor-actions.c | 3 ++-
+ e-util/e-html-editor-actions.h | 2 ++
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/e-util/e-html-editor-actions.c b/e-util/e-html-editor-actions.c
+index cac923d8da..ea62f54539 100644
+--- a/e-util/e-html-editor-actions.c
++++ b/e-util/e-html-editor-actions.c
+@@ -119,7 +119,8 @@ editor_update_static_spell_actions (EHTMLEditor *editor)
+ 	gtk_action_set_visible (ACTION (CONTEXT_SPELL_ADD_MENU), count > 1);
+ 	gtk_action_set_visible (ACTION (CONTEXT_SPELL_IGNORE), count > 0);
+ 
+-	gtk_action_set_sensitive (ACTION (SPELL_CHECK), count > 0);
++	gtk_action_set_visible (ACTION (SPELL_CHECK), count > 0);
++	gtk_action_set_visible (ACTION (LANGUAGE_MENU), count > 0);
+ }
+ 
+ /*****************************************************************************
+diff --git a/e-util/e-html-editor-actions.h b/e-util/e-html-editor-actions.h
+index 8999add9dc..d2e80df62d 100644
+--- a/e-util/e-html-editor-actions.h
++++ b/e-util/e-html-editor-actions.h
+@@ -101,6 +101,8 @@
+ 	E_HTML_EDITOR_ACTION ((editor), "justify-left")
+ #define E_HTML_EDITOR_ACTION_JUSTIFY_RIGHT(editor) \
+ 	E_HTML_EDITOR_ACTION ((editor), "justify-right")
++#define E_HTML_EDITOR_ACTION_LANGUAGE_MENU(editor) \
++	E_HTML_EDITOR_ACTION ((editor), "language-menu")
+ #define E_HTML_EDITOR_ACTION_MODE_HTML(editor) \
+ 	E_HTML_EDITOR_ACTION ((editor), "mode-html")
+ #define E_HTML_EDITOR_ACTION_MODE_PLAIN(editor) \
+-- 
+2.15.0
+

@@ -1,0 +1,35 @@
+From 8c0f155cf3a7abc691e8f561b594ac54cd5e1b35 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 23 Mar 2015 13:58:48 +0100
+Subject: [PATCH 0173/1800] EComposerPrivate - Newly created message with
+ signature doesn't have block for message text
+
+---
+ web-extensions/e-composer-private-dom-functions.c | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/web-extensions/e-composer-private-dom-functions.c b/web-extensions/e-composer-private-dom-functions.c
+index 8ec9e835e2..35cc56108f 100644
+--- a/web-extensions/e-composer-private-dom-functions.c
++++ b/web-extensions/e-composer-private-dom-functions.c
+@@ -226,12 +226,11 @@ composer_move_caret (WebKitDOMDocument *document,
+ 					NULL);
+ 			}
+ 		} else {
+-			if (start_bottom)
+-				webkit_dom_node_insert_before (
+-					WEBKIT_DOM_NODE (body),
+-					WEBKIT_DOM_NODE (element),
+-					WEBKIT_DOM_NODE (signature),
+-					NULL);
++			webkit_dom_node_insert_before (
++				WEBKIT_DOM_NODE (body),
++				WEBKIT_DOM_NODE (element),
++				WEBKIT_DOM_NODE (signature),
++				NULL);
+ 		}
+ 	} else {
+ 		if (!element && top_signature) {
+-- 
+2.15.0
+

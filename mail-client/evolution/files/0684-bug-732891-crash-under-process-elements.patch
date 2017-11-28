@@ -1,0 +1,31 @@
+From d73e939ebcc7ae8a4a3777a869ff1481278faabf Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 24 Feb 2016 18:41:16 +0100
+Subject: [PATCH 0684/1800] Bug 732891 - Crash under process_elements()
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 82cf6e23ce..4683abdda9 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -5704,11 +5704,11 @@ process_elements (EHTMLEditorWebExtension *extension,
+ 				 * replaced by single whitespace */
+ 				if (strstr (content, "\x9")) {
+ 					if (buffer->str && *buffer->str) {
+-						gchar *start_of_line = g_strrstr_len (
+-							buffer->str, -1, "\n") + 1;
++						const gchar *start_of_line = g_strrstr_len (
++							buffer->str, -1, "\n");
+ 
+ 						if (start_of_line && *start_of_line)
+-							char_count = strlen (start_of_line);
++							char_count = strlen (start_of_line + 1);
+ 					} else
+ 						char_count = 0;
+ 
+-- 
+2.15.0
+

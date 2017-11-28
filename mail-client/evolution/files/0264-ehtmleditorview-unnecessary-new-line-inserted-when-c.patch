@@ -1,0 +1,26 @@
+From a7cdd3d82a992704da968a228f87f285aa92d2f4 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 12:41:56 +0100
+Subject: [PATCH 0264/1800] EHTMLEditorView - Unnecessary new line inserted
+ when composer when creating new message
+
+To be more specific it happens when the 'Start typing at the bottom on replying' is active.
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 9cee7134d1..586cbc0707 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -5979,6 +5979,7 @@ dom_process_content_after_load (WebKitDOMDocument *document,
+ 		WebKitDOMElement *paragraph;
+ 
+ 		paragraph = dom_prepare_paragraph (document, extension, TRUE);
++		webkit_dom_element_set_id (paragraph, "-x-evo-input-start");
+ 		webkit_dom_node_append_child (
+ 			WEBKIT_DOM_NODE (body), WEBKIT_DOM_NODE (paragraph), NULL);
+ 		dom_selection_restore (document);
+-- 
+2.15.0
+

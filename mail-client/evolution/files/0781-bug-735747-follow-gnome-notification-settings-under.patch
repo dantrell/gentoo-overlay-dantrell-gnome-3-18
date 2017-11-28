@@ -1,0 +1,310 @@
+From f8713f9c712ce4782662ec97321fc7331805ca08 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 25 Feb 2016 17:10:45 +0100
+Subject: [PATCH 0781/1800] Bug 735747 - Follow GNOME notification settings
+ under gnome-shell
+
+---
+ calendar/alarm-notify/alarm-queue.c           | 35 ++++++++++++---
+ configure.ac                                  |  6 ++-
+ e-util/e-misc-utils.c                         | 35 +++++++++++++++
+ e-util/e-misc-utils.h                         |  1 +
+ plugins/mail-notification/mail-notification.c | 62 ++++++++++++++++++++++-----
+ 5 files changed, 122 insertions(+), 17 deletions(-)
+
+diff --git a/calendar/alarm-notify/alarm-queue.c b/calendar/alarm-notify/alarm-queue.c
+index f8804edba8..26a3421ade 100644
+--- a/calendar/alarm-notify/alarm-queue.c
++++ b/calendar/alarm-notify/alarm-queue.c
+@@ -1722,7 +1722,7 @@ display_notification (time_t trigger,
+ 		location = _("No location information available.");
+ 
+ 	/* create the tray icon */
+-	if (tray_icon == NULL) {
++	if (!tray_icon && !e_util_is_running_gnome ()) {
+ 		tray_icon = gtk_status_icon_new ();
+ 		gtk_status_icon_set_title (tray_icon, _("Evolution Reminders"));
+ 		gtk_status_icon_set_from_icon_name (
+@@ -1771,9 +1771,9 @@ display_notification (time_t trigger,
+ 			"You have %d reminder", "You have %d reminders",
+ 			g_list_length (tray_icons_list)),
+ 			g_list_length (tray_icons_list));
+-		gtk_status_icon_set_tooltip_text (tray_icon, tip);
+-	}
+-	else {
++		if (tray_icon)
++			gtk_status_icon_set_tooltip_text (tray_icon, tip);
++	} else if (tray_icon) {
+ 		gtk_status_icon_set_tooltip_text (tray_icon, str);
+ 	}
+ 
+@@ -1796,7 +1796,7 @@ display_notification (time_t trigger,
+ 			gtk_window_stick (GTK_WINDOW (
+ 				alarm_notifications_dialog->dialog));
+ 	} else {
+-		if (tray_blink_id == -1) {
++		if (tray_blink_id == -1 && tray_icon) {
+ 			tray_blink_countdown = 30;
+ 			tray_blink_id = e_named_timeout_add (
+ 				500, tray_icon_blink_cb, tray_data);
+@@ -1805,6 +1805,23 @@ display_notification (time_t trigger,
+ }
+ 
+ #ifdef HAVE_LIBNOTIFY
++
++static void
++notify_open_appointments_cb (NotifyNotification *notification,
++			     gchar *action,
++			     gpointer user_data)
++{
++	GdkEvent event;
++
++	notify_notification_close (notification, NULL);
++
++	event.type = GDK_BUTTON_PRESS;
++	event.button.button = 1;
++	event.button.time = gtk_get_current_event_time ();
++
++	tray_icon_clicked_cb (NULL, &event, NULL);
++}
++
+ static void
+ popup_notification (time_t trigger,
+                     CompQueuedAlarms *cqa,
+@@ -1888,6 +1905,14 @@ popup_notification (time_t trigger,
+ 		qa->notify, "desktop-entry",
+ 		g_variant_new_string (PACKAGE));
+ 
++	notify_notification_set_hint (
++		qa->notify, "sound-name",
++		g_variant_new_string ("alarm-clock-elapsed"));
++
++	notify_notification_add_action (
++		qa->notify, "open-appointments", _("Appointments"),
++		notify_open_appointments_cb, NULL, NULL);
++
+ 	if (!notify_notification_show (qa->notify, &error))
+ 		g_warning ("Could not send notification to daemon: %s\n", error ? error->message : "Unknown error");
+ 
+diff --git a/configure.ac b/configure.ac
+index bb23a148e2..8a9bd3751f 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -219,6 +219,7 @@ case "$host" in
+ 	DL_LIB=''
+ 	SOFTOKN3_LIB=''
+ 	CHAMPLAIN_REQUIREMENT=''
++	GIO_UNIX_REQUIREMENT=''
+ 	;;
+ *openbsd*|*freebsd*)
+ 	os_win32=no
+@@ -228,6 +229,7 @@ case "$host" in
+ 	BF_JUNK_PLUGIN=bogo-junk-plugin
+ 	DL_LIB=''
+ 	SOFTOKN3_LIB='-lsoftokn3'
++	GIO_UNIX_REQUIREMENT='gio-unix-2.0'
+ 	;;
+ *)
+ 	os_win32=no
+@@ -235,6 +237,7 @@ case "$host" in
+ 	SOEXT='.so'
+ 	DL_LIB='-ldl'
+ 	SOFTOKN3_LIB='-lsoftokn3'
++	GIO_UNIX_REQUIREMENT='gio-unix-2.0'
+ 	;;
+ esac
+ AC_MSG_RESULT([$os_win32])
+@@ -279,7 +282,8 @@ PKG_CHECK_MODULES([GNOME_PLATFORM],
+ 	 libxml-2.0 >= libxml_minimum_version
+ 	 shared-mime-info >= shared_mime_info_minimum_version
+ 	 gsettings-desktop-schemas >= gsettings_desktop_schemas_minimum_version
+-	 webkit2gtk-4.0 >= webkitgtk_minimum_version])
++	 webkit2gtk-4.0 >= webkitgtk_minimum_version
++	 $GIO_UNIX_REQUIREMENT])
+ 
+ GNOME_DESKTOP_DEPENDENCY=""
+ AC_ARG_ENABLE([gnome-desktop],
+diff --git a/e-util/e-misc-utils.c b/e-util/e-misc-utils.c
+index 84a24efba6..404e988d6b 100644
+--- a/e-util/e-misc-utils.c
++++ b/e-util/e-misc-utils.c
+@@ -44,6 +44,8 @@
+ 
+ #ifdef G_OS_WIN32
+ #include <windows.h>
++#else
++#include <gio/gdesktopappinfo.h>
+ #endif
+ 
+ #include <camel/camel.h>
+@@ -3254,3 +3256,36 @@ e_util_run_simple_async_result_in_thread (GSimpleAsyncResult *simple,
+ 
+ 	g_mutex_unlock (&thread_pool_mutex);
+ }
++
++/**
++ * e_util_is_running_gnome:
++ *
++ * Returns: Whether the current running desktop environment is GNOME.
++ *
++ * Since: 3.18
++ **/
++gboolean
++e_util_is_running_gnome (void)
++{
++#ifdef G_OS_WIN32
++	return FALSE;
++#else
++	static gint runs_gnome = -1;
++
++	if (runs_gnome == -1) {
++		runs_gnome = g_strcmp0 (g_getenv ("XDG_CURRENT_DESKTOP"), "GNOME") == 0 ? 1 : 0;
++		if (runs_gnome) {
++			GDesktopAppInfo *app_info;
++
++			app_info = g_desktop_app_info_new ("gnome-notifications-panel.desktop");
++			if (!app_info) {
++				runs_gnome = 0;
++			}
++
++			g_clear_object (&app_info);
++		}
++	}
++
++	return runs_gnome != 0;
++#endif
++}
+diff --git a/e-util/e-misc-utils.h b/e-util/e-misc-utils.h
+index b4d9faacbc..f40a4c11cd 100644
+--- a/e-util/e-misc-utils.h
++++ b/e-util/e-misc-utils.h
+@@ -281,6 +281,7 @@ void		e_util_run_simple_async_result_in_thread
+ 						(GSimpleAsyncResult *simple,
+ 						 GSimpleAsyncThreadFunc func,
+ 						 GCancellable *cancellable);
++gboolean	e_util_is_running_gnome		(void);
+ 
+ guint		e_util_normalize_font_size	(GtkWidget *widget,
+ 						 gdouble font_size);
+diff --git a/plugins/mail-notification/mail-notification.c b/plugins/mail-notification/mail-notification.c
+index e74c5a37e9..35ace49f07 100644
+--- a/plugins/mail-notification/mail-notification.c
++++ b/plugins/mail-notification/mail-notification.c
+@@ -28,6 +28,10 @@
+ #include <gtk/gtk.h>
+ #include <gio/gio.h>
+ 
++#ifndef G_OS_WIN32
++#include <gio/gdesktopappinfo.h>
++#endif
++
+ #ifdef HAVE_CANBERRA
+ #include <canberra-gtk.h>
+ #endif
+@@ -48,6 +52,8 @@
+ #define CONF_KEY_STATUS_NOTIFICATION	"notify-status-notification"
+ #define CONF_KEY_ENABLED_SOUND		"notify-sound-enabled"
+ 
++#define GNOME_NOTIFICATIONS_PANEL_DESKTOP "gnome-notifications-panel.desktop"
++
+ static gboolean enabled = FALSE;
+ static GtkWidget *get_cfg_widget (void);
+ static GMutex mlock;
+@@ -456,6 +462,12 @@ new_notify_status (EMEventTargetFolder *t)
+ 			notify, "desktop-entry",
+ 			g_variant_new_string (PACKAGE));
+ 
++		if (e_util_is_running_gnome ()) {
++			notify_notification_set_hint (
++				notify, "sound-name",
++				g_variant_new_string ("message-new-email"));
++		}
++
+ 		/* Check if actions are supported */
+ 		if (can_support_actions ()) {
+ 			gchar *label;
+@@ -784,6 +796,27 @@ get_config_widget_sound (void)
+ /*                     Plugin itself part                               */
+ /* -------------------------------------------------------------------  */
+ 
++static void
++e_mail_notif_open_gnome_notificaiton_settings_cb (GtkWidget *button,
++						  gpointer user_data)
++{
++#ifndef G_OS_WIN32
++	GDesktopAppInfo *app_info;
++	GError *error = NULL;
++
++	app_info = g_desktop_app_info_new (GNOME_NOTIFICATIONS_PANEL_DESKTOP);
++
++	g_return_if_fail (app_info != NULL);
++
++	if (!g_app_info_launch (G_APP_INFO (app_info), NULL, NULL, &error)) {
++		g_message ("%s: Failed with error: %s", G_STRFUNC, error ? error->message : "Unknown error");
++	}
++
++	g_clear_object (&app_info);
++	g_clear_error (&error);
++#endif
++}
++
+ static GtkWidget *
+ get_cfg_widget (void)
+ {
+@@ -808,19 +841,26 @@ get_cfg_widget (void)
+ 		settings, CONF_KEY_NOTIFY_ONLY_INBOX,
+ 		widget, "active", G_SETTINGS_BIND_DEFAULT);
+ 
++	if (e_util_is_running_gnome ()) {
++		widget = gtk_button_new_with_mnemonic ("Open _GNOME Notification settings");
++		g_signal_connect (widget, "clicked", G_CALLBACK (e_mail_notif_open_gnome_notificaiton_settings_cb), NULL);
++		gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
++		gtk_widget_show (widget);
++	} else {
+ #ifdef HAVE_LIBNOTIFY
+-	text = _("Show _notification when a new message arrives");
+-	widget = gtk_check_button_new_with_mnemonic (text);
+-	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
+-	gtk_widget_show (widget);
++		text = _("Show _notification when a new message arrives");
++		widget = gtk_check_button_new_with_mnemonic (text);
++		gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
++		gtk_widget_show (widget);
+ 
+-	g_settings_bind (
+-		settings, CONF_KEY_ENABLED_STATUS,
+-		widget, "active", G_SETTINGS_BIND_DEFAULT);
++		g_settings_bind (
++			settings, CONF_KEY_ENABLED_STATUS,
++			widget, "active", G_SETTINGS_BIND_DEFAULT);
+ #endif
+ 
+-	widget = get_config_widget_sound ();
+-	gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
++		widget = get_config_widget_sound ();
++		gtk_box_pack_start (GTK_BOX (container), widget, FALSE, FALSE, 0);
++	}
+ 
+ 	g_object_unref (settings);
+ 
+@@ -848,7 +888,7 @@ org_gnome_mail_new_notify (EPlugin *ep,
+ 	new_notify_dbus (t);
+ 
+ #ifdef HAVE_LIBNOTIFY
+-	if (is_part_enabled (CONF_KEY_ENABLED_STATUS))
++	if (is_part_enabled (CONF_KEY_ENABLED_STATUS) || e_util_is_running_gnome ())
+ 		new_notify_status (t);
+ #endif
+ 
+@@ -872,7 +912,7 @@ org_gnome_mail_read_notify (EPlugin *ep,
+ 	read_notify_dbus (t);
+ 
+ #ifdef HAVE_LIBNOTIFY
+-	if (is_part_enabled (CONF_KEY_ENABLED_STATUS))
++	if (is_part_enabled (CONF_KEY_ENABLED_STATUS) || e_util_is_running_gnome ())
+ 		read_notify_status (t);
+ #endif
+ 
+-- 
+2.15.0
+

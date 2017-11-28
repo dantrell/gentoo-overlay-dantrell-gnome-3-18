@@ -1,0 +1,42 @@
+From 32d9bbf166fde0f95562179d918ae35cd5f96eae Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 30 Mar 2015 18:35:08 +0200
+Subject: [PATCH 0604/1800] Add a 'list' option to the Mail Free Form
+ expression
+
+---
+ mail/e-mail-free-form-exp.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/mail/e-mail-free-form-exp.c b/mail/e-mail-free-form-exp.c
+index fb7864b89b..39af7939eb 100644
+--- a/mail/e-mail-free-form-exp.c
++++ b/mail/e-mail-free-form-exp.c
+@@ -150,6 +150,16 @@ mail_ffe_subject (const gchar *word,
+ 	return mail_ffe_build_header_sexp (word, options, header_names);
+ }
+ 
++static gchar *
++mail_ffe_list (const gchar *word,
++	       const gchar *options,
++	       const gchar *hint)
++{
++	const gchar *header_names[] = { "x-camel-mlist", NULL };
++
++	return mail_ffe_build_header_sexp (word, options, header_names);
++}
++
+ static gchar *
+ mail_ffe_header (const gchar *word,
+ 		 const gchar *options,
+@@ -492,6 +502,7 @@ static const EFreeFormExpSymbol mail_ffe_symbols[] = {
+ 	{ "cc:c:",	NULL,	mail_ffe_cc },
+ 	{ "recips:r",	NULL,	mail_ffe_recips },
+ 	{ "subject:s",	NULL,	mail_ffe_subject },
++	{ "list",	NULL,	mail_ffe_list },
+ 	{ "header:h",	NULL,	mail_ffe_header },
+ 	{ "exists:e",	NULL,	mail_ffe_exists },
+ 	{ "tag",	NULL,	mail_ffe_tag },
+-- 
+2.15.0
+

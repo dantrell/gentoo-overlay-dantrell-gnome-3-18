@@ -1,0 +1,48 @@
+From 166b343d8ba01b51fe58dafbdae5694a2ad8b622 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 23 Mar 2015 08:14:11 +0100
+Subject: [PATCH 0550/1800] Post-release version bump
+
+---
+ ChangeLog    | 2 +-
+ configure.ac | 8 ++++----
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/ChangeLog b/ChangeLog
+index 69f1a6705f..c26f1f78cf 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -4,4 +4,4 @@
+ 	Get a clone of git repository and list changes with 'git log' there,
+ 	   $ git clone git://git.gnome.org/evolution
+ 	or browse changes online at
+-	   http://git.gnome.org/browse/evolution/log/?h=gnome-3-16
++	   http://git.gnome.org/browse/evolution/log/?h=master
+diff --git a/configure.ac b/configure.ac
+index 75caa545be..316bfb723c 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1,7 +1,7 @@
+ dnl Evolution Versions
+ m4_define([evo_major_version], [3])
+-m4_define([evo_minor_version], [16])
+-m4_define([evo_micro_version], [0])
++m4_define([evo_minor_version], [17])
++m4_define([evo_micro_version], [1])
+ m4_define([evo_version],
+ 	[evo_major_version.evo_minor_version.evo_micro_version])
+ m4_define([evo_stable_version],
+@@ -13,8 +13,8 @@ dnl Base Version: This is for API/version tracking for things like
+ dnl Bonobo server files.  This should always be the major/minor of
+ dnl the stable version or stable version to be.  Note, this is set
+ dnl the way it is so that GETTEXT_PACKAGE will be parsed correctly.
+-BASE_VERSION=3.16
+-m4_define([base_version], [3.16])
++BASE_VERSION=3.18
++m4_define([base_version], [3.18])
+ 
+ dnl Autoconf / Automake Initialization
+ AC_PREREQ([2.64])
+-- 
+2.15.0
+

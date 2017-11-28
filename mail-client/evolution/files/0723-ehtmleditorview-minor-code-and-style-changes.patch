@@ -1,0 +1,38 @@
+From b106d91d839594495ee8850f0141cd7394a3c99c Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 11:31:52 +0100
+Subject: [PATCH 0723/1800] EHTMLEditorView - Minor code and style changes
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 119f8ffe9b..de2519b945 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -268,7 +268,7 @@ refresh_spell_check (WebKitDOMDocument *document,
+ 		WebKitDOMNode *child;
+ 
+ 		child = webkit_dom_node_get_first_child (WEBKIT_DOM_NODE (body));
+-		if (!child || !WEBKIT_DOM_IS_HTML_ELEMENT (child))
++		if (!WEBKIT_DOM_IS_HTML_ELEMENT (child))
+ 			return;
+ 
+ 		dom_add_selection_markers_into_element_start (
+@@ -829,7 +829,11 @@ repair_gmail_blockquotes (WebKitDOMDocument *document)
+ 
+ 		if (!WEBKIT_DOM_IS_HTML_BR_ELEMENT (webkit_dom_node_get_last_child (node)))
+ 			webkit_dom_node_append_child (
+-				node, WEBKIT_DOM_NODE (webkit_dom_document_create_element (document, "br", NULL)), NULL);
++				node,
++				WEBKIT_DOM_NODE (
++					webkit_dom_document_create_element (
++						document, "br", NULL)),
++				NULL);
+ 		g_object_unref (node);
+ 	}
+ 	g_object_unref (list);
+-- 
+2.15.0
+

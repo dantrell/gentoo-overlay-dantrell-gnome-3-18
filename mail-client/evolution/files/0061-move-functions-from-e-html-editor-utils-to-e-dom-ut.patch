@@ -1,0 +1,441 @@
+From 506ad761d209971e52a9e8036f8577f3bac7aa96 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 16 Sep 2014 15:23:42 +0200
+Subject: [PATCH 0061/1800] Move functions from e-html-editor-utils.* to
+ e-dom-utils.*
+
+---
+ doc/reference/evolution-util/Makefile.am |   1 -
+ e-util/Makefile.am                       |   2 -
+ e-util/e-dom-utils.c                     |  92 ++++++++++++++++++++++++
+ e-util/e-dom-utils.h                     |   8 +++
+ e-util/e-html-editor-actions.c           |   1 -
+ e-util/e-html-editor-hrule-dialog.c      |   1 -
+ e-util/e-html-editor-image-dialog.c      |   1 -
+ e-util/e-html-editor-link-dialog.c       |   1 -
+ e-util/e-html-editor-selection.c         |   1 -
+ e-util/e-html-editor-utils.c             | 116 -------------------------------
+ e-util/e-html-editor-utils.h             |  44 ------------
+ e-util/e-html-editor.c                   |   1 -
+ e-util/e-util.h                          |   1 -
+ 13 files changed, 100 insertions(+), 170 deletions(-)
+ delete mode 100644 e-util/e-html-editor-utils.c
+ delete mode 100644 e-util/e-html-editor-utils.h
+
+diff --git a/doc/reference/evolution-util/Makefile.am b/doc/reference/evolution-util/Makefile.am
+index 48d1d13845..c04790989b 100644
+--- a/doc/reference/evolution-util/Makefile.am
++++ b/doc/reference/evolution-util/Makefile.am
+@@ -18,7 +18,6 @@ CFILE_GLOB = $(top_srcdir)/e-util/*.c
+ IGNORE_HFILES = \
+ 	e-html-editor-actions.h \
+ 	e-html-editor-private.h \
+-	e-html-editor-utils.h \
+ 	e-marshal.h \
+ 	e-table-col-dnd.h \
+ 	e-table-defines.h \
+diff --git a/e-util/Makefile.am b/e-util/Makefile.am
+index 030efe6746..18b4b24491 100644
+--- a/e-util/Makefile.am
++++ b/e-util/Makefile.am
+@@ -213,7 +213,6 @@ evolution_util_include_HEADERS =  \
+ 	e-html-editor-spell-check-dialog.h \
+ 	e-html-editor-table-dialog.h \
+ 	e-html-editor-text-dialog.h \
+-	e-html-editor-utils.h \
+ 	e-html-editor-view.h \
+ 	e-html-editor.h \
+ 	e-html-utils.h \
+@@ -487,7 +486,6 @@ libevolution_util_la_SOURCES = \
+ 	e-html-editor-spell-check-dialog.c \
+ 	e-html-editor-table-dialog.c \
+ 	e-html-editor-text-dialog.c \
+-	e-html-editor-utils.c \
+ 	e-html-editor-view.c \
+ 	e-html-editor.c \
+ 	e-html-utils.c \
+diff --git a/e-util/e-dom-utils.c b/e-util/e-dom-utils.c
+index 377d174343..f8f4176abb 100644
+--- a/e-util/e-dom-utils.c
++++ b/e-util/e-dom-utils.c
+@@ -27,6 +27,8 @@
+ 
+ #include <config.h>
+ 
++#include <string.h>
++
+ static void
+ replace_local_image_links (WebKitDOMElement *element)
+ {
+@@ -1278,3 +1280,93 @@ e_dom_utils_module_vcard_inline_set_iframe_src (WebKitDOMDocument *document,
+ 	webkit_dom_html_iframe_element_set_src (
+ 		WEBKIT_DOM_HTML_IFRAME_ELEMENT (iframe), src);
+ }
++
++/**
++ * e_html_editor_dom_node_find_parent_element:
++ * @node: Start node
++ * @tagname: Tag name of element to search
++ *
++ * Recursively searches for first occurance of element with given @tagname
++ * that is parent of given @node.
++ *
++ * Returns: A #WebKitDOMElement with @tagname representing parent of @node or
++ * @NULL when @node has no parent with given @tagname. When @node matches @tagname,
++ * then the @node is returned.
++ */
++WebKitDOMElement *
++e_html_editor_dom_node_find_parent_element (WebKitDOMNode *node,
++                                            const gchar *tagname)
++{
++	gint taglen = strlen (tagname);
++
++	while (node) {
++
++		if (WEBKIT_DOM_IS_ELEMENT (node)) {
++			gchar *node_tagname;
++
++			node_tagname = webkit_dom_element_get_tag_name (
++						WEBKIT_DOM_ELEMENT (node));
++
++			if (node_tagname &&
++			    (strlen (node_tagname) == taglen) &&
++			    (g_ascii_strncasecmp (node_tagname, tagname, taglen) == 0)) {
++				g_free (node_tagname);
++				return WEBKIT_DOM_ELEMENT (node);
++			}
++
++			g_free (node_tagname);
++		}
++
++		node = WEBKIT_DOM_NODE (webkit_dom_node_get_parent_element (node));
++	}
++
++	return NULL;
++}
++
++/**
++ * e_html_editor_dom_node_find_child_element:
++ * @node: Start node
++ * @tagname: Tag name of element to search.
++ *
++ * Recursively searches for first occurence of element with given @tagname that
++ * is a child of @node.
++ *
++ * Returns: A #WebKitDOMElement with @tagname representing a child of @node or
++ * @NULL when @node has no child with given @tagname. When @node matches @tagname,
++ * then the @node is returned.
++ */
++WebKitDOMElement *
++e_html_editor_dom_node_find_child_element (WebKitDOMNode *node,
++                                           const gchar *tagname)
++{
++	WebKitDOMNode *start_node = node;
++	gint taglen = strlen (tagname);
++
++	do {
++		if (WEBKIT_DOM_IS_ELEMENT (node)) {
++			gchar *node_tagname;
++
++			node_tagname = webkit_dom_element_get_tag_name (
++					WEBKIT_DOM_ELEMENT (node));
++
++			if (node_tagname &&
++			    (strlen (node_tagname) == taglen) &&
++			    (g_ascii_strncasecmp (node_tagname, tagname, taglen) == 0)) {
++				g_free (node_tagname);
++				return WEBKIT_DOM_ELEMENT (node);
++			}
++
++			g_free (node_tagname);
++		}
++
++		if (webkit_dom_node_has_child_nodes (node)) {
++			node = webkit_dom_node_get_first_child (node);
++		} else if (webkit_dom_node_get_next_sibling (node)) {
++			node = webkit_dom_node_get_next_sibling (node);
++		} else {
++			node = webkit_dom_node_get_parent_node (node);
++		}
++	} while (!webkit_dom_node_is_same_node (node, start_node));
++
++	return NULL;
++}
+diff --git a/e-util/e-dom-utils.h b/e-util/e-dom-utils.h
+index 2da7d946cd..ae291768b2 100644
+--- a/e-util/e-dom-utils.h
++++ b/e-util/e-dom-utils.h
+@@ -102,6 +102,14 @@ void		e_dom_utils_module_vcard_inline_set_iframe_src
+ 						(WebKitDOMDocument *document,
+ 						 const gchar *button_id,
+ 						 const gchar *src);
++WebKitDOMElement *
++		e_html_editor_dom_node_find_parent_element (
++						WebKitDOMNode *node,
++						const gchar *tagname);
++WebKitDOMElement *
++		e_html_editor_dom_node_find_child_element (
++						WebKitDOMNode *node,
++						const gchar *tagname);
+ G_END_DECLS
+ 
+ #endif /* E_DOM_UTILS_H */
+diff --git a/e-util/e-html-editor-actions.c b/e-util/e-html-editor-actions.c
+index 713248d676..373a1312ed 100644
+--- a/e-util/e-html-editor-actions.c
++++ b/e-util/e-html-editor-actions.c
+@@ -29,7 +29,6 @@
+ #include "e-html-editor.h"
+ #include "e-html-editor-private.h"
+ #include "e-html-editor-actions.h"
+-#include "e-html-editor-utils.h"
+ #include "e-emoticon-action.h"
+ #include "e-emoticon-chooser.h"
+ #include "e-image-chooser-dialog.h"
+diff --git a/e-util/e-html-editor-hrule-dialog.c b/e-util/e-html-editor-hrule-dialog.c
+index 9ace655812..528f084c28 100644
+--- a/e-util/e-html-editor-hrule-dialog.c
++++ b/e-util/e-html-editor-hrule-dialog.c
+@@ -23,7 +23,6 @@
+ #endif
+ 
+ #include "e-html-editor-hrule-dialog.h"
+-#include "e-html-editor-utils.h"
+ #include "e-html-editor-view.h"
+ 
+ #include <glib/gi18n-lib.h>
+diff --git a/e-util/e-html-editor-image-dialog.c b/e-util/e-html-editor-image-dialog.c
+index 81e0ee8f79..7c12550cb7 100644
+--- a/e-util/e-html-editor-image-dialog.c
++++ b/e-util/e-html-editor-image-dialog.c
+@@ -27,7 +27,6 @@
+ #include <stdlib.h>
+ #include <glib/gi18n-lib.h>
+ 
+-#include "e-html-editor-utils.h"
+ #include "e-image-chooser-dialog.h"
+ 
+ #define E_HTML_EDITOR_IMAGE_DIALOG_GET_PRIVATE(obj) \
+diff --git a/e-util/e-html-editor-link-dialog.c b/e-util/e-html-editor-link-dialog.c
+index 89113e3c78..1cfddfeed7 100644
+--- a/e-util/e-html-editor-link-dialog.c
++++ b/e-util/e-html-editor-link-dialog.c
+@@ -24,7 +24,6 @@
+ 
+ #include "e-html-editor-link-dialog.h"
+ #include "e-html-editor-selection.h"
+-#include "e-html-editor-utils.h"
+ #include "e-html-editor-view.h"
+ 
+ #include <glib/gi18n-lib.h>
+diff --git a/e-util/e-html-editor-selection.c b/e-util/e-html-editor-selection.c
+index 7299304001..26efeec9d4 100644
+--- a/e-util/e-html-editor-selection.c
++++ b/e-util/e-html-editor-selection.c
+@@ -25,7 +25,6 @@
+ #include "e-html-editor-selection.h"
+ #include "e-html-editor-view.h"
+ #include "e-html-editor.h"
+-#include "e-html-editor-utils.h"
+ 
+ #include <e-util/e-util.h>
+ 
+diff --git a/e-util/e-html-editor-utils.c b/e-util/e-html-editor-utils.c
+deleted file mode 100644
+index 2807ea94b0..0000000000
+--- a/e-util/e-html-editor-utils.c
++++ /dev/null
+@@ -1,116 +0,0 @@
+-/*
+- * e-html-editor-utils.c
+- *
+- * Copyright (C) 2012 Dan Vrátil <dvratil@redhat.com>
+- *
+- * This program is free software; you can redistribute it and/or
+- * modify it under the terms of the GNU Lesser General Public
+- * License as published by the Free Software Foundation; either
+- * version 2 of the License, or (at your option) version 3.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+- * Lesser General Public License for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public
+- * License along with the program; if not, see <http://www.gnu.org/licenses/>
+- *
+- */
+-
+-#ifdef HAVE_CONFIG_H
+-#include <config.h>
+-#endif
+-
+-#include "e-html-editor-utils.h"
+-#include <string.h>
+-
+-/**
+- * e_html_editor_dom_node_find_parent_element:
+- * @node: Start node
+- * @tagname: Tag name of element to search
+- *
+- * Recursively searches for first occurance of element with given @tagname
+- * that is parent of given @node.
+- *
+- * Returns: A #WebKitDOMElement with @tagname representing parent of @node or
+- * @NULL when @node has no parent with given @tagname. When @node matches @tagname,
+- * then the @node is returned.
+- */
+-WebKitDOMElement *
+-e_html_editor_dom_node_find_parent_element (WebKitDOMNode *node,
+-                                            const gchar *tagname)
+-{
+-	gint taglen = strlen (tagname);
+-
+-	while (node) {
+-
+-		if (WEBKIT_DOM_IS_ELEMENT (node)) {
+-			gchar *node_tagname;
+-
+-			node_tagname = webkit_dom_element_get_tag_name (
+-						WEBKIT_DOM_ELEMENT (node));
+-
+-			if (node_tagname &&
+-			    (strlen (node_tagname) == taglen) &&
+-			    (g_ascii_strncasecmp (node_tagname, tagname, taglen) == 0)) {
+-				g_free (node_tagname);
+-				return WEBKIT_DOM_ELEMENT (node);
+-			}
+-
+-			g_free (node_tagname);
+-		}
+-
+-		node = WEBKIT_DOM_NODE (webkit_dom_node_get_parent_element (node));
+-	}
+-
+-	return NULL;
+-}
+-
+-/**
+- * e_html_editor_dom_node_find_child_element:
+- * @node: Start node
+- * @tagname: Tag name of element to search.
+- *
+- * Recursively searches for first occurence of element with given @tagname that
+- * is a child of @node.
+- *
+- * Returns: A #WebKitDOMElement with @tagname representing a child of @node or
+- * @NULL when @node has no child with given @tagname. When @node matches @tagname,
+- * then the @node is returned.
+- */
+-WebKitDOMElement *
+-e_html_editor_dom_node_find_child_element (WebKitDOMNode *node,
+-                                           const gchar *tagname)
+-{
+-	WebKitDOMNode *start_node = node;
+-	gint taglen = strlen (tagname);
+-
+-	do {
+-		if (WEBKIT_DOM_IS_ELEMENT (node)) {
+-			gchar *node_tagname;
+-
+-			node_tagname = webkit_dom_element_get_tag_name (
+-					WEBKIT_DOM_ELEMENT (node));
+-
+-			if (node_tagname &&
+-			    (strlen (node_tagname) == taglen) &&
+-			    (g_ascii_strncasecmp (node_tagname, tagname, taglen) == 0)) {
+-				g_free (node_tagname);
+-				return WEBKIT_DOM_ELEMENT (node);
+-			}
+-
+-			g_free (node_tagname);
+-		}
+-
+-		if (webkit_dom_node_has_child_nodes (node)) {
+-			node = webkit_dom_node_get_first_child (node);
+-		} else if (webkit_dom_node_get_next_sibling (node)) {
+-			node = webkit_dom_node_get_next_sibling (node);
+-		} else {
+-			node = webkit_dom_node_get_parent_node (node);
+-		}
+-	} while (!webkit_dom_node_is_same_node (node, start_node));
+-
+-	return NULL;
+-}
+diff --git a/e-util/e-html-editor-utils.h b/e-util/e-html-editor-utils.h
+deleted file mode 100644
+index 7331a87709..0000000000
+--- a/e-util/e-html-editor-utils.h
++++ /dev/null
+@@ -1,44 +0,0 @@
+-/*
+- * e-html-editor-utils.h
+- *
+- * Copyright (C) 2012 Dan Vrátil <dvratil@redhat.com>
+- *
+- * This program is free software; you can redistribute it and/or
+- * modify it under the terms of the GNU Lesser General Public
+- * License as published by the Free Software Foundation; either
+- * version 2 of the License, or (at your option) version 3.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+- * Lesser General Public License for more details.
+- *
+- * You should have received a copy of the GNU Lesser General Public
+- * License along with the program; if not, see <http://www.gnu.org/licenses/>
+- *
+- */
+-
+-#if !defined (__E_UTIL_H_INSIDE__) && !defined (LIBEUTIL_COMPILATION)
+-#error "Only <e-util/e-util.h> should be included directly."
+-#endif
+-
+-#ifndef E_HTML_EDITOR_UTILS_H
+-#define E_HTML_EDITOR_UTILS_H
+-
+-#include <webkit/webkitdom.h>
+-
+-G_BEGIN_DECLS
+-
+-WebKitDOMElement *
+-		e_html_editor_dom_node_find_parent_element
+-						(WebKitDOMNode *node,
+-						 const gchar *tagname);
+-
+-WebKitDOMElement *
+-		e_html_editor_dom_node_find_child_element
+-						(WebKitDOMNode *node,
+-						 const gchar *tagname);
+-
+-G_END_DECLS
+-
+-#endif /* E_HTML_EDITOR_UTILS_H */
+diff --git a/e-util/e-html-editor.c b/e-util/e-html-editor.c
+index 750e005423..f28864bddd 100644
+--- a/e-util/e-html-editor.c
++++ b/e-util/e-html-editor.c
+@@ -31,7 +31,6 @@
+ #include "e-alert-dialog.h"
+ #include "e-alert-sink.h"
+ #include "e-html-editor-private.h"
+-#include "e-html-editor-utils.h"
+ #include "e-html-editor-selection.h"
+ 
+ #define E_HTML_EDITOR_GET_PRIVATE(obj) \
+diff --git a/e-util/e-util.h b/e-util/e-util.h
+index e03f6b68c7..0bf3301d13 100644
+--- a/e-util/e-util.h
++++ b/e-util/e-util.h
+@@ -125,7 +125,6 @@
+ #include <e-util/e-html-editor-spell-check-dialog.h>
+ #include <e-util/e-html-editor-table-dialog.h>
+ #include <e-util/e-html-editor-text-dialog.h>
+-#include <e-util/e-html-editor-utils.h>
+ #include <e-util/e-html-editor-view.h>
+ #include <e-util/e-html-editor.h>
+ #include <e-util/e-html-utils.h>
+-- 
+2.15.0
+

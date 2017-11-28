@@ -1,0 +1,26 @@
+From 0a74fa010052fecde4aa314bf31195c1086837e7 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 22 Apr 2015 14:16:07 +0200
+Subject: [PATCH 0532/1800] EHTMLEditorView - When switch composer mode from
+ HTML on template that was written in WebKit composer the Lose formatting
+ dialog is shown.
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 8a3f437e6a..e7612c6926 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -7328,6 +7328,7 @@ dom_check_if_conversion_needed (WebKitDOMDocument *document)
+ 	hide = !reply && !converted;
+ 
+ 	convert = message && ((!hide && reply && !converted) || (edit_as_new && !converted));
++	convert = convert && !is_from_new_message;
+ 
+ 	return convert;
+ }
+-- 
+2.15.0
+

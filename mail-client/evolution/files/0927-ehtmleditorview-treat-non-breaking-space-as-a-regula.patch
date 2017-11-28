@@ -1,0 +1,25 @@
+From 71b7bab0d205fa7fdaeae23913c1b74f65596721 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 29 Feb 2016 17:26:42 +0100
+Subject: [PATCH 0927/1800] EHTMLEditorView - Treat non-breaking space as a
+ regular space
+
+---
+ e-util/e-html-editor-view.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 05bdf2f24d..8c217acd26 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -2555,6 +2555,7 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 		"  font-size: %dpt;\n"
+ 		"  font-weight: %d;\n"
+ 		"  font-style: %s;\n"
++		" -webkit-nbsp-mode: space;"
+ 		" -webkit-line-break: after-white-space;\n",
+ 		pango_font_description_get_family (vw),
+ 		pango_font_description_get_size (vw) / PANGO_SCALE,
+-- 
+2.15.0
+

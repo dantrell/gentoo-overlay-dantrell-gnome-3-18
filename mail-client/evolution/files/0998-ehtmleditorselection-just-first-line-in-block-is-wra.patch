@@ -1,0 +1,26 @@
+From 9de69f62bd72cbada5a5670656f1755da46a23c7 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 1 Mar 2016 13:41:37 +0100
+Subject: [PATCH 0998/1800] EHTMLEditorSelection - Just first line in block is
+ wrapped
+
+---
+ web-extensions/composer/e-html-editor-selection-dom-functions.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index fe41cf5014..313567da44 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -2236,7 +2236,7 @@ wrap_lines (WebKitDOMDocument *document,
+ 		start_node = node;
+ 	} else {
+ 		WebKitDOMElement *selection_start_marker, *selection_end_marker;
+-		WebKitDOMNode *start_point;
++		WebKitDOMNode *start_point = NULL;
+ 
+ 		if (!webkit_dom_node_has_child_nodes (block))
+ 			return WEBKIT_DOM_ELEMENT (block);
+-- 
+2.15.0
+

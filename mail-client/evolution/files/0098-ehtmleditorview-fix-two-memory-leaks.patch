@@ -1,0 +1,40 @@
+From f30f0e030b81b121e8f214601544b266651aa4c3 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 21 Nov 2014 15:04:09 +0100
+Subject: [PATCH 0098/1800] [EHTMLEditorView] Fix two memory leaks
+
+---
+ e-util/e-html-editor-view.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 1c15b91531..f80480a25c 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -1374,6 +1374,13 @@ html_editor_view_finalize (GObject *object)
+ 		priv->old_settings = NULL;
+ 	}
+ 
++	if (priv->post_reload_operations) {
++		g_warn_if_fail (g_queue_is_empty (priv->post_reload_operations));
++
++		g_queue_free (priv->post_reload_operations);
++		priv->post_reload_operations = NULL;
++	}
++
+ 	/* Chain up to parent's finalize() method. */
+ 	G_OBJECT_CLASS (e_html_editor_view_parent_class)->finalize (object);
+ }
+@@ -3369,6 +3376,9 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 			"  color: %s !important; \n",
+ 			citation_color);
+ 
++	g_free (citation_color);
++	citation_color = NULL;
++
+ 	g_string_append (stylesheet, "}\n");
+ 
+ 	g_string_append (
+-- 
+2.15.0
+

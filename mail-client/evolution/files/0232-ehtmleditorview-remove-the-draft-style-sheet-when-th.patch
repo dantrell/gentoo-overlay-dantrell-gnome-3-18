@@ -1,0 +1,25 @@
+From 7a3f250c7028778da49b3d2f9e59f4532e09137e Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 09:00:46 +0100
+Subject: [PATCH 0232/1800] EHTMLEditorView - Remove the Draft style sheet when
+ the draft is loaded
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 06cb15fb75..b717c73a88 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -5911,6 +5911,7 @@ dom_process_content_after_load (WebKitDOMDocument *document,
+ 		/* Restore the selection how it was when the draft was saved */
+ 		dom_move_caret_into_element (document, WEBKIT_DOM_ELEMENT (body), FALSE);
+ 		dom_selection_restore (document);
++		dom_remove_embed_style_sheet (document);
+ 	}
+ 
+ 	dom_set_links_active (document, FALSE);
+-- 
+2.15.0
+

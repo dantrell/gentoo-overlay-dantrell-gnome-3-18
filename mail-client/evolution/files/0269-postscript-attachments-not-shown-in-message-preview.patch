@@ -1,0 +1,102 @@
+From 39bbc64470f8a4644e55e9e4e1c3876a43777ac4 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 9 Feb 2015 18:08:29 +0100
+Subject: [PATCH 0269/1800] Postscript attachments not shown in message preview
+
+The application/postscript mime type had been handled by the text-hightlight
+module, but thinking of it, it doesn't make much sense, because most users
+would prefer to see the content rather in a postscript viewer, than
+the source of the postscript file, thus this change removes the mime type
+from the text-hightlight module. There had been also issues about thinking
+that certain parts had been handled, while they did not, which this change
+fixes as well.
+
+The issue had been reported downstream at:
+https://bugzilla.redhat.com/show_bug.cgi?id=1187327
+---
+ em-format/e-mail-parser-text-plain.c                  | 7 ++++---
+ modules/text-highlight/e-mail-parser-text-highlight.c | 5 +++--
+ modules/text-highlight/languages.c                    | 5 -----
+ 3 files changed, 7 insertions(+), 10 deletions(-)
+
+diff --git a/em-format/e-mail-parser-text-plain.c b/em-format/e-mail-parser-text-plain.c
+index 7fbc59c07c..ef3e4f7c39 100644
+--- a/em-format/e-mail-parser-text-plain.c
++++ b/em-format/e-mail-parser-text-plain.c
+@@ -56,10 +56,11 @@ process_part (EMailParser *parser,
+ 	CamelContentType *type;
+ 	EMailPart *mail_part;
+ 	gint s_len = part_id->len;
++	gboolean handled = TRUE;
+ 
+ 	type = camel_mime_part_get_content_type (part);
+ 	if (!camel_content_type_is (type, "text", "*")) {
+-		e_mail_parser_parse_part (
++		handled = e_mail_parser_parse_part (
+ 			parser, CAMEL_MIME_PART (part), part_id,
+ 			cancellable, out_mail_parts);
+ 
+@@ -88,14 +89,14 @@ process_part (EMailParser *parser,
+ 	} else {
+ 		g_string_append_printf (part_id, ".inline.%d", part_number);
+ 
+-		e_mail_parser_parse_part (
++		handled = e_mail_parser_parse_part (
+ 			parser, CAMEL_MIME_PART (part), part_id,
+ 			cancellable, out_mail_parts);
+ 
+ 		g_string_truncate (part_id, s_len);
+ 	}
+ 
+-	return TRUE;
++	return handled;
+ }
+ 
+ static gboolean
+diff --git a/modules/text-highlight/e-mail-parser-text-highlight.c b/modules/text-highlight/e-mail-parser-text-highlight.c
+index d729a382ba..e27c2b3981 100644
+--- a/modules/text-highlight/e-mail-parser-text-highlight.c
++++ b/modules/text-highlight/e-mail-parser-text-highlight.c
+@@ -55,6 +55,7 @@ empe_text_highlight_parse (EMailParserExtension *extension,
+                            GQueue *out_mail_parts)
+ {
+ 	CamelContentType *ct;
++	gboolean handled;
+ 	gint len;
+ 
+ 	/* Prevent recursion */
+@@ -77,13 +78,13 @@ empe_text_highlight_parse (EMailParserExtension *extension,
+ 	/* All source codes and scripts are in general plain texts,
+ 	 * so let text/plain parser handle it. */
+ 
+-	e_mail_parser_parse_part_as (
++	handled = e_mail_parser_parse_part_as (
+ 		parser, part, part_id, "text/plain",
+ 		cancellable, out_mail_parts);
+ 
+ 	g_string_truncate (part_id, len);
+ 
+-	return TRUE;
++	return handled;
+ }
+ 
+ static void
+diff --git a/modules/text-highlight/languages.c b/modules/text-highlight/languages.c
+index a554a4ccb0..ef232a04f9 100644
+--- a/modules/text-highlight/languages.c
++++ b/modules/text-highlight/languages.c
+@@ -320,11 +320,6 @@ static struct Language other_languages[] = {
+ 	  (const gchar *[]) { NULL }
+ 	},
+ 
+-	{ "ps", N_("_PostScript"),
+-	  (const gchar *[]) { (gchar[]) { "ps" } , NULL },
+-	  (const gchar *[]) { (gchar[]) { "application/postscript" }, NULL }
+-	},
+-
+ 	{ "r", N_("_R"),
+ 	  (const gchar *[]) { (gchar[]) { "r" }, NULL },
+ 	  (const gchar *[]) { NULL }
+-- 
+2.15.0
+

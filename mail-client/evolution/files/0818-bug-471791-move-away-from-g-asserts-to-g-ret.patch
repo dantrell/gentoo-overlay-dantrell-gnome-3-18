@@ -1,0 +1,864 @@
+From 511962050f9fd50dd721bc0072f81a79c2414e8b Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 17 Jun 2015 12:02:30 +0200
+Subject: [PATCH 0818/1800] Bug 471791 - Move away from g_asserts to g_ret*
+
+---
+ addressbook/gui/widgets/e-addressbook-view.c  |  2 +-
+ calendar/gui/e-cal-list-view.c                |  2 +-
+ calendar/gui/e-memo-table.c                   |  2 +-
+ calendar/gui/e-task-table.c                   |  2 +-
+ composer/e-composer-header-table.c            |  2 +-
+ composer/e-composer-name-header.c             |  6 ++---
+ e-util/e-attachment-store.c                   |  2 +-
+ e-util/e-contact-store.c                      | 12 +++++-----
+ e-util/e-destination-store.c                  |  4 ++--
+ e-util/e-emoticon-tool-button.c               |  2 +-
+ e-util/e-map.c                                |  4 ++--
+ e-util/e-misc-utils.c                         |  4 ++--
+ e-util/e-name-selector-dialog.c               | 27 +++++++++++-----------
+ e-util/e-name-selector-entry.c                | 32 +++++++++++++--------------
+ e-util/e-name-selector-model.c                |  8 +++----
+ e-util/e-name-selector.c                      |  4 ++--
+ e-util/e-tree-model-generator.c               |  6 ++---
+ e-util/evolution-source-viewer.c              |  2 +-
+ e-util/test-name-selector.c                   |  2 +-
+ e-util/test-proxy-preferences.c               |  2 +-
+ e-util/test-source-combo-box.c                |  2 +-
+ e-util/test-source-selector.c                 |  2 +-
+ mail/e-mail-account-store.c                   |  2 +-
+ mail/message-list.c                           |  2 +-
+ mail/test-mail-autoconfig.c                   |  4 ++--
+ modules/itip-formatter/itip-view.c            | 17 +++++++-------
+ modules/mail/e-mail-shell-view-private.c      |  4 ++--
+ modules/spamassassin/evolution-spamassassin.c | 10 ++++-----
+ plugins/mail-to-task/mail-to-task.c           |  8 +++----
+ 29 files changed, 89 insertions(+), 89 deletions(-)
+
+diff --git a/addressbook/gui/widgets/e-addressbook-view.c b/addressbook/gui/widgets/e-addressbook-view.c
+index 4d5db665b2..4260d0822d 100644
+--- a/addressbook/gui/widgets/e-addressbook-view.c
++++ b/addressbook/gui/widgets/e-addressbook-view.c
+@@ -307,7 +307,7 @@ addressbook_view_create_table_view (EAddressbookView *view,
+ 	/* Failure here is fatal. */
+ 	if (local_error != NULL) {
+ 		g_error ("%s: %s", etspecfile, local_error->message);
+-		g_assert_not_reached ();
++		g_return_if_reached ();
+ 	}
+ 
+ 	/* Here we create the table.  We give it the three pieces of
+diff --git a/calendar/gui/e-cal-list-view.c b/calendar/gui/e-cal-list-view.c
+index 149df47c79..3f51c3f042 100644
+--- a/calendar/gui/e-cal-list-view.c
++++ b/calendar/gui/e-cal-list-view.c
+@@ -286,7 +286,7 @@ setup_e_table (ECalListView *cal_list_view)
+ 	/* Failure here is fatal. */
+ 	if (local_error != NULL) {
+ 		g_error ("%s: %s", etspecfile, local_error->message);
+-		g_assert_not_reached ();
++		g_return_if_reached ();
+ 	}
+ 
+ 	widget = e_table_new (E_TABLE_MODEL (model), extras, specification);
+diff --git a/calendar/gui/e-memo-table.c b/calendar/gui/e-memo-table.c
+index ccf803b39f..2ff3cdc79f 100644
+--- a/calendar/gui/e-memo-table.c
++++ b/calendar/gui/e-memo-table.c
+@@ -351,7 +351,7 @@ memo_table_constructed (GObject *object)
+ 	/* Failure here is fatal. */
+ 	if (local_error != NULL) {
+ 		g_error ("%s: %s", etspecfile, local_error->message);
+-		g_assert_not_reached ();
++		g_return_if_reached ();
+ 	}
+ 
+ 	e_table_construct (
+diff --git a/calendar/gui/e-task-table.c b/calendar/gui/e-task-table.c
+index f3394b67e6..7b340ed2dd 100644
+--- a/calendar/gui/e-task-table.c
++++ b/calendar/gui/e-task-table.c
+@@ -652,7 +652,7 @@ task_table_constructed (GObject *object)
+ 	/* Failure here is fatal. */
+ 	if (local_error != NULL) {
+ 		g_error ("%s: %s", etspecfile, local_error->message);
+-		g_assert_not_reached ();
++		g_return_if_reached ();
+ 	}
+ 
+ 	e_table_construct (
+diff --git a/composer/e-composer-header-table.c b/composer/e-composer-header-table.c
+index 366f088d1a..40b75aa423 100644
+--- a/composer/e-composer-header-table.c
++++ b/composer/e-composer-header-table.c
+@@ -1162,7 +1162,7 @@ e_composer_header_table_get_destinations (EComposerHeaderTable *table)
+ 		destinations[--total] = g_object_ref (to[--n_to]);
+ 
+ 	/* Counters should all be zero now. */
+-	g_assert (total == 0 && n_to == 0 && n_cc == 0 && n_bcc == 0);
++	g_return_val_if_fail (total == 0 && n_to == 0 && n_cc == 0 && n_bcc == 0, destinations);
+ 
+ 	e_destination_freev (to);
+ 	e_destination_freev (cc);
+diff --git a/composer/e-composer-name-header.c b/composer/e-composer-name-header.c
+index 7005424f2c..d99b325688 100644
+--- a/composer/e-composer-name-header.c
++++ b/composer/e-composer-name-header.c
+@@ -137,7 +137,7 @@ composer_name_header_set_property (GObject *object,
+ 
+ 	switch (property_id) {
+ 		case PROP_NAME_SELECTOR:	/* construct only */
+-			g_assert (priv->name_selector == NULL);
++			g_return_if_fail (priv->name_selector == NULL);
+ 			priv->name_selector = g_value_dup_object (value);
+ 			return;
+ 	}
+@@ -191,11 +191,11 @@ composer_name_header_constructed (GObject *object)
+ 	/* Input widget must be set before chaining up. */
+ 
+ 	priv = E_COMPOSER_NAME_HEADER_GET_PRIVATE (object);
+-	g_assert (E_IS_NAME_SELECTOR (priv->name_selector));
++	g_return_if_fail (E_IS_NAME_SELECTOR (priv->name_selector));
+ 
+ 	model = e_name_selector_peek_model (priv->name_selector);
+ 	label = e_composer_header_get_label (E_COMPOSER_HEADER (object));
+-	g_assert (label != NULL);
++	g_return_if_fail (label != NULL);
+ 
+ 	sections = e_name_selector_model_list_sections (model);
+ 	priv->destination_index = g_list_length (sections);
+diff --git a/e-util/e-attachment-store.c b/e-util/e-attachment-store.c
+index 57fefdb307..027eee6ba5 100644
+--- a/e-util/e-attachment-store.c
++++ b/e-util/e-attachment-store.c
+@@ -186,7 +186,7 @@ e_attachment_store_init (EAttachmentStore *store)
+ 	types[column++] = G_TYPE_BOOLEAN;	/* COLUMN_SAVING */
+ 	types[column++] = G_TYPE_UINT64;	/* COLUMN_SIZE */
+ 
+-	g_assert (column == E_ATTACHMENT_STORE_NUM_COLUMNS);
++	g_return_if_fail (column == E_ATTACHMENT_STORE_NUM_COLUMNS);
+ 
+ 	gtk_list_store_set_column_types (
+ 		GTK_LIST_STORE (store), G_N_ELEMENTS (types), types);
+diff --git a/e-util/e-contact-store.c b/e-util/e-contact-store.c
+index b2b36db527..05c0bde66d 100644
+--- a/e-util/e-contact-store.c
++++ b/e-util/e-contact-store.c
+@@ -370,7 +370,7 @@ get_contact_source_offset (EContactStore *contact_store,
+ 
+ 	array = contact_store->priv->contact_sources;
+ 
+-	g_assert (contact_source_index < array->len);
++	g_return_val_if_fail (contact_source_index < array->len, 0);
+ 
+ 	for (i = 0; i < contact_source_index; i++) {
+ 		ContactSource *source;
+@@ -498,7 +498,7 @@ get_contact_at_row (EContactStore *contact_store,
+ 	offset = get_contact_source_offset (contact_store, source_index);
+ 	row -= offset;
+ 
+-	g_assert (row < source->contacts->len);
++	g_return_val_if_fail (row < source->contacts->len, NULL);
+ 
+ 	return g_ptr_array_index (source->contacts, row);
+ }
+@@ -661,7 +661,7 @@ view_complete (EContactStore *contact_store,
+ 		return;
+ 	}
+ 
+-	g_assert (client_view == source->client_view_pending);
++	g_return_if_fail (client_view == source->client_view_pending);
+ 
+ 	/* However, if it was a pending view, calculate and emit the differences between that
+ 	 * and the current view, and move the pending view up to current.
+@@ -796,10 +796,10 @@ clear_contact_source (EContactStore *contact_store,
+ 	gint offset;
+ 
+ 	source_index = find_contact_source_by_pointer (contact_store, source);
+-	g_assert (source_index >= 0);
++	g_return_if_fail (source_index >= 0);
+ 
+ 	offset = get_contact_source_offset (contact_store, source_index);
+-	g_assert (offset >= 0);
++	g_return_if_fail (offset >= 0);
+ 
+ 	/* Inform listeners that contacts went away */
+ 
+@@ -899,7 +899,7 @@ query_contact_source (EContactStore *contact_store,
+ {
+ 	gchar *query_str;
+ 
+-	g_assert (source->book_client != NULL);
++	g_return_if_fail (source->book_client != NULL);
+ 
+ 	if (!contact_store->priv->query) {
+ 		clear_contact_source (contact_store, source);
+diff --git a/e-util/e-destination-store.c b/e-util/e-destination-store.c
+index 0b705e1190..c61b42f112 100644
+--- a/e-util/e-destination-store.c
++++ b/e-util/e-destination-store.c
+@@ -694,7 +694,7 @@ e_destination_store_get_value (GtkTreeModel *tree_model,
+ 		return;
+ 
+ 	destination = g_ptr_array_index (array, row);
+-	g_assert (destination);
++	g_return_if_fail (destination);
+ 
+ 	switch (column) {
+ 		case E_DESTINATION_STORE_COLUMN_NAME:
+@@ -730,7 +730,7 @@ e_destination_store_get_value (GtkTreeModel *tree_model,
+ 			break;
+ 
+ 		default:
+-			g_assert_not_reached ();
++			g_warn_if_reached ();
+ 			break;
+ 	}
+ }
+diff --git a/e-util/e-emoticon-tool-button.c b/e-util/e-emoticon-tool-button.c
+index f15e2dbb64..3271bd409c 100644
+--- a/e-util/e-emoticon-tool-button.c
++++ b/e-util/e-emoticon-tool-button.c
+@@ -622,7 +622,7 @@ e_emoticon_tool_button_init (EEmoticonToolButton *button)
+ 
+ 	chooser = E_EMOTICON_CHOOSER (button);
+ 	list = e_emoticon_chooser_get_items ();
+-	g_assert (g_list_length (list) <= NUM_ROWS * NUM_COLS);
++	g_return_if_fail (g_list_length (list) <= NUM_ROWS * NUM_COLS);
+ 
+ 	for (iter = list, ii = 0; iter != NULL; iter = iter->next, ii++) {
+ 		EEmoticon *emoticon = iter->data;
+diff --git a/e-util/e-map.c b/e-util/e-map.c
+index ae472eb863..1b3d51ace5 100644
+--- a/e-util/e-map.c
++++ b/e-util/e-map.c
+@@ -145,7 +145,7 @@ e_map_is_tweening (EMap *map)
+ static void
+ e_map_stop_tweening (EMap *map)
+ {
+-	g_assert (map->priv->tweens == NULL);
++	g_return_if_fail (map->priv->tweens == NULL);
+ 
+ 	if (!e_map_is_tweening (map))
+ 		return;
+@@ -566,7 +566,7 @@ e_map_finalize (GObject *object)
+ 	}
+ 
+ 	/* gone in unrealize */
+-	g_assert (map->priv->map_render_surface == NULL);
++	g_warn_if_fail (map->priv->map_render_surface == NULL);
+ 
+ 	G_OBJECT_CLASS (e_map_parent_class)->finalize (object);
+ }
+diff --git a/e-util/e-misc-utils.c b/e-util/e-misc-utils.c
+index b1f8dd171c..d6b3a05e65 100644
+--- a/e-util/e-misc-utils.c
++++ b/e-util/e-misc-utils.c
+@@ -757,7 +757,7 @@ e_load_ui_builder_definition (GtkBuilder *builder,
+ 
+ 	if (error != NULL) {
+ 		g_error ("%s: %s", basename, error->message);
+-		g_assert_not_reached ();
++		g_warn_if_reached ();
+ 	}
+ }
+ 
+@@ -791,7 +791,7 @@ e_load_ui_manager_definition (GtkUIManager *ui_manager,
+ 
+ 	if (error != NULL) {
+ 		g_error ("%s: %s", basename, error->message);
+-		g_assert_not_reached ();
++		g_warn_if_reached ();
+ 	}
+ 
+ 	return merge_id;
+diff --git a/e-util/e-name-selector-dialog.c b/e-util/e-name-selector-dialog.c
+index 4f2fe4f88c..d7761906bc 100644
+--- a/e-util/e-name-selector-dialog.c
++++ b/e-util/e-name-selector-dialog.c
+@@ -928,9 +928,9 @@ add_section (ENameSelectorDialog *name_selector_dialog,
+ 	gchar		  *text;
+ 	GtkWidget         *hgrid;
+ 
+-	g_assert (name != NULL);
+-	g_assert (pretty_name != NULL);
+-	g_assert (E_IS_DESTINATION_STORE (destination_store));
++	g_return_val_if_fail (name != NULL, -1);
++	g_return_val_if_fail (pretty_name != NULL, -1);
++	g_return_val_if_fail (E_IS_DESTINATION_STORE (destination_store), -1);
+ 
+ 	priv = E_NAME_SELECTOR_DIALOG_GET_PRIVATE (name_selector_dialog);
+ 
+@@ -1077,8 +1077,8 @@ free_section (ENameSelectorDialog *name_selector_dialog,
+ {
+ 	Section *section;
+ 
+-	g_assert (n >= 0);
+-	g_assert (n < name_selector_dialog->priv->sections->len);
++	g_return_if_fail (n >= 0);
++	g_return_if_fail (n < name_selector_dialog->priv->sections->len);
+ 
+ 	section = &g_array_index (
+ 		name_selector_dialog->priv->sections, Section, n);
+@@ -1108,7 +1108,7 @@ model_section_removed (ENameSelectorDialog *name_selector_dialog,
+ 	gint section_index;
+ 
+ 	section_index = find_section_by_name (name_selector_dialog, name);
+-	g_assert (section_index >= 0);
++	g_return_if_fail (section_index >= 0);
+ 
+ 	free_section (name_selector_dialog, section_index);
+ 	g_array_remove_index (
+@@ -1361,7 +1361,7 @@ contact_activated (ENameSelectorDialog *name_selector_dialog,
+ 	if (!gtk_tree_model_get_iter (
+ 		GTK_TREE_MODEL (name_selector_dialog->priv->contact_sort),
+ 		&iter, path))
+-		g_assert_not_reached ();
++		g_return_if_reached ();
+ 
+ 	sort_iter_to_contact_store_iter (name_selector_dialog, &iter, &email_n);
+ 
+@@ -1419,11 +1419,11 @@ destination_activated (ENameSelectorDialog *name_selector_dialog,
+ 
+ 	if (!gtk_tree_model_get_iter (
+ 		GTK_TREE_MODEL (destination_store), &iter, path))
+-		g_assert_not_reached ();
++		g_return_if_reached ();
+ 
+ 	destination = e_destination_store_get_destination (
+ 		destination_store, &iter);
+-	g_assert (destination);
++	g_return_if_fail (destination);
+ 
+ 	e_destination_store_remove_destination (
+ 		destination_store, destination);
+@@ -1469,15 +1469,14 @@ remove_selection (ENameSelectorDialog *name_selector_dialog,
+ 		GtkTreeIter iter;
+ 		GtkTreePath *path = l->data;
+ 
+-		if (!gtk_tree_model_get_iter (GTK_TREE_MODEL (destination_store),
+-					      &iter, path))
+-			g_assert_not_reached ();
++		if (!gtk_tree_model_get_iter (GTK_TREE_MODEL (destination_store), &iter, path))
++			g_return_val_if_reached (FALSE);
+ 
+ 		gtk_tree_path_free (path);
+ 
+ 		destination = e_destination_store_get_destination (
+ 			destination_store, &iter);
+-		g_assert (destination);
++		g_return_val_if_fail (destination, FALSE);
+ 
+ 		e_destination_store_remove_destination (
+ 			destination_store, destination);
+@@ -1758,7 +1757,7 @@ destination_column_formatter (GtkTreeViewColumn *column,
+ 	GString           *buffer;
+ 
+ 	destination = e_destination_store_get_destination (destination_store, iter);
+-	g_assert (destination);
++	g_return_if_fail (destination);
+ 
+ 	buffer = g_string_new (e_destination_get_name (destination));
+ 
+diff --git a/e-util/e-name-selector-entry.c b/e-util/e-name-selector-entry.c
+index 3dcb938dc5..94b92a59ef 100644
+--- a/e-util/e-name-selector-entry.c
++++ b/e-util/e-name-selector-entry.c
+@@ -507,7 +507,7 @@ get_utf8_string_context (const gchar *string,
+ 	gint   i;
+ 
+ 	/* n_unichars must be even */
+-	g_assert (n_unichars % 2 == 0);
++	g_return_if_fail (n_unichars % 2 == 0);
+ 
+ 	len = g_utf8_strlen (string, -1);
+ 	gap = n_unichars / 2;
+@@ -936,12 +936,12 @@ build_textrep_for_contact (EContact *contact,
+ 			break;
+ 
+ 		default:
+-			g_assert_not_reached ();
++			g_return_val_if_reached (NULL);
+ 			break;
+ 	}
+ 
+-	g_assert (email);
+-	g_assert (strlen (email) > 0);
++	g_return_val_if_fail (email, NULL);
++	g_return_val_if_fail (strlen (email) > 0, NULL);
+ 
+ 	if (name)
+ 		textrep = g_strdup_printf ("%s <%s>", name, email);
+@@ -968,8 +968,8 @@ contact_match_cue (ENameSelectorEntry *name_selector_entry,
+ 	gint           cue_len;
+ 	gint           i;
+ 
+-	g_assert (contact);
+-	g_assert (cue_str);
++	g_return_val_if_fail (contact, FALSE);
++	g_return_val_if_fail (cue_str, FALSE);
+ 
+ 	if (g_utf8_strlen (cue_str, -1) < name_selector_entry->priv->minimum_query_length)
+ 		return FALSE;
+@@ -1046,7 +1046,7 @@ find_existing_completion (ENameSelectorEntry *name_selector_entry,
+ 	gint           best_email_num = -1;
+ 	EBookClient   *best_book_client = NULL;
+ 
+-	g_assert (cue_str);
++	g_return_val_if_fail (cue_str, FALSE);
+ 
+ 	if (!name_selector_entry->priv->contact_store)
+ 		return FALSE;
+@@ -1328,7 +1328,7 @@ insert_destination_at_position (ENameSelectorEntry *name_selector_entry,
+ 	index = get_index_at_position (text, pos);
+ 
+ 	destination = build_destination_at_position (text, pos);
+-	g_assert (destination);
++	g_return_if_fail (destination);
+ 
+ 	g_signal_handlers_block_by_func (
+ 		name_selector_entry->priv->destination_store,
+@@ -1357,7 +1357,7 @@ modify_destination_at_position (ENameSelectorEntry *name_selector_entry,
+ 
+ 	text = gtk_entry_get_text (GTK_ENTRY (name_selector_entry));
+ 	raw_address = get_address_at_position (text, pos);
+-	g_assert (raw_address);
++	g_return_if_fail (raw_address);
+ 
+ 	if (e_destination_get_contact (destination))
+ 		rebuild_attributes = TRUE;
+@@ -1542,7 +1542,7 @@ insert_unichar (ENameSelectorEntry *name_selector_entry,
+ 		gtk_editable_insert_text (GTK_EDITABLE (name_selector_entry), ", ", -1, pos);
+ 
+ 		/* Update model */
+-		g_assert (*pos >= 2);
++		g_return_val_if_fail (*pos >= 2, 0);
+ 
+ 		/* If we inserted the comma at the end of, or in the middle of, an existing
+ 		 * address, add a new destination for what appears after comma. Else, we
+@@ -2310,7 +2310,7 @@ generate_contact_rows (EContactStore *contact_store,
+ 	gint         n_rows;
+ 
+ 	contact = e_contact_store_get_contact (contact_store, iter);
+-	g_assert (contact != NULL);
++	g_return_val_if_fail (contact != NULL, 0);
+ 
+ 	contact_uid = e_contact_get_const (contact, E_CONTACT_UID);
+ 	if (!contact_uid)
+@@ -2493,7 +2493,7 @@ destination_row_changed (ENameSelectorEntry *name_selector_entry,
+ 	if (!destination)
+ 		return;
+ 
+-	g_assert (n >= 0);
++	g_return_if_fail (n >= 0);
+ 
+ 	entry_text = gtk_entry_get_text (GTK_ENTRY (name_selector_entry));
+ 	if (!get_range_by_index (entry_text, n, &range_start, &range_end)) {
+@@ -2534,8 +2534,8 @@ destination_row_inserted (ENameSelectorEntry *name_selector_entry,
+ 	n = gtk_tree_path_get_indices (path)[0];
+ 	destination = e_destination_store_get_destination (name_selector_entry->priv->destination_store, iter);
+ 
+-	g_assert (n >= 0);
+-	g_assert (destination != NULL);
++	g_return_if_fail (n >= 0);
++	g_return_if_fail (destination != NULL);
+ 
+ 	entry_text = gtk_entry_get_text (GTK_ENTRY (name_selector_entry));
+ 
+@@ -2584,7 +2584,7 @@ destination_row_deleted (ENameSelectorEntry *name_selector_entry,
+ 	gint         n;
+ 
+ 	n = gtk_tree_path_get_indices (path)[0];
+-	g_assert (n >= 0);
++	g_return_if_fail (n >= 0);
+ 
+ 	text = gtk_entry_get_text (GTK_ENTRY (name_selector_entry));
+ 
+@@ -2664,7 +2664,7 @@ setup_destination_store (ENameSelectorEntry *name_selector_entry)
+ 		GtkTreePath *path;
+ 
+ 		path = gtk_tree_model_get_path (GTK_TREE_MODEL (name_selector_entry->priv->destination_store), &iter);
+-		g_assert (path);
++		g_return_if_fail (path);
+ 
+ 		destination_row_inserted (name_selector_entry, path, &iter);
+ 	} while (gtk_tree_model_iter_next (GTK_TREE_MODEL (name_selector_entry->priv->destination_store), &iter));
+diff --git a/e-util/e-name-selector-model.c b/e-util/e-name-selector-model.c
+index 5b3690d6e4..3e5116ba4c 100644
+--- a/e-util/e-name-selector-model.c
++++ b/e-util/e-name-selector-model.c
+@@ -184,7 +184,7 @@ generate_contact_rows (EContactStore *contact_store,
+ 	gint         i;
+ 
+ 	contact = e_contact_store_get_contact (contact_store, iter);
+-	g_assert (contact != NULL);
++	g_return_val_if_fail (contact != NULL, 0);
+ 
+ 	contact_uid = e_contact_get_const (contact, E_CONTACT_UID);
+ 	if (!contact_uid)
+@@ -351,8 +351,8 @@ free_section (ENameSelectorModel *name_selector_model,
+ {
+ 	Section *section;
+ 
+-	g_assert (n >= 0);
+-	g_assert (n < name_selector_model->priv->sections->len);
++	g_return_if_fail (n >= 0);
++	g_return_if_fail (n < name_selector_model->priv->sections->len);
+ 
+ 	section = &g_array_index (name_selector_model->priv->sections, Section, n);
+ 
+@@ -371,7 +371,7 @@ find_section_by_name (ENameSelectorModel *name_selector_model,
+ {
+ 	gint i;
+ 
+-	g_assert (name != NULL);
++	g_return_val_if_fail (name != NULL, -1);
+ 
+ 	for (i = 0; i < name_selector_model->priv->sections->len; i++) {
+ 		Section *section = &g_array_index (name_selector_model->priv->sections, Section, i);
+diff --git a/e-util/e-name-selector.c b/e-util/e-name-selector.c
+index 53f9b36891..e5f89930c7 100644
+--- a/e-util/e-name-selector.c
++++ b/e-util/e-name-selector.c
+@@ -437,7 +437,7 @@ add_section (ENameSelector *name_selector,
+ 	GArray *array;
+ 	Section section;
+ 
+-	g_assert (name != NULL);
++	g_return_val_if_fail (name != NULL, -1);
+ 
+ 	memset (&section, 0, sizeof (Section));
+ 	section.name = g_strdup (name);
+@@ -454,7 +454,7 @@ find_section_by_name (ENameSelector *name_selector,
+ 	GArray *array;
+ 	gint i;
+ 
+-	g_assert (name != NULL);
++	g_return_val_if_fail (name != NULL, -1);
+ 
+ 	array = name_selector->priv->sections;
+ 
+diff --git a/e-util/e-tree-model-generator.c b/e-util/e-tree-model-generator.c
+index 981ca51a0a..81c4086493 100644
+--- a/e-util/e-tree-model-generator.c
++++ b/e-util/e-tree-model-generator.c
+@@ -257,7 +257,7 @@ static void
+ row_deleted (ETreeModelGenerator *tree_model_generator,
+              GtkTreePath *path)
+ {
+-	g_assert (path);
++	g_return_if_fail (path);
+ 
+ 	ETMG_DEBUG (g_print ("row_deleted emitting\n"));
+ 	gtk_tree_model_row_deleted (GTK_TREE_MODEL (tree_model_generator), path);
+@@ -269,7 +269,7 @@ row_inserted (ETreeModelGenerator *tree_model_generator,
+ {
+ 	GtkTreeIter iter;
+ 
+-	g_assert (path);
++	g_return_if_fail (path);
+ 
+ 	if (gtk_tree_model_get_iter (GTK_TREE_MODEL (tree_model_generator), &iter, path)) {
+ 		ETMG_DEBUG (g_print ("row_inserted emitting\n"));
+@@ -285,7 +285,7 @@ row_changed (ETreeModelGenerator *tree_model_generator,
+ {
+ 	GtkTreeIter iter;
+ 
+-	g_assert (path);
++	g_return_if_fail (path);
+ 
+ 	if (gtk_tree_model_get_iter (GTK_TREE_MODEL (tree_model_generator), &iter, path)) {
+ 		ETMG_DEBUG (g_print ("row_changed emitting\n"));
+diff --git a/e-util/evolution-source-viewer.c b/e-util/evolution-source-viewer.c
+index 79a827f7f8..61c5880baf 100644
+--- a/e-util/evolution-source-viewer.c
++++ b/e-util/evolution-source-viewer.c
+@@ -1165,7 +1165,7 @@ main (gint argc,
+ 	if (error != NULL) {
+ 		g_warn_if_fail (viewer == NULL);
+ 		g_error ("%s", error->message);
+-		g_assert_not_reached ();
++		g_return_val_if_reached (-1);
+ 	}
+ 
+ 	g_signal_connect (
+diff --git a/e-util/test-name-selector.c b/e-util/test-name-selector.c
+index e253232781..feafaf79d2 100644
+--- a/e-util/test-name-selector.c
++++ b/e-util/test-name-selector.c
+@@ -95,7 +95,7 @@ main (gint argc,
+ 		g_error (
+ 			"Failed to load ESource registry: %s",
+ 			error->message);
+-		g_assert_not_reached ();
++		g_return_val_if_reached (-1);
+ 	}
+ 
+ 	client_cache = e_client_cache_new (registry);
+diff --git a/e-util/test-proxy-preferences.c b/e-util/test-proxy-preferences.c
+index eb8cab2793..a072cc17a8 100644
+--- a/e-util/test-proxy-preferences.c
++++ b/e-util/test-proxy-preferences.c
+@@ -58,7 +58,7 @@ main (gint argc,
+ 		g_error (
+ 			"Failed to load ESource registry: %s",
+ 			local_error->message);
+-		g_assert_not_reached ();
++		g_return_val_if_reached (-1);
+ 	}
+ 
+ 	window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+diff --git a/e-util/test-source-combo-box.c b/e-util/test-source-combo-box.c
+index 3535b574c9..c365aa1eea 100644
+--- a/e-util/test-source-combo-box.c
++++ b/e-util/test-source-combo-box.c
+@@ -94,7 +94,7 @@ main (gint argc,
+ 		g_error (
+ 			"Failed to load ESource registry: %s",
+ 			error->message);
+-		g_assert_not_reached ();
++		g_return_val_if_reached (-1);
+ 	}
+ 
+ 	g_idle_add ((GSourceFunc) on_idle_create_widget, registry);
+diff --git a/e-util/test-source-selector.c b/e-util/test-source-selector.c
+index b698adda0a..c3782cbdd4 100644
+--- a/e-util/test-source-selector.c
++++ b/e-util/test-source-selector.c
+@@ -462,7 +462,7 @@ main (gint argc,
+ 		g_error (
+ 			"Failed to load ESource registry: %s",
+ 			local_error->message);
+-		g_assert_not_reached ();
++		g_return_val_if_reached (-1);
+ 	}
+ 
+ 	g_idle_add ((GSourceFunc) on_idle_create_widget, registry);
+diff --git a/mail/e-mail-account-store.c b/mail/e-mail-account-store.c
+index 5b51f6ea49..234f8e7afc 100644
+--- a/mail/e-mail-account-store.c
++++ b/mail/e-mail-account-store.c
+@@ -1018,7 +1018,7 @@ e_mail_account_store_init (EMailAccountStore *store)
+ 	types[ii++] = G_TYPE_BOOLEAN;		/* COLUMN_ONLINE_ACCOUNT */
+ 	types[ii++] = G_TYPE_BOOLEAN;		/* COLUMN_ENABLED_VISIBLE */
+ 
+-	g_assert (ii == E_MAIL_ACCOUNT_STORE_NUM_COLUMNS);
++	g_return_if_fail (ii == E_MAIL_ACCOUNT_STORE_NUM_COLUMNS);
+ 
+ 	gtk_list_store_set_column_types (
+ 		GTK_LIST_STORE (store),
+diff --git a/mail/message-list.c b/mail/message-list.c
+index b0922ed199..b87f63facd 100644
+--- a/mail/message-list.c
++++ b/mail/message-list.c
+@@ -3611,7 +3611,7 @@ message_list_construct (MessageList *message_list)
+ 	/* Failure here is fatal. */
+ 	if (local_error != NULL) {
+ 		g_error ("%s: %s", etspecfile, local_error->message);
+-		g_assert_not_reached ();
++		g_return_if_reached ();
+ 	}
+ 
+ 	constructed = e_tree_construct (
+diff --git a/mail/test-mail-autoconfig.c b/mail/test-mail-autoconfig.c
+index f7d9e48bcb..2dd54915c1 100644
+--- a/mail/test-mail-autoconfig.c
++++ b/mail/test-mail-autoconfig.c
+@@ -44,9 +44,9 @@ main (gint argc,
+ 	}
+ 
+ 	/* Sanity check. */
+-	g_assert (
++	g_return_val_if_fail (
+ 		((autoconfig != NULL) && (error == NULL)) ||
+-		((autoconfig == NULL) && (error != NULL)));
++		((autoconfig == NULL) && (error != NULL)), -1);
+ 
+ 	if (error != NULL) {
+ 		g_printerr ("%s\n", error->message);
+diff --git a/modules/itip-formatter/itip-view.c b/modules/itip-formatter/itip-view.c
+index 9abad9cdb4..4e5cd90984 100644
+--- a/modules/itip-formatter/itip-view.c
++++ b/modules/itip-formatter/itip-view.c
+@@ -3742,7 +3742,7 @@ decrease_find_data (FormatItipFindData *fd)
+ 					_("Unable to find this memo in any memo list"));
+ 				break;
+ 			default:
+-				g_assert_not_reached ();
++				g_warn_if_reached ();
+ 				break;
+ 			}
+ 		}
+@@ -4389,7 +4389,7 @@ finish_message_delete_with_rsvp (EMailPartItip *pitip,
+ 
+ 		if (pitip->to_address == NULL)
+ 			find_to_address (view, pitip, pitip->ical_comp, NULL);
+-		g_assert (pitip->to_address != NULL);
++		g_return_if_fail (pitip->to_address != NULL);
+ 
+ 		ical_comp = e_cal_component_get_icalcomponent (comp);
+ 
+@@ -4519,7 +4519,7 @@ receive_objects_ready_cb (GObject *ecalclient,
+ 			_("Sent to calendar '%s' as canceled"), e_source_get_display_name (source));
+ 		break;
+ 	default:
+-		g_assert_not_reached ();
++		g_warn_if_reached ();
+ 		break;
+ 	}
+ 
+@@ -5139,7 +5139,7 @@ send_item (EMailPartItip *pitip,
+ 				_("Memo information sent"));
+ 			break;
+ 		default:
+-			g_assert_not_reached ();
++			g_warn_if_reached ();
+ 			break;
+ 		}
+ 	} else {
+@@ -5160,7 +5160,7 @@ send_item (EMailPartItip *pitip,
+ 				_("Unable to send memo information, the memo does not exist"));
+ 			break;
+ 		default:
+-			g_assert_not_reached ();
++			g_warn_if_reached ();
+ 			break;
+ 		}
+ 	}
+@@ -5508,7 +5508,8 @@ extract_itip_data (EMailPartItip *pitip,
+ 				trigger.u.rel_duration.days = interval;
+ 				break;
+ 			default:
+-				g_assert_not_reached ();
++				g_warn_if_reached ();
++				break;
+ 		}
+ 
+ 		e_cal_component_alarm_set_trigger (acomp, trigger);
+@@ -5875,7 +5876,7 @@ itip_view_init_view (ItipView *view)
+ 				}
+ 				break;
+ 			default:
+-				g_assert_not_reached ();
++				g_warn_if_reached ();
+ 				break;
+ 		}
+ 	}
+@@ -6066,7 +6067,7 @@ itip_view_init_view (ItipView *view)
+ 				itip_view_add_upper_info_item (view, ITIP_VIEW_INFO_ITEM_TYPE_INFO, _("This memo recurs"));
+ 				break;
+ 			default:
+-				g_assert_not_reached ();
++				g_warn_if_reached ();
+ 				break;
+ 		}
+ 	}
+diff --git a/modules/mail/e-mail-shell-view-private.c b/modules/mail/e-mail-shell-view-private.c
+index 919f47d5bf..690ad41175 100644
+--- a/modules/mail/e-mail-shell-view-private.c
++++ b/modules/mail/e-mail-shell-view-private.c
+@@ -808,10 +808,10 @@ e_mail_shell_view_private_constructed (EMailShellView *mail_shell_view)
+ 	while ((rule = e_rule_context_next_rule (context, rule, source))) {
+ 		if (!rule->system)
+ 			continue;
+-		g_assert (ii < MAIL_NUM_SEARCH_RULES);
++		g_return_if_fail (ii < MAIL_NUM_SEARCH_RULES);
+ 		priv->search_rules[ii++] = g_object_ref (rule);
+ 	}
+-	g_assert (ii == MAIL_NUM_SEARCH_RULES);
++	g_return_if_fail (ii == MAIL_NUM_SEARCH_RULES);
+ 
+ 	/* Now that we're all set up, simulate selecting a folder. */
+ 	g_signal_emit_by_name (selection, "changed");
+diff --git a/modules/spamassassin/evolution-spamassassin.c b/modules/spamassassin/evolution-spamassassin.c
+index c48d109eef..47164c6222 100644
+--- a/modules/spamassassin/evolution-spamassassin.c
++++ b/modules/spamassassin/evolution-spamassassin.c
+@@ -586,7 +586,7 @@ spam_assassin_classify (CamelJunkFilter *junk_filter,
+ 	gint ii = 0;
+ 
+ 	if (g_cancellable_set_error_if_cancelled (cancellable, error))
+-		return FALSE;
++		return CAMEL_JUNK_STATUS_ERROR;
+ 
+ 	argv[ii++] = spam_assassin_get_command_path (extension);
+ 	argv[ii++] = "--exit-code";
+@@ -594,7 +594,7 @@ spam_assassin_classify (CamelJunkFilter *junk_filter,
+ 		argv[ii++] = "--local";
+ 	argv[ii] = NULL;
+ 
+-	g_assert (ii < G_N_ELEMENTS (argv));
++	g_return_val_if_fail (ii < G_N_ELEMENTS (argv), CAMEL_JUNK_STATUS_ERROR);
+ 
+ 	exit_code = spam_assassin_command (
+ 		argv, message, NULL, cancellable, error);
+@@ -641,7 +641,7 @@ spam_assassin_learn_junk (CamelJunkFilter *junk_filter,
+ 		argv[ii++] = "--local";
+ 	argv[ii] = NULL;
+ 
+-	g_assert (ii < G_N_ELEMENTS (argv));
++	g_return_val_if_fail (ii < G_N_ELEMENTS (argv), FALSE);
+ 
+ 	exit_code = spam_assassin_command (
+ 		argv, message, NULL, cancellable, error);
+@@ -676,7 +676,7 @@ spam_assassin_learn_not_junk (CamelJunkFilter *junk_filter,
+ 		argv[ii++] = "--local";
+ 	argv[ii] = NULL;
+ 
+-	g_assert (ii < G_N_ELEMENTS (argv));
++	g_return_val_if_fail (ii < G_N_ELEMENTS (argv), FALSE);
+ 
+ 	exit_code = spam_assassin_command (
+ 		argv, message, NULL, cancellable, error);
+@@ -709,7 +709,7 @@ spam_assassin_synchronize (CamelJunkFilter *junk_filter,
+ 		argv[ii++] = "--local";
+ 	argv[ii] = NULL;
+ 
+-	g_assert (ii < G_N_ELEMENTS (argv));
++	g_return_val_if_fail (ii < G_N_ELEMENTS (argv), FALSE);
+ 
+ 	exit_code = spam_assassin_command (
+ 		argv, NULL, NULL, cancellable, error);
+diff --git a/plugins/mail-to-task/mail-to-task.c b/plugins/mail-to-task/mail-to-task.c
+index a20a1f5428..02cdfb99f4 100644
+--- a/plugins/mail-to-task/mail-to-task.c
++++ b/plugins/mail-to-task/mail-to-task.c
+@@ -622,7 +622,7 @@ get_question_edit_old (ECalClientSourceType source_type)
+ 		ask = _("Selected memo list contains memo '%s' already. Would you like to edit the old memo?");
+ 		break;
+ 	default:
+-		g_assert_not_reached ();
++		g_warn_if_reached ();
+ 		break;
+ 	}
+ 
+@@ -658,7 +658,7 @@ get_question_add_all_mails (ECalClientSourceType source_type,
+ 			count);
+ 		break;
+ 	default:
+-		g_assert_not_reached ();
++		g_warn_if_reached ();
+ 		break;
+ 	}
+ 
+@@ -867,7 +867,7 @@ do_mail_to_event (AsyncData *data)
+ 			report_error_idle (_("Selected memo list is read only, thus cannot create memo there. Select other memo list, please."), NULL);
+ 			break;
+ 		default:
+-			g_assert_not_reached ();
++			g_warn_if_reached ();
+ 			break;
+ 		}
+ 	} else {
+@@ -930,7 +930,7 @@ do_mail_to_event (AsyncData *data)
+ 				e_cal_component_set_new_vtype (comp, E_CAL_COMPONENT_JOURNAL);
+ 				break;
+ 			default:
+-				g_assert_not_reached ();
++				g_warn_if_reached ();
+ 				break;
+ 			}
+ 
+-- 
+2.15.0
+

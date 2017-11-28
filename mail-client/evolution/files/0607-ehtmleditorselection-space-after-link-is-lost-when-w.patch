@@ -1,0 +1,29 @@
+From 604c5890a43175cc3b2f809c04d24df242f6b62d Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 23 Feb 2016 19:52:17 +0100
+Subject: [PATCH 0607/1800] EHTMLEditorSelection - Space after link is lost
+ when wrapping block
+
+---
+ web-extensions/composer/e-html-editor-selection-dom-functions.c | 5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 9a9ee05f77..696a6d6495 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -2257,11 +2257,6 @@ wrap_lines (WebKitDOMDocument *document,
+ 
+ 							text_node = webkit_dom_text_split_text (
+ 								WEBKIT_DOM_TEXT (node), 1, NULL);
+-							webkit_dom_node_insert_before (
+-								webkit_dom_node_get_parent_node (node),
+-								node,
+-								webkit_dom_node_get_previous_sibling (node),
+-								NULL);
+ 							node = WEBKIT_DOM_NODE (text_node);
+ 						}
+ 					}
+-- 
+2.15.0
+

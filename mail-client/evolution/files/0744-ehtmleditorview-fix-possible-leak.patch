@@ -1,0 +1,36 @@
+From 9b51e49fdfdfc7f0a662321f425e453748258e25 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 15:25:03 +0100
+Subject: [PATCH 0744/1800] EHTMLEditorView - Fix possible leak
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index d1df9f68f3..f59bb49413 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -882,7 +882,9 @@ dom_check_magic_links (WebKitDOMDocument *document,
+ 	}
+ 
+ 	node_text = webkit_dom_text_get_whole_text (WEBKIT_DOM_TEXT (node));
+-	if (!node_text || !(*node_text) || !g_utf8_validate (node_text, -1, NULL))
++	if (!(node_text && *node_text) || !g_utf8_validate (node_text, -1, NULL))
++		/* FIXME WK2 - this is supposed to be in a block, otherwise the 'return' is always executed */
++		g_free (node_text);
+ 		return;
+ 
+ 	if (strstr (node_text, "@") && !strstr (node_text, "://")) {
+@@ -1924,7 +1926,7 @@ body_keypress_event_cb (WebKitDOMElement *element,
+ 		EHTMLEditorHistoryEvent *ev;
+ 		EHTMLEditorUndoRedoManager *manager;
+ 
+-		/* Insert new hiisvent for Return to have the right coordinates.
++		/* Insert new history event for Return to have the right coordinates.
+ 		 * The fragment will be added later. */
+ 		ev = g_new0 (EHTMLEditorHistoryEvent, 1);
+ 		ev->type = HISTORY_INPUT;
+-- 
+2.15.0
+

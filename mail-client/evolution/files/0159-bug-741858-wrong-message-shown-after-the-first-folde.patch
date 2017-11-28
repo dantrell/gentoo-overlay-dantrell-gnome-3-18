@@ -1,0 +1,105 @@
+From d52d338d1e5f490827ea57fa3a6be9ad0f35fdc9 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 6 Jan 2015 15:03:31 +0100
+Subject: [PATCH 0159/1800] Bug 741858 - Wrong message shown after the first
+ folder enter
+
+---
+ e-util/e-misc-utils.c | 25 +++++++++++++++++++++++++
+ e-util/e-misc-utils.h |  1 +
+ shell/killev.c        |  4 +++-
+ shell/main.c          |  7 ++++++-
+ 4 files changed, 35 insertions(+), 2 deletions(-)
+
+diff --git a/e-util/e-misc-utils.c b/e-util/e-misc-utils.c
+index 9f5d6d85f5..8ebcb21b75 100644
+--- a/e-util/e-misc-utils.c
++++ b/e-util/e-misc-utils.c
+@@ -2169,6 +2169,31 @@ e_file_lock_exists (void)
+ 	return g_file_test (filename, G_FILE_TEST_EXISTS);
+ }
+ 
++/* Returns a PID stored in the lock file; 0 if no such file exists. */
++GPid
++e_file_lock_get_pid (void)
++{
++	const gchar *filename = get_lock_filename ();
++	gchar *contents = NULL;
++	GPid pid = (GPid) 0;
++	gint64 n_int64;
++
++	if (!g_file_get_contents (filename, &contents, NULL, NULL)) {
++		return pid;
++	}
++
++	/* Try to extract an integer value from the string. */
++	n_int64 = g_ascii_strtoll (contents, NULL, 10);
++	if (n_int64 > 0 && n_int64 < G_MAXINT64) {
++		/* XXX Probably not portable. */
++		pid = (GPid) n_int64;
++	}
++
++	g_free (contents);
++
++	return pid;
++}
++
+ /**
+  * e_util_guess_mime_type:
+  * @filename: a local file name, or URI
+diff --git a/e-util/e-misc-utils.h b/e-util/e-misc-utils.h
+index 86e3dfa9bf..e4c5c1aa88 100644
+--- a/e-util/e-misc-utils.h
++++ b/e-util/e-misc-utils.h
+@@ -185,6 +185,7 @@ GDateWeekday	e_weekday_from_tm_wday		(gint tm_wday);
+ gboolean	e_file_lock_create		(void);
+ void		e_file_lock_destroy		(void);
+ gboolean	e_file_lock_exists		(void);
++GPid		e_file_lock_get_pid		(void);
+ 
+ gchar *		e_util_guess_mime_type		(const gchar *filename,
+                                                  gboolean localfile);
+diff --git a/shell/killev.c b/shell/killev.c
+index be8ec794b9..8e0e77a240 100644
+--- a/shell/killev.c
++++ b/shell/killev.c
+@@ -97,7 +97,7 @@ gint
+ main (gint argc,
+       gchar **argv)
+ {
+-	GFile *pid_file;
++	GFile *pid_file = NULL;
+ 	GFileMonitor *monitor;
+ 	const gchar *user_config_dir;
+ 	gchar *filename;
+@@ -176,5 +176,7 @@ kill:
+ 	g_printerr ("No \"kill\" command available.\n");
+ #endif
+ 
++	g_clear_object (&pid_file);
++
+ 	return retval;
+ }
+diff --git a/shell/main.c b/shell/main.c
+index c392c3bd60..502c934197 100644
+--- a/shell/main.c
++++ b/shell/main.c
+@@ -635,9 +635,14 @@ exit:
+ 	 * return NULL.  Use that to check for reference leaks. */
+ 	g_object_unref (shell);
+ 
+-	if (e_shell_get_default () != NULL)
++	if (e_shell_get_default () != NULL) {
+ 		g_warning ("Shell not finalized on exit");
+ 
++		/* To not run in the safe mode the next start */
++		if (e_file_lock_get_pid () == getpid ())
++			e_file_lock_destroy ();
++	}
++
+ 	gtk_accel_map_save (e_get_accels_filename ());
+ 
+ 	e_util_cleanup_settings ();
+-- 
+2.15.0
+

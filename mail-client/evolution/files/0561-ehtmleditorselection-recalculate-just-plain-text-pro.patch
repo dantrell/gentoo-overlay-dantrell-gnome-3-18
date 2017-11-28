@@ -1,0 +1,61 @@
+From d6c72d7e072e31932e7917fd59aa07ef2b87d06d Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 19 Mar 2015 13:27:58 +0100
+Subject: [PATCH 0561/1800] EHTMLEditorSelection - Recalculate just plain text
+ properties when selection changes in plain text mode
+
+We don't need to recalculate the HTML properties as they are not used
+in plain text mode.
+---
+ e-util/e-html-editor-selection.c | 18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/e-util/e-html-editor-selection.c b/e-util/e-html-editor-selection.c
+index 89ec50f1fa..e44136f30a 100644
+--- a/e-util/e-html-editor-selection.c
++++ b/e-util/e-html-editor-selection.c
+@@ -99,27 +99,37 @@ G_DEFINE_TYPE (
+ );
+ 
+ static void
+-html_editor_selection_selection_changed_cb (WebKitWebView *webview,
++html_editor_selection_selection_changed_cb (WebKitWebView *web_view,
+                                             EHTMLEditorSelection *selection)
+ {
++	EHTMLEditorView *view;
++
++	view = e_html_editor_selection_ref_html_editor_view (selection);
++
+ 	g_object_freeze_notify (G_OBJECT (selection));
+ 
+ 	g_object_notify (G_OBJECT (selection), "alignment");
++	g_object_notify (G_OBJECT (selection), "block-format");
++	g_object_notify (G_OBJECT (selection), "indented");
++	g_object_notify (G_OBJECT (selection), "text");
++
++	if (!e_html_editor_view_get_html_mode (view))
++		goto out;
++
+ 	g_object_notify (G_OBJECT (selection), "background-color");
+ 	g_object_notify (G_OBJECT (selection), "bold");
+ 	g_object_notify (G_OBJECT (selection), "font-name");
+ 	g_object_notify (G_OBJECT (selection), "font-size");
+ 	g_object_notify (G_OBJECT (selection), "font-color");
+-	g_object_notify (G_OBJECT (selection), "block-format");
+-	g_object_notify (G_OBJECT (selection), "indented");
+ 	g_object_notify (G_OBJECT (selection), "italic");
+ 	g_object_notify (G_OBJECT (selection), "monospaced");
+ 	g_object_notify (G_OBJECT (selection), "strikethrough");
+ 	g_object_notify (G_OBJECT (selection), "subscript");
+ 	g_object_notify (G_OBJECT (selection), "superscript");
+-	g_object_notify (G_OBJECT (selection), "text");
+ 	g_object_notify (G_OBJECT (selection), "underline");
+ 
++ out:
++	g_object_unref (view);
+ 	g_object_thaw_notify (G_OBJECT (selection));
+ }
+ 
+-- 
+2.15.0
+

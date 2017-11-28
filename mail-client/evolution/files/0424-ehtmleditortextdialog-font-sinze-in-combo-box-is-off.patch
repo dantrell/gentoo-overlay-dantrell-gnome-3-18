@@ -1,0 +1,26 @@
+From c7497e55c808c4c8ab2285a351065e1aee35cb9e Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 27 Mar 2015 13:57:53 +0100
+Subject: [PATCH 0424/1800] EHTMLEditorTextDialog - Font sinze in combo box is
+ off by one
+
+---
+ e-util/e-html-editor-text-dialog.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/e-util/e-html-editor-text-dialog.c b/e-util/e-html-editor-text-dialog.c
+index 9a8e361f14..9edb8e50f0 100644
+--- a/e-util/e-html-editor-text-dialog.c
++++ b/e-util/e-html-editor-text-dialog.c
+@@ -177,7 +177,7 @@ html_editor_text_dialog_show (GtkWidget *widget)
+ 
+ 	gtk_combo_box_set_active (
+ 		GTK_COMBO_BOX (dialog->priv->size_check),
+-		e_html_editor_selection_get_font_size (selection));
++		e_html_editor_selection_get_font_size (selection) - 1);
+ 
+ 	e_html_editor_selection_get_font_color (selection, &rgba);
+ 	e_color_combo_set_current_color (
+-- 
+2.15.0
+

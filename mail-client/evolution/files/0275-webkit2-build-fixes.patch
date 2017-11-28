@@ -1,0 +1,78 @@
+From 45e749e906799dec6ebc3264f4c8921228983dc4 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 14:18:03 +0100
+Subject: [PATCH 0275/1800] WebKit2 - Build fixes
+
+---
+ composer/e-msg-composer.c                              | 2 --
+ web-extensions/e-composer-private-dom-functions.c      | 2 +-
+ web-extensions/e-html-editor-selection-dom-functions.c | 6 +++---
+ 3 files changed, 4 insertions(+), 6 deletions(-)
+
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 52e2a20e3f..d1d7390aff 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -1225,11 +1225,9 @@ composer_build_message (EMsgComposer *composer,
+ 		gchar *text;
+ 		EHTMLEditor *editor;
+ 		EHTMLEditorView *view;
+-		EHTMLEditorSelection *selection;
+ 
+ 		editor = e_msg_composer_get_editor (composer);
+ 		view = e_html_editor_get_view (editor);
+-		selection = e_html_editor_view_get_selection (view);
+ 
+ 		/* X-Evolution-Format */
+ 		composer_add_evolution_format_header (
+diff --git a/web-extensions/e-composer-private-dom-functions.c b/web-extensions/e-composer-private-dom-functions.c
+index c63435f231..3d700c3795 100644
+--- a/web-extensions/e-composer-private-dom-functions.c
++++ b/web-extensions/e-composer-private-dom-functions.c
+@@ -179,7 +179,6 @@ composer_move_caret (WebKitDOMDocument *document,
+ 		WebKitDOMElement *spacer;
+ 
+ 		spacer = prepare_top_signature_spacer (document, extension);
+-		webkit_dom_element_set_id (element, "-x-evo-input-start");
+ 		webkit_dom_node_insert_before (
+ 			WEBKIT_DOM_NODE (body),
+ 			WEBKIT_DOM_NODE (spacer),
+@@ -195,6 +194,7 @@ composer_move_caret (WebKitDOMDocument *document,
+ 		if (start_bottom) {
+ 			if (!element) {
+ 				element = dom_prepare_paragraph (document, extension, FALSE);
++				webkit_dom_element_set_id (element, "-x-evo-input-start");
+ 				webkit_dom_node_append_child (
+ 					WEBKIT_DOM_NODE (body),
+ 					WEBKIT_DOM_NODE (element),
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index af7ed2bc5e..00858540c3 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -1545,7 +1545,7 @@ dom_selection_save (WebKitDOMDocument *document)
+ 		if (!webkit_dom_node_get_previous_sibling (container)) {
+ 			marker_node = webkit_dom_node_insert_before (
+ 				container,
+-				WEBKIT_DOM_NODE (start+marker),
++				WEBKIT_DOM_NODE (start_marker),
+ 				webkit_dom_node_get_first_child (container),
+ 				NULL);
+ 			goto insert_end_marker;
+@@ -1575,12 +1575,12 @@ dom_selection_save (WebKitDOMDocument *document)
+ 	if (!split_node) {
+ 		marker_node = webkit_dom_node_insert_before (
+ 			container,
+-			WEBKIT_DOM_NODE (marker),
++			WEBKIT_DOM_NODE (start_marker),
+ 			webkit_dom_node_get_first_child (
+ 				WEBKIT_DOM_NODE (container)),
+ 			NULL);
+ 	} else {
+-		marker_node = WEBKIT_DOM_NODE (marker);
++		marker_node = WEBKIT_DOM_NODE (start_marker);
+ 		parent_node = webkit_dom_node_get_parent_node (split_node);
+ 
+ 		webkit_dom_node_insert_before (
+-- 
+2.15.0
+

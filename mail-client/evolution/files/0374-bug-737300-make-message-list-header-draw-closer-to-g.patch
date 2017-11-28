@@ -1,0 +1,28 @@
+From 6dc164fdf121d4db4f77f59018efa3d1c9f0994c Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 27 Feb 2015 09:31:10 +0100
+Subject: [PATCH 0374/1800] Bug 737300 - Make message list header draw closer
+ to GtkTreeView
+
+---
+ e-util/e-table-header-utils.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/e-util/e-table-header-utils.c b/e-util/e-table-header-utils.c
+index b7ce763eba..371d1737b8 100644
+--- a/e-util/e-table-header-utils.c
++++ b/e-util/e-table-header-utils.c
+@@ -150,6 +150,10 @@ e_table_header_draw_button (cairo_t *cr,
+ 	gtk_style_context_save (context);
+ 	gtk_style_context_set_state (context, state_flags);
+ 	gtk_style_context_add_class (context, GTK_STYLE_CLASS_BUTTON);
++	if ((ecol->text && *ecol->text) || !ecol->icon_name)
++		gtk_style_context_add_class (context, "text-button");
++	else
++		gtk_style_context_add_class (context, "image-button");
+ 
+ 	gtk_style_context_get_padding (context, state_flags, &padding);
+ 
+-- 
+2.15.0
+

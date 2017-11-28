@@ -1,0 +1,47 @@
+From b09f54532cef6d386f29bb8ce82acf259f64a220 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Wed, 18 Feb 2015 10:36:12 +0100
+Subject: [PATCH 0319/1800] Bug 681877 - tzset() called too many times
+
+---
+ e-util/e-datetime-format.c | 1 -
+ shell/main.c               | 5 ++++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/e-util/e-datetime-format.c b/e-util/e-datetime-format.c
+index b56a4847d7..bb4918a737 100644
+--- a/e-util/e-datetime-format.c
++++ b/e-util/e-datetime-format.c
+@@ -290,7 +290,6 @@ format_internal (const gchar *key,
+ 	struct tm today, value;
+ 	time_t ttoday;
+ 
+-	tzset ();
+ 	if (!tm_value) {
+ 		localtime_r (&tvalue, &value);
+ 		tm_value = &value;
+diff --git a/shell/main.c b/shell/main.c
+index 4a161a196a..9b5ce2c03c 100644
+--- a/shell/main.c
++++ b/shell/main.c
+@@ -436,13 +436,16 @@ main (gint argc,
+ 	bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+ 	textdomain (GETTEXT_PACKAGE);
+ 
+-	/* do not require Gtk+ for --force-shutdown */
++	/* Do not require Gtk+ for --force-shutdown */
+ 	if (argc == 2 && argv[1] && g_str_equal (argv[1], "--force-shutdown")) {
+ 		shell_force_shutdown ();
+ 
+ 		return 0;
+ 	}
+ 
++	/* Initialize timezone specific global variables */
++	tzset ();
++
+ 	/* The contact maps feature uses clutter-gtk. */
+ #ifdef WITH_CONTACT_MAPS
+ 	/* XXX This function is declared in gtk-clutter-util.h with an
+-- 
+2.15.0
+

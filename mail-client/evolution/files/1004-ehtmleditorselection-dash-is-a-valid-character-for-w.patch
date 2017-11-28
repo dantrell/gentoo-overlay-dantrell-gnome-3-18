@@ -1,0 +1,47 @@
+From 06d70b8dc537863521a94b7365bf86c0cc5761ed Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 1 Mar 2016 13:44:08 +0100
+Subject: [PATCH 1004/1800] EHTMLEditorSelection - Dash is a valid character
+ for wrapping only if it's not surrounded by spaces
+
+---
+ .../e-html-editor-selection-dom-functions.c        | 23 ++++++++++++++++++++--
+ 1 file changed, 21 insertions(+), 2 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 313567da44..c1defa7b1d 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -2002,8 +2002,27 @@ find_where_to_break_line (WebKitDOMCharacterData *node,
+ 		}
+ 
+ 		if (g_unichar_isspace (uc) || *str == '-') {
+-			last_break_position_is_dash = *str == '-';
+-			last_break_position = pos;
++			if ((last_break_position_is_dash = *str == '-')) {
++				/* There was no space before the dash */
++				if (pos - 1 != last_break_position) {
++					gchar *rest;
++
++					rest = g_utf8_next_char (str);
++					if (rest && *rest) {
++						gunichar next_char;
++
++						/* There is no space after the dash */
++						next_char = g_utf8_get_char (rest);
++						if (g_unichar_isspace (next_char))
++							last_break_position_is_dash = FALSE;
++						else
++							last_break_position = pos;
++					} else
++						last_break_position_is_dash = FALSE;
++				} else
++					last_break_position_is_dash = FALSE;
++			} else
++				last_break_position = pos;
+ 		}
+ 
+ 		if ((pos == max_length)) {
+-- 
+2.15.0
+

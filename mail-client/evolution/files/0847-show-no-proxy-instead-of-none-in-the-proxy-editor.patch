@@ -1,0 +1,28 @@
+From 56d510313dfc5e4952088a42ee48abe13b2089ef Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 29 Jun 2015 14:02:26 +0200
+Subject: [PATCH 0847/1800] Show "No proxy" instead of "None" in the proxy
+ editor
+
+While the detailed description explains that the "None" is for "No proxy",
+it's not easily understood from the combo value, thus rename it there.
+---
+ e-util/e-proxy-editor.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/e-util/e-proxy-editor.c b/e-util/e-proxy-editor.c
+index 0dd7481caf..c8e69bafa5 100644
+--- a/e-util/e-proxy-editor.c
++++ b/e-util/e-proxy-editor.c
+@@ -557,7 +557,7 @@ proxy_editor_constructed (GObject *object)
+ 
+ 	gtk_combo_box_text_append (
+ 		GTK_COMBO_BOX_TEXT (editor->priv->method_combo_box),
+-		enum_value->value_nick, _("None"));
++		enum_value->value_nick, _("No proxy"));
+ 
+ 	widget = gtk_label_new (
+ 		_("Use a direct connection, no proxying required."));
+-- 
+2.15.0
+

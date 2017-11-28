@@ -1,0 +1,113 @@
+From 2bdad46ea338ba35d06b0830a58a7c212a7d76c3 Mon Sep 17 00:00:00 2001
+From: David Shea <dshea@redhat.com>
+Date: Mon, 20 Apr 2015 13:43:32 +0200
+Subject: [PATCH 0682/1800] Bug 748082 - ESpinner does not spin if active set
+ at construction
+
+---
+ e-util/e-spinner.c | 62 ++++++++++++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 56 insertions(+), 6 deletions(-)
+
+diff --git a/e-util/e-spinner.c b/e-util/e-spinner.c
+index 032280319c..8a4b972756 100644
+--- a/e-util/e-spinner.c
++++ b/e-util/e-spinner.c
+@@ -67,6 +67,25 @@ e_spinner_update_frame_cb (gpointer user_data)
+ 	return TRUE;
+ }
+ 
++static void
++e_spinner_disable_spin (ESpinner *spinner)
++{
++	if (spinner->priv->timeout_id) {
++		g_source_remove (spinner->priv->timeout_id);
++		spinner->priv->timeout_id = 0;
++	}
++}
++
++static void
++e_spinner_enable_spin (ESpinner *spinner)
++{
++	e_spinner_disable_spin (spinner);
++
++	if (spinner->priv->pixbufs)
++		spinner->priv->timeout_id = g_timeout_add_full (
++			G_PRIORITY_LOW, FRAME_TIMEOUT_MS, e_spinner_update_frame_cb, spinner, NULL);
++}
++
+ static void
+ e_spinner_set_property (GObject *object,
+ 			guint property_id,
+@@ -176,10 +195,38 @@ e_spinner_finalize (GObject *object)
+ 	G_OBJECT_CLASS (e_spinner_parent_class)->finalize (object);
+ }
+ 
++static void
++e_spinner_realize (GtkWidget *widget)
++{
++	ESpinner *spinner = E_SPINNER (widget);
++
++	/* Chain up to the parent class first, then enable the spinner
++	 * after the widget is realized
++	 */
++	GTK_WIDGET_CLASS (e_spinner_parent_class)->realize (widget);
++
++	if (spinner->priv->active)
++		e_spinner_enable_spin (spinner);
++}
++
++static void
++e_spinner_unrealize (GtkWidget *widget)
++{
++	ESpinner *spinner = E_SPINNER (widget);
++
++	/* Disable the spinner before chaining up to the parent class
++	 * to unrealize the widget
++	 */
++	e_spinner_disable_spin (spinner);
++
++	GTK_WIDGET_CLASS (e_spinner_parent_class)->unrealize (widget);
++}
++
+ static void
+ e_spinner_class_init (ESpinnerClass *klass)
+ {
+ 	GObjectClass *object_class;
++	GtkWidgetClass *widget_class;
+ 
+ 	g_type_class_add_private (klass, sizeof (ESpinnerPrivate));
+ 
+@@ -190,6 +237,10 @@ e_spinner_class_init (ESpinnerClass *klass)
+ 	object_class->finalize = e_spinner_finalize;
+ 	object_class->constructed = e_spinner_constructed;
+ 
++	widget_class = GTK_WIDGET_CLASS (klass);
++	widget_class->realize = e_spinner_realize;
++	widget_class->unrealize = e_spinner_unrealize;
++
+ 	/**
+ 	 * ESpinner:active:
+ 	 *
+@@ -239,14 +290,13 @@ e_spinner_set_active (ESpinner *spinner,
+ 
+ 	spinner->priv->active = active;
+ 
+-	if (spinner->priv->timeout_id) {
+-		g_source_remove (spinner->priv->timeout_id);
+-		spinner->priv->timeout_id = 0;
++	if (gtk_widget_get_realized (GTK_WIDGET (spinner))) {
++		if (active)
++			e_spinner_enable_spin (spinner);
++		else
++			e_spinner_disable_spin (spinner);
+ 	}
+ 
+-	if (spinner->priv->active && spinner->priv->pixbufs)
+-		spinner->priv->timeout_id = g_timeout_add_full (G_PRIORITY_LOW, FRAME_TIMEOUT_MS, e_spinner_update_frame_cb, spinner, NULL);
+-
+ 	g_object_notify (G_OBJECT (spinner), "active");
+ }
+ 
+-- 
+2.15.0
+

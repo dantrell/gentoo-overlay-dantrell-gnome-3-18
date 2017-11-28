@@ -1,0 +1,149 @@
+From 4d8caa324c86106ca8d616f21ee82f821e76bcdc Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 18:25:33 +0100
+Subject: [PATCH 0797/1800] [Incomplete] Bug 750299 - [regression] Hyperlinks
+ create duplicate text, then deleting the duplicate makes the hyperlink blow
+ up to the whole line
+
+---
+ .../composer/e-html-editor-history-event.h         |  1 +
+ .../e-html-editor-link-dialog-dom-functions.c      |  1 +
+ .../composer/e-html-editor-undo-redo-manager.c     | 70 ++++++++++++++++++++++
+ 3 files changed, 72 insertions(+)
+
+diff --git a/web-extensions/composer/e-html-editor-history-event.h b/web-extensions/composer/e-html-editor-history-event.h
+index 1a689c8563..71edc8b121 100644
+--- a/web-extensions/composer/e-html-editor-history-event.h
++++ b/web-extensions/composer/e-html-editor-history-event.h
+@@ -40,6 +40,7 @@ enum EHTMLEditorHistoryEventType {
+ 	HISTORY_IMAGE_DIALOG,
+ 	HISTORY_INSERT_HTML,
+ 	HISTORY_ITALIC,
++	HISTORY_LINK_DIALOG,
+ 	HISTORY_MONOSPACE,
+ 	HISTORY_PAGE_DIALOG,
+ 	HISTORY_PASTE,
+diff --git a/web-extensions/composer/e-html-editor-link-dialog-dom-functions.c b/web-extensions/composer/e-html-editor-link-dialog-dom-functions.c
+index 24cd3348a9..29f4aedb58 100644
+--- a/web-extensions/composer/e-html-editor-link-dialog-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-link-dialog-dom-functions.c
+@@ -28,6 +28,7 @@
+ #include <webkitdom/WebKitDOMDOMSelection.h>
+ #include <webkitdom/WebKitDOMDOMWindowUnstable.h>
+ 
++/* FIXME WK2 apply changes from commit 18c5e81 */
+ void
+ e_html_editor_link_dialog_ok (WebKitDOMDocument *document,
+                               EHTMLEditorWebExtension *extension,
+diff --git a/web-extensions/composer/e-html-editor-undo-redo-manager.c b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+index 1237221e83..891db5f25a 100644
+--- a/web-extensions/composer/e-html-editor-undo-redo-manager.c
++++ b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+@@ -242,6 +242,7 @@ print_history_event (EHTMLEditorHistoryEvent *event)
+ 			break;
+ 		case HISTORY_HRULE_DIALOG:
+ 		case HISTORY_IMAGE_DIALOG:
++		case HISTORY_LINK_DIALOG:
+ 		case HISTORY_CELL_DIALOG:
+ 		case HISTORY_TABLE_DIALOG:
+ 		case HISTORY_PAGE_DIALOG:
+@@ -901,6 +902,68 @@ undo_redo_image_dialog (WebKitDOMDocument *document,
+ 		dom_selection_restore (document);
+ }
+ 
++static void
++undo_redo_link_dialog (WebKitDOMDocument *document,
++                       EHTMLEditorWebExtension *extension,
++                       EHTMLEditorHistoryEvent *event,
++                       gboolean undo)
++{
++	WebKitDOMElement *anchor, *element;
++
++	if (undo)
++		restore_selection_to_history_event_state (document, event->after);
++	else
++		restore_selection_to_history_event_state (document, event->before);
++
++	dom_selection_save (document);
++
++	element = webkit_dom_document_get_element_by_id (document, "-x-evo-selection-start-marker");
++	if (!element)
++		return;
++
++	anchor = dom_node_find_parent_element (WEBKIT_DOM_NODE (element), "A");
++	if (undo) {
++		if (anchor) {
++			if (!event->data.dom.from)
++				remove_node (WEBKIT_DOM_NODE (anchor));
++			else
++				webkit_dom_node_replace_child (
++					webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (anchor)),
++					webkit_dom_node_clone_node (event->data.dom.from, TRUE),
++					WEBKIT_DOM_NODE (anchor),
++					NULL);
++		}
++	} else {
++		if (!event->data.dom.to) {
++			if (anchor)
++				remove_node (WEBKIT_DOM_NODE (anchor));
++		} else {
++			if (WEBKIT_DOM_IS_ELEMENT (event->data.dom.from) && anchor) {
++				webkit_dom_node_replace_child (
++					webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (anchor)),
++					webkit_dom_node_clone_node (event->data.dom.to, TRUE),
++					WEBKIT_DOM_NODE (anchor),
++					NULL);
++			} else {
++				webkit_dom_node_insert_before (
++					webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (element)),
++					webkit_dom_node_clone_node (event->data.dom.to, TRUE),
++					WEBKIT_DOM_NODE (element),
++					NULL);
++
++				if (event->data.dom.from)
++					dom_exec_command (document, extension,
++						E_HTML_EDITOR_VIEW_COMMAND_DELETE, NULL);
++			}
++		}
++	}
++
++	if (undo)
++		restore_selection_to_history_event_state (document, event->before);
++	else
++		dom_selection_restore (document);
++}
++
+ static void
+ undo_redo_table_dialog (WebKitDOMDocument *document,
+                         EHTMLEditorWebExtension *extension,
+@@ -1612,6 +1675,7 @@ free_history_event_content (EHTMLEditorHistoryEvent *event)
+ 		case HISTORY_TABLE_INPUT:
+ 		case HISTORY_PAGE_DIALOG:
+ 		case HISTORY_UNQUOTE:
++		case HISTORY_LINK_DIALOG:
+ 			if (event->data.dom.from != NULL)
+ 				g_object_unref (event->data.dom.from);
+ 			if (event->data.dom.to != NULL)
+@@ -1869,6 +1933,9 @@ e_html_editor_undo_redo_manager_undo (EHTMLEditorUndoRedoManager *manager)
+ 		case HISTORY_IMAGE_DIALOG:
+ 			undo_redo_image_dialog (document, extension, event, TRUE);
+ 			break;
++		case HISTORY_LINK_DIALOG:
++			undo_redo_link_dialog (document, extension, event, TRUE);
++			break;
+ 		case HISTORY_TABLE_DIALOG:
+ 			undo_redo_table_dialog (document, extension, event, TRUE);
+ 			break;
+@@ -2010,6 +2077,9 @@ e_html_editor_undo_redo_manager_redo (EHTMLEditorUndoRedoManager *manager)
+ 		case HISTORY_IMAGE_DIALOG:
+ 			undo_redo_image_dialog (document, extension, event, FALSE);
+ 			break;
++		case HISTORY_LINK_DIALOG:
++			undo_redo_link_dialog (document, extension, event, FALSE);
++			break;
+ 		case HISTORY_TABLE_DIALOG:
+ 			undo_redo_table_dialog (document, extension, event, FALSE);
+ 			break;
+-- 
+2.15.0
+

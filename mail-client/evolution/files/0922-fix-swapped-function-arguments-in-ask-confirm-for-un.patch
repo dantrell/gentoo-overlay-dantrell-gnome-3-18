@@ -1,0 +1,31 @@
+From 29b45a54c069fe3dd20d9a324e75ef9022d3359d Mon Sep 17 00:00:00 2001
+From: Erik van Pienbroek <epienbro@fedoraproject.org>
+Date: Fri, 7 Aug 2015 06:35:25 +0200
+Subject: [PATCH 0922/1800] Fix swapped function arguments in
+ ask_confirm_for_unwanted_html_mail
+
+In commit 2b9ac3 a regression was introduced which caused
+sending HTML messages to trigger the following error:
+  Settings schema 'prompt-on-unwanted-html' is not installed
+
+Fixes https://bugzilla.redhat.com/show_bug.cgi?id=1251123
+---
+ mail/em-composer-utils.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mail/em-composer-utils.c b/mail/em-composer-utils.c
+index 473a9032ec..91b410e92b 100644
+--- a/mail/em-composer-utils.c
++++ b/mail/em-composer-utils.c
+@@ -131,7 +131,7 @@ ask_confirm_for_unwanted_html_mail (EMsgComposer *composer,
+ 	if (str->len)
+ 		res = e_util_prompt_user (
+ 			GTK_WINDOW (composer),
+-			"prompt-on-unwanted-html", "org.gnome.evolution.mail",
++			"org.gnome.evolution.mail", "prompt-on-unwanted-html",
+ 			"mail:ask-send-html", str->str, NULL);
+ 	else
+ 		res = TRUE;
+-- 
+2.15.0
+

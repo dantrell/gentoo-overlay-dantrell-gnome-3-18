@@ -1,0 +1,26 @@
+From 0d961d480e69ed4bcbf9f32f68345070ab297070 Mon Sep 17 00:00:00 2001
+From: Vadim Rutkovsky <vrutkovs@redhat.com>
+Date: Fri, 14 Nov 2014 15:43:03 +0100
+Subject: [PATCH 0081/1800] tests: contact editor: don't collapse sections
+
+---
+ tests/steps/addressbook_steps.py | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/tests/steps/addressbook_steps.py b/tests/steps/addressbook_steps.py
+index 1ad130654d..0ba2a7cec0 100644
+--- a/tests/steps/addressbook_steps.py
++++ b/tests/steps/addressbook_steps.py
+@@ -314,9 +314,6 @@ def emails_are_set_to(context, section):
+     assert actual == expected, "Incorrect %s value:\nexpected:%s\n but was:%s" % (
+         row['Field'], expected, actual)
+ 
+-    # Collapse the section after check
+-    collapse_button.click()
+-
+ 
+ @step(u'Tick "Wants to receive HTML mail" checkbox')
+ def tick_checkbox(context):
+-- 
+2.15.0
+

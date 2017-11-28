@@ -1,0 +1,32 @@
+From a0116af8b440aed1020ff9e16a436900a70ac7c0 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 8 Apr 2015 16:45:43 +0200
+Subject: [PATCH 0657/1800] EMComposerUtils - Remove unneeded variable
+
+---
+ mail/em-composer-utils.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/mail/em-composer-utils.c b/mail/em-composer-utils.c
+index 65793ecf3b..1594dd6cda 100644
+--- a/mail/em-composer-utils.c
++++ b/mail/em-composer-utils.c
+@@ -2964,14 +2964,13 @@ em_utils_construct_composer_text (CamelSession *session,
+                                   EMailPartList *parts_list)
+ {
+ 	gchar *text, *credits;
+-	gboolean start_bottom = FALSE;
+ 
+ 	g_return_val_if_fail (CAMEL_IS_SESSION (session), NULL);
+ 
+ 	credits = attribution_format (message);
+ 	text = em_utils_message_to_html (
+ 		session, message, credits, E_MAIL_FORMATTER_QUOTE_FLAG_CITE,
+-		parts_list, NULL, start_bottom ? "<BR>" : NULL, NULL);
++		parts_list, NULL, NULL, NULL);
+ 	g_free (credits);
+ 
+ 	return text;
+-- 
+2.15.0
+

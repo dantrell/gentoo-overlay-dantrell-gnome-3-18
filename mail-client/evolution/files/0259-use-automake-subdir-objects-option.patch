@@ -1,0 +1,27 @@
+From 360bf8019fbb19f2257d666853aded7c867ebacd Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 6 Feb 2015 08:07:45 +0100
+Subject: [PATCH 0259/1800] Use automake subdir-objects option
+
+As suggested by automake, due to source files being referenced
+in sub-directories.
+---
+ configure.ac | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/configure.ac b/configure.ac
+index 3392dc8165..d2e4a0037b 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -19,7 +19,7 @@ m4_define([base_version], [3.14])
+ dnl Autoconf / Automake Initialization
+ AC_PREREQ([2.64])
+ AC_INIT([evolution],[evo_version],[http://bugzilla.gnome.org/enter_bug.cgi?product=Evolution],[evolution],[http://wiki.gnome.org/Apps/Evolution/])
+-AM_INIT_AUTOMAKE([1.10 dist-xz no-dist-gzip -Wall -Wno-portability foreign tar-ustar])
++AM_INIT_AUTOMAKE([1.10 dist-xz no-dist-gzip subdir-objects -Wall -Wno-portability foreign tar-ustar])
+ AC_CONFIG_MACRO_DIR([m4])
+ AC_CONFIG_HEADERS(config.h)
+ AC_CONFIG_SRCDIR(README)
+-- 
+2.15.0
+

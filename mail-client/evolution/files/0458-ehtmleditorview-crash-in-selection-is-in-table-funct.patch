@@ -1,0 +1,35 @@
+From 8f729bb8839269bb402e743cd7fb9bebe6a4f17e Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 30 Mar 2015 11:34:04 +0200
+Subject: [PATCH 0458/1800] EHTMLEditorView - Crash in selection_is_in_table
+ function
+
+Check if the passed variable is not NULL before working with it.
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index c48dcb52e3..768d3c7164 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -6411,11 +6411,15 @@ selection_is_in_table (WebKitDOMDocument *document,
+ 			}
+ 		}
+ 		if (WEBKIT_DOM_IS_HTML_TABLE_ELEMENT (parent)) {
+-			*table_node = parent;
++			if (table_node != NULL)
++				*table_node = parent;
+ 		}
+ 		parent = webkit_dom_node_get_parent_node (parent);
+ 	}
+ 
++	if (table_node == NULL)
++		return FALSE;
++
+ 	return *table_node != NULL;
+ }
+ 
+-- 
+2.15.0
+

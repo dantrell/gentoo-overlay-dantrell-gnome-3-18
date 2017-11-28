@@ -1,0 +1,84 @@
+From 4bce70d4d48b6290de83a0c5b2de53c56013bf59 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 5 Dec 2014 12:40:01 +0100
+Subject: [PATCH 0131/1800] Bug 706993 - Restart background processes after
+ restore
+
+---
+ calendar/alarm-notify/notify-main.c            | 18 ++++++++++++++++++
+ modules/backup-restore/evolution-backup-tool.c |  3 +++
+ shell/killev.c                                 |  8 ++++++++
+ 3 files changed, 29 insertions(+)
+
+diff --git a/calendar/alarm-notify/notify-main.c b/calendar/alarm-notify/notify-main.c
+index c77b84a5da..26538daf8c 100644
+--- a/calendar/alarm-notify/notify-main.c
++++ b/calendar/alarm-notify/notify-main.c
+@@ -40,6 +40,18 @@
+ 
+ #include "e-util/e-util-private.h"
+ 
++#ifdef G_OS_UNIX
++#include <glib-unix.h>
++
++static gboolean
++handle_term_signal (gpointer data)
++{
++	g_application_quit (data);
++
++	return FALSE;
++}
++#endif
++
+ gint
+ main (gint argc,
+       gchar **argv)
+@@ -80,6 +92,12 @@ main (gint argc,
+ 		return 0;
+ 	}
+ 
++#ifdef G_OS_UNIX
++	g_unix_signal_add_full (
++		G_PRIORITY_DEFAULT, SIGTERM,
++		handle_term_signal, alarm_notify_service, NULL);
++#endif
++
+ 	exit_status = g_application_run (
+ 		G_APPLICATION (alarm_notify_service), argc, argv);
+ 
+diff --git a/modules/backup-restore/evolution-backup-tool.c b/modules/backup-restore/evolution-backup-tool.c
+index 70b358efe8..7f87bd224c 100644
+--- a/modules/backup-restore/evolution-backup-tool.c
++++ b/modules/backup-restore/evolution-backup-tool.c
+@@ -644,6 +644,9 @@ restore (const gchar *filename,
+ 	if (g_cancellable_is_cancelled (cancellable))
+ 		return;
+ 
++	/* Make full-restart background processes after restore */
++	run_cmd (EVOLUTION " --force-shutdown");
++
+ 	txt = _("Reloading registry service");
+ 
+ 	/* wait few seconds, till changes settle */
+diff --git a/shell/killev.c b/shell/killev.c
+index f13cbee99c..be8ec794b9 100644
+--- a/shell/killev.c
++++ b/shell/killev.c
+@@ -164,6 +164,14 @@ kill:
+ #ifdef KILL_PROCESS_CMD
+ 	if (system (KILL_PROCESS_CMD " -QUIT evolution 2> /dev/null") == -1)
+ 		g_warning ("%s: Failed to execute: '%s'", G_STRFUNC, KILL_PROCESS_CMD);
++	if (system (KILL_PROCESS_CMD " -TERM evolution-alarm-notify 2> /dev/null") == -1)
++		g_warning ("%s: Failed to execute: '%s'", G_STRFUNC, KILL_PROCESS_CMD);
++	if (system (KILL_PROCESS_CMD " -QUIT evolution-source-registry 2> /dev/null") == -1)
++		g_warning ("%s: Failed to execute: '%s'", G_STRFUNC, KILL_PROCESS_CMD);
++	if (system (KILL_PROCESS_CMD " -QUIT evolution-addressbook-factory 2> /dev/null") == -1)
++		g_warning ("%s: Failed to execute: '%s'", G_STRFUNC, KILL_PROCESS_CMD);
++	if (system (KILL_PROCESS_CMD " -QUIT evolution-calendar-factory 2> /dev/null") == -1)
++		g_warning ("%s: Failed to execute: '%s'", G_STRFUNC, KILL_PROCESS_CMD);
+ #else
+ 	g_printerr ("No \"kill\" command available.\n");
+ #endif
+-- 
+2.15.0
+

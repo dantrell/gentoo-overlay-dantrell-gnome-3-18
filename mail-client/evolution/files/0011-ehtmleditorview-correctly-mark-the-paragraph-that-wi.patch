@@ -1,0 +1,25 @@
+From a225d36884c0c284f284c0c240a3a23e79b61b23 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 30 Oct 2014 15:22:28 +0100
+Subject: [PATCH 0011/1800] EHTMLEditorView - Correctly mark the paragraph that
+ will receive input when the composer is opened
+
+---
+ e-util/e-html-editor-view.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index b999ae883b..3ab2cc71d7 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -4337,6 +4337,7 @@ html_editor_view_process_document_from_convertor (EHTMLEditorView *view,
+ 
+ 	/* Insert the paragraph where the caret will be. */
+ 	paragraph = prepare_paragraph (selection, document, TRUE);
++	webkit_dom_element_set_id (paragraph, "-x-evo-input-start");
+ 	webkit_dom_node_insert_before (
+ 		WEBKIT_DOM_NODE (body),
+ 		WEBKIT_DOM_NODE (paragraph),
+-- 
+2.15.0
+

@@ -1,0 +1,25 @@
+From 9029bfbeb9622b3d62538b6d7d06c578cb49f896 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 12 May 2015 17:01:21 +0200
+Subject: [PATCH 0580/1800] EHTMLEditorView - Image smileys are sent as base64
+ data
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 281aa61988..cec6a3d1ee 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -1501,6 +1501,7 @@ emoticon_read_async_cb (GFile *file,
+ 
+ 	image = webkit_dom_document_create_element (document, "IMG", NULL);
+ 	webkit_dom_element_set_attribute (image, "src", output, NULL);
++	webkit_dom_element_set_attribute (image, "data-inline", "", NULL);
+ 	webkit_dom_element_set_attribute (image, "alt", emoticon->text_face, NULL);
+ 	webkit_dom_element_set_attribute (image, "-x-evo-smiley", emoticon->icon_name, NULL);
+ 	webkit_dom_element_set_attribute (image, "class", "-x-evo-smiley-img", NULL);
+-- 
+2.15.0
+

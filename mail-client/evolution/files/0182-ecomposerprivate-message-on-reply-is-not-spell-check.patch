@@ -1,0 +1,27 @@
+From a5158a5ad4686a17c78044b61b78be71b3a29cc6 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 23 Mar 2015 14:16:26 +0100
+Subject: [PATCH 0182/1800] EComposerPrivate - Message on reply is not spell
+ checked and doesn't have caret when signature is enabled
+
+---
+ web-extensions/e-composer-private-dom-functions.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/web-extensions/e-composer-private-dom-functions.c b/web-extensions/e-composer-private-dom-functions.c
+index 35cc56108f..4048ba3c93 100644
+--- a/web-extensions/e-composer-private-dom-functions.c
++++ b/web-extensions/e-composer-private-dom-functions.c
+@@ -254,7 +254,8 @@ composer_move_caret (WebKitDOMDocument *document,
+ 				WEBKIT_DOM_NODE (element),
+ 				WEBKIT_DOM_NODE (signature),
+ 				NULL);
+-		}
++		} else
++			element = WEBKIT_DOM_ELEMENT (body);
+ 	}
+ 
+ 	g_object_unref (list);
+-- 
+2.15.0
+

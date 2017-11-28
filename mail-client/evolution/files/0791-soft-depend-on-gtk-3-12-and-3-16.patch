@@ -1,0 +1,50 @@
+From c36e28af759d0395ecf97ac02b8516263e45d89f Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 9 Jun 2015 23:27:49 +0200
+Subject: [PATCH 0791/1800] Soft-depend on gtk+ 3.12 and 3.16
+
+Recently added symbols were available only in gtk+ 3.12 and 3.16,
+but the dependency bump is not required yet, thus make it depend
+on the new functions conditionally.
+---
+ calendar/gui/e-day-view.c                   | 7 ++++++-
+ modules/calendar/e-cal-base-shell-sidebar.c | 2 ++
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/calendar/gui/e-day-view.c b/calendar/gui/e-day-view.c
+index 495e975542..a6f888ceff 100644
+--- a/calendar/gui/e-day-view.c
++++ b/calendar/gui/e-day-view.c
+@@ -3162,8 +3162,13 @@ e_day_view_remove_event_cb (EDayView *day_view,
+ 		if (day_view->drag_event_num == event_num) {
+ 			day_view->drag_event_num = -1;
+ 			day_view->drag_event_day = -1;
+-			if (day_view->priv->drag_context)
++			if (day_view->priv->drag_context) {
++				#if GTK_CHECK_VERSION(3,16,0)
+ 				gtk_drag_cancel (day_view->priv->drag_context);
++				#else
++				gdk_drag_abort (day_view->priv->drag_context, gtk_get_current_event_time ());
++				#endif
++			}
+ 		} else {
+ 			day_view->drag_event_num--;
+ 		}
+diff --git a/modules/calendar/e-cal-base-shell-sidebar.c b/modules/calendar/e-cal-base-shell-sidebar.c
+index 00a77c4503..cc3b51bdd4 100644
+--- a/modules/calendar/e-cal-base-shell-sidebar.c
++++ b/modules/calendar/e-cal-base-shell-sidebar.c
+@@ -732,8 +732,10 @@ cal_base_shell_sidebar_constructed (GObject *object)
+ 
+ 		widget = e_calendar_new ();
+ 		gtk_widget_set_margin_top (widget, 6);
++		#if GTK_CHECK_VERSION(3,12,0)
+ 		gtk_widget_set_margin_start (widget, 6);
+ 		gtk_widget_set_margin_end (widget, 6);
++		#endif
+ 		calitem = E_CALENDAR (widget)->calitem;
+ 		e_calendar_item_set_days_start_week_sel (calitem, 9);
+ 		e_calendar_item_set_max_days_sel (calitem, 42);
+-- 
+2.15.0
+

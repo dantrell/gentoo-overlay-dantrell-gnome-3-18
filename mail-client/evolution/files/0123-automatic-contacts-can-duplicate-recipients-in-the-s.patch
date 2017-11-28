@@ -1,0 +1,99 @@
+From a93220e275c6d0cfe69274350c46bc1f754dde6e Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 1 Dec 2014 12:09:19 +0100
+Subject: [PATCH 0123/1800] Automatic Contacts can duplicate recipients in the
+ set book
+
+The duplication could happen when the destination book was not set
+to be used for autocompletion. Always checking the destination
+book, and check it as the first, will not do unnecessary tests
+in other books and will make sure that the contacts are not
+blindly added there.
+---
+ plugins/bbdb/bbdb.c | 56 +++++++++++++++++++++++++++++++++--------------------
+ 1 file changed, 35 insertions(+), 21 deletions(-)
+
+diff --git a/plugins/bbdb/bbdb.c b/plugins/bbdb/bbdb.c
+index 6987f3978f..d5b896cd73 100644
+--- a/plugins/bbdb/bbdb.c
++++ b/plugins/bbdb/bbdb.c
+@@ -304,6 +304,7 @@ bbdb_do_it (EBookClient *client,
+ 	GError *error = NULL;
+ 	EShell *shell;
+ 	ESourceRegistry *registry;
++	ESource *dest_source;
+ 	EClientCache *client_cache;
+ 	GList *addressbooks;
+ 	GList *aux_addressbooks;
+@@ -330,34 +331,47 @@ bbdb_do_it (EBookClient *client,
+ 	registry = e_shell_get_registry (shell);
+ 	client_cache = e_shell_get_client_cache (shell);
+ 	addressbooks = e_source_registry_list_enabled (registry, E_SOURCE_EXTENSION_ADDRESS_BOOK);
++	dest_source = e_client_get_source (E_CLIENT (client));
++
++	/* Test the destination client first */
++	if (g_list_find (addressbooks, dest_source)) {
++		addressbooks = g_list_remove (addressbooks, dest_source);
++		g_object_unref (dest_source);
++	}
++
++	addressbooks = g_list_prepend (addressbooks, g_object_ref (dest_source));
+ 
+ 	aux_addressbooks = addressbooks;
+ 	while (aux_addressbooks != NULL) {
+ 
+-		/* Check only addressbooks with autocompletion enabled */
+-		has_autocomplete = e_source_has_extension (aux_addressbooks->data, E_SOURCE_EXTENSION_AUTOCOMPLETE);
+-		if (!has_autocomplete) {
+-			aux_addressbooks = aux_addressbooks->next;
+-			continue;
+-		}
++		if (g_strcmp0 (e_source_get_uid (dest_source), e_source_get_uid (aux_addressbooks->data)) == 0) {
++			client_addressbook = g_object_ref (client);
++		} else {
++			/* Check only addressbooks with autocompletion enabled */
++			has_autocomplete = e_source_has_extension (aux_addressbooks->data, E_SOURCE_EXTENSION_AUTOCOMPLETE);
++			if (!has_autocomplete) {
++				aux_addressbooks = aux_addressbooks->next;
++				continue;
++			}
+ 
+-		autocomplete_extension = e_source_get_extension (aux_addressbooks->data, E_SOURCE_EXTENSION_AUTOCOMPLETE);
+-		on_autocomplete = e_source_autocomplete_get_include_me (autocomplete_extension);
+-		if (!on_autocomplete) {
+-			aux_addressbooks = aux_addressbooks->next;
+-			continue;
+-		}
++			autocomplete_extension = e_source_get_extension (aux_addressbooks->data, E_SOURCE_EXTENSION_AUTOCOMPLETE);
++			on_autocomplete = e_source_autocomplete_get_include_me (autocomplete_extension);
++			if (!on_autocomplete) {
++				aux_addressbooks = aux_addressbooks->next;
++				continue;
++			}
+ 
+-		client_addressbook = (EBookClient *) e_client_cache_get_client_sync (
+-				client_cache, (ESource *) aux_addressbooks->data,
+-				E_SOURCE_EXTENSION_ADDRESS_BOOK,
+-				NULL, &error);
++			client_addressbook = (EBookClient *) e_client_cache_get_client_sync (
++					client_cache, (ESource *) aux_addressbooks->data,
++					E_SOURCE_EXTENSION_ADDRESS_BOOK,
++					NULL, &error);
+ 
+-		if (error != NULL) {
+-			g_warning ("bbdb: Failed to get addressbook client: %s\n", error->message);
+-			g_clear_error (&error);
+-			aux_addressbooks = aux_addressbooks->next;
+-			continue;
++			if (error != NULL) {
++				g_warning ("bbdb: Failed to get addressbook client: %s\n", error->message);
++				g_clear_error (&error);
++				aux_addressbooks = aux_addressbooks->next;
++				continue;
++			}
+ 		}
+ 
+ 		/* If any contacts exists with this email address, don't do anything */
+-- 
+2.15.0
+

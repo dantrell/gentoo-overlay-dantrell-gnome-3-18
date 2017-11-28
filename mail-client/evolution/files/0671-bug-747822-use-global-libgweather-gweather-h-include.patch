@@ -1,0 +1,26 @@
+From bf18ccea71970323c543df5fb40b851360cb9078 Mon Sep 17 00:00:00 2001
+From: Giovanni Campagna <gcampagn@cs.stanford.edu>
+Date: Wed, 15 Apr 2015 12:29:42 +0200
+Subject: [PATCH 0671/1800] Bug 747822 - Use global libgweather/gweather.h
+ include
+
+---
+ modules/cal-config-weather/evolution-cal-config-weather.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/modules/cal-config-weather/evolution-cal-config-weather.c b/modules/cal-config-weather/evolution-cal-config-weather.c
+index 263d74d076..216e0e4fb0 100644
+--- a/modules/cal-config-weather/evolution-cal-config-weather.c
++++ b/modules/cal-config-weather/evolution-cal-config-weather.c
+@@ -22,7 +22,7 @@
+ #include <libedataserver/libedataserver.h>
+ 
+ #define GWEATHER_I_KNOW_THIS_IS_UNSTABLE
+-#include <libgweather/location-entry.h>
++#include <libgweather/gweather.h>
+ #undef GWEATHER_I_KNOW_THIS_IS_UNSTABLE
+ 
+ #include <e-util/e-util.h>
+-- 
+2.15.0
+

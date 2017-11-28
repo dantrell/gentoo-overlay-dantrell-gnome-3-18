@@ -1,0 +1,35 @@
+From a269ee6e9b3de9578590b58d0faf2d6c97ddf9e9 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 24 Feb 2016 11:07:08 +0100
+Subject: [PATCH 0623/1800] EHTMLEditorSelection - When restoring selection and
+ no range is in composer, create it
+
+---
+ .../composer/e-html-editor-selection-dom-functions.c          | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 7d8529c04d..fbc22b2c86 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -1769,9 +1769,14 @@ dom_selection_restore (WebKitDOMDocument *document)
+ 	range = webkit_dom_dom_selection_get_range_at (dom_selection, 0, NULL);
+ 	g_object_unref (dom_window);
+ 	if (!range) {
+-		g_object_unref (dom_selection);
+-		remove_selection_markers (document);
+-		return;
++		WebKitDOMHTMLElement *body;
++
++		range = webkit_dom_document_create_range (document);
++		body = webkit_dom_document_get_body (document);
++
++		webkit_dom_range_select_node_contents (range, WEBKIT_DOM_NODE (body), NULL);
++		webkit_dom_range_collapse (range, TRUE, NULL);
++		webkit_dom_dom_selection_add_range (dom_selection, range);
+ 	}
+ 
+ 	selection_start_marker = webkit_dom_range_get_start_container (range, NULL);
+-- 
+2.15.0
+

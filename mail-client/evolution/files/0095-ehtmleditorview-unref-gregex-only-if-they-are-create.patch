@@ -1,0 +1,29 @@
+From c04a869c3664ce30aaf1bf384afdfed7ee4003b5 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 27 Nov 2014 17:48:14 +0100
+Subject: [PATCH 0095/1800] EHTMLEditorView - Unref GRegex only if they are
+ created
+
+---
+ e-util/e-html-editor-view-dom-functions.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/e-util/e-html-editor-view-dom-functions.c b/e-util/e-html-editor-view-dom-functions.c
+index 4721ed56c3..2953ebdab9 100644
+--- a/e-util/e-html-editor-view-dom-functions.c
++++ b/e-util/e-html-editor-view-dom-functions.c
+@@ -3224,9 +3224,9 @@ parse_html_into_paragraphs (WebKitDOMDocument *document,
+ 	webkit_dom_html_element_set_inner_html (
+ 		WEBKIT_DOM_HTML_ELEMENT (blockquote), end->str, NULL);
+ 
+-	if (regex_email)
++	if (regex_email != NULL)
+ 		g_regex_unref (regex_email);
+-	if (regex_link)
++	if (regex_link != NULL)
+ 		g_regex_unref (regex_link);
+ 	g_regex_unref (regex_nbsp);
+ 	g_free (inner_html);
+-- 
+2.15.0
+

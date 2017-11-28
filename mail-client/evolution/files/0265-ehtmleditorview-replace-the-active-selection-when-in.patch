@@ -1,0 +1,27 @@
+From 0e923b75168dd12dbf5cc362dbe1073f7a378cab Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 12:43:56 +0100
+Subject: [PATCH 0265/1800] EHTMLEditorView - Replace the active selection when
+ inserting emoticons
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 586cbc0707..05f6de086f 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -1217,6 +1217,9 @@ emoticon_read_async_cb (GFile *file,
+ 	if (error || (size == -1))
+ 		goto out;
+ 
++	if (!dom_selection_is_collapsed (document))
++		dom_exec_command (document, E_HTML_EDITOR_VIEW_COMMAND_DELETE, NULL);
++
+ 	dom_selection_save (document);
+ 
+ 	selection_start_marker = webkit_dom_document_get_element_by_id (
+-- 
+2.15.0
+

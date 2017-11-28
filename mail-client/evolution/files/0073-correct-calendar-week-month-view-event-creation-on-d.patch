@@ -1,0 +1,28 @@
+From 0c4363ac9fbcf1bd1d10b40971f710346108ce71 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 13 Nov 2014 10:47:01 +0100
+Subject: [PATCH 0073/1800] Correct calendar Week/Month View event creation on
+ double-click
+
+Wrong parameters had been passed into the created function, causing
+incorrect behaviour with event time rounding for the past times.
+---
+ calendar/gui/e-week-view.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/calendar/gui/e-week-view.c b/calendar/gui/e-week-view.c
+index de543cbd4a..de3c7c7ee0 100644
+--- a/calendar/gui/e-week-view.c
++++ b/calendar/gui/e-week-view.c
+@@ -2795,7 +2795,7 @@ e_week_view_on_button_press (GtkWidget *widget,
+ 				week_view->before_click_dtstart,
+ 				week_view->before_click_dtend);
+ 		}
+-		e_calendar_view_new_appointment_full (E_CALENDAR_VIEW (week_view), FALSE, FALSE, calendar_config_get_prefer_meeting ());
++		e_calendar_view_new_appointment_full (E_CALENDAR_VIEW (week_view), FALSE, calendar_config_get_prefer_meeting (), FALSE);
+ 		return TRUE;
+ 	}
+ 
+-- 
+2.15.0
+

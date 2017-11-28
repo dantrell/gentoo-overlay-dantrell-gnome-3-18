@@ -1,0 +1,35 @@
+From c3be9076dbbdbd03efbe404edd91f2119334de94 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marek=20=C4=8Cernock=C3=BD?= <marek@manet.cz>
+Date: Tue, 20 Jan 2015 07:36:33 +0100
+Subject: [PATCH 0180/1800] Updated Czech translation
+
+---
+ po/cs.po | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/po/cs.po b/po/cs.po
+index d03cf0ac29..2d511c71ef 100644
+--- a/po/cs.po
++++ b/po/cs.po
+@@ -23611,15 +23611,15 @@ msgstr "Důvěra certifikační autoritě"
+ 
+ #: ../smime/gui/smime-ui.ui.h:18
+ msgid "Trust this CA to identify _websites."
+-msgstr "Důvěřovat této CA pro identifikaci _webových serverů."
++msgstr "Důvěřovat této CA ohledně identifikace _webových serverů."
+ 
+ #: ../smime/gui/smime-ui.ui.h:19
+ msgid "Trust this CA to identify _email users."
+-msgstr "Důvěřovat této CA pro identifikaci uživatelů _e-mailu."
++msgstr "Důvěřovat této CA ohledně identifikace uživatelů _e-mailu."
+ 
+ #: ../smime/gui/smime-ui.ui.h:20
+ msgid "Trust this CA to identify _software developers."
+-msgstr "Důvěřovat této CA pro identifikaci vývojářů _software."
++msgstr "Důvěřovat této CA ohledně identifikace vývojářů _software."
+ 
+ #: ../smime/gui/smime-ui.ui.h:21
+ msgid ""
+-- 
+2.15.0
+

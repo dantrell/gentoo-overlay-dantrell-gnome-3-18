@@ -1,0 +1,25 @@
+From f2e2e43ae9a09b4be554386cbac5bde5eba1165e Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Tue, 23 Feb 2016 19:49:16 +0100
+Subject: [PATCH 0606/1800] EHTMLEditorView - Fix formatting
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 49884ba94e..367176e5c7 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -3748,7 +3748,7 @@ get_decoded_line_length (WebKitDOMDocument *document,
+ 			text_length = webkit_dom_character_data_get_length (WEBKIT_DOM_CHARACTER_DATA (node));
+ 			total_length += text_length;
+ 			length += text_length;
+-		} if (WEBKIT_DOM_IS_ELEMENT (node)) {
++		} else if (WEBKIT_DOM_IS_ELEMENT (node)) {
+ 			if (element_has_class (WEBKIT_DOM_ELEMENT (node), "Apple-tab-span")) {
+ 				total_length += TAB_LENGTH - length % TAB_LENGTH;
+ 				length = 0;
+-- 
+2.15.0
+

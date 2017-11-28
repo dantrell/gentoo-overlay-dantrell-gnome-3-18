@@ -1,0 +1,25 @@
+From 049469710b0ea78264a5e0f6637eb9004f43fceb Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 23 Mar 2015 14:24:39 +0100
+Subject: [PATCH 0195/1800] EHTMLEditorView - Spell check is sometimes lost
+ when deleting content
+
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 276abcab09..d410bb78cc 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -2008,6 +2008,7 @@ body_keyup_event_cb (WebKitDOMElement *element,
+ 		}
+  restore:
+ 		dom_selection_restore (document);
++		dom_force_spell_check_for_current_paragraph (document, extension);
+ 	} else if (key_code == HTML_KEY_CODE_CONTROL)
+ 		dom_set_links_active (document, FALSE);
+ }
+-- 
+2.15.0
+

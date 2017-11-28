@@ -1,0 +1,80 @@
+From 8dff10a05a448316d2996996e560e6313bb26165 Mon Sep 17 00:00:00 2001
+From: Andre Klapper <ak-47@gmx.net>
+Date: Mon, 16 Feb 2015 00:10:32 +0100
+Subject: [PATCH 0299/1800] Small string change in UI
+
+---
+ help/C/mail-receiving-options-maildir-format-directories.page | 4 ++--
+ help/C/mail-receiving-options-unix-mbox-spool-directory.page  | 4 ++--
+ help/C/mail-receiving-options-unix-mbox-spool-file.page       | 4 ++--
+ 3 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/help/C/mail-receiving-options-maildir-format-directories.page b/help/C/mail-receiving-options-maildir-format-directories.page
+index 65b1c0cd4a..c3b521a378 100644
+--- a/help/C/mail-receiving-options-maildir-format-directories.page
++++ b/help/C/mail-receiving-options-maildir-format-directories.page
+@@ -6,7 +6,7 @@
+ 
+     <link type="guide" xref="mail-receiving-options#local-account-server-types"/>
+     <link type="guide" xref="mail-account-manage-maildir-format-directories#receiving-email"/>
+-    <revision pkgversion="3.0.2" version="0.2" date="2011-07-30" status="final"/>
++    <revision pkgversion="3.12.9" version="0.3" date="2015-02-15" status="final"/>
+     <credit type="author">
+       <name its:translate="no">Andre Klapper</name>
+       <email its:translate="no">ak-47@gmx.net</email>
+@@ -37,7 +37,7 @@
+ 
+ <list>
+ <item><p>If you want Evolution to check automatically for new messages, click the <gui>Check for new messages every … minutes</gui> option and select the frequency in minutes.</p>
+-<p>If you want <link xref="mail-filters">Filters</link> to be automatically used for new messages in your inbox, enable <gui>Apply filters to new messages in INBOX</gui>.</p></item>
++<p>If you want <link xref="mail-filters">Filters</link> to be automatically used for new messages in your inbox, enable <gui>Apply filters to new messages in Inbox</gui>.</p></item>
+ </list>
+ 
+ </section>
+diff --git a/help/C/mail-receiving-options-unix-mbox-spool-directory.page b/help/C/mail-receiving-options-unix-mbox-spool-directory.page
+index 4538b616be..bb83f2fbc5 100644
+--- a/help/C/mail-receiving-options-unix-mbox-spool-directory.page
++++ b/help/C/mail-receiving-options-unix-mbox-spool-directory.page
+@@ -6,7 +6,7 @@
+ 
+     <link type="guide" xref="mail-receiving-options#local-account-server-types"/>
+     <link type="guide" xref="mail-account-manage-unix-mbox-spool-directory#receiving-email"/>
+-    <revision pkgversion="3.0.2" version="0.2" date="2011-07-30" status="final"/>
++    <revision pkgversion="3.12.9" version="0.3" date="2015-02-15" status="final"/>
+     <credit type="author">
+       <name its:translate="no">Andre Klapper</name>
+       <email its:translate="no">ak-47@gmx.net</email>
+@@ -36,7 +36,7 @@
+ <p>On the <gui>Receiving Options</gui> page (accessible via <guiseq><gui>Edit</gui><gui>Preferences</gui><gui>Mail Accounts</gui><gui style="button">Edit</gui><gui>Receiving Options</gui></guiseq>):</p>
+ 
+ <list>
+-<item><p>If you want <link xref="mail-filters">Filters</link> to be automatically used for new messages in your inbox, enable <gui>Apply filters to new messages in INBOX</gui>.</p></item>
++<item><p>If you want <link xref="mail-filters">Filters</link> to be automatically used for new messages in your inbox, enable <gui>Apply filters to new messages in Inbox</gui>.</p></item>
+ </list>
+ 
+ </section>
+diff --git a/help/C/mail-receiving-options-unix-mbox-spool-file.page b/help/C/mail-receiving-options-unix-mbox-spool-file.page
+index 161ecd105c..b91728c409 100644
+--- a/help/C/mail-receiving-options-unix-mbox-spool-file.page
++++ b/help/C/mail-receiving-options-unix-mbox-spool-file.page
+@@ -6,7 +6,7 @@
+ 
+     <link type="guide" xref="mail-receiving-options#local-account-server-types"/>
+     <link type="guide" xref="mail-account-manage-unix-mbox-spool-file#receiving-email"/>
+-    <revision pkgversion="3.1.90" version="0.3" date="2011-08-25" status="final"/>
++    <revision pkgversion="3.12.9" version="0.4" date="2015-02-15" status="final"/>
+     <credit type="author">
+       <name its:translate="no">Andre Klapper</name>
+       <email its:translate="no">ak-47@gmx.net</email>
+@@ -37,7 +37,7 @@
+ 
+ <list>
+ <item><p>If you want Evolution to check automatically for new messages, click the <gui>Check for new messages every … minutes</gui> option and select the frequency in minutes.</p></item>
+-<item><p>If you want <link xref="mail-filters">Filters</link> to be automatically used for new messages in your inbox, enable <gui>Apply filters to new messages in INBOX</gui>.</p></item>
++<item><p>If you want <link xref="mail-filters">Filters</link> to be automatically used for new messages in your inbox, enable <gui>Apply filters to new messages in Inbox</gui>.</p></item>
+ </list>
+ 
+ </section>
+-- 
+2.15.0
+

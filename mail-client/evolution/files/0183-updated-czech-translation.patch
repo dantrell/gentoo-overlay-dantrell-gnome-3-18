@@ -1,0 +1,25 @@
+From b3dbba0b065560196a00c9e21090873bc97823e9 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marek=20=C4=8Cernock=C3=BD?= <marek@manet.cz>
+Date: Tue, 20 Jan 2015 19:04:50 +0100
+Subject: [PATCH 0183/1800] Updated Czech translation
+
+---
+ po/cs.po | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/po/cs.po b/po/cs.po
+index e280167a0e..ad3cfe71bd 100644
+--- a/po/cs.po
++++ b/po/cs.po
+@@ -465,7 +465,7 @@ msgstr "Různé"
+ 
+ #: ../addressbook/gui/contact-editor/contact-editor.ui.h:40
+ msgid "Personal Information"
+-msgstr "Osobní informace"
++msgstr "Osobní údaje"
+ 
+ #: ../addressbook/gui/contact-editor/contact-editor.ui.h:41
+ msgid "_City:"
+-- 
+2.15.0
+

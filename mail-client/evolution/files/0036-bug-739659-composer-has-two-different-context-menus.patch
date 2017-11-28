@@ -1,0 +1,47 @@
+From 7d480f0e3ed02c463c8eeed65eeeabdade48f200 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 5 Nov 2014 11:32:48 +0100
+Subject: [PATCH 0036/1800] Bug 739659 - Composer has two different context
+ menus
+
+Show the Evolution's context menu instead of WebKit's one when the Menu
+key is pressed.
+---
+ e-util/e-html-editor-view.c | 11 +++++++++++
+ e-util/e-html-editor.c      |  1 +
+ 2 files changed, 12 insertions(+)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index d2dbaeec5a..31006c6d1c 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -2643,6 +2643,17 @@ html_editor_view_key_press_event (GtkWidget *widget,
+ 
+ 	view->priv->key_event = event;
+ 
++	if (event->keyval == GDK_KEY_Menu) {
++		gboolean event_handled;
++
++		html_editor_view_save_element_under_mouse_click (widget);
++		g_signal_emit (
++			widget, signals[POPUP_EVENT],
++			0, event, &event_handled);
++
++		return event_handled;
++	}
++
+ 	if (event->keyval == GDK_KEY_Tab)
+ 		return e_html_editor_view_exec_command (
+ 			view, E_HTML_EDITOR_VIEW_COMMAND_INSERT_TEXT, "\t");
+diff --git a/e-util/e-html-editor.c b/e-util/e-html-editor.c
+index 74b4a9b65c..8d276e8a52 100644
+--- a/e-util/e-html-editor.c
++++ b/e-util/e-html-editor.c
+@@ -1178,3 +1178,4 @@ e_html_editor_save (EHTMLEditor *editor,
+ 	return TRUE;
+ }
+ 
++
+-- 
+2.15.0
+

@@ -1,0 +1,85 @@
+From 3667a48205e4e1326186ece801ea49abba70fe3e Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 26 Feb 2016 10:23:30 +0100
+Subject: [PATCH 0862/1800] Bug 751186 - Tab not part of editing undo / redo
+ stack and corrupts the stack
+
+---
+ .../composer/e-html-editor-undo-redo-manager.c     |  6 +++++-
+ .../composer/e-html-editor-view-dom-functions.c    | 22 ++++++++++++++++++++--
+ 2 files changed, 25 insertions(+), 3 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-undo-redo-manager.c b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+index ecaf56a59a..55d5010fba 100644
+--- a/web-extensions/composer/e-html-editor-undo-redo-manager.c
++++ b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+@@ -587,8 +587,12 @@ undo_delete (WebKitDOMDocument *document,
+ 
+ 		element = webkit_dom_document_create_element (document, "span", NULL);
+ 
+-		range = get_range_for_point (document, event->after.start);
+ 		/* Create temporary node on the selection where the delete occured. */
++		if (webkit_dom_document_fragment_query_selector (event->data.fragment, ".Apple-tab-span", NULL))
++			range = get_range_for_point (document, event->before.start);
++		else
++			range = get_range_for_point (document, event->after.start);
++
+ 		webkit_dom_range_surround_contents (range, WEBKIT_DOM_NODE (element), NULL);
+ 		webkit_dom_dom_selection_remove_all_ranges (dom_selection);
+ 		webkit_dom_dom_selection_add_range (dom_selection, range);
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 6fddbf63dc..80caf7da9b 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -7973,12 +7973,20 @@ static gboolean
+ insert_tabulator (WebKitDOMDocument *document,
+                   EHTMLEditorWebExtension *extension)
+ {
++	EHTMLEditorHistoryEvent *ev;
+ 	gboolean success;
+-	EHTMLEditorHistoryEvent *ev;
+ 
+ 	ev = g_new0 (EHTMLEditorHistoryEvent, 1);
+ 	ev->type = HISTORY_INPUT;
+ 
++	if (!dom_selection_is_collapsed (document)) {
++		WebKitDOMRange *tmp_range;
++
++		tmp_range = dom_get_current_range (document);
++		insert_delete_event (document, extension, tmp_range);
++		g_object_unref (tmp_range);
++	}
++
+ 	dom_selection_get_coordinates (
+ 		document,
+ 		&ev->before.start.x,
+@@ -7986,6 +7994,9 @@ insert_tabulator (WebKitDOMDocument *document,
+ 		&ev->before.end.x,
+ 		&ev->before.end.y);
+ 
++	ev->before.end.x = ev->before.start.x;
++	ev->before.end.y = ev->before.start.y;
++
+ 	success = dom_exec_command (document, extension, E_HTML_EDITOR_VIEW_COMMAND_INSERT_TEXT, "\t");
+ 
+ 	if (success) {
+@@ -8022,8 +8033,15 @@ insert_tabulator (WebKitDOMDocument *document,
+ 
+ 		manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
+ 		e_html_editor_undo_redo_manager_insert_history_event (manager, ev);
+-	} else
++	} else {
++		EHTMLEditorUndoRedoManager *manager;
++
++		manager = e_html_editor_web_extension_get_undo_redo_manager (extension);
++
++		e_html_editor_undo_redo_manager_remove_current_history_event (manager);
++		e_html_editor_undo_redo_manager_remove_current_history_event (manager);
+ 		g_free (ev);
++	}
+ 
+ 	return success;
+ }
+-- 
+2.15.0
+

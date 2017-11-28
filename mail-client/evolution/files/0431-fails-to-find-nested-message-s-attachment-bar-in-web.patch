@@ -1,0 +1,80 @@
+From 1c4f8ab9179b6a852fc6fd198ced646bf2d77b5a Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 30 Mar 2015 10:52:51 +0200
+Subject: [PATCH 0431/1800] Fails to find nested message's attachment bar in
+ WebKitWebView
+
+A runtime warning like this:
+
+    evolution-mail-WARNING **: Failed to find parent <object>
+    for '.message.mixed.1.mbox.0.rfc822.attachment-bar' - no ID set?
+
+could be shown when a message in the preview had a message attachment,
+which had also an attachment.
+
+The reason for it was a use of the same variable name in the 'for' body
+as in the parent block, which, even the element was found, didn't set
+the parent block's variable, thus it behaved like nothing was found.
+---
+ web-extensions/e-dom-utils.c | 18 ++++++------------
+ 1 file changed, 6 insertions(+), 12 deletions(-)
+
+diff --git a/web-extensions/e-dom-utils.c b/web-extensions/e-dom-utils.c
+index 7581cd323f..49e66b649e 100644
+--- a/web-extensions/e-dom-utils.c
++++ b/web-extensions/e-dom-utils.c
+@@ -862,7 +862,6 @@ e_dom_utils_find_element_by_selector (WebKitDOMDocument *document,
+ 	for (ii = 0; ii < length; ii++) {
+ 		WebKitDOMHTMLIFrameElement *iframe;
+ 		WebKitDOMDocument *content_document;
+-		WebKitDOMElement *element;
+ 
+ 		iframe = WEBKIT_DOM_HTML_IFRAME_ELEMENT (
+ 			webkit_dom_node_list_item (frames, ii));
+@@ -874,14 +873,12 @@ e_dom_utils_find_element_by_selector (WebKitDOMDocument *document,
+ 		element = e_dom_utils_find_element_by_id (content_document, selector);
+ 
+ 		g_object_unref (iframe);
+-		if (element != NULL) {
+-			g_object_unref (frames);
+-			return element;
+-		}
++		if (element != NULL)
++			break;
+ 	}
+ 
+ 	g_object_unref (frames);
+-	return NULL;
++	return element;
+ }
+ 
+ /* ! This function can be called only from WK2 web-extension ! */
+@@ -905,7 +902,6 @@ e_dom_utils_find_element_by_id (WebKitDOMDocument *document,
+ 	for (ii = 0; ii < length; ii++) {
+ 		WebKitDOMHTMLIFrameElement *iframe;
+ 		WebKitDOMDocument *content_document;
+-		WebKitDOMElement *element;
+ 
+ 		iframe = WEBKIT_DOM_HTML_IFRAME_ELEMENT (
+ 			webkit_dom_node_list_item (frames, ii));
+@@ -917,14 +913,12 @@ e_dom_utils_find_element_by_id (WebKitDOMDocument *document,
+ 		element = e_dom_utils_find_element_by_id (content_document, id);
+ 
+ 		g_object_unref (iframe);
+-		if (element != NULL) {
+-			g_object_unref (frames);
+-			return element;
+-		}
++		if (element != NULL)
++			break;
+ 	}
+ 
+ 	g_object_unref (frames);
+-	return NULL;
++	return element;
+ }
+ 
+ gboolean
+-- 
+2.15.0
+

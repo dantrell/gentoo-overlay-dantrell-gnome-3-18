@@ -1,0 +1,24 @@
+From d540ee82ec68d15a5110a4149fc94ec9f3d7b67b Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 13 Nov 2014 10:12:06 +0100
+Subject: [PATCH 0059/1800] mail_regen_list: Fix a memory leak
+
+---
+ mail/message-list.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/mail/message-list.c b/mail/message-list.c
+index e8fbd820ae..db70ec3b8f 100644
+--- a/mail/message-list.c
++++ b/mail/message-list.c
+@@ -5911,6 +5911,7 @@ mail_regen_list (MessageList *message_list,
+ 	g_strfreev (message_list->priv->re_prefixes);
+ 	prefixes = g_settings_get_string (message_list->priv->mail_settings, "composer-localized-re");
+ 	message_list->priv->re_prefixes = g_strsplit (prefixes ? prefixes : "", ",", -1);
++	g_free (prefixes);
+ 	g_mutex_unlock (&message_list->priv->re_prefixes_lock);
+ 
+ 	g_mutex_lock (&message_list->priv->regen_lock);
+-- 
+2.15.0
+

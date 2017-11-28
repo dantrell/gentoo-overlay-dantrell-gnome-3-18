@@ -1,0 +1,680 @@
+From d79e88b71e4230e971bca4ae5bae2934a83adea6 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Fri, 12 Jun 2015 15:04:02 +0200
+Subject: [PATCH 0806/1800] Use e_util_get_source_full_name() where appropriate
+
+To better identify which source the operation runs on.
+---
+ calendar/gui/dialogs/copy-source-dialog.c   |  9 +++--
+ calendar/gui/e-cal-model.c                  |  5 ++-
+ calendar/gui/e-cal-ops.c                    | 62 +++++++++++++++++++++--------
+ calendar/gui/e-calendar-view.c              |  5 ++-
+ calendar/gui/itip-utils.c                   |  5 ++-
+ e-util/e-misc-utils.c                       | 10 ++++-
+ modules/calendar/e-cal-base-shell-backend.c |  7 ++--
+ modules/calendar/e-cal-base-shell-sidebar.c | 15 +++++--
+ shell/e-shell-window.c                      |  9 ++++-
+ shell/e-shell.c                             | 35 ++++++++++++----
+ 10 files changed, 122 insertions(+), 40 deletions(-)
+
+diff --git a/calendar/gui/dialogs/copy-source-dialog.c b/calendar/gui/dialogs/copy-source-dialog.c
+index 0c0fd10649..b66ef383c4 100644
+--- a/calendar/gui/dialogs/copy-source-dialog.c
++++ b/calendar/gui/dialogs/copy-source-dialog.c
+@@ -231,7 +231,7 @@ copy_source_dialog (GtkWindow *parent,
+ 		CopySourceData *csd;
+ 		GCancellable *cancellable;
+ 		ECalDataModel *data_model;
+-		const gchar *alert_arg_0;
++		gchar *display_name;
+ 		gchar *description;
+ 
+ 		csd = g_new0 (CopySourceData, 1);
+@@ -241,14 +241,15 @@ copy_source_dialog (GtkWindow *parent,
+ 		csd->to_client = NULL;
+ 		csd->extension_name = extension_name;
+ 
+-		alert_arg_0 = e_source_get_display_name (to_source);
+-		description = g_strdup_printf (format, alert_arg_0);
++		display_name = e_util_get_source_full_name (e_cal_model_get_registry (model), to_source);
++		description = g_strdup_printf (format, display_name);
+ 		data_model = e_cal_model_get_data_model (model);
+ 
+-		cancellable = e_cal_data_model_submit_thread_job (data_model, description, alert_ident, alert_arg_0,
++		cancellable = e_cal_data_model_submit_thread_job (data_model, description, alert_ident, display_name,
+ 			copy_source_thread, csd, copy_source_data_free);
+ 
+ 		g_clear_object (&cancellable);
++		g_free (display_name);
+ 		g_free (description);
+ 	}
+ 
+diff --git a/calendar/gui/e-cal-model.c b/calendar/gui/e-cal-model.c
+index 893ba537b7..700462c3bc 100644
+--- a/calendar/gui/e-cal-model.c
++++ b/calendar/gui/e-cal-model.c
+@@ -1167,6 +1167,7 @@ cal_model_create_component_from_values_thread (EAlertSinkThreadJobData *job_data
+ 	EClient *client;
+ 	ECalModelComponent *comp_data;
+ 	const gchar *source_uid;
++	gchar *display_name;
+ 	GError *local_error = NULL;
+ 
+ 	g_return_if_fail (ccd != NULL);
+@@ -1185,7 +1186,9 @@ cal_model_create_component_from_values_thread (EAlertSinkThreadJobData *job_data
+ 		return;
+ 	}
+ 
+-	e_alert_sink_thread_job_set_alert_arg_0 (job_data, e_source_get_display_name (source));
++	display_name = e_util_get_source_full_name (registry, source);
++	e_alert_sink_thread_job_set_alert_arg_0 (job_data, display_name);
++	g_free (display_name);
+ 
+ 	client = e_client_cache_get_client_sync (client_cache, source,
+ 		cal_model_kind_to_extension_name (ccd->model), (guint32) -1, cancellable, &local_error);
+diff --git a/calendar/gui/e-cal-ops.c b/calendar/gui/e-cal-ops.c
+index f2620fb180..c78d779505 100644
+--- a/calendar/gui/e-cal-ops.c
++++ b/calendar/gui/e-cal-ops.c
+@@ -172,6 +172,7 @@ e_cal_ops_create_component (ECalModel *model,
+ 	ESource *source;
+ 	const gchar *description;
+ 	const gchar *alert_ident;
++	gchar *display_name;
+ 	BasicOperationData *bod;
+ 	GCancellable *cancellable;
+ 
+@@ -208,11 +209,13 @@ e_cal_ops_create_component (ECalModel *model,
+ 	bod->user_data = user_data;
+ 	bod->user_data_free = user_data_free;
+ 
++	display_name = e_util_get_source_full_name (e_cal_model_get_registry (model), source);
+ 	cancellable = e_cal_data_model_submit_thread_job (data_model, description, alert_ident,
+-		e_source_get_display_name (source), cal_ops_create_component_thread,
++		display_name, cal_ops_create_component_thread,
+ 		bod, basic_operation_data_free);
+ 
+ 	g_clear_object (&cancellable);
++	g_free (display_name);
+ }
+ 
+ static void
+@@ -271,6 +274,7 @@ e_cal_ops_modify_component (ECalModel *model,
+ 	ESource *source;
+ 	const gchar *description;
+ 	const gchar *alert_ident;
++	gchar *display_name;
+ 	BasicOperationData *bod;
+ 	GCancellable *cancellable;
+ 
+@@ -307,11 +311,13 @@ e_cal_ops_modify_component (ECalModel *model,
+ 	bod->send_flags = send_flags;
+ 	bod->is_modify = TRUE;
+ 
++	display_name = e_util_get_source_full_name (e_cal_model_get_registry (model), source);
+ 	cancellable = e_cal_data_model_submit_thread_job (data_model, description, alert_ident,
+-		e_source_get_display_name (source), cal_ops_modify_component_thread,
++		display_name, cal_ops_modify_component_thread,
+ 		bod, basic_operation_data_free);
+ 
+ 	g_clear_object (&cancellable);
++	g_free (display_name);
+ }
+ 
+ static void
+@@ -375,6 +381,7 @@ e_cal_ops_remove_component (ECalModel *model,
+ 	ESource *source;
+ 	const gchar *description;
+ 	const gchar *alert_ident;
++	gchar *display_name;
+ 	BasicOperationData *bod;
+ 	GCancellable *cancellable;
+ 
+@@ -411,11 +418,13 @@ e_cal_ops_remove_component (ECalModel *model,
+ 	bod->mod = mod;
+ 	bod->check_detached_instance = check_detached_instance;
+ 
++	display_name = e_util_get_source_full_name (e_cal_model_get_registry (model), source);
+ 	cancellable = e_cal_data_model_submit_thread_job (data_model, description, alert_ident,
+-		e_source_get_display_name (source), cal_ops_remove_component_thread,
++		display_name, cal_ops_remove_component_thread,
+ 		bod, basic_operation_data_free);
+ 
+ 	g_clear_object (&cancellable);
++	g_free (display_name);
+ }
+ 
+ static void
+@@ -569,6 +578,7 @@ cal_ops_update_components_thread (EAlertSinkThreadJobData *job_data,
+ 	ESourceRegistry *registry;
+ 	ESource *source;
+ 	const gchar *uid;
++	gchar *display_name;
+ 	gboolean success = TRUE, any_copied = FALSE;
+ 	GError *local_error = NULL;
+ 
+@@ -588,7 +598,9 @@ cal_ops_update_components_thread (EAlertSinkThreadJobData *job_data,
+ 		return;
+ 	}
+ 
+-	e_alert_sink_thread_job_set_alert_arg_0 (job_data, e_source_get_display_name (source));
++	display_name = e_util_get_source_full_name (registry, source);
++	e_alert_sink_thread_job_set_alert_arg_0 (job_data, display_name);
++	g_free (display_name);
+ 
+ 	client = e_client_cache_get_client_sync (client_cache, source, pcd->extension_name, 30, cancellable, &local_error);
+ 	g_clear_object (&source);
+@@ -809,6 +821,7 @@ e_cal_ops_send_component (ECalModel *model,
+ 	GCancellable *cancellable;
+ 	const gchar *alert_ident;
+ 	const gchar *description;
++	gchar *display_name;
+ 	SendComponentData *scd;
+ 
+ 	g_return_if_fail (E_IS_CAL_MODEL (model));
+@@ -839,12 +852,14 @@ e_cal_ops_send_component (ECalModel *model,
+ 
+ 	source = e_client_get_source (E_CLIENT (client));
+ 	data_model = e_cal_model_get_data_model (model);
++	display_name = e_util_get_source_full_name (e_cal_model_get_registry (model), source);
+ 
+ 	cancellable = e_cal_data_model_submit_thread_job (data_model, description, alert_ident,
+-		e_source_get_display_name (source), cal_ops_send_component_thread,
++		display_name, cal_ops_send_component_thread,
+ 		scd, send_component_data_free);
+ 
+ 	g_clear_object (&cancellable);
++	g_free (display_name);
+ }
+ 
+ typedef struct {
+@@ -896,7 +911,7 @@ cal_ops_purge_components_thread (EAlertSinkThreadJobData *job_data,
+ 	GList *clink;
+ 	gchar *sexp, *start, *end;
+ 	gboolean pushed_message = FALSE;
+-	const gchar *display_name, *tzloc = NULL;
++	const gchar *tzloc = NULL;
+ 	icaltimezone *zone;
+ 	icalcomponent_kind model_kind;
+ 
+@@ -919,12 +934,13 @@ cal_ops_purge_components_thread (EAlertSinkThreadJobData *job_data,
+ 		ECalClient *client = clink->data;
+ 		GSList *objects, *olink;
+ 		gint nobjects, ii, last_percent = 0;
++		gchar *display_name;
+ 		gboolean success = TRUE;
+ 
+ 		if (!client || e_client_is_readonly (E_CLIENT (client)))
+ 			continue;
+ 
+-		display_name = e_source_get_display_name (e_client_get_source (E_CLIENT (client)));
++		display_name = e_util_get_source_full_name (e_cal_model_get_registry (pcd->model), e_client_get_source (E_CLIENT (client)));
+ 		e_alert_sink_thread_job_set_alert_arg_0 (job_data, display_name);
+ 
+ 		switch (model_kind) {
+@@ -942,19 +958,24 @@ cal_ops_purge_components_thread (EAlertSinkThreadJobData *job_data,
+ 				break;
+ 			default:
+ 				g_warn_if_reached ();
++				g_free (display_name);
+ 				return;
+ 		}
+ 
+ 		pushed_message = TRUE;
+ 
+-		if (!e_cal_client_get_object_list_sync (client, sexp, &objects, cancellable, error))
++		if (!e_cal_client_get_object_list_sync (client, sexp, &objects, cancellable, error)) {
++			g_free (display_name);
+ 			break;
++		}
+ 
+ 		camel_operation_pop_message (cancellable);
+ 		pushed_message = FALSE;
+ 
+-		if (!objects)
++		if (!objects) {
++			g_free (display_name);
+ 			continue;
++		}
+ 
+ 		switch (model_kind) {
+ 			case ICAL_VEVENT_COMPONENT:
+@@ -971,9 +992,11 @@ cal_ops_purge_components_thread (EAlertSinkThreadJobData *job_data,
+ 				break;
+ 			default:
+ 				g_warn_if_reached ();
++				g_free (display_name);
+ 				return;
+ 		}
+ 
++		g_free (display_name);
+ 		pushed_message = TRUE;
+ 		nobjects = g_slist_length (objects);
+ 
+@@ -1314,6 +1337,7 @@ e_cal_ops_get_default_component (ECalModel *model,
+ 	ESource *source = NULL;
+ 	const gchar *description;
+ 	const gchar *alert_ident;
++	gchar *display_name = NULL;
+ 	BasicOperationData *bod;
+ 	GCancellable *cancellable;
+ 
+@@ -1344,6 +1368,8 @@ e_cal_ops_get_default_component (ECalModel *model,
+ 
+ 		registry = e_cal_model_get_registry (model);
+ 		source = e_source_registry_ref_source (registry, for_client_uid);
++		if (source)
++			display_name = e_util_get_source_full_name (registry, source);
+ 	}
+ 
+ 	bod = g_new0 (BasicOperationData, 1);
+@@ -1357,11 +1383,12 @@ e_cal_ops_get_default_component (ECalModel *model,
+ 	bod->user_data_free = user_data_free;
+ 
+ 	cancellable = e_cal_data_model_submit_thread_job (data_model, description, alert_ident,
+-		source ? e_source_get_display_name (source) : "", cal_ops_get_default_component_thread,
++		display_name ? display_name : "", cal_ops_get_default_component_thread,
+ 		bod, basic_operation_data_free);
+ 
+ 	g_clear_object (&cancellable);
+ 	g_clear_object (&source);
++	g_free (display_name);
+ }
+ 
+ static void
+@@ -1604,7 +1631,7 @@ e_cal_ops_new_component_ex (EShellWindow *shell_window,
+ 	ESource *default_source, *for_client_source = NULL;
+ 	EShell *shell;
+ 	gchar *description = NULL, *alert_ident = NULL, *alert_arg_0 = NULL;
+-	const gchar *source_display_name = ""; /* not NULL intentionally */
++	gchar *source_display_name = NULL;
+ 	const gchar *extension_name;
+ 	NewComponentData *ncd;
+ 
+@@ -1660,12 +1687,12 @@ e_cal_ops_new_component_ex (EShellWindow *shell_window,
+ 	ncd->default_reminder_units = default_reminder_units;
+ 
+ 	if (for_client_source)
+-		source_display_name = e_source_get_display_name (for_client_source);
++		source_display_name = e_util_get_source_full_name (registry, for_client_source);
+ 	else if (default_source)
+-		source_display_name = e_source_get_display_name (default_source);
++		source_display_name = e_util_get_source_full_name (registry, default_source);
+ 
+ 	g_warn_if_fail (e_util_get_open_source_job_info (extension_name,
+-		source_display_name, &description, &alert_ident, &alert_arg_0));
++		source_display_name ? source_display_name : "", &description, &alert_ident, &alert_arg_0));
+ 
+ 	if (shell_window) {
+ 		EShellView *shell_view;
+@@ -1693,6 +1720,7 @@ e_cal_ops_new_component_ex (EShellWindow *shell_window,
+ 
+ 	g_clear_object (&default_source);
+ 	g_clear_object (&for_client_source);
++	g_free (source_display_name);
+ 	g_free (description);
+ 	g_free (alert_ident);
+ 	g_free (alert_arg_0);
+@@ -2006,7 +2034,7 @@ e_cal_ops_transfer_components (EShellView *shell_view,
+ 			       gboolean is_move)
+ {
+ 	gint nobjects;
+-	gchar *description;
++	gchar *description, *display_name;
+ 	const gchar *alert_ident;
+ 	TransferComponentsData *tcd;
+ 	GHashTableIter iter;
+@@ -2083,10 +2111,12 @@ e_cal_ops_transfer_components (EShellView *shell_view,
+ 		}
+ 	}
+ 
++	display_name = e_util_get_source_full_name (e_cal_model_get_registry (model), destination);
+ 	activity = e_shell_view_submit_thread_job (shell_view, description, alert_ident,
+-		e_source_get_display_name (destination), transfer_components_thread, tcd,
++		display_name, transfer_components_thread, tcd,
+ 		transfer_components_data_free);
+ 
+ 	g_clear_object (&activity);
++	g_free (display_name);
+ 	g_free (description);
+ }
+diff --git a/calendar/gui/e-calendar-view.c b/calendar/gui/e-calendar-view.c
+index 049fe1df98..308879178c 100644
+--- a/calendar/gui/e-calendar-view.c
++++ b/calendar/gui/e-calendar-view.c
+@@ -798,6 +798,7 @@ cal_view_paste_clipboard_thread (EAlertSinkThreadJobData *job_data,
+ 	ECalClient *client = NULL;
+ 	const gchar *message;
+ 	const gchar *extension_name;
++	gchar *display_name;
+ 	guint copied_components = 1;
+ 	gboolean all_day;
+ 	GError *local_error = NULL;
+@@ -850,7 +851,9 @@ cal_view_paste_clipboard_thread (EAlertSinkThreadJobData *job_data,
+ 		return;
+ 	}
+ 
+-	e_alert_sink_thread_job_set_alert_arg_0 (job_data, e_source_get_display_name (source));
++	display_name = e_util_get_source_full_name (registry, source);
++	e_alert_sink_thread_job_set_alert_arg_0 (job_data, display_name);
++	g_free (display_name);
+ 	client_cache = e_cal_model_get_client_cache (model);
+ 
+ 	e_client = e_client_cache_get_client_sync (client_cache, source, extension_name, 30, cancellable, &local_error);
+diff --git a/calendar/gui/itip-utils.c b/calendar/gui/itip-utils.c
+index dab30cead5..4c03d006a3 100644
+--- a/calendar/gui/itip-utils.c
++++ b/calendar/gui/itip-utils.c
+@@ -1906,6 +1906,7 @@ itip_send_component (ECalModel *model,
+ 	ESource *source;
+ 	const gchar *alert_ident = NULL;
+ 	const gchar *description = NULL;
++	gchar *display_name;
+ 	GCancellable *cancellable;
+ 	ItipSendComponentData *isc;
+ 
+@@ -1960,11 +1961,13 @@ itip_send_component (ECalModel *model,
+ 	isc->success = FALSE;
+ 	isc->finished = FALSE;
+ 
++	display_name = e_util_get_source_full_name (registry, source);
+ 	cancellable = e_cal_data_model_submit_thread_job (data_model, description, alert_ident,
+-		e_source_get_display_name (source), itip_send_component_thread,
++		display_name, itip_send_component_thread,
+ 		isc, itip_send_component_finish_and_free);
+ 
+ 	g_clear_object (&cancellable);
++	g_free (display_name);
+ }
+ 
+ gboolean
+diff --git a/e-util/e-misc-utils.c b/e-util/e-misc-utils.c
+index 404e988d6b..b1f8dd171c 100644
+--- a/e-util/e-misc-utils.c
++++ b/e-util/e-misc-utils.c
+@@ -2463,10 +2463,18 @@ e_util_open_client_sync (EAlertSinkThreadJobData *job_data,
+ {
+ 	gchar *description = NULL, *alert_ident = NULL, *alert_arg_0 = NULL;
+ 	EClient *client = NULL;
++	ESourceRegistry *registry;
++	gchar *display_name;
+ 	GError *local_error = NULL;
+ 
++	registry = e_client_cache_ref_registry (client_cache);
++	display_name = e_util_get_source_full_name (registry, source);
++	g_clear_object (&registry);
++
+ 	g_warn_if_fail (e_util_get_open_source_job_info (extension_name,
+-		e_source_get_display_name (source), &description, &alert_ident, &alert_arg_0));
++		display_name, &description, &alert_ident, &alert_arg_0));
++
++	g_free (display_name);
+ 
+ 	camel_operation_push_message (cancellable, "%s", description);
+ 
+diff --git a/modules/calendar/e-cal-base-shell-backend.c b/modules/calendar/e-cal-base-shell-backend.c
+index a67eb8753b..7589d18c74 100644
+--- a/modules/calendar/e-cal-base-shell-backend.c
++++ b/modules/calendar/e-cal-base-shell-backend.c
+@@ -552,7 +552,7 @@ e_cal_base_shell_backend_util_handle_uri (EShellBackend *shell_backend,
+ 		EShellView *shell_view;
+ 		EActivity *activity;
+ 		gchar *description = NULL, *alert_ident = NULL, *alert_arg_0 = NULL;
+-		const gchar *source_display_name = ""; /* not NULL intentionally */
++		gchar *source_display_name = NULL;
+ 
+ 		hud = g_new0 (HandleUriData, 1);
+ 		hud->shell_backend = g_object_ref (shell_backend);
+@@ -566,13 +566,13 @@ e_cal_base_shell_backend_util_handle_uri (EShellBackend *shell_backend,
+ 		registry = e_shell_get_registry (shell);
+ 		source = e_source_registry_ref_source (registry, source_uid);
+ 		if (source)
+-			source_display_name = e_source_get_display_name (source);
++			source_display_name = e_util_get_source_full_name (registry, source);
+ 
+ 		shell_view = e_shell_window_get_shell_view (shell_window,
+ 			e_shell_window_get_active_view (shell_window));
+ 
+ 		g_warn_if_fail (e_util_get_open_source_job_info (extension_name,
+-			source_display_name, &description, &alert_ident, &alert_arg_0));
++			source_display_name ? source_display_name : "", &description, &alert_ident, &alert_arg_0));
+ 
+ 		activity = e_shell_view_submit_thread_job (
+ 			shell_view, description, alert_ident, alert_arg_0,
+@@ -580,6 +580,7 @@ e_cal_base_shell_backend_util_handle_uri (EShellBackend *shell_backend,
+ 
+ 		g_clear_object (&activity);
+ 		g_clear_object (&source);
++		g_free (source_display_name);
+ 		g_free (description);
+ 		g_free (alert_ident);
+ 		g_free (alert_arg_0);
+diff --git a/modules/calendar/e-cal-base-shell-sidebar.c b/modules/calendar/e-cal-base-shell-sidebar.c
+index cc3b51bdd4..73c9d96f7e 100644
+--- a/modules/calendar/e-cal-base-shell-sidebar.c
++++ b/modules/calendar/e-cal-base-shell-sidebar.c
+@@ -344,7 +344,7 @@ e_cal_base_shell_sidebar_ensure_source_opened (ECalBaseShellSidebar *sidebar,
+ 	OpenClientData *data;
+ 	EShellView *shell_view;
+ 	EActivity *activity;
+-	gchar *description = NULL, *alert_ident = NULL, *alert_arg_0 = NULL;
++	gchar *description = NULL, *alert_ident = NULL, *alert_arg_0 = NULL, *display_name;
+ 	const gchar *extension_name = NULL;
+ 
+ 	g_return_if_fail (E_IS_CAL_BASE_SHELL_SIDEBAR (sidebar));
+@@ -367,12 +367,17 @@ e_cal_base_shell_sidebar_ensure_source_opened (ECalBaseShellSidebar *sidebar,
+ 			return;
+ 	}
+ 
+-	if (!e_util_get_open_source_job_info (extension_name, e_source_get_display_name (source),
++	display_name = e_util_get_source_full_name (e_shell_get_registry (e_shell_backend_get_shell (e_shell_view_get_shell_backend (shell_view))), source);
++
++	if (!e_util_get_open_source_job_info (extension_name, display_name,
+ 		&description, &alert_ident, &alert_arg_0)) {
++		g_free (display_name);
+ 		g_warn_if_reached ();
+ 		return;
+ 	}
+ 
++	g_free (display_name);
++
+ 	data = g_new0 (OpenClientData, 1);
+ 	data->extension_name = extension_name; /* no need to copy, it's a static string */
+ 	data->sidebar = g_object_ref (sidebar);
+@@ -511,7 +516,8 @@ e_cal_base_shell_sidebar_selector_data_dropped (ESourceSelector *selector,
+ 	gchar **segments;
+ 	gchar *source_uid = NULL;
+ 	gchar *message = NULL;
+-	const gchar *display_name, *alert_ident = NULL;
++	gchar *display_name = NULL;
++	const gchar *alert_ident = NULL;
+ 	const guchar *data;
+ 	gboolean do_copy;
+ 	TransferItemToData *titd;
+@@ -538,7 +544,7 @@ e_cal_base_shell_sidebar_selector_data_dropped (ESourceSelector *selector,
+ 	if (!source)
+ 		goto exit;
+ 
+-	display_name = e_source_get_display_name (destination);
++	display_name = e_util_get_source_full_name (registry, destination);
+ 	do_copy = action == GDK_ACTION_COPY ? TRUE : FALSE;
+ 	shell_view = e_shell_sidebar_get_shell_view (E_SHELL_SIDEBAR (sidebar));
+ 
+@@ -588,6 +594,7 @@ e_cal_base_shell_sidebar_selector_data_dropped (ESourceSelector *selector,
+ 	g_clear_object (&source);
+ 	g_free (message);
+ 	g_free (source_uid);
++	g_free (display_name);
+ 	g_strfreev (segments);
+ 
+ 	return TRUE;
+diff --git a/shell/e-shell-window.c b/shell/e-shell-window.c
+index 6bc9f55489..663c032b30 100644
+--- a/shell/e-shell-window.c
++++ b/shell/e-shell-window.c
+@@ -1790,7 +1790,7 @@ e_shell_window_connect_client (EShellWindow *shell_window,
+ 	ConnectClientData *cc_data;
+ 	EShellView *shell_view;
+ 	EActivity *activity;
+-	gchar *description = NULL, *alert_ident = NULL, *alert_arg_0 = NULL;
++	gchar *description = NULL, *alert_ident = NULL, *alert_arg_0 = NULL, *display_name;
+ 
+ 	g_return_if_fail (E_IS_SHELL_WINDOW (shell_window));
+ 	g_return_if_fail (E_IS_SOURCE (source));
+@@ -1802,12 +1802,17 @@ e_shell_window_connect_client (EShellWindow *shell_window,
+ 
+ 	g_return_if_fail (E_IS_SHELL_VIEW (shell_view));
+ 
+-	if (!e_util_get_open_source_job_info (extension_name, e_source_get_display_name (source),
++	display_name = e_util_get_source_full_name (e_shell_get_registry (e_shell_backend_get_shell (e_shell_view_get_shell_backend (shell_view))), source);
++
++	if (!e_util_get_open_source_job_info (extension_name, display_name,
+ 		&description, &alert_ident, &alert_arg_0)) {
++		g_free (display_name);
+ 		g_warn_if_reached ();
+ 		return;
+ 	}
+ 
++	g_free (display_name);
++
+ 	cc_data = g_new0 (ConnectClientData, 1);
+ 	cc_data->shell_window = g_object_ref (shell_window);
+ 	cc_data->source = g_object_ref (source);
+diff --git a/shell/e-shell.c b/shell/e-shell.c
+index 3975339ee6..e9d2bd87a3 100644
+--- a/shell/e-shell.c
++++ b/shell/e-shell.c
+@@ -674,15 +674,18 @@ shell_source_invoke_authenticate_cb (GObject *source_object,
+ 		/* Can be cancelled only if the shell is disposing/disposed */
+ 		if (error && !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+ 			EAlert *alert;
++			gchar *display_name;
+ 
+ 			g_return_if_fail (E_IS_SHELL (shell));
+ 
++			display_name = e_util_get_source_full_name (shell->priv->registry, source);
+ 			alert = e_alert_new ("shell:source-invoke-authenticate-failed",
+-				e_source_get_display_name (source),
++				display_name,
+ 				error->message,
+ 				NULL);
+ 			e_shell_submit_alert (shell, alert);
+ 			g_object_unref (alert);
++			g_free (display_name);
+ 		}
+ 
+ 		g_clear_error (&error);
+@@ -712,15 +715,18 @@ shell_trust_prompt_done_cb (GObject *source_object,
+ 		/* Can be cancelled only if the shell is disposing/disposed */
+ 		if (error && !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+ 			EAlert *alert;
++			gchar *display_name;
+ 
+ 			g_return_if_fail (E_IS_SHELL (shell));
+ 
++			display_name = e_util_get_source_full_name (shell->priv->registry, source);
+ 			alert = e_alert_new ("shell:source-trust-prompt-failed",
+-				e_source_get_display_name (source),
++				display_name,
+ 				error->message,
+ 				NULL);
+ 			e_shell_submit_alert (shell, alert);
+ 			g_object_unref (alert);
++			g_free (display_name);
+ 		}
+ 
+ 		g_clear_error (&error);
+@@ -759,15 +765,18 @@ shell_credentials_prompt_done_cb (GObject *source_object,
+ 			shell_source_invoke_authenticate_cb, shell);
+ 	} else if (error && !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+ 		EAlert *alert;
++		gchar *display_name;
+ 
+ 		g_return_if_fail (E_IS_SHELL (shell));
+ 
++		display_name = e_util_get_source_full_name (shell->priv->registry, source);
+ 		alert = e_alert_new ("shell:source-credentials-prompt-failed",
+-			e_source_get_display_name (source),
++			display_name,
+ 			error->message,
+ 			NULL);
+ 		e_shell_submit_alert (shell, alert);
+ 		g_object_unref (alert);
++		g_free (display_name);
+ 	}
+ 
+ 	e_named_parameters_free (credentials);
+@@ -955,11 +964,14 @@ shell_process_credentials_required_errors (EShell *shell,
+ 
+ 	if (reason == E_SOURCE_CREDENTIALS_REASON_ERROR) {
+ 		EAlert *alert;
++		gchar *display_name;
+ 
++		display_name = e_util_get_source_full_name (shell->priv->registry, source);
+ 		alert = e_alert_new (shell_get_connection_error_tag_for_source (source),
+-				e_source_get_display_name (source),
++				display_name,
+ 				op_error && *(op_error->message) ? op_error->message : _("Unknown error"),
+ 				NULL);
++		g_free (display_name);
+ 
+ 		g_signal_connect (alert, "response", G_CALLBACK (shell_connection_error_alert_response_cb), shell);
+ 		g_object_set_data_full (G_OBJECT (alert), SOURCE_ALERT_KEY_SOURCE, g_object_ref (source), g_object_unref);
+@@ -973,14 +985,17 @@ shell_process_credentials_required_errors (EShell *shell,
+ 			/* Only show an alert */
+ 			EAlert *alert;
+ 			gchar *cert_errors_str;
++			gchar *display_name;
+ 
+ 			cert_errors_str = e_trust_prompt_describe_certificate_errors (certificate_errors);
+ 
++			display_name = e_util_get_source_full_name (shell->priv->registry, source);
+ 			alert = e_alert_new (shell_get_connection_trust_error_tag_for_source (source),
+-					e_source_get_display_name (source),
++					display_name,
+ 					(cert_errors_str && *cert_errors_str) ? cert_errors_str :
+ 					op_error && *(op_error->message) ? op_error->message : _("Unknown error"),
+ 					NULL);
++			g_free (display_name);
+ 
+ 			g_signal_connect (alert, "response", G_CALLBACK (shell_connect_trust_error_alert_response_cb), shell);
+ 
+@@ -1003,11 +1018,14 @@ shell_process_credentials_required_errors (EShell *shell,
+ 	} else if (reason == E_SOURCE_CREDENTIALS_REASON_REQUIRED ||
+ 		   reason == E_SOURCE_CREDENTIALS_REASON_REJECTED) {
+ 		EAlert *alert;
++		gchar *display_name;
+ 
++		display_name = e_util_get_source_full_name (shell->priv->registry, source);
+ 		alert = e_alert_new (shell_get_connection_error_tag_for_source (source),
+-				e_source_get_display_name (source),
++				display_name,
+ 				op_error && *(op_error->message) ? op_error->message : _("Credentials are required to connect to the destination host."),
+ 				NULL);
++		g_free (display_name);
+ 
+ 		g_signal_connect (alert, "response", G_CALLBACK (shell_connection_error_alert_response_cb), shell);
+ 		g_object_set_data_full (G_OBJECT (alert), SOURCE_ALERT_KEY_SOURCE, g_object_ref (source), g_object_unref);
+@@ -1041,15 +1059,18 @@ shell_get_last_credentials_required_arguments_cb (GObject *source_object,
+ 		/* Can be cancelled only if the shell is disposing/disposed */
+ 		if (error && !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+ 			EAlert *alert;
++			gchar *display_name;
+ 
+ 			g_return_if_fail (E_IS_SHELL (shell));
+ 
++			display_name = e_util_get_source_full_name (shell->priv->registry, source);
+ 			alert = e_alert_new ("shell:source-get-values-failed",
+-				e_source_get_display_name (source),
++				display_name,
+ 				error->message,
+ 				NULL);
+ 			e_shell_submit_alert (shell, alert);
+ 			g_object_unref (alert);
++			g_free (display_name);
+ 		}
+ 
+ 		g_clear_error (&error);
+-- 
+2.15.0
+

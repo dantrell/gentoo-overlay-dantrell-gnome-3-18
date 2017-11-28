@@ -1,0 +1,25 @@
+From 0fde9dc329240753e7c77f1dc0f64fefeafa181b Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 17 Aug 2015 09:44:17 +0200
+Subject: [PATCH 0951/1800] Post-release version bump
+
+---
+ configure.ac | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/configure.ac b/configure.ac
+index ee5b9d25c2..74066337c8 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1,7 +1,7 @@
+ dnl Evolution Versions
+ m4_define([evo_major_version], [3])
+ m4_define([evo_minor_version], [17])
+-m4_define([evo_micro_version], [90])
++m4_define([evo_micro_version], [91])
+ m4_define([evo_version],
+ 	[evo_major_version.evo_minor_version.evo_micro_version])
+ m4_define([evo_stable_version],
+-- 
+2.15.0
+

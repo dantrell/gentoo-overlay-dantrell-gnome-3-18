@@ -1,0 +1,67 @@
+From 8ff4b9094a8fa03cb77bd177eb6d6b27099ff4b8 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 9 Apr 2015 18:31:32 +0200
+Subject: [PATCH 0660/1800] Bug 661532 - Advance search menu item can be
+ disabled on account/store node
+
+---
+ modules/mail/e-mail-shell-view.c | 9 +++++++++
+ shell/e-shell-view.c             | 8 ++++++++
+ 2 files changed, 17 insertions(+)
+
+diff --git a/modules/mail/e-mail-shell-view.c b/modules/mail/e-mail-shell-view.c
+index 8dd6b0f3df..bb67bfdf5e 100644
+--- a/modules/mail/e-mail-shell-view.c
++++ b/modules/mail/e-mail-shell-view.c
+@@ -925,6 +925,7 @@ mail_shell_view_update_actions (EShellView *shell_view)
+ 	EMailReader *reader;
+ 	EMailView *mail_view;
+ 	GtkAction *action;
++	GtkActionGroup *action_group;
+ 	CamelStore *store = NULL;
+ 	GList *list, *link;
+ 	gchar *folder_name = NULL;
+@@ -1051,6 +1052,14 @@ mail_shell_view_update_actions (EShellView *shell_view)
+ 	}
+ 	g_list_free (list);
+ 
++	action_group = E_SHELL_WINDOW_ACTION_GROUP_CUSTOM_RULES (shell_window);
++	sensitive = folder_is_selected && folder_tree_and_message_list_agree;
++	gtk_action_group_set_sensitive (action_group, sensitive);
++
++	action = E_SHELL_WINDOW_ACTION_SEARCH_ADVANCED (shell_window);
++	sensitive = folder_is_selected && folder_tree_and_message_list_agree;
++	gtk_action_set_sensitive (action, sensitive);
++
+ 	action = ACTION (MAIL_ACCOUNT_DISABLE);
+ 	sensitive = folder_is_store && store_can_be_disabled;
+ 	gtk_action_set_sensitive (action, sensitive);
+diff --git a/shell/e-shell-view.c b/shell/e-shell-view.c
+index 7362a010b0..e5a19ddd13 100644
+--- a/shell/e-shell-view.c
++++ b/shell/e-shell-view.c
+@@ -732,6 +732,8 @@ shell_view_update_actions (EShellView *shell_view)
+ {
+ 	EShellWindow *shell_window;
+ 	EFocusTracker *focus_tracker;
++	GtkAction *action;
++	GtkActionGroup *action_group;
+ 
+ 	g_return_if_fail (e_shell_view_is_active (shell_view));
+ 
+@@ -739,6 +741,12 @@ shell_view_update_actions (EShellView *shell_view)
+ 	focus_tracker = e_shell_window_get_focus_tracker (shell_window);
+ 
+ 	e_focus_tracker_update_actions (focus_tracker);
++
++	action_group = E_SHELL_WINDOW_ACTION_GROUP_CUSTOM_RULES (shell_window);
++	gtk_action_group_set_sensitive (action_group, TRUE);
++
++	action = E_SHELL_WINDOW_ACTION_SEARCH_ADVANCED (shell_window);
++	gtk_action_set_sensitive (action, TRUE);
+ }
+ 
+ static void
+-- 
+2.15.0
+

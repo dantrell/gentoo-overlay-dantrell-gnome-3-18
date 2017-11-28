@@ -1,0 +1,38 @@
+From f3c94499021c30a5e9f8ba8a31118bcbe3b85efe Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 15:17:02 +0100
+Subject: [PATCH 0287/1800] WebKit2 - Build fix
+
+---
+ web-extensions/e-html-editor-selection-dom-functions.c | 2 ++
+ web-extensions/e-html-editor-view-dom-functions.c      | 1 +
+ 2 files changed, 3 insertions(+)
+
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index adb55b8ebb..073cca96d8 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -30,6 +30,8 @@
+ #include <webkitdom/WebKitDOMRangeUnstable.h>
+ #include <webkitdom/WebKitDOMDOMSelection.h>
+ #include <webkitdom/WebKitDOMDOMWindowUnstable.h>
++#include <webkitdom/WebKitDOMHTMLElementUnstable.h>
++#include <webkitdom/WebKitDOMDocumentUnstable.h>
+ 
+ static const GdkRGBA black = { 0, 0, 0, 1 };
+ 
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 1f847a406f..4a2c001a89 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -30,6 +30,7 @@
+ #include <webkitdom/WebKitDOMRangeUnstable.h>
+ #include <webkitdom/WebKitDOMDOMSelection.h>
+ #include <webkitdom/WebKitDOMDOMWindowUnstable.h>
++#include <webkitdom/WebKitDOMHTMLElementUnstable.h>
+ 
+ #define HTML_KEY_CODE_BACKSPACE 8
+ #define HTML_KEY_CODE_RETURN 13
+-- 
+2.15.0
+

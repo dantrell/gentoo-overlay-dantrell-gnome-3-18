@@ -1,0 +1,49 @@
+From e44db19c942e97249bc7098666bcd857dd5906b4 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 1 Mar 2016 13:13:45 +0100
+Subject: [PATCH 0989/1800] EHTMLEditorSelection - Last word that could fit on
+ one line is put on the following line
+
+---
+ .../e-html-editor-selection-dom-functions.c         | 21 ++++++++++++++++-----
+ 1 file changed, 16 insertions(+), 5 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-selection-dom-functions.c b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+index 25f4ed341c..f9ba962df7 100644
+--- a/web-extensions/composer/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-selection-dom-functions.c
+@@ -2002,15 +2002,26 @@ find_where_to_break_line (WebKitDOMCharacterData *node,
+ 		}
+ 
+ 		if (g_unichar_isspace (uc) || *str == '-') {
+-			if (*str == '-')
+-				last_break_position_is_dash = TRUE;
+-			else
+-				last_break_position_is_dash = FALSE;
++			last_break_position_is_dash = *str == '-';
+ 			last_break_position = pos;
+ 		}
+ 
+-		if ((pos == max_length))
++		if ((pos == max_length)) {
++			/* Look one character after the limit to check if there
++			 * is a character that we are allowed to break at, if so
++			 * break it there. */
++			if (*str) {
++				str = g_utf8_next_char (str);
++				uc = g_utf8_get_char (str);
++
++				if (g_unichar_isspace (uc) || *str == '-') {
++					last_break_position_is_dash = *str == '-';
++					pos++;
++					last_break_position = pos;
++				}
++			}
+ 			break;
++		}
+ 
+ 		pos++;
+ 		str = g_utf8_next_char (str);
+-- 
+2.15.0
+

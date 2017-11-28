@@ -1,0 +1,27 @@
+From eeaf9504a26d8551dc054373bf6a201a881038fa Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 6 Nov 2014 15:48:43 +0100
+Subject: [PATCH 0043/1800] Bug 739562 - Message composer autosave not updating
+
+---
+ modules/composer-autosave/e-composer-autosave.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/modules/composer-autosave/e-composer-autosave.c b/modules/composer-autosave/e-composer-autosave.c
+index 29b98fead2..157675760a 100644
+--- a/modules/composer-autosave/e-composer-autosave.c
++++ b/modules/composer-autosave/e-composer-autosave.c
+@@ -181,7 +181,9 @@ composer_autosave_constructed (GObject *object)
+ 	editor = e_msg_composer_get_editor (E_MSG_COMPOSER (extensible));
+ 	view = e_html_editor_get_view (editor);
+ 
+-	e_signal_connect_notify_swapped (
++	/* Do not use e_signal_connect_notify_swapped() here,
++	   this module relies on "false" change notifications. */
++	g_signal_connect_swapped (
+ 		view, "notify::changed",
+ 		G_CALLBACK (composer_autosave_changed_cb), object);
+ }
+-- 
+2.15.0
+

@@ -1,0 +1,26 @@
+From 3245acccf5303d8b100581a0dc19c505b74aa02a Mon Sep 17 00:00:00 2001
+From: Trinh Anh Ngoc <atw1990@gmail.com>
+Date: Thu, 23 Apr 2015 12:53:16 +0200
+Subject: [PATCH 0697/1800] Bug 748285 - Table header icons out of position
+ with gtk+ 3.16
+
+---
+ e-util/e-table-header-utils.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/e-util/e-table-header-utils.c b/e-util/e-table-header-utils.c
+index 1430db62e8..eb4d8fe7de 100644
+--- a/e-util/e-table-header-utils.c
++++ b/e-util/e-table-header-utils.c
+@@ -150,7 +150,7 @@ e_table_header_draw_button (cairo_t *cr,
+ 	gtk_style_context_save (context);
+ 	gtk_style_context_set_state (context, state_flags);
+ 	gtk_style_context_add_class (context, GTK_STYLE_CLASS_BUTTON);
+-	if ((ecol->text && *ecol->text) || !ecol->icon_name)
++	if (!ecol->icon_name)
+ 		gtk_style_context_add_class (context, "text-button");
+ 	else
+ 		gtk_style_context_add_class (context, "image-button");
+-- 
+2.15.0
+

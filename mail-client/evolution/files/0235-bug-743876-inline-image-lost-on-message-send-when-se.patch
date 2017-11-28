@@ -1,0 +1,553 @@
+From ac277b4c5952d9240173ca7c2a4567edb2519b69 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 11:19:57 +0100
+Subject: [PATCH 0235/1800] Bug 743876 - Inline image lost on message send when
+ sending through Outbox
+
+The thing is that when we were sending the message through Outbox
+Evolution generates one message that is used for sending and another one
+for saving to Outbox. But while creating the first message the images
+inside the view are processed to cid images, so for the second message
+they were not there. To avoid that we will restore the images in the
+view right after we get the HTML version of view's content.
+---
+ composer/e-msg-composer.c                         |   3 +-
+ e-util/e-html-editor-view.c                       | 238 +++++++++++++---------
+ e-util/e-html-editor-view.h                       |   7 +-
+ e-util/e-html-editor.c                            |   2 +-
+ e-util/e-mail-signature-editor.c                  |   2 +-
+ e-util/test-html-editor.c                         |  10 +-
+ web-extensions/e-html-editor-view-dom-functions.c |  70 ++++++-
+ web-extensions/e-html-editor-view-dom-functions.h |   3 +-
+ web-extensions/e-html-editor-web-extension.c      |   6 +-
+ 9 files changed, 222 insertions(+), 119 deletions(-)
+
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 54e7485ffb..26a816a13a 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -1362,10 +1362,9 @@ composer_build_message (EMsgComposer *composer,
+ 
+ 		editor = e_msg_composer_get_editor (composer);
+ 		view = e_html_editor_get_view (editor);
+-		inline_images = e_html_editor_view_get_parts_for_inline_images (view, from_domain);
+ 
+ 		data = g_byte_array_new ();
+-		text = e_html_editor_view_get_text_html (view);
++		text = e_html_editor_view_get_text_html (view, from_domain, &inline_images);
+ 		length = strlen (text);
+ 		g_byte_array_append (data, (guint8 *) text, (guint) length);
+ 		pre_encode = text_requires_quoted_printable (text, length);
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 65821197c9..6ede8ad4b1 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -1762,6 +1762,105 @@ process_document (EHTMLEditorView *view,
+ 	return NULL;
+ }
+ 
++static CamelMimePart *
++create_part_for_inline_image_from_element_data (const gchar *element_src,
++                                                const gchar *name,
++                                                const gchar *id)
++{
++	CamelStream *stream;
++	CamelDataWrapper *wrapper;
++	CamelMimePart *part = NULL;
++	gsize decoded_size;
++	gssize size;
++	gchar *mime_type = NULL;
++	const gchar *base64_encoded_data;
++	guchar *base64_decoded_data = NULL;
++
++	base64_encoded_data = strstr (element_src, ";base64,");
++	if (!base64_encoded_data)
++		goto out;
++
++	mime_type = g_strndup (
++		element_src + 5,
++		base64_encoded_data - (strstr (element_src, "data:") + 5));
++
++	/* Move to actual data */
++	base64_encoded_data += 8;
++
++	base64_decoded_data = g_base64_decode (base64_encoded_data, &decoded_size);
++
++	stream = camel_stream_mem_new ();
++	size = camel_stream_write (
++		stream, (gchar *) base64_decoded_data, decoded_size, NULL, NULL);
++
++	if (size == -1)
++		goto out;
++
++	wrapper = camel_data_wrapper_new ();
++	camel_data_wrapper_construct_from_stream_sync (
++		wrapper, stream, NULL, NULL);
++	g_object_unref (stream);
++
++	camel_data_wrapper_set_mime_type (wrapper, mime_type);
++
++	part = camel_mime_part_new ();
++	camel_medium_set_content (CAMEL_MEDIUM (part), wrapper);
++	g_object_unref (wrapper);
++
++	camel_mime_part_set_content_id (part, id);
++	camel_mime_part_set_filename (part, name);
++	camel_mime_part_set_encoding (part, CAMEL_TRANSFER_ENCODING_BASE64);
++out:
++	g_free (mime_type);
++	g_free (base64_decoded_data);
++
++	return part;
++}
++
++static GList *
++html_editor_view_get_parts_for_inline_images (EHTMLEditorView *view,
++                                              const gchar *uid_domain)
++{
++	GDBusProxy *web_extension;
++	GList *parts = NULL;
++	GVariant *result;
++
++	g_return_val_if_fail (E_IS_HTML_EDITOR_VIEW (view), NULL);
++
++	web_extension = e_html_editor_view_get_web_extension_proxy (view);
++	if (!web_extension)
++		return NULL;
++
++	result = g_dbus_proxy_call_sync (
++		web_extension,
++		"DOMGetInlineImagesData",
++		g_variant_new (
++			"(ts)",
++			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view)),
++			uid_domain),
++		G_DBUS_CALL_FLAGS_NONE,
++		-1,
++		NULL,
++		NULL);
++
++	if (result) {
++		const gchar *element_src, *name, *id;
++		GVariantIter *iter;
++
++		g_variant_get (result, "asss", &iter);
++		while (g_variant_iter_loop (iter, "&s&s&s", &element_src, &name, &id)) {
++			CamelMimePart *part;
++
++			part = create_part_for_inline_image_from_element_data (
++				element_src, name, id);
++			parts = g_list_append (parts, part);
++		}
++		g_variant_iter_free (iter);
++	}
++
++	return parts;
++}
++
+ /**
+  * e_html_editor_view_get_text_html:
+  * @view: an #EHTMLEditorView:
+@@ -1772,9 +1871,45 @@ process_document (EHTMLEditorView *view,
+  * Returns: A newly allocated string
+  */
+ gchar *
+-e_html_editor_view_get_text_html (EHTMLEditorView *view)
++e_html_editor_view_get_text_html (EHTMLEditorView *view,
++                                  const gchar *from_domain,
++                                  GList **inline_images)
+ {
+-	return process_document (view, "DOMProcessContentForHTML");
++	GDBusProxy *web_extension;
++	GVariant *result;
++
++	g_return_val_if_fail (E_IS_HTML_EDITOR_VIEW (view), NULL);
++
++	if (inline_images && from_domain)
++		*inline_images = html_editor_view_get_parts_for_inline_images (view, from_domain);
++
++	web_extension = e_html_editor_view_get_web_extension_proxy (view);
++	if (!web_extension)
++		return NULL;
++
++	result = g_dbus_proxy_call_sync (
++		web_extension,
++		"DOMProcessContentForHTML",
++		g_variant_new (
++			"(ts)",
++			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view)),
++			from_domain),
++		G_DBUS_CALL_FLAGS_NONE,
++		-1,
++		NULL,
++		NULL);
++
++	if (result) {
++		gchar *value;
++		gsize length = 0;
++
++		value = g_variant_dup_string (result, &length);
++		g_variant_unref (result);
++
++		return value;
++	}
++
++	return NULL;
+ }
+ 
+ /**
+@@ -2489,105 +2624,6 @@ e_html_editor_view_update_fonts (EHTMLEditorView *view)
+ 	pango_font_description_free (vw);
+ }
+ 
+-static CamelMimePart *
+-create_part_for_inline_image_from_element_data (const gchar *element_src,
+-                                                const gchar *name,
+-                                                const gchar *id)
+-{
+-	CamelStream *stream;
+-	CamelDataWrapper *wrapper;
+-	CamelMimePart *part = NULL;
+-	gsize decoded_size;
+-	gssize size;
+-	gchar *mime_type = NULL;
+-	const gchar *base64_encoded_data;
+-	guchar *base64_decoded_data = NULL;
+-
+-	base64_encoded_data = strstr (element_src, ";base64,");
+-	if (!base64_encoded_data)
+-		goto out;
+-
+-	mime_type = g_strndup (
+-		element_src + 5,
+-		base64_encoded_data - (strstr (element_src, "data:") + 5));
+-
+-	/* Move to actual data */
+-	base64_encoded_data += 8;
+-
+-	base64_decoded_data = g_base64_decode (base64_encoded_data, &decoded_size);
+-
+-	stream = camel_stream_mem_new ();
+-	size = camel_stream_write (
+-		stream, (gchar *) base64_decoded_data, decoded_size, NULL, NULL);
+-
+-	if (size == -1)
+-		goto out;
+-
+-	wrapper = camel_data_wrapper_new ();
+-	camel_data_wrapper_construct_from_stream_sync (
+-		wrapper, stream, NULL, NULL);
+-	g_object_unref (stream);
+-
+-	camel_data_wrapper_set_mime_type (wrapper, mime_type);
+-
+-	part = camel_mime_part_new ();
+-	camel_medium_set_content (CAMEL_MEDIUM (part), wrapper);
+-	g_object_unref (wrapper);
+-
+-	camel_mime_part_set_content_id (part, id);
+-	camel_mime_part_set_filename (part, name);
+-	camel_mime_part_set_encoding (part, CAMEL_TRANSFER_ENCODING_BASE64);
+-out:
+-	g_free (mime_type);
+-	g_free (base64_decoded_data);
+-
+-	return part;
+-}
+-
+-GList *
+-e_html_editor_view_get_parts_for_inline_images (EHTMLEditorView *view,
+-                                                const gchar *uid_domain)
+-{
+-	GDBusProxy *web_extension;
+-	GList *parts = NULL;
+-	GVariant *result;
+-
+-	g_return_val_if_fail (E_IS_HTML_EDITOR_VIEW (view), NULL);
+-
+-	web_extension = e_html_editor_view_get_web_extension_proxy (view);
+-	if (!web_extension)
+-		return NULL;
+-
+-	result = g_dbus_proxy_call_sync (
+-		web_extension,
+-		"DOMGetInlineImagesData",
+-		g_variant_new (
+-			"(ts)",
+-			webkit_web_view_get_page_id (WEBKIT_WEB_VIEW (view)),
+-			uid_domain),
+-		G_DBUS_CALL_FLAGS_NONE,
+-		-1,
+-		NULL,
+-		NULL);
+-
+-	if (result) {
+-		const gchar *element_src, *name, *id;
+-		GVariantIter *iter;
+-
+-		g_variant_get (result, "asss", &iter);
+-		while (g_variant_iter_loop (iter, "&s&s&s", &element_src, &name, &id)) {
+-			CamelMimePart *part;
+-
+-			part = create_part_for_inline_image_from_element_data (
+-				element_src, name, id);
+-			parts = g_list_append (parts, part);
+-		}
+-		g_variant_iter_free (iter);
+-	}
+-
+-	return parts;
+-}
+-
+ /**
+  * e_html_editor_view_add_inline_image_from_mime_part:
+  * @composer: a composer object
+diff --git a/e-util/e-html-editor-view.h b/e-util/e-html-editor-view.h
+index f59df151ba..bb12c8307b 100644
+--- a/e-util/e-html-editor-view.h
++++ b/e-util/e-html-editor-view.h
+@@ -136,7 +136,9 @@ void		e_html_editor_view_set_magic_smileys
+ ESpellChecker *	e_html_editor_view_get_spell_checker
+ 						(EHTMLEditorView *view);
+ gchar *		e_html_editor_view_get_text_html
+-						(EHTMLEditorView *view);
++						(EHTMLEditorView *view,
++						 const gchar *from_domain,
++						 GList **inline_images);
+ gchar *		e_html_editor_view_get_text_html_for_drafts
+ 						(EHTMLEditorView *view);
+ gchar *		e_html_editor_view_get_text_plain
+@@ -170,9 +172,6 @@ void		e_html_editor_view_dequote_plain_text
+ void		e_html_editor_view_add_inline_image_from_mime_part
+ 						(EHTMLEditorView *view,
+                                                  CamelMimePart *part);
+-GList *		e_html_editor_view_get_parts_for_inline_images
+-						(EHTMLEditorView *view,
+-						 const gchar *uid_domain);
+ gboolean	e_html_editor_view_is_message_from_draft
+ 						(EHTMLEditorView *view);
+ void		e_html_editor_view_set_is_message_from_draft
+diff --git a/e-util/e-html-editor.c b/e-util/e-html-editor.c
+index 8fe1c1683a..8e74309426 100644
+--- a/e-util/e-html-editor.c
++++ b/e-util/e-html-editor.c
+@@ -1151,7 +1151,7 @@ e_html_editor_save (EHTMLEditor *editor,
+ 
+ 	if (as_html)
+ 		content = e_html_editor_view_get_text_html (
+-			E_HTML_EDITOR_VIEW (editor));
++			E_HTML_EDITOR_VIEW (editor), NULL, NULL);
+ 	else
+ 		content = e_html_editor_view_get_text_plain (
+ 			E_HTML_EDITOR_VIEW (editor));
+diff --git a/e-util/e-mail-signature-editor.c b/e-util/e-mail-signature-editor.c
+index 1b5173d65b..9b0f29e67d 100644
+--- a/e-util/e-mail-signature-editor.c
++++ b/e-util/e-mail-signature-editor.c
+@@ -855,7 +855,7 @@ e_mail_signature_editor_commit (EMailSignatureEditor *window,
+ 
+ 	if (e_html_editor_view_get_html_mode (view)) {
+ 		mime_type = "text/html";
+-		contents = e_html_editor_view_get_text_html (view);
++		contents = e_html_editor_view_get_text_html (view, NULL, NULL);
+ 	} else {
+ 		mime_type = "text/plain";
+ 		contents = e_html_editor_view_get_text_plain (view);
+diff --git a/e-util/test-html-editor.c b/e-util/test-html-editor.c
+index 9bb8a3bee4..e393f87ddd 100644
+--- a/e-util/test-html-editor.c
++++ b/e-util/test-html-editor.c
+@@ -166,10 +166,14 @@ view_source_dialog (EHTMLEditor *editor,
+ 
+ 	if (plain_text) {
+ 		html = e_html_editor_view_get_text_plain (
+-				e_html_editor_get_view (editor));
+-	} else {
+-		html = e_html_editor_view_get_text_html (
+ 			e_html_editor_get_view (editor));
++	} else {
++		GList *inline_images;
++
++		html = e_html_editor_view_get_text_html (
++			e_html_editor_get_view (editor), "test-domain", &inline_images);
++
++		g_list_free_full (inline_images, g_object_unref);
+ 	}
+ 
+ 	if (show_source || plain_text) {
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index b717c73a88..2fc9f4bf0e 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -5679,14 +5679,65 @@ dom_process_content_for_plain_text (WebKitDOMDocument *document,
+ 	return g_string_free (plain_text, FALSE);
+ }
+ 
++static void
++restore_image (WebKitDOMDocument *document,
++               const gchar *id,
++               const gchar *element_src)
++{
++	gchar *selector;
++	gint length, ii;
++	WebKitDOMNodeList *list;
++
++	selector = g_strconcat ("[data-inline][background=\"cid:", id, "\"]", NULL);
++	list = webkit_dom_document_query_selector_all (document, selector, NULL);
++	length = webkit_dom_node_list_get_length (list);
++	for (ii = 0; ii < length; ii++) {
++		WebKitDOMElement *element = WEBKIT_DOM_ELEMENT (
++			webkit_dom_node_list_item (list, ii));
++
++		webkit_dom_element_set_attribute (element, "background", element_src, NULL);
++	}
++	g_free (selector);
++	g_object_unref (list);
++
++	selector = g_strconcat ("[data-inline][src=\"cid:", id, "\"]", NULL);
++	list = webkit_dom_document_query_selector_all (document, selector, NULL);
++	length = webkit_dom_node_list_get_length (list);
++	for (ii = 0; ii < length; ii++) {
++		WebKitDOMElement *element = WEBKIT_DOM_ELEMENT (
++			webkit_dom_node_list_item (list, ii));
++
++		webkit_dom_element_set_attribute (element, "src", element_src, NULL);
++	}
++	g_free (selector);
++	g_object_unref (list);
++}
++
++static void
++dom_restore_images (WebKitDOMDocument *document,
++                    GVariant *inline_images_to_restore)
++{
++	const gchar *element_src, *name, *id;
++	GVariantIter *iter;
++
++	g_variant_get (inline_images_to_restore, "asss", &iter);
++	while (g_variant_iter_loop (iter, "&s&s&s", &element_src, &name, &id))
++		restore_image (document, id, element_src);
++}
++
+ gchar *
+ dom_process_content_for_html (WebKitDOMDocument *document,
+-                              EHTMLEditorWebExtension *extension)
++                              EHTMLEditorWebExtension *extension,
++                              const gchar *from_domain)
+ {
++	GVariant *inline_images_to_restore = NULL;
+ 	gchar *html_content;
+ 	WebKitDOMElement *marker;
+ 	WebKitDOMNode *node, *document_clone;
+ 
++	if (from_domain != NULL)
++		inline_images_to_restore = dom_get_inline_images_data (document, extension, from_domain);
++
+ 	document_clone = webkit_dom_node_clone_node (
+ 		WEBKIT_DOM_NODE (webkit_dom_document_get_document_element (document)), TRUE);
+ 	node = WEBKIT_DOM_NODE (webkit_dom_element_query_selector (
+@@ -5716,6 +5767,11 @@ dom_process_content_for_html (WebKitDOMDocument *document,
+ 
+ 	g_object_unref (document_clone);
+ 
++	if (from_domain && inline_images_to_restore) {
++		dom_restore_images (document, inline_images_to_restore);
++		g_object_unref (inline_images_to_restore);
++	}
++
+ 	return html_content;
+ }
+ 
+@@ -5935,7 +5991,7 @@ dom_get_inline_images_data (WebKitDOMDocument *document,
+                             const gchar *uid_domain)
+ {
+ 	GVariant *result;
+-	GVariantBuilder *builder;
++	GVariantBuilder *builder = NULL;
+ 	GHashTable *added;
+ 	gint length, ii;
+ 	WebKitDOMNodeList *list;
+@@ -5944,7 +6000,7 @@ dom_get_inline_images_data (WebKitDOMDocument *document,
+ 
+ 	length = webkit_dom_node_list_get_length (list);
+ 	if (length == 0)
+-		return NULL;
++		goto background;
+ 
+ 	builder = g_variant_builder_new (G_VARIANT_TYPE ("asss"));
+ 
+@@ -5978,9 +6034,15 @@ dom_get_inline_images_data (WebKitDOMDocument *document,
+ 	}
+ 	g_object_unref (list);
+ 
++ background:
+ 	list = webkit_dom_document_query_selector_all (
+ 		document, "[data-inline][background]", NULL);
+ 	length = webkit_dom_node_list_get_length (list);
++	if (length == 0)
++		goto out;
++	if (!builder)
++		builder = g_variant_builder_new (G_VARIANT_TYPE ("asss"));
++
+ 	for (ii = 0; ii < length; ii++) {
+ 		const gchar *id;
+ 		gchar *cid = NULL;
+@@ -6011,7 +6073,7 @@ dom_get_inline_images_data (WebKitDOMDocument *document,
+ 		}
+ 		g_free (cid);
+ 	}
+-
++ out:
+ 	g_object_unref (list);
+ 	g_hash_table_destroy (added);
+ 
+diff --git a/web-extensions/e-html-editor-view-dom-functions.h b/web-extensions/e-html-editor-view-dom-functions.h
+index d743df0904..90ab5607a3 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.h
++++ b/web-extensions/e-html-editor-view-dom-functions.h
+@@ -94,7 +94,8 @@ gchar *		dom_process_content_for_plain_text
+ 						 EHTMLEditorWebExtension *extension);
+ 
+ gchar *		dom_process_content_for_html	(WebKitDOMDocument *document,
+-						 EHTMLEditorWebExtension *extension);
++						 EHTMLEditorWebExtension *extension,
++						 const gchar *from_domain);
+ 
+ gboolean	dom_check_if_conversion_needed	(WebKitDOMDocument *document);
+ 
+diff --git a/web-extensions/e-html-editor-web-extension.c b/web-extensions/e-html-editor-web-extension.c
+index 44a6d52e39..cce89496ea 100644
+--- a/web-extensions/e-html-editor-web-extension.c
++++ b/web-extensions/e-html-editor-web-extension.c
+@@ -422,6 +422,7 @@ static const char introspection_xml[] =
+ "    </method>"
+ "    <method name='DOMProcessContentForHTML'>"
+ "      <arg type='t' name='page_id' direction='in'/>"
++"      <arg type='s' name='from_domain' direction='in'/>"
+ "      <arg type='s' name='content' direction='out'/>"
+ "    </method>"
+ "    <method name='DOMProcessContentForDraft'>"
+@@ -1478,9 +1479,10 @@ handle_method_call (GDBusConnection *connection,
+ 			invocation,
+ 			value ? g_variant_new_take_string (value) : NULL);
+ 	} else if (g_strcmp0 (method_name, "DOMProcessContentForHTML") == 0) {
++		const gchar *from_domain;
+ 		gchar *value = NULL;
+ 
+-		g_variant_get (parameters, "(t)", &page_id);
++		g_variant_get (parameters, "(t&s)", &page_id, &from_domain);
+ 
+ 		web_page = get_webkit_web_page_or_return_dbus_error (
+ 			invocation, web_extension, page_id);
+@@ -1488,7 +1490,7 @@ handle_method_call (GDBusConnection *connection,
+ 			return;
+ 
+ 		document = webkit_web_page_get_dom_document (web_page);
+-		value = dom_process_content_for_html (document, extension);
++		value = dom_process_content_for_html (document, extension, from_domain);
+ 
+ 		g_dbus_method_invocation_return_value (
+ 			invocation,
+-- 
+2.15.0
+

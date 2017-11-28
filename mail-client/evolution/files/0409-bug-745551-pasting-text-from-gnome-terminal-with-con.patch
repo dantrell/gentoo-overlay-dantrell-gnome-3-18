@@ -1,0 +1,99 @@
+From b48d486e89c69e82f4b10126515c9f15177c08de Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 26 Mar 2015 14:48:37 +0100
+Subject: [PATCH 0409/1800] Bug 745551 - Pasting text from gnome-terminal with
+ concatenated whitespace and tabulators, some whitespace occurrences get
+ removed
+
+The problem was the the code expected that the matched pattern will be
+just the spaces or tabulators nor both of them at the same time. As
+a fix we need to process the matched pattern characters one by one.
+
+Also when deciding whether to preserve the block (line) we need to
+operate with a string that already has the tabulators replaced.
+---
+ web-extensions/e-html-editor-view-dom-functions.c | 49 ++++++++++++-----------
+ 1 file changed, 26 insertions(+), 23 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 9ee707a57e..5b190653fa 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -3120,38 +3120,41 @@ replace_to_nbsp (const GMatchInfo *info,
+                  gboolean use_nbsp)
+ {
+ 	gchar *match;
+-	const gchar *string, *previous_tab;
+-	gint ii, length = 0, start = 0;
++	const gchar *string;
++	gint ii = 0, jj = 0, length = 0, start = 0;
+ 
+ 	match = g_match_info_fetch (info, 0);
+ 	g_match_info_fetch_pos (info, 0, &start, NULL);
+ 	string = g_match_info_get_string (info);
+ 
+-	if (start > 0) {
+-		previous_tab = g_strrstr_len (string, start, "\x9");
+-		if (previous_tab && *previous_tab) {
+-			const char *act_tab = NULL;
+-			act_tab = strstr (previous_tab + 1, "\x9");
++	while (match[ii] != '\0') {
++		/* Spaces before or after tabulator */
++		if (match[ii] == ' ') {
++			g_string_append (res, UNICODE_NBSP);
++			ii++;
++		}
++
++		if (match[ii] == '\t') {
++			const gchar *previous_tab;
++
++			previous_tab = g_strrstr_len (string, start + ii, "\x9");
++			if (previous_tab && *previous_tab) {
++				const char *act_tab = NULL;
++				act_tab = strstr (previous_tab + 1, "\x9");
+ 
+-			if (act_tab && *act_tab) {
+ 				length = act_tab - previous_tab - 1;
+-				length = TAB_LENGTH - length;
++				length = TAB_LENGTH - length % TAB_LENGTH;
++			} else {
++				length = TAB_LENGTH - (start + ii) % TAB_LENGTH;
+ 			}
++
++			for (jj = 0; jj < length; jj++)
++				g_string_append (res, UNICODE_NBSP);
++
++			ii++;
+ 		}
+ 	}
+ 
+-	if (length == 0) {
+-		if (strstr (match, "\x9")) {
+-			gint tab_count = strlen (match);
+-			length = TAB_LENGTH - (start %  TAB_LENGTH);
+-			length += (tab_count - 1) * TAB_LENGTH;
+-		} else
+-			length = strlen (match);
+-	}
+-
+-	for (ii = 0; ii < length; ii++)
+-		g_string_append (res, "&nbsp;");
+-
+ 	g_free (match);
+ 
+ 	return FALSE;
+@@ -3442,9 +3445,9 @@ parse_html_into_paragraphs (WebKitDOMDocument *document,
+ 				glong length = 0;
+ 
+ 				if (strstr (rest, "&"))
+-					length = get_decoded_line_length (document, rest);
++					length = get_decoded_line_length (document, rest_to_insert);
+ 				else
+-					length = g_utf8_strlen (rest, -1);
++					length = g_utf8_strlen (rest_to_insert, -1);
+ 
+ 				/* End the block if there is line with less that 62 characters. */
+ 				/* The shorter line can also mean that there is a long word on next
+-- 
+2.15.0
+

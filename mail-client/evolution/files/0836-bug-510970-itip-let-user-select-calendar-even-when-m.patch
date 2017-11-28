@@ -1,0 +1,54 @@
+From 32735c4c946f3a4b3aec53abbafadc00ba7d9b20 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 25 Jun 2015 12:33:50 +0200
+Subject: [PATCH 0836/1800] Bug 510970 - [itip] Let user select calendar even
+ when meeting found
+
+---
+ modules/itip-formatter/itip-view.c | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
+
+diff --git a/modules/itip-formatter/itip-view.c b/modules/itip-formatter/itip-view.c
+index 4e5cd90984..fdd47a41f3 100644
+--- a/modules/itip-formatter/itip-view.c
++++ b/modules/itip-formatter/itip-view.c
+@@ -3586,6 +3586,7 @@ find_cal_update_ui (FormatItipFindData *fd,
+ 
+ 	/* search for a master object if the detached object doesn't exist in the calendar */
+ 	if (pitip->current_client && pitip->current_client == cal_client) {
++		const gchar *extension_name;
+ 		gboolean rsvp_enabled = FALSE;
+ 
+ 		itip_view_set_show_keep_alarm_check (view, fd->keep_alarm_check);
+@@ -3629,6 +3630,28 @@ find_cal_update_ui (FormatItipFindData *fd,
+ 		set_buttons_sensitive (pitip, view);
+ 
+ 		g_cancellable_cancel (fd->cancellable);
++
++		switch (pitip->type) {
++			case E_CAL_CLIENT_SOURCE_TYPE_EVENTS:
++				extension_name = E_SOURCE_EXTENSION_CALENDAR;
++				break;
++			case E_CAL_CLIENT_SOURCE_TYPE_TASKS:
++				extension_name = E_SOURCE_EXTENSION_TASK_LIST;
++				break;
++			case E_CAL_CLIENT_SOURCE_TYPE_MEMOS:
++				extension_name = E_SOURCE_EXTENSION_MEMO_LIST;
++				break;
++			default:
++				g_return_if_reached ();
++		}
++
++		itip_view_set_extension_name (view, extension_name);
++
++		g_signal_connect (
++			view, "source_selected",
++			G_CALLBACK (source_selected_cb), pitip);
++
++		itip_view_set_source (view, source);
+ 	} else if (!pitip->current_client)
+ 		itip_view_set_show_keep_alarm_check (view, FALSE);
+ 
+-- 
+2.15.0
+

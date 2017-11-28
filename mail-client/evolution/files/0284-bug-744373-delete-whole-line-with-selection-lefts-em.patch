@@ -1,0 +1,41 @@
+From eac33adbb3bd73fd646400ebc274167affd928cf Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 24 Mar 2015 14:30:14 +0100
+Subject: [PATCH 0284/1800] Bug 744373 - Delete whole line with selection lefts
+ empty line
+
+The selection end marker was saved to wrong position when the selection
+ended in the beginning of the paragraph.
+---
+ web-extensions/e-html-editor-selection-dom-functions.c | 15 +++++++++++----
+ 1 file changed, 11 insertions(+), 4 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.c b/web-extensions/e-html-editor-selection-dom-functions.c
+index b54950ebf3..adb55b8ebb 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.c
++++ b/web-extensions/e-html-editor-selection-dom-functions.c
+@@ -1678,10 +1678,17 @@ dom_selection_save (WebKitDOMDocument *document)
+ 		parent_node = webkit_dom_node_get_parent_node (split_node);
+ 
+ 		if (WEBKIT_DOM_IS_HTML_BODY_ELEMENT (parent_node)) {
+-			webkit_dom_node_append_child (
+-				webkit_dom_node_get_previous_sibling (split_node),
+-				marker_node,
+-				NULL);
++			if (offset == 0)
++				webkit_dom_node_insert_before (
++					split_node,
++					marker_node,
++					webkit_dom_node_get_first_child (split_node),
++					NULL);
++			else
++				webkit_dom_node_append_child (
++					webkit_dom_node_get_previous_sibling (split_node),
++					marker_node,
++					NULL);
+ 		} else
+ 			webkit_dom_node_insert_before (
+ 				parent_node, marker_node, split_node, NULL);
+-- 
+2.15.0
+

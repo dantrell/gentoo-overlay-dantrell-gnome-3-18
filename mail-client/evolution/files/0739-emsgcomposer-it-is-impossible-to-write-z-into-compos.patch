@@ -1,0 +1,26 @@
+From 303d033dc7f5866102339a0cac3d0a54ac9fe0d3 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 11 May 2015 08:11:06 +0200
+Subject: [PATCH 0739/1800] EMsgComposer - It is impossible to write 'Z' into
+ composer
+
+---
+ composer/e-msg-composer.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index cd6067a112..d6be24ad87 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -2579,7 +2579,7 @@ msg_composer_key_press_event (GtkWidget *widget,
+ 			return TRUE;
+ 		}
+ 
+-		if (((event)->state & (GDK_CONTROL_MASK | GDK_SHIFT_MASK)) &&
++		if (((event)->state & (GDK_CONTROL_MASK)) &&
+ 		    ((event)->keyval == GDK_KEY_Z)) {
+ 			e_html_editor_view_redo (view);
+ 			return TRUE;
+-- 
+2.15.0
+

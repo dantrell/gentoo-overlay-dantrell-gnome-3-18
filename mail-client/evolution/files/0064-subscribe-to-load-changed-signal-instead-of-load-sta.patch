@@ -1,0 +1,166 @@
+From d47331906ee12196ec53c3cbcce413e282f09615 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 16 Sep 2014 15:32:25 +0200
+Subject: [PATCH 0064/1800] Subscribe to load-changed signal instead of
+ load-status
+
+---
+ composer/e-composer-private.c | 23 +++++++++--------------
+ e-util/e-html-editor-view.c   | 30 +++++++++++-------------------
+ mail/e-mail-reader.c          | 10 +++++-----
+ 3 files changed, 25 insertions(+), 38 deletions(-)
+
+diff --git a/composer/e-composer-private.c b/composer/e-composer-private.c
+index 7eb656a043..8ba1311aeb 100644
+--- a/composer/e-composer-private.c
++++ b/composer/e-composer-private.c
+@@ -1210,22 +1210,18 @@ exit:
+ }
+ 
+ static void
+-composer_web_view_load_status_changed_cb (WebKitWebView *webkit_web_view,
+-					  GParamSpec *pspec,
+-					  EMsgComposer *composer)
++composer_web_view_load_changed_cb (WebKitWebView *webkit_web_view,
++                                   WebKitLoadEvent load_event,
++                                   EMsgComposer *composer)
+ {
+-	WebKitLoadStatus status;
+-
+ 	g_return_if_fail (E_IS_MSG_COMPOSER (composer));
+ 
+-	status = webkit_web_view_get_load_status (webkit_web_view);
+-
+-	if (status != WEBKIT_LOAD_FINISHED)
++	if (load_event != WEBKIT_LOAD_FINISHED)
+ 		return;
+ 
+ 	g_signal_handlers_disconnect_by_func (
+ 		webkit_web_view,
+-		G_CALLBACK (composer_web_view_load_status_changed_cb),
++		G_CALLBACK (composer_web_view_load_changed_cb),
+ 		NULL);
+ 
+ 	e_composer_update_signature (composer);
+@@ -1252,17 +1248,16 @@ e_composer_update_signature (EMsgComposer *composer)
+ 	editor = e_msg_composer_get_editor (composer);
+ 	view = e_html_editor_get_view (editor);
+ 
+-	status = webkit_web_view_get_load_status (WEBKIT_WEB_VIEW (view));
+ 	/* If document is not loaded, we will wait for him */
+-	if (status != WEBKIT_LOAD_FINISHED) {
++	if (webkit_web_view_is_loading (WEBKIT_WEB_VIEW (view))) {
+ 		/* Disconnect previous handlers */
+ 		g_signal_handlers_disconnect_by_func (
+ 			WEBKIT_WEB_VIEW (view),
+-			G_CALLBACK (composer_web_view_load_status_changed_cb),
++			G_CALLBACK (composer_web_view_load_changed_cb),
+ 			composer);
+ 		g_signal_connect (
+-			WEBKIT_WEB_VIEW(view), "notify::load-status",
+-			G_CALLBACK (composer_web_view_load_status_changed_cb),
++			WEBKIT_WEB_VIEW(view), "load-changed",
++			G_CALLBACK (composer_web_view_load_changed_cb),
+ 			composer);
+ 		return;
+ 	}
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index 595ee33fb7..e5beb5f23e 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -6852,14 +6852,13 @@ convert_when_changing_composer_mode (EHTMLEditorView *view)
+ }
+ 
+ static void
+-html_editor_view_load_status_changed (EHTMLEditorView *view)
++html_editor_view_load_changed (EHTMLEditorView *view,
++                               WebKitLoadEvent load_event)
+ {
+ 	WebKitDOMDocument *document;
+ 	WebKitDOMHTMLElement *body;
+-	WebKitLoadStatus status;
+ 
+-	status = webkit_web_view_get_load_status (WEBKIT_WEB_VIEW (view));
+-	if (status != WEBKIT_LOAD_FINISHED)
++	if (load_event != WEBKIT_LOAD_FINISHED)
+ 		return;
+ 
+ 	/* Dispatch queued operations - as we are using this just for load
+@@ -7069,19 +7068,6 @@ e_html_editor_view_init (EHTMLEditorView *view)
+ 	webkit_web_view_set_editable (WEBKIT_WEB_VIEW (view), TRUE);
+ 	settings = webkit_web_view_get_settings (WEBKIT_WEB_VIEW (view));
+ 
+-	g_object_set (
+-		G_OBJECT (settings),
+-		"enable-developer-extras", TRUE,
+-		"enable-dom-paste", TRUE,
+-		"enable-file-access-from-file-uris", TRUE,
+-		"enable-plugins", FALSE,
+-		"enable-scripts", FALSE,
+-		"enable-spell-checking", TRUE,
+-		"respect-image-orientation", TRUE,
+-		NULL);
+-
+-	webkit_web_view_set_settings (WEBKIT_WEB_VIEW (view), settings);
+-
+ 	view->priv->old_settings = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify) g_variant_unref);
+ 
+ 	/* Override the spell-checker, use our own */
+@@ -7107,14 +7093,20 @@ e_html_editor_view_init (EHTMLEditorView *view)
+ 		view, "resource-request-starting",
+ 		G_CALLBACK (html_editor_view_resource_requested), NULL);
+ 	g_signal_connect (
+-		view, "notify::load-status",
+-		G_CALLBACK (html_editor_view_load_status_changed), NULL);
++		view, "load-changed",
++		G_CALLBACK (html_editor_view_load_changed), NULL);
++
++	e_signal_connect (
++		webkit_web_context_get_default (), "initialize-web-extensions",
++		G_CALLBACK (initialize_web_extensions_cb), NULL);
+ 
+ 	view->priv->selection = g_object_new (
+ 		E_TYPE_HTML_EDITOR_SELECTION,
+ 		"html-editor-view", view,
+ 		NULL);
+ 
++	html_editor_view_watch_web_extension (view);
++
+ 	g_settings = e_util_ref_settings ("org.gnome.desktop.interface");
+ 	g_signal_connect (
+ 		g_settings, "changed::font-name",
+diff --git a/mail/e-mail-reader.c b/mail/e-mail-reader.c
+index c35af89e4b..cc68eead01 100644
+--- a/mail/e-mail-reader.c
++++ b/mail/e-mail-reader.c
+@@ -2834,12 +2834,12 @@ schedule_timeout_mark_seen (EMailReader *reader)
+ 
+ static void
+ mail_reader_load_status_changed_cb (EMailReader *reader,
+-                                    GParamSpec *pspec,
++                                    WebKitLoadEvent event,
+                                     EMailDisplay *display)
+ {
+ 	EMailReaderPrivate *priv;
+ 
+-	if (webkit_web_view_get_load_status (WEBKIT_WEB_VIEW (display)) != WEBKIT_LOAD_FINISHED)
++	if (event != WEBKIT_LOAD_FINISHED)
+ 		return;
+ 
+ 	priv = E_MAIL_READER_GET_PRIVATE (reader);
+@@ -4235,9 +4235,9 @@ connect_signals:
+ 		display, "key-press-event",
+ 		G_CALLBACK (mail_reader_key_press_event_cb), reader);
+ 
+-	e_signal_connect_notify_swapped (
+-		display, "notify::load-status",
+-		G_CALLBACK (mail_reader_load_status_changed_cb), reader);
++	e_signal_connect_swapped (
++		display, "load-changed",
++		G_CALLBACK (mail_reader_load_changed_cb), reader);
+ 
+ 	g_signal_connect_swapped (
+ 		message_list, "message-selected",
+-- 
+2.15.0
+

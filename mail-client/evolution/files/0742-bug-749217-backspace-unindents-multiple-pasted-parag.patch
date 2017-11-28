@@ -1,0 +1,27 @@
+From e971fa928645584071c5efa7aca2574594c9cc5c Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 13:32:42 +0100
+Subject: [PATCH 0742/1800] Bug 749217 - Backspace unindents multiple pasted
+ paragraphs
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index bf0f887893..d1df9f68f3 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -5123,7 +5123,8 @@ dom_convert_and_insert_html_into_selection (WebKitDOMDocument *document,
+ 		/* Check if WebKit created wrong structure */
+ 		clone1 = webkit_dom_node_clone_node (WEBKIT_DOM_NODE (paragraph), FALSE);
+ 		clone2 = webkit_dom_node_clone_node (WEBKIT_DOM_NODE (parent), FALSE);
+-		if (webkit_dom_node_is_equal_node (clone1, clone2)) {
++		if (webkit_dom_node_is_equal_node (clone1, clone2) ||
++		    (WEBKIT_DOM_IS_HTML_DIV_ELEMENT (clone1) && WEBKIT_DOM_IS_HTML_DIV_ELEMENT (clone2))) {
+ 			fix_structure_after_pasting_multiline_content (paragraph);
+ 			if (g_strcmp0 (html, "\n") == 0) {
+ 				WebKitDOMElement *br;
+-- 
+2.15.0
+

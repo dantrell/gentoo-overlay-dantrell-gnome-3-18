@@ -1,0 +1,26 @@
+From 396e0c70949c5a097b5572eef61e814c1cd93cb5 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 11:38:36 +0100
+Subject: [PATCH 0727/1800] EHTMLEditorView - Connect the
+ 'changed::antialiasing' signal to the right object
+
+---
+ e-util/e-html-editor-view.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index c9144922d4..51b44df4a6 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -1668,7 +1668,7 @@ e_html_editor_view_init (EHTMLEditorView *view)
+ 	if (settings_schema != NULL) {
+ 		g_settings = e_util_ref_settings ("org.gnome.settings-daemon.plugins.xsettings");
+ 		g_signal_connect (
+-			settings, "changed::antialiasing",
++			g_settings, "changed::antialiasing",
+ 			G_CALLBACK (e_html_editor_settings_changed_cb), view);
+ 		view->priv->aliasing_settings = g_settings;
+ 	}
+-- 
+2.15.0
+

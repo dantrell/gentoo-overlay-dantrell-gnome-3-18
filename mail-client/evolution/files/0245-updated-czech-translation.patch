@@ -1,0 +1,25 @@
+From 8f8bbcb3627129f2528674008a42ef37c3748b0b Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marek=20=C4=8Cernock=C3=BD?= <marek@manet.cz>
+Date: Wed, 4 Feb 2015 22:29:10 +0100
+Subject: [PATCH 0245/1800] Updated Czech translation
+
+---
+ po/cs.po | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/po/cs.po b/po/cs.po
+index 748196f44f..3275d16f0c 100644
+--- a/po/cs.po
++++ b/po/cs.po
+@@ -21223,7 +21223,7 @@ msgstr "Koš"
+ 
+ #: ../modules/mail/e-mail-shell-view-private.c:1569
+ msgid "Send / Receive"
+-msgstr "Odeslat / přijmout"
++msgstr "Odeslat/přijmout"
+ 
+ #: ../modules/mail/em-composer-prefs.c:394
+ msgid "Select Folder to Add"
+-- 
+2.15.0
+

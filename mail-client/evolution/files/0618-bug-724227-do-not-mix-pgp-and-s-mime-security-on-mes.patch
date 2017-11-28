@@ -1,0 +1,290 @@
+From 7daae3771086fba69bc29c00ceacd181b44856f9 Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Thu, 2 Apr 2015 11:47:20 +0200
+Subject: [PATCH 0618/1800] Bug 724227 - Do not mix PGP and S/MIME security on
+ message reply
+
+---
+ composer/e-msg-composer.c                    | 66 ++++++++++++++----------
+ composer/e-msg-composer.h                    |  1 +
+ mail/em-composer-utils.c                     | 75 ++++++++++++++++++----------
+ modules/composer-autosave/e-autosave-utils.c |  2 +-
+ 4 files changed, 93 insertions(+), 51 deletions(-)
+
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 457b9442f3..217b8852d4 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -2921,12 +2921,17 @@ handle_multipart_signed (EMsgComposer *composer,
+ 	content_type = camel_data_wrapper_get_mime_type_field (content);
+ 	protocol = camel_content_type_param (content_type, "protocol");
+ 
+-	if (protocol == NULL)
++	if (protocol == NULL) {
+ 		action = NULL;
+-	else if (g_ascii_strcasecmp (protocol, "application/pgp-signature") == 0)
+-		action = GTK_TOGGLE_ACTION (ACTION (PGP_SIGN));
+-	else if (g_ascii_strcasecmp (protocol, "application/x-pkcs7-signature") == 0)
+-		action = GTK_TOGGLE_ACTION (ACTION (SMIME_SIGN));
++	} else if (g_ascii_strcasecmp (protocol, "application/pgp-signature") == 0) {
++		if (!gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (ACTION (SMIME_SIGN))) &&
++		    !gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (ACTION (SMIME_ENCRYPT))))
++			action = GTK_TOGGLE_ACTION (ACTION (PGP_SIGN));
++	} else if (g_ascii_strcasecmp (protocol, "application/x-pkcs7-signature") == 0) {
++		if (!gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (ACTION (PGP_SIGN))) &&
++		    !gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (ACTION (PGP_ENCRYPT))))
++			action = GTK_TOGGLE_ACTION (ACTION (SMIME_SIGN));
++	}
+ 
+ 	if (action)
+ 		gtk_toggle_action_set_active (action, TRUE);
+@@ -3005,12 +3010,17 @@ handle_multipart_encrypted (EMsgComposer *composer,
+ 	content_type = camel_mime_part_get_content_type (multipart);
+ 	protocol = camel_content_type_param (content_type, "protocol");
+ 
+-	if (protocol && g_ascii_strcasecmp (protocol, "application/pgp-encrypted") == 0)
+-		action = GTK_TOGGLE_ACTION (ACTION (PGP_ENCRYPT));
+-	else if (content_type && (
++	if (protocol && g_ascii_strcasecmp (protocol, "application/pgp-encrypted") == 0) {
++		if (!gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (ACTION (SMIME_SIGN))) &&
++		    !gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (ACTION (SMIME_ENCRYPT))))
++			action = GTK_TOGGLE_ACTION (ACTION (PGP_ENCRYPT));
++	} else if (content_type && (
+ 		    camel_content_type_is (content_type, "application", "x-pkcs7-mime")
+-		 || camel_content_type_is (content_type, "application", "pkcs7-mime")))
+-		action = GTK_TOGGLE_ACTION (ACTION (SMIME_ENCRYPT));
++		 || camel_content_type_is (content_type, "application", "pkcs7-mime"))) {
++		if (!gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (ACTION (PGP_SIGN))) &&
++		    !gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (ACTION (PGP_ENCRYPT))))
++			action = GTK_TOGGLE_ACTION (ACTION (SMIME_ENCRYPT));
++	}
+ 
+ 	if (action)
+ 		gtk_toggle_action_set_active (action, TRUE);
+@@ -3370,6 +3380,7 @@ composer_add_auto_recipients (ESource *source,
+  * @shell: an #EShell
+  * @message: The message to use as the source
+  * @keep_signature: Keep message signature, if any
++ * @override_identity_uid: (allow none): Optional identity UID to use, or %NULL
+  * @cancellable: optional #GCancellable object, or %NULL
+  *
+  * Create a new message composer widget.
+@@ -3382,6 +3393,7 @@ EMsgComposer *
+ e_msg_composer_new_with_message (EShell *shell,
+                                  CamelMimeMessage *message,
+                                  gboolean keep_signature,
++				 const gchar *override_identity_uid,
+                                  GCancellable *cancellable)
+ {
+ 	CamelInternetAddress *from, *to, *cc, *bcc;
+@@ -3431,20 +3443,25 @@ e_msg_composer_new_with_message (EShell *shell,
+ 		postto = NULL;
+ 	}
+ 
+-	/* Restore the mail identity preference. */
+-	identity_uid = (gchar *) camel_medium_get_header (
+-		CAMEL_MEDIUM (message), "X-Evolution-Identity");
+-	if (!identity_uid) {
+-		/* for backward compatibility */
++	if (override_identity_uid && *override_identity_uid) {
++		identity_uid = (gchar *) override_identity_uid;
++	} else {
++		/* Restore the mail identity preference. */
+ 		identity_uid = (gchar *) camel_medium_get_header (
+-			CAMEL_MEDIUM (message), "X-Evolution-Account");
+-	}
+-	if (!identity_uid) {
+-		source = em_utils_guess_mail_identity_with_recipients (
+-			e_shell_get_registry (shell), message, NULL, NULL);
+-		if (source)
+-			identity_uid = e_source_dup_uid (source);
++			CAMEL_MEDIUM (message), "X-Evolution-Identity");
++		if (!identity_uid) {
++			/* for backward compatibility */
++			identity_uid = (gchar *) camel_medium_get_header (
++				CAMEL_MEDIUM (message), "X-Evolution-Account");
++		}
++		if (!identity_uid) {
++			source = em_utils_guess_mail_identity_with_recipients (
++				e_shell_get_registry (shell), message, NULL, NULL);
++			if (source)
++				identity_uid = e_source_dup_uid (source);
++		}
+ 	}
++
+ 	if (identity_uid != NULL && !source) {
+ 		identity_uid = g_strstrip (g_strdup (identity_uid));
+ 		source = e_composer_header_table_ref_source (
+@@ -3545,7 +3562,7 @@ e_msg_composer_new_with_message (EShell *shell,
+ 	e_destination_freev (Bccv);
+ 
+ 	from = camel_mime_message_get_from (message);
+-	if (from) {
++	if ((!override_identity_uid || !*override_identity_uid) && from) {
+ 		const gchar *name = NULL, *address = NULL;
+ 
+ 		if (camel_address_length (CAMEL_ADDRESS (from)) == 1 &&
+@@ -3780,7 +3797,7 @@ e_msg_composer_new_redirect (EShell *shell,
+ 	g_return_val_if_fail (CAMEL_IS_MIME_MESSAGE (message), NULL);
+ 
+ 	composer = e_msg_composer_new_with_message (
+-		shell, message, TRUE, cancellable);
++		shell, message, TRUE, identity_uid, cancellable);
+ 	table = e_msg_composer_get_header_table (composer);
+ 
+ 	subject = camel_mime_message_get_subject (message);
+@@ -3788,7 +3805,6 @@ e_msg_composer_new_redirect (EShell *shell,
+ 	composer->priv->redirect = message;
+ 	g_object_ref (message);
+ 
+-	e_composer_header_table_set_identity_uid (table, identity_uid);
+ 	e_composer_header_table_set_subject (table, subject);
+ 
+ 	editor = e_msg_composer_get_editor (composer);
+diff --git a/composer/e-msg-composer.h b/composer/e-msg-composer.h
+index 1efc6c124e..42512b9141 100644
+--- a/composer/e-msg-composer.h
++++ b/composer/e-msg-composer.h
+@@ -85,6 +85,7 @@ EMsgComposer *	e_msg_composer_new		(EShell *shell);
+ EMsgComposer *	e_msg_composer_new_with_message	(EShell *shell,
+ 						 CamelMimeMessage *message,
+ 						 gboolean keep_signature,
++						 const gchar *override_identity_uid,
+ 						 GCancellable *cancellable);
+ EMsgComposer *	e_msg_composer_new_from_url	(EShell *shell,
+ 						 const gchar *url);
+diff --git a/mail/em-composer-utils.c b/mail/em-composer-utils.c
+index f7180e4086..65793ecf3b 100644
+--- a/mail/em-composer-utils.c
++++ b/mail/em-composer-utils.c
+@@ -1591,10 +1591,12 @@ em_utils_edit_message (EShell *shell,
+ {
+ 	EMsgComposer *composer;
+ 	ESourceRegistry *registry;
++	ESource *source;
+ 	gboolean folder_is_sent;
+ 	gboolean folder_is_drafts;
+ 	gboolean folder_is_outbox;
+ 	gboolean folder_is_templates;
++	gchar *override_identity_uid = NULL;
+ 
+ 	g_return_val_if_fail (E_IS_SHELL (shell), NULL);
+ 	g_return_val_if_fail (CAMEL_IS_FOLDER (folder), NULL);
+@@ -1630,29 +1632,38 @@ em_utils_edit_message (EShell *shell,
+ 		g_slist_free (clue_list);
+ 	}
+ 
+-	composer = e_msg_composer_new_with_message (shell, message, keep_signature, NULL);
++	if (!folder_is_sent && !folder_is_drafts && !folder_is_outbox && !folder_is_templates) {
++		CamelStore *store;
+ 
+-	em_utils_apply_send_account_override_to_composer (composer, shell, folder);
++		store = camel_folder_get_parent_store (folder);
++		source = em_utils_ref_mail_identity_for_store (registry, store);
++
++		if (source) {
++			g_free (override_identity_uid);
++			override_identity_uid = e_source_dup_uid (source);
++			g_object_unref (source);
++		}
++	}
++
++	source = em_utils_check_send_account_override (shell, message, folder);
++	if (source) {
++		g_free (override_identity_uid);
++		override_identity_uid = e_source_dup_uid (source);
++		g_object_unref (source);
++	}
++
++	composer = e_msg_composer_new_with_message (shell, message, keep_signature, override_identity_uid, NULL);
++
++	g_free (override_identity_uid);
+ 
+ 	/* Override PostTo header only if the folder is a regular folder */
+ 	if (!folder_is_sent && !folder_is_drafts && !folder_is_outbox && !folder_is_templates) {
+ 		EComposerHeaderTable *table;
+-		ESource *source;
+-		CamelStore *store;
+ 		gchar *folder_uri;
+ 		GList *list;
+ 
+ 		table = e_msg_composer_get_header_table (composer);
+ 
+-		store = camel_folder_get_parent_store (folder);
+-		source = em_utils_ref_mail_identity_for_store (registry, store);
+-
+-		if (source != NULL) {
+-			const gchar *uid = e_source_get_uid (source);
+-			e_composer_header_table_set_identity_uid (table, uid);
+-			g_object_unref (source);
+-		}
+-
+ 		folder_uri = e_mail_folder_uri_from_folder (folder);
+ 
+ 		list = g_list_prepend (NULL, folder_uri);
+@@ -1710,23 +1721,37 @@ emu_update_composers_security (EMsgComposer *composer,
+ 
+ 	/* Pre-set only for encrypted messages, not for signed */
+ 	if (sign_by_default) {
+-		if (validity_found & E_MAIL_PART_VALIDITY_SMIME)
+-			action = E_COMPOSER_ACTION_SMIME_SIGN (composer);
+-		else
+-			action = E_COMPOSER_ACTION_PGP_SIGN (composer);
++		action = NULL;
+ 
+-		gtk_toggle_action_set_active (
+-			GTK_TOGGLE_ACTION (action), TRUE);
++		if (validity_found & E_MAIL_PART_VALIDITY_SMIME) {
++			if (!gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (E_COMPOSER_ACTION_PGP_SIGN (composer))) &&
++			    !gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (E_COMPOSER_ACTION_PGP_ENCRYPT (composer))))
++				action = E_COMPOSER_ACTION_SMIME_SIGN (composer);
++		} else {
++			if (!gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (E_COMPOSER_ACTION_SMIME_SIGN (composer))) &&
++			    !gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (E_COMPOSER_ACTION_SMIME_ENCRYPT (composer))))
++				action = E_COMPOSER_ACTION_PGP_SIGN (composer);
++		}
++
++		if (action)
++			gtk_toggle_action_set_active (GTK_TOGGLE_ACTION (action), TRUE);
+ 	}
+ 
+ 	if (validity_found & E_MAIL_PART_VALIDITY_ENCRYPTED) {
+-		if (validity_found & E_MAIL_PART_VALIDITY_SMIME)
+-			action = E_COMPOSER_ACTION_SMIME_ENCRYPT (composer);
+-		else
+-			action = E_COMPOSER_ACTION_PGP_ENCRYPT (composer);
++		action = NULL;
+ 
+-		gtk_toggle_action_set_active (
+-			GTK_TOGGLE_ACTION (action), TRUE);
++		if (validity_found & E_MAIL_PART_VALIDITY_SMIME) {
++			if (!gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (E_COMPOSER_ACTION_PGP_SIGN (composer))) &&
++			    !gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (E_COMPOSER_ACTION_PGP_ENCRYPT (composer))))
++				action = E_COMPOSER_ACTION_SMIME_ENCRYPT (composer);
++		} else {
++			if (!gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (E_COMPOSER_ACTION_SMIME_SIGN (composer))) &&
++			    !gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (E_COMPOSER_ACTION_SMIME_ENCRYPT (composer))))
++				action = E_COMPOSER_ACTION_PGP_ENCRYPT (composer);
++		}
++
++		if (action)
++			gtk_toggle_action_set_active (GTK_TOGGLE_ACTION (action), TRUE);
+ 	}
+ }
+ 
+diff --git a/modules/composer-autosave/e-autosave-utils.c b/modules/composer-autosave/e-autosave-utils.c
+index ce74d49051..f9db63ff82 100644
+--- a/modules/composer-autosave/e-autosave-utils.c
++++ b/modules/composer-autosave/e-autosave-utils.c
+@@ -168,7 +168,7 @@ load_snapshot_loaded_cb (GFile *snapshot_file,
+ 	 * the same file. */
+ 	shell = E_SHELL (object);
+ 	g_object_ref (snapshot_file);
+-	composer = e_msg_composer_new_with_message (shell, message, TRUE, NULL);
++	composer = e_msg_composer_new_with_message (shell, message, TRUE, NULL, NULL);
+ 	g_object_set_data_full (
+ 		G_OBJECT (composer),
+ 		SNAPSHOT_FILE_KEY, snapshot_file,
+-- 
+2.15.0
+

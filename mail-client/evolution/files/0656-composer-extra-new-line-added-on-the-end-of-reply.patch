@@ -1,0 +1,251 @@
+From 36903d59054fad25e5efd9a52991b8ebbb43234b Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 24 Feb 2016 15:56:10 +0100
+Subject: [PATCH 0656/1800] Composer - Extra new line added on the end of reply
+
+---
+ composer/e-msg-composer.c                          |  5 ++++-
+ e-util/e-html-editor-view.c                        | 10 ++++-----
+ e-util/e-html-editor-view.h                        |  2 +-
+ e-util/e-mail-signature-editor.c                   |  2 --
+ .../composer/e-html-editor-view-dom-functions.c    |  9 +++++---
+ .../composer/e-html-editor-web-extension.c         | 24 +++++++++++-----------
+ .../composer/e-html-editor-web-extension.h         |  2 +-
+ 7 files changed, 29 insertions(+), 25 deletions(-)
+
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index 7181851b70..0ffa0ca06f 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -2727,9 +2727,13 @@ e_msg_composer_class_init (EMsgComposerClass *class)
+ static void
+ e_msg_composer_init (EMsgComposer *composer)
+ {
++	EHTMLEditorView *view;
++
+ 	composer->priv = E_MSG_COMPOSER_GET_PRIVATE (composer);
+ 
+ 	composer->priv->editor = g_object_ref_sink (e_html_editor_new ());
++	view = e_html_editor_get_view (composer->priv->editor);
++	e_html_editor_view_set_is_editting_message (view, TRUE);
+ }
+ 
+ /**
+@@ -4593,7 +4597,6 @@ e_msg_composer_set_body (EMsgComposer *composer,
+ 	set_editor_text (composer, content, TRUE, FALSE);
+ 
+ 	e_html_editor_view_set_html_mode (view, FALSE);
+-	e_html_editor_view_set_remove_initial_input_line (view, TRUE);
+ 	webkit_web_view_set_editable (WEBKIT_WEB_VIEW (view), FALSE);
+ 
+ 	g_free (priv->mime_body);
+diff --git a/e-util/e-html-editor-view.c b/e-util/e-html-editor-view.c
+index cefe2b6cc8..5b4659c5a9 100644
+--- a/e-util/e-html-editor-view.c
++++ b/e-util/e-html-editor-view.c
+@@ -73,10 +73,10 @@ struct _EHTMLEditorViewPrivate {
+ 
+ 	gboolean convert_in_situ;
+ 	gboolean body_input_event_removed;
++	gboolean is_editting_message;
+ 	gboolean is_message_from_draft;
+ 	gboolean is_message_from_edit_as_new;
+ 	gboolean is_message_from_selection;
+-	gboolean remove_initial_input_line;
+ 
+ 	GDBusProxy *web_extension;
+ 	guint web_extension_watch_name_id;
+@@ -1686,10 +1686,10 @@ e_html_editor_view_init (EHTMLEditorView *view)
+ 	g_free (comma_separated);
+ */
+ 	view->priv->body_input_event_removed = TRUE;
++	view->priv->is_editting_message = TRUE;
+ 	view->priv->is_message_from_draft = FALSE;
+ 	view->priv->is_message_from_selection = FALSE;
+ 	view->priv->is_message_from_edit_as_new = FALSE;
+-	view->priv->remove_initial_input_line = FALSE;
+ 	view->priv->convert_in_situ = FALSE;
+ 
+ 	view->priv->current_user_stylesheet = NULL;
+@@ -2928,12 +2928,12 @@ e_html_editor_view_set_is_message_from_edit_as_new (EHTMLEditorView *view,
+ }
+ 
+ void
+-e_html_editor_view_set_remove_initial_input_line (EHTMLEditorView *view,
+-                                                  gboolean value)
++e_html_editor_view_set_is_editting_message (EHTMLEditorView *view,
++					    gboolean value)
+ {
+ 	g_return_if_fail (E_IS_HTML_EDITOR_VIEW (view));
+ 
+-	view->priv->remove_initial_input_line = value;
++	view->priv->is_editting_message = value;
+ }
+ 
+ void
+diff --git a/e-util/e-html-editor-view.h b/e-util/e-html-editor-view.h
+index a0636adc68..2cd35ab0a7 100644
+--- a/e-util/e-html-editor-view.h
++++ b/e-util/e-html-editor-view.h
+@@ -198,7 +198,7 @@ gboolean	e_html_editor_view_is_message_from_edit_as_new
+ void		e_html_editor_view_set_is_message_from_edit_as_new
+ 						(EHTMLEditorView *view,
+ 						 gboolean value);
+-void		e_html_editor_view_set_remove_initial_input_line
++void		e_html_editor_view_set_is_editting_message
+ 						(EHTMLEditorView *view,
+ 						 gboolean value);
+ void		e_html_editor_view_scroll_to_caret
+diff --git a/e-util/e-mail-signature-editor.c b/e-util/e-mail-signature-editor.c
+index cd67fc0027..221bfcb420 100644
+--- a/e-util/e-mail-signature-editor.c
++++ b/e-util/e-mail-signature-editor.c
+@@ -519,8 +519,6 @@ mail_signature_editor_constructed (GObject *object)
+ 	editor = e_mail_signature_editor_get_editor (window);
+ 	view = e_html_editor_get_view (editor);
+ 
+-	e_html_editor_view_set_remove_initial_input_line (view, TRUE);
+-
+ 	ui_manager = e_html_editor_get_ui_manager (editor);
+ 
+ 	/* Because we are loading from a hard-coded string, there is
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 3df4a99d2b..7f58d7d4d3 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -4078,7 +4078,7 @@ parse_html_into_paragraphs (WebKitDOMDocument *document,
+ 					element_add_class (
+ 						WEBKIT_DOM_ELEMENT (child),
+ 						"-x-evo-last-br");
+-				} else
++				} else if (!e_html_editor_web_extension_is_editting_message (extension))
+ 					create_and_append_new_paragraph (
+ 						document, extension, blockquote, block, "<br>");
+ 			} else
+@@ -4583,9 +4583,12 @@ dom_convert_content (WebKitDOMDocument *document,
+ 		remove_node (WEBKIT_DOM_NODE (content_wrapper));
+ 	}
+ 
++	/* If not editting a message, don't add any new block and just place
++	 * the carret in the beginning of content. We want to have the same
++	 * behaviour when editting message as new or we start replying on top. */
+ 	if (e_html_editor_web_extension_is_message_from_edit_as_new (extension) ||
+-	    e_html_editor_web_extension_get_remove_initial_input_line (extension) ||
+-            start_bottom) {
++	    !e_html_editor_web_extension_is_editting_message (extension) ||
++            !start_bottom) {
+ 		WebKitDOMNode *child;
+ 
+ 		remove_node (WEBKIT_DOM_NODE (paragraph));
+diff --git a/web-extensions/composer/e-html-editor-web-extension.c b/web-extensions/composer/e-html-editor-web-extension.c
+index cdd3bc5373..52fab3558f 100644
+--- a/web-extensions/composer/e-html-editor-web-extension.c
++++ b/web-extensions/composer/e-html-editor-web-extension.c
+@@ -88,10 +88,10 @@ struct _EHTMLEditorWebExtensionPrivate {
+ 	gboolean convert_in_situ;
+ 	gboolean body_input_event_removed;
+ 	gboolean is_message_from_draft;
++	gboolean is_editting_message;
+ 	gboolean is_from_new_message;
+ 	gboolean is_message_from_edit_as_new;
+ 	gboolean is_message_from_selection;
+-	gboolean remove_initial_input_line;
+ 	gboolean dont_save_history_in_body_input;
+ 	gboolean composition_in_progress;
+ 
+@@ -116,11 +116,11 @@ static const char introspection_xml[] =
+ "    <property type='b' name='MagicLinks' access='readwrite'/>"
+ "    <property type='b' name='MagicSmileys' access='readwrite'/>"
+ "    <property type='b' name='HTMLMode' access='readwrite'/>"
++"    <property type='b' name='IsEdittingMessage' access='readwrite'/>"
+ "    <property type='b' name='IsMessageFromEditAsNew' access='readwrite'/>"
+ "    <property type='b' name='IsMessageFromDraft' access='readwrite'/>"
+ "    <property type='b' name='IsMessageFromSelection' access='readwrite'/>"
+ "    <property type='b' name='IsFromNewMessage' access='readwrite'/>"
+-"    <property type='b' name='RemoveInitialInputLine' access='readwrite'/>"
+ "    <property type='u' name='NodeUnderMouseClickFlags' access='readwrite'/>"
+ "<!-- ********************************************************* -->"
+ "<!-- These properties show the actual state of EHTMLEditorView -->"
+@@ -2411,6 +2411,8 @@ handle_get_property (GDBusConnection *connection,
+ 		variant = g_variant_new_boolean (extension->priv->magic_smileys);
+ 	else if (g_strcmp0 (property_name, "HTMLMode") == 0)
+ 		variant = g_variant_new_boolean (extension->priv->html_mode);
++	else if (g_strcmp0 (property_name, "IsEdittingMessage") == 0)
++		variant = g_variant_new_boolean (extension->priv->is_editting_message);
+ 	else if (g_strcmp0 (property_name, "IsFromNewMessage") == 0)
+ 		variant = g_variant_new_boolean (extension->priv->is_from_new_message);
+ 	else if (g_strcmp0 (property_name, "IsMessageFromEditAsNew") == 0)
+@@ -2419,8 +2421,6 @@ handle_get_property (GDBusConnection *connection,
+ 		variant = g_variant_new_boolean (extension->priv->is_message_from_draft);
+ 	else if (g_strcmp0 (property_name, "IsMessageFromSelection") == 0)
+ 		variant = g_variant_new_boolean (extension->priv->is_message_from_selection);
+-	else if (g_strcmp0 (property_name, "RemoveInitialInputLine") == 0)
+-		variant = g_variant_new_boolean (extension->priv->remove_initial_input_line);
+ 	else if (g_strcmp0 (property_name, "Alignment") == 0)
+ 		variant = g_variant_new_uint32 (extension->priv->alignment);
+ 	else if (g_strcmp0 (property_name, "BackgroundColor") == 0)
+@@ -2502,18 +2502,18 @@ handle_set_property (GDBusConnection *connection,
+ 			"{sv}",
+ 			"IsMessageFromDraft",
+ 			g_variant_new_boolean (extension->priv->is_message_from_draft));
+-	} else if (g_strcmp0 (property_name, "RemoveInitialInputLine") == 0) {
++	} else if (g_strcmp0 (property_name, "IsEdittingMessage") == 0) {
+ 		gboolean value = g_variant_get_boolean (variant);
+ 
+-		if (value == extension->priv->remove_initial_input_line)
++		if (value == extension->priv->is_editting_message)
+ 			goto exit;
+ 
+-		extension->priv->remove_initial_input_line = value;
++		extension->priv->is_editting_message = value;
+ 
+ 		g_variant_builder_add (builder,
+ 			"{sv}",
+-			"RemoveInitialInputLine",
+-			g_variant_new_boolean (extension->priv->remove_initial_input_line));
++			"IsEdittingMessage",
++			g_variant_new_boolean (extension->priv->is_editting_message));
+ 	} else if (g_strcmp0 (property_name, "IsMessageFromSelection") == 0) {
+ 		gboolean value = g_variant_get_boolean (variant);
+ 
+@@ -2935,11 +2935,11 @@ e_html_editor_web_extension_init (EHTMLEditorWebExtension *extension)
+ 
+ 	extension->priv->convert_in_situ = FALSE;
+ 	extension->priv->body_input_event_removed = TRUE;
++	extension->priv->is_editting_message = TRUE;
+ 	extension->priv->is_message_from_draft = FALSE;
+ 	extension->priv->is_message_from_edit_as_new = FALSE;
+ 	extension->priv->is_from_new_message = FALSE;
+ 	extension->priv->is_message_from_selection = FALSE;
+-	extension->priv->remove_initial_input_line = FALSE;
+ 	extension->priv->dont_save_history_in_body_input = FALSE;
+ 	extension->priv->composition_in_progress = FALSE;
+ 
+@@ -3452,9 +3452,9 @@ e_html_editor_web_extension_is_message_from_edit_as_new (EHTMLEditorWebExtension
+ }
+ 
+ gboolean
+-e_html_editor_web_extension_get_remove_initial_input_line (EHTMLEditorWebExtension *extension)
++e_html_editor_web_extension_is_editting_message (EHTMLEditorWebExtension *extension)
+ {
+-	return extension->priv->remove_initial_input_line;
++	return extension->priv->is_editting_message;
+ }
+ 
+ gboolean
+diff --git a/web-extensions/composer/e-html-editor-web-extension.h b/web-extensions/composer/e-html-editor-web-extension.h
+index 9c8c1cfb86..ee75ba93fc 100644
+--- a/web-extensions/composer/e-html-editor-web-extension.h
++++ b/web-extensions/composer/e-html-editor-web-extension.h
+@@ -140,7 +140,7 @@ EHTMLEditorSelectionAlignment
+ gboolean	e_html_editor_web_extension_is_message_from_edit_as_new
+ 						(EHTMLEditorWebExtension *extension);
+ 
+-gboolean	e_html_editor_web_extension_get_remove_initial_input_line
++gboolean	e_html_editor_web_extension_is_editting_message
+ 						(EHTMLEditorWebExtension *extension);
+ 
+ gboolean	e_html_editor_web_extension_get_return_key_pressed
+-- 
+2.15.0
+

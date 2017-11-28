@@ -1,0 +1,35 @@
+From 3c6ac0bf8fb32da44888794f2265a99eee1515cf Mon Sep 17 00:00:00 2001
+From: Milan Crha <mcrha@redhat.com>
+Date: Mon, 2 Mar 2015 08:13:04 +0100
+Subject: [PATCH 0393/1800] Sync version with GNOME 3.15 series
+
+---
+ configure.ac | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 6bbcaf1a38..a4366cade6 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1,6 +1,6 @@
+ dnl Evolution Versions
+ m4_define([evo_major_version], [3])
+-m4_define([evo_minor_version], [13])
++m4_define([evo_minor_version], [15])
+ m4_define([evo_micro_version], [91])
+ m4_define([evo_version],
+ 	[evo_major_version.evo_minor_version.evo_micro_version])
+@@ -13,8 +13,8 @@ dnl Base Version: This is for API/version tracking for things like
+ dnl Bonobo server files.  This should always be the major/minor of
+ dnl the stable version or stable version to be.  Note, this is set
+ dnl the way it is so that GETTEXT_PACKAGE will be parsed correctly.
+-BASE_VERSION=3.14
+-m4_define([base_version], [3.14])
++BASE_VERSION=3.16
++m4_define([base_version], [3.16])
+ 
+ dnl Autoconf / Automake Initialization
+ AC_PREREQ([2.64])
+-- 
+2.15.0
+

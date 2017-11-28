@@ -1,0 +1,27 @@
+From 7532cb4d2e4664f7a355a01b8d292051769fe1b3 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 29 Feb 2016 19:54:26 +0100
+Subject: [PATCH 0962/1800] EHTMLEditorView - Connect HTML events handlers
+ after converting composer content
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 37d2cd81d6..d07c6740f6 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -7137,6 +7137,9 @@ dom_process_content_after_load (WebKitDOMDocument *document,
+ 		dom_set_links_active (document, FALSE);
+ 		e_html_editor_web_extension_set_convert_in_situ (extension, FALSE);
+ 
++		dom_register_input_event_listener_on_body (document, extension);
++		register_html_events_handlers (body, extension);
++
+ 		return;
+ 	}
+ 
+-- 
+2.15.0
+

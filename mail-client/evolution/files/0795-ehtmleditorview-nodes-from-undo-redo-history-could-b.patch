@@ -1,0 +1,80 @@
+From b68271f1ec0407d0451d58e82f7d4c90152a5826 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Thu, 25 Feb 2016 17:37:58 +0100
+Subject: [PATCH 0795/1800] EHTMLEditorView - Nodes from undo/redo history
+ could be modified
+
+---
+ web-extensions/composer/e-html-editor-undo-redo-manager.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/web-extensions/composer/e-html-editor-undo-redo-manager.c b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+index b03b2f8330..c2104e86f2 100644
+--- a/web-extensions/composer/e-html-editor-undo-redo-manager.c
++++ b/web-extensions/composer/e-html-editor-undo-redo-manager.c
+@@ -816,7 +816,7 @@ undo_redo_hrule_dialog (WebKitDOMDocument *document,
+ 			else
+ 				webkit_dom_node_replace_child (
+ 					webkit_dom_node_get_parent_node (node),
+-					event->data.dom.from,
++					webkit_dom_node_clone_node (event->data.dom.from, TRUE),
+ 					node,
+ 					NULL);
+ 		}
+@@ -832,7 +832,7 @@ undo_redo_hrule_dialog (WebKitDOMDocument *document,
+ 			if (node && WEBKIT_DOM_IS_HTML_HR_ELEMENT (node))
+ 				webkit_dom_node_replace_child (
+ 					webkit_dom_node_get_parent_node (node),
+-					event->data.dom.to,
++					webkit_dom_node_clone_node (event->data.dom.to, TRUE),
+ 					node,
+ 					NULL);
+ 		} else {
+@@ -889,7 +889,7 @@ undo_redo_image_dialog (WebKitDOMDocument *document,
+ 
+ 	webkit_dom_node_replace_child (
+ 		webkit_dom_node_get_parent_node (image),
+-		undo ? event->data.dom.from : event->data.dom.to,
++		webkit_dom_node_clone_node (undo ? event->data.dom.from : event->data.dom.to, TRUE),
+ 		image,
+ 		NULL);
+ 
+@@ -924,7 +924,7 @@ undo_redo_table_dialog (WebKitDOMDocument *document,
+ 			parent = get_parent_block_element (WEBKIT_DOM_NODE (element));
+ 			webkit_dom_node_insert_before (
+ 				webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (parent)),
+-				undo ? event->data.dom.from : event->data.dom.to,
++				webkit_dom_node_clone_node (undo ? event->data.dom.from : event->data.dom.to, TRUE),
+ 				WEBKIT_DOM_NODE (parent),
+ 				NULL);
+ 			restore_selection_to_history_event_state (document, event->before);
+@@ -939,7 +939,7 @@ undo_redo_table_dialog (WebKitDOMDocument *document,
+ 		else
+ 			webkit_dom_node_replace_child (
+ 				webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (table)),
+-				event->data.dom.from,
++				webkit_dom_node_clone_node (event->data.dom.from, TRUE),
+ 				WEBKIT_DOM_NODE (table),
+ 				NULL);
+ 	} else {
+@@ -948,7 +948,7 @@ undo_redo_table_dialog (WebKitDOMDocument *document,
+ 		else
+ 			webkit_dom_node_replace_child (
+ 				webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (table)),
+-				event->data.dom.to,
++				webkit_dom_node_clone_node (event->data.dom.to, TRUE),
+ 				WEBKIT_DOM_NODE (table),
+ 				NULL);
+ 	}
+@@ -1000,7 +1000,7 @@ undo_redo_table_input (WebKitDOMDocument *document,
+ 
+ 	webkit_dom_node_replace_child (
+ 		webkit_dom_node_get_parent_node (WEBKIT_DOM_NODE (element)),
+-		undo ? event->data.dom.from : event->data.dom.to,
++		webkit_dom_node_clone_node (undo ? event->data.dom.from : event->data.dom.to, TRUE),
+ 		WEBKIT_DOM_NODE (element),
+ 		NULL);
+ 
+-- 
+2.15.0
+

@@ -1,0 +1,55 @@
+From 6b07db4494cbc0be9a87cfcfb803783c46da6369 Mon Sep 17 00:00:00 2001
+From: Anders Jonsson <anders.jonsson@norsjovallen.se>
+Date: Wed, 29 Apr 2015 06:28:24 +0200
+Subject: [PATCH 0720/1800] Bug 747294 - Typos in documentation
+
+---
+ help/C/credits.page             | 4 ++--
+ help/C/import-apps-outlook.page | 2 +-
+ help/C/intro-main-window.page   | 2 +-
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/help/C/credits.page b/help/C/credits.page
+index 2842a4b163..b96f724def 100644
+--- a/help/C/credits.page
++++ b/help/C/credits.page
+@@ -39,8 +39,8 @@ Phil Bull
+ 
+ <section id="translators">
+ <title>Translators of the <app>Evolution</app> User Documentation</title>
+-<!-- TO TRANSLATORS: This is shown in the 'Translators of the User Documentation' section. Please REPLACE this string by adding your own names here so you get some well-deserved fame on the interwebs! Do NOT use "\n" for linebreaks or square brakets (<>) for potential email addresses here as this will not work. Thanks for all your hard work! andre -->
+-<p its:locNote="TO TRANSLATORS: This is shown in the 'Translators of the User Documentation' section. Please REPLACE this string by adding your own names here so you get some well-deserved fame on the interwebs! Do NOT use '\n' for linebreaks or square brakets for potential email addresses here as this will not work. Thanks for all your hard work! andre">(Not applicable to the English version)</p>
++<!-- TO TRANSLATORS: This is shown in the 'Translators of the User Documentation' section. Please REPLACE this string by adding your own names here so you get some well-deserved fame on the interwebs! Do NOT use "\n" for linebreaks or square brackets (<>) for potential email addresses here as this will not work. Thanks for all your hard work! andre -->
++<p its:locNote="TO TRANSLATORS: This is shown in the 'Translators of the User Documentation' section. Please REPLACE this string by adding your own names here so you get some well-deserved fame on the interwebs! Do NOT use '\n' for linebreaks or square brackets for potential email addresses here as this will not work. Thanks for all your hard work! andre">(Not applicable to the English version)</p>
+ </section>
+ 
+ <section id="previous">
+diff --git a/help/C/import-apps-outlook.page b/help/C/import-apps-outlook.page
+index 1430839cd3..48fc45c291 100644
+--- a/help/C/import-apps-outlook.page
++++ b/help/C/import-apps-outlook.page
+@@ -23,7 +23,7 @@
+   <title>Outlook</title>
+ <!-- "Import data and settings from older programs" cannot recognize Outlook, as there obviously is no default storage location for Outlook *under Linux* -->
+ 
+-<p>These steps refer to locally stored data such as POP accounts. For remote data (like IMAP) this is not necessary, since the data is still on the server and does not need to be manually transfered. You can set up the corresponding account in Evolution and the data will be downloaded.</p>
++<p>These steps refer to locally stored data such as POP accounts. For remote data (like IMAP) this is not necessary, since the data is still on the server and does not need to be manually transferred. You can set up the corresponding account in Evolution and the data will be downloaded.</p>
+ 
+ <section id="prerequisites">
+ <title>Prerequisites under Windows</title>
+diff --git a/help/C/intro-main-window.page b/help/C/intro-main-window.page
+index 47c833abf4..6fdfed0f68 100644
+--- a/help/C/intro-main-window.page
++++ b/help/C/intro-main-window.page
+@@ -125,7 +125,7 @@
+ </item>
+ <item>
+ <title>Task list and Memo list</title>
+-<p>Tasks and memos are just displayed for your convience and are not associated to any appointments. Use the <gui>switcher</gui> to go to their main windows.</p>
++<p>Tasks and memos are just displayed for your convenience and are not associated to any appointments. Use the <gui>switcher</gui> to go to their main windows.</p>
+ </item>
+ </terms>
+ 
+-- 
+2.15.0
+

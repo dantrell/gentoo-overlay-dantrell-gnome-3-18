@@ -1,0 +1,36 @@
+From d6f829c62bc74af29ce1e3a8eff7301f1cffaf97 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Wed, 22 Apr 2015 14:13:07 +0200
+Subject: [PATCH 0530/1800] Bug 744009 - URL detection in composer is often
+ incorrect: does not highlight entire URL, but *does* highlight subsequent
+ words that aren't part of the URL
+
+Rework the regular expression that is used for detecting links.
+Simplify it as Evolution is not URL validator, but we are giving
+a possibility to user to try the URL.
+---
+ web-extensions/e-html-editor-selection-dom-functions.h | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/web-extensions/e-html-editor-selection-dom-functions.h b/web-extensions/e-html-editor-selection-dom-functions.h
+index 111c3a9d2a..8b42f43353 100644
+--- a/web-extensions/e-html-editor-selection-dom-functions.h
++++ b/web-extensions/e-html-editor-selection-dom-functions.h
+@@ -28,11 +28,9 @@
+ #define UNICODE_ZERO_WIDTH_SPACE "\xe2\x80\x8b"
+ #define UNICODE_NBSP "\xc2\xa0"
+ 
+-#define URL_PATTERN \
+-	"((([A-Za-z]{3,9}:(?:\\/\\/)?)(?:[\\-;:&=\\+\\$,\\w]+@)?" \
+-	"[A-Za-z0-9\\.\\-]+|(?:www\\.|[\\-;:&=\\+\\$,\\w]+@)" \
+-	"[A-Za-z0-9\\.\\-]+)((?:\\/[\\+~%\\/\\.\\w\\-]*)?\\?" \
+-	"?(?:[\\-\\+=&;%@\\.\\w]*)#?(?:[\\.\\!\\/\\\\w]*))?)"
++/* stephenhay from https://mathiasbynens.be/demo/url-regex */
++#define URL_PROTOCOLS "news|telnet|nntp|file|https?|s?ftp||webcal|localhost"
++#define URL_PATTERN "((((" URL_PROTOCOLS ")\\:\\/\\/)|(www\\.|ftp\\.))[^\\s\\/\\$\\.\\?#].[^\\s]*)"
+ 
+ #define URL_PATTERN_SPACE URL_PATTERN "\\s"
+ 
+-- 
+2.15.0
+

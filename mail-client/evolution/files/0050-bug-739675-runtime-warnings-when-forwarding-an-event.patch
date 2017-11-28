@@ -1,0 +1,122 @@
+From c1c31a13bebc3a0ef46e6b650bbe373dfaf53d0b Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Fri, 7 Nov 2014 12:43:29 +0100
+Subject: [PATCH 0050/1800] Bug 739675 - Runtime warnings when forwarding an
+ event
+
+Correctly unsubscribe the callbacks from headers table.
+---
+ composer/e-composer-private.h |  9 +++++++++
+ composer/e-msg-composer.c     | 46 +++++++++++++++++++++++++++++++------------
+ 2 files changed, 42 insertions(+), 13 deletions(-)
+
+diff --git a/composer/e-composer-private.h b/composer/e-composer-private.h
+index 2a64f35334..5cc09e3558 100644
+--- a/composer/e-composer-private.h
++++ b/composer/e-composer-private.h
+@@ -103,6 +103,15 @@ struct _EMsgComposerPrivate {
+ 
+ 	gint focused_entry_selection_start;
+ 	gint focused_entry_selection_end;
++
++	gulong notify_destinations_bcc_handler;
++	gulong notify_destinations_cc_handler;
++	gulong notify_destinations_to_handler;
++	gulong notify_identity_uid_handler;
++	gulong notify_reply_to_handler;
++	gulong notify_signature_uid_handler;
++	gulong notify_subject_handler;
++	gulong notify_subject_changed_handler;
+ };
+ 
+ void		e_composer_private_constructed	(EMsgComposer *composer);
+diff --git a/composer/e-msg-composer.c b/composer/e-msg-composer.c
+index fce51234cc..090c9e3adf 100644
+--- a/composer/e-msg-composer.c
++++ b/composer/e-msg-composer.c
+@@ -2211,28 +2211,28 @@ msg_composer_constructed (GObject *object)
+ 
+ 	/* Configure Headers */
+ 
+-	e_signal_connect_notify_swapped (
++	composer->priv->notify_destinations_bcc_handler = e_signal_connect_notify_swapped (
+ 		table, "notify::destinations-bcc",
+ 		G_CALLBACK (msg_composer_notify_header_cb), composer);
+-	e_signal_connect_notify_swapped (
++	composer->priv->notify_destinations_cc_handler = e_signal_connect_notify_swapped (
+ 		table, "notify::destinations-cc",
+ 		G_CALLBACK (msg_composer_notify_header_cb), composer);
+-	e_signal_connect_notify_swapped (
++	composer->priv->notify_destinations_to_handler = e_signal_connect_notify_swapped (
+ 		table, "notify::destinations-to",
+ 		G_CALLBACK (msg_composer_notify_header_cb), composer);
+-	e_signal_connect_notify_swapped (
++	composer->priv->notify_identity_uid_handler = e_signal_connect_notify_swapped (
+ 		table, "notify::identity-uid",
+ 		G_CALLBACK (msg_composer_mail_identity_changed_cb), composer);
+-	e_signal_connect_notify_swapped (
++	composer->priv->notify_reply_to_handler = e_signal_connect_notify_swapped (
+ 		table, "notify::reply-to",
+ 		G_CALLBACK (msg_composer_notify_header_cb), composer);
+-	e_signal_connect_notify_swapped (
++	composer->priv->notify_signature_uid_handler = e_signal_connect_notify_swapped (
+ 		table, "notify::signature-uid",
+ 		G_CALLBACK (e_composer_update_signature), composer);
+-	e_signal_connect_notify_swapped (
++	composer->priv->notify_subject_changed_handler = e_signal_connect_notify_swapped (
+ 		table, "notify::subject",
+ 		G_CALLBACK (msg_composer_subject_changed_cb), composer);
+-	e_signal_connect_notify_swapped (
++	composer->priv->notify_subject_handler = e_signal_connect_notify_swapped (
+ 		table, "notify::subject",
+ 		G_CALLBACK (msg_composer_notify_header_cb), composer);
+ 
+@@ -2274,11 +2274,12 @@ static void
+ msg_composer_dispose (GObject *object)
+ {
+ 	EMsgComposer *composer = E_MSG_COMPOSER (object);
++	EMsgComposerPrivate *priv = E_MSG_COMPOSER_GET_PRIVATE (composer);
+ 	EShell *shell;
+ 
+-	if (composer->priv->address_dialog != NULL) {
+-		gtk_widget_destroy (composer->priv->address_dialog);
+-		composer->priv->address_dialog = NULL;
++	if (priv->address_dialog != NULL) {
++		gtk_widget_destroy (priv->address_dialog);
++		priv->address_dialog = NULL;
+ 	}
+ 
+ 	/* FIXME Our EShell is already unreferenced. */
+@@ -2288,8 +2289,27 @@ msg_composer_dispose (GObject *object)
+ 		shell, msg_composer_quit_requested_cb, composer);
+ 	g_signal_handlers_disconnect_by_func (
+ 		shell, msg_composer_prepare_for_quit_cb, composer);
+-	g_signal_handlers_disconnect_by_func (
+-		composer, msg_composer_notify_header_cb, NULL);
++
++	if (priv->header_table != NULL) {
++		EComposerHeaderTable *table;
++
++		table = E_COMPOSER_HEADER_TABLE (composer->priv->header_table);
++
++		e_signal_disconnect_notify_handler (
++			table, &priv->notify_destinations_bcc_handler);
++		e_signal_disconnect_notify_handler (
++			table, &priv->notify_destinations_cc_handler);
++		e_signal_disconnect_notify_handler (
++			table, &priv->notify_destinations_to_handler);
++		e_signal_disconnect_notify_handler (
++			table, &priv->notify_identity_uid_handler);
++		e_signal_disconnect_notify_handler (
++			table, &priv->notify_reply_to_handler);
++		e_signal_disconnect_notify_handler (
++			table, &priv->notify_destinations_to_handler);
++		e_signal_disconnect_notify_handler (
++			table, &priv->notify_subject_changed_handler);
++	}
+ 
+ 	e_composer_private_dispose (composer);
+ 
+-- 
+2.15.0
+

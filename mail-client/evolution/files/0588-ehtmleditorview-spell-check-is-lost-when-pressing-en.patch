@@ -1,0 +1,26 @@
+From 5451e3db3b0801afcd15b6c8fcd4f3d9056e42cd Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Tue, 10 Nov 2015 15:28:16 +0100
+Subject: [PATCH 0588/1800] EHTMLEditorView - Spell check is lost when pressing
+ Enter
+
+---
+ web-extensions/composer/e-html-editor-view-dom-functions.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/web-extensions/composer/e-html-editor-view-dom-functions.c b/web-extensions/composer/e-html-editor-view-dom-functions.c
+index 9b536e644c..eb25136411 100644
+--- a/web-extensions/composer/e-html-editor-view-dom-functions.c
++++ b/web-extensions/composer/e-html-editor-view-dom-functions.c
+@@ -2165,6 +2165,8 @@ body_input_event_cb (WebKitDOMElement *element,
+ 		mark_node_as_paragraph_after_ending_list (document, extension);
+ 		if (html_mode)
+ 			fix_paragraph_structure_after_pressing_enter_after_smiley (document);
++		if (e_html_editor_web_extension_get_return_key_pressed (extension))
++			dom_force_spell_check_for_current_paragraph (document, extension);
+ 	} else {
+ 		WebKitDOMNode *node;
+ 
+-- 
+2.15.0
+

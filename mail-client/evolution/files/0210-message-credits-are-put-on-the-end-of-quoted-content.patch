@@ -1,0 +1,108 @@
+From 654e4f13ee6ce8f5235ab90c1475d5907e599776 Mon Sep 17 00:00:00 2001
+From: Tomas Popela <tpopela@redhat.com>
+Date: Mon, 23 Mar 2015 15:47:32 +0100
+Subject: [PATCH 0210/1800] Message credits are put on the end of quoted
+ content instead of on its beginning.
+
+I received one message and on its end there was the paragraph element left opened:
+
+	</p><p></body></html>
+
+When we appended the credentials after it:
+
+	</p><p></body></html><span class="-x-evo-to-body" data-credits><pre>credits</pre></span>
+
+Now WebKit tried to do its best to parse, fix and load the content correctly that resulted in:
+
+	<p><span class="-x-evo-to-body" data-credits></span></p><pre>credits</pre></body></html>
+
+Clearly, we will fail when moving the credits to right place as we are
+expecting the the credits are inner part of the span. So set the
+credentials into the data-credits attribute (as there it will be
+resistant against this behavior) and rework the part that's handling it.
+---
+ em-format/e-mail-formatter-quote.c                |  2 +-
+ web-extensions/e-html-editor-view-dom-functions.c | 44 +++++++++++++----------
+ 2 files changed, 27 insertions(+), 19 deletions(-)
+
+diff --git a/em-format/e-mail-formatter-quote.c b/em-format/e-mail-formatter-quote.c
+index bbd2da45a9..1916bbad8f 100644
+--- a/em-format/e-mail-formatter-quote.c
++++ b/em-format/e-mail-formatter-quote.c
+@@ -122,7 +122,7 @@ mail_formatter_quote_run (EMailFormatter *formatter,
+ 	 * the special span element and it will be moved to body in EHTMLEditorView */
+ 	if (qf->priv->credits && *qf->priv->credits) {
+ 		gchar *credits = g_strdup_printf (
+-			"<span class=\"-x-evo-to-body\" data-credits><pre>%s</pre></span>",
++			"<span class=\"-x-evo-to-body\" data-credits=\"%s\"></span>",
+ 			qf->priv->credits);
+ 		g_output_stream_write_all (
+ 			stream, credits, strlen (credits), NULL, cancellable, NULL);
+diff --git a/web-extensions/e-html-editor-view-dom-functions.c b/web-extensions/e-html-editor-view-dom-functions.c
+index 751ac36b02..094037b183 100644
+--- a/web-extensions/e-html-editor-view-dom-functions.c
++++ b/web-extensions/e-html-editor-view-dom-functions.c
+@@ -783,17 +783,21 @@ move_elements_to_body (WebKitDOMDocument *document)
+ 	list = webkit_dom_document_query_selector_all (
+ 		document, "span.-x-evo-to-body[data-credits]", NULL);
+ 	for (ii = webkit_dom_node_list_get_length (list) - 1; ii >= 0; ii--) {
+-		WebKitDOMNode *child;
++		char *credits;
++		WebKitDOMElement *pre_element;
+ 		WebKitDOMNode *node = webkit_dom_node_list_item (list, ii);
+ 
+-		while ((child = webkit_dom_node_get_first_child (node))) {
+-			webkit_dom_node_insert_before (
+-				WEBKIT_DOM_NODE (body),
+-				child,
+-				webkit_dom_node_get_first_child (
+-					WEBKIT_DOM_NODE (body)),
+-				NULL);
+-		}
++		pre_element = webkit_dom_document_create_element (document, "pre", NULL);
++		credits = webkit_dom_element_get_attribute (WEBKIT_DOM_ELEMENT (node), "data-credits");
++		webkit_dom_html_element_set_inner_text (WEBKIT_DOM_HTML_ELEMENT (pre_element), credits, NULL);
++		g_free (credits);
++
++		webkit_dom_node_insert_before (
++			WEBKIT_DOM_NODE (body),
++			WEBKIT_DOM_NODE (pre_element),
++			webkit_dom_node_get_first_child (
++				WEBKIT_DOM_NODE (body)),
++			NULL);
+ 
+ 		remove_node (node);
+ 	}
+@@ -3751,16 +3755,20 @@ dom_convert_content (WebKitDOMDocument *document,
+ 		document, "span.-x-evo-to-body[data-credits]", NULL);
+ 	length = webkit_dom_node_list_get_length (list);
+ 	for (ii = 0; ii < length; ii++) {
+-		WebKitDOMNode *node, *child;
++		char *credits;
++		WebKitDOMElement *pre_element;
++		WebKitDOMNode *node = webkit_dom_node_list_item (list, ii);
+ 
+-		node = webkit_dom_node_list_item (list, ii);
+-		while ((child = webkit_dom_node_get_first_child (node))) {
+-			webkit_dom_node_insert_before (
+-				WEBKIT_DOM_NODE (wrapper),
+-				child,
+-				WEBKIT_DOM_NODE (content_wrapper),
+-				NULL);
+-		}
++		pre_element = webkit_dom_document_create_element (document, "pre", NULL);
++		credits = webkit_dom_element_get_attribute (WEBKIT_DOM_ELEMENT (node), "data-credits");
++		webkit_dom_html_element_set_inner_text (WEBKIT_DOM_HTML_ELEMENT (pre_element), credits, NULL);
++		g_free (credits);
++
++		webkit_dom_node_insert_before (
++			WEBKIT_DOM_NODE (wrapper),
++			WEBKIT_DOM_NODE (pre_element),
++			WEBKIT_DOM_NODE (content_wrapper),
++			NULL);
+ 
+ 		remove_node (node);
+ 	}
+-- 
+2.15.0
+
