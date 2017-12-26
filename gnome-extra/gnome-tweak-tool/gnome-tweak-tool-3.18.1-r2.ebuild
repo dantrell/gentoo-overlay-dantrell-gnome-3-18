@@ -42,13 +42,13 @@ DEPEND="${COMMON_DEPEND}
 
 src_prepare() {
 	# Add contents of Gentoo's cursor theme directory to cursor theme list
-	eapply "${FILESDIR}/${PN}-3.10.1-gentoo-cursor-themes.patch"
+	eapply "${FILESDIR}"/${PN}-3.10.1-gentoo-cursor-themes.patch
 
 	# Prevent problems setting WM preferences, upstream bug #706834
-	eapply "${FILESDIR}/${PN}-3.8.1-wm-preferences.patch"
+	eapply "${FILESDIR}"/${PN}-3.8.1-wm-preferences.patch
 
 	# Stop relying on libsoup-gnome (from 'master')
-	eapply "${FILESDIR}/${PN}-3.18.1-libsoup.patch"
+	eapply "${FILESDIR}"/${PN}-3.18.1-libsoup.patch
 
 	gnome2_src_prepare
 	python_copy_sources

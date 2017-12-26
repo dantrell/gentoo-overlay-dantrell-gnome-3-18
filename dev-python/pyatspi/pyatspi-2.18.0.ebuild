@@ -32,7 +32,7 @@ DEPEND="${COMMON_DEPEND}
 
 PATCHES=(
 	# https://bugzilla.gnome.org/show_bug.cgi?id=689957
-	"${FILESDIR}/${PN}-2.6.0-examples-python3.patch"
+	"${FILESDIR}"/${PN}-2.6.0-examples-python3.patch
 
 	# From GNOME:
 	# 	https://git.gnome.org/browse/pyatspi2/commit/?id=f87ffc4bc39264e3b9d5ed5747bd44c93bcae59d
