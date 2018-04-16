@@ -77,6 +77,9 @@ PATCHES=(
 	"${FILESDIR}"/${PN}-3.20.2-comics-fix-mime-type-comparisons.patch
 	"${FILESDIR}"/${PN}-3.20.2-comics-remove-support-for-tar-and-tar-like-commands.patch
 	"${FILESDIR}"/${PN}-3.20.2-comics-fix-extra-leading-to-a-warning-during-installation.patch
+	# From GNOME:
+	# 	https://bugzilla.gnome.org/show_bug.cgi?id=784947 (CVE-2017-1000159)
+	"${FILESDIR}"/${PN}-3.24.2-CVE-2017-1000159.patch
 )
 
 src_prepare() {
