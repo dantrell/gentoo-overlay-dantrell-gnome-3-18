@@ -101,7 +101,7 @@ strip_builddir() {
 
 src_prepare() {
 	# From GNOME:
-	# 	https://git.gnome.org/browse/gtk+/commit/?id=631f6b536485829a0bd00532f5826ad302b4951b
+	# 	https://gitlab.gnome.org/GNOME/gtk+/commit/631f6b536485829a0bd00532f5826ad302b4951b
 	eapply "${FILESDIR}"/${PN}-3.21.3-configure-fix-detecting-cups-2-x.patch
 
 	# -O3 and company cause random crashes in applications. Bug #133469

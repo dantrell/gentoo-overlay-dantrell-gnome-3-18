@@ -79,9 +79,9 @@ src_prepare() {
 
 	if ! use vanilla-icon; then
 		# From GNOME:
-		# 	https://git.gnome.org/browse/nautilus/commit/?id=2f206f0009be7f3a1c4d5968bb12e4d128dd9ad1
-		# 	https://git.gnome.org/browse/nautilus/commit/?id=efb04b8b9d9d7d1121caff4f419acaf98967e704
-		# 	https://git.gnome.org/browse/nautilus/commit/?id=a6821c163f2982acd330c2226268f6dfb9972fc1
+		# 	https://gitlab.gnome.org/GNOME/nautilus/commit/2f206f0009be7f3a1c4d5968bb12e4d128dd9ad1
+		# 	https://gitlab.gnome.org/GNOME/nautilus/commit/efb04b8b9d9d7d1121caff4f419acaf98967e704
+		# 	https://gitlab.gnome.org/GNOME/nautilus/commit/a6821c163f2982acd330c2226268f6dfb9972fc1
 		eapply "${FILESDIR}"/${PN}-3.19.90-general-add-another-zoom-level.patch
 		eapply "${FILESDIR}"/${PN}-3.19.90-canvas-item-dont-multiply-padding-for-label.patch
 		eapply "${FILESDIR}"/${PN}-3.19.90-canvas-item-add-dynamic-label-sizing-for-zoom-levels.patch
@@ -100,8 +100,8 @@ src_prepare() {
 	fi
 
 	# From GNOME:
-	# 	https://git.gnome.org/browse/nautilus/commit/?id=618f6a6d1965b35e302b2623cbd7e4e81e752ded
-	# 	https://git.gnome.org/browse/nautilus/commit/?id=e96f73cf1589c023ade74e4aeb16a0c422790161
+	# 	https://gitlab.gnome.org/GNOME/nautilus/commit/618f6a6d1965b35e302b2623cbd7e4e81e752ded
+	# 	https://gitlab.gnome.org/GNOME/nautilus/commit/e96f73cf1589c023ade74e4aeb16a0c422790161
 	eapply "${FILESDIR}"/${PN}-3.19.91-files-view-hide-hidden-files-when-renamed.patch
 	eapply "${FILESDIR}"/${PN}-3.20.2-do-not-reset-double-click-status-on-pointer-movement.patch
 

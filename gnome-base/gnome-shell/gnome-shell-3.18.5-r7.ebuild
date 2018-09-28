@@ -133,7 +133,7 @@ src_prepare() {
 		eapply "${FILESDIR}"/${PN}-3.18.5-restore-deprecated-background-code.patch
 	else
 		# From GNOME:
-		# 	https://git.gnome.org/browse/gnome-shell/commit/?id=965aedb0bb15c0246c67384e2dab13fa027df917
+		# 	https://gitlab.gnome.org/GNOME/gnome-shell/commit/965aedb0bb15c0246c67384e2dab13fa027df917
 		eapply "${FILESDIR}"/${PN}-3.19.3-background-reload-animation-on-timezone-changes.patch
 	fi
 
@@ -228,6 +228,6 @@ pkg_postinst() {
 	if ! use systemd; then
 		ewarn "You have emerged ${PN} without systemd,"
 		ewarn "if you experience any issues please use the support thread:"
-		ewarn "https://forums.gentoo.org/viewtopic-t-1022050.html"
+		ewarn "https://forums.gentoo.org/viewtopic-t-1082226.html"
 	fi
 }

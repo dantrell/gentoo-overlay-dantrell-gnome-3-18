@@ -48,7 +48,7 @@ src_prepare() {
 		-i configure.ac configure || die "sed 1 failed"
 
 	# From GNOME:
-	# 	https://git.gnome.org/browse/seahorse/commit/?id=31a9a6ffc10f9737e70d7f0051ff590ff284ad07
+	# 	https://gitlab.gnome.org/GNOME/seahorse/commit/31a9a6ffc10f9737e70d7f0051ff590ff284ad07
 	eapply "${FILESDIR}"/${PN}-9999-accept-gnupg-2-2-x-as-supported-version.patch
 
 	eautoreconf

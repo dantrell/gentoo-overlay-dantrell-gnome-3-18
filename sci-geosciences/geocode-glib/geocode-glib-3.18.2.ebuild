@@ -5,7 +5,7 @@ EAPI="6"
 inherit gnome2
 
 DESCRIPTION="GLib geocoding library that uses the Yahoo! Place Finder service"
-HOMEPAGE="https://git.gnome.org/browse/geocode-glib"
+HOMEPAGE="https://gitlab.gnome.org/GNOME/geocode-glib"
 
 LICENSE="LGPL-2"
 SLOT="0"
@@ -36,7 +36,7 @@ DEPEND="${RDEPEND}
 
 PATCHES=(
 	# From GNOME:
-	# 	https://git.gnome.org/browse/geocode-glib/commit/?id=3ce317a218c255b8a8025f8f2a6010ce500dc0ee
+	# 	https://gitlab.gnome.org/GNOME/geocode-glib/commit/3ce317a218c255b8a8025f8f2a6010ce500dc0ee
 	"${FILESDIR}"/${PN}-3.20.1-use-uclibc-when-checking-for-glibc-features.patch
 )
 

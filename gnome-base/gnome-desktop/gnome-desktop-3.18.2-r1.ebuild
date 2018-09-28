@@ -5,7 +5,7 @@ EAPI="6"
 inherit gnome2 virtualx
 
 DESCRIPTION="Libraries for the gnome desktop that are not part of the UI"
-HOMEPAGE="https://git.gnome.org/browse/gnome-desktop"
+HOMEPAGE="https://gitlab.gnome.org/GNOME/gnome-desktop"
 
 LICENSE="GPL-2+ FDL-1.1+ LGPL-2+"
 SLOT="3/12" # subslot = libgnome-desktop-3 soname version
@@ -47,8 +47,8 @@ DEPEND="${COMMON_DEPEND}
 
 PATCHES=(
 	# From GNOME:
-	# 	https://git.gnome.org/browse/gnome-desktop/commit/?id=f9b2c480e38de4dbdd763137709a523f206a8d1b
-	# 	https://git.gnome.org/browse/gnome-desktop/commit/?id=70d46d5cd8bac0de99fed21ee2247ec74b03991b
+	# 	https://gitlab.gnome.org/GNOME/gnome-desktop/commit/f9b2c480e38de4dbdd763137709a523f206a8d1b
+	# 	https://gitlab.gnome.org/GNOME/gnome-desktop/commit/70d46d5cd8bac0de99fed21ee2247ec74b03991b
 	"${FILESDIR}"/${PN}-3.19.1-thumbnail-ignore-errors-when-not-all-frames-are-loaded.patch
 	"${FILESDIR}"/${PN}-3.19.1-build-require-the-newest-gdk-pixbuf.patch
 )

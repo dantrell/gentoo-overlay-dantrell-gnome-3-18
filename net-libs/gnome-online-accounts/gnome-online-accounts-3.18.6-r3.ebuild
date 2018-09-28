@@ -55,20 +55,20 @@ DEPEND="${RDEPEND}
 
 PATCHES=(
 	# From GNOME:
-	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=5dc30f43e6c721708a6d15fcfcd086a11d41bc2d
-	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=01882bde514aae12796c98e03818f8d30cbd13b9
-	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=53ce478c99d43f0cf8333e452edd228418112a2d
-	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=674330b0ccb816530ee6d31cea0f752e334f15d7
-	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=924689ce724cc0f1b893e1e0845c04f59eabd765
-	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=f5325f00c0d2cae9e5f6253c59c713c4b223af1f
-	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=1ba36012879083330871c301464daf7615f7d7d0
-	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=094d8b7f42cdacd307e43347cefae8299c676bb2
-	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=389ce7fad248998178778ca4a95dd8d09d4f38eb
-	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=236987b0dc06fb429e319bd29a2e9227b78b35e1
-	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=ee460859029833c7e607f668270d5946525e7d18
-	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=2893345fb5a81ae2de631ea82d4e9ff467c610f6
-	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=1f18560d1c151d69f2f72b63c436cfe2b86443a1
-	# 	https://git.gnome.org/browse/gnome-online-accounts/commit/?id=5583ceb2d001655a492446238ac8074e31c7d2c9
+	# 	https://gitlab.gnome.org/GNOME/gnome-online-accounts/commit/5dc30f43e6c721708a6d15fcfcd086a11d41bc2d
+	# 	https://gitlab.gnome.org/GNOME/gnome-online-accounts/commit/01882bde514aae12796c98e03818f8d30cbd13b9
+	# 	https://gitlab.gnome.org/GNOME/gnome-online-accounts/commit/53ce478c99d43f0cf8333e452edd228418112a2d
+	# 	https://gitlab.gnome.org/GNOME/gnome-online-accounts/commit/674330b0ccb816530ee6d31cea0f752e334f15d7
+	# 	https://gitlab.gnome.org/GNOME/gnome-online-accounts/commit/924689ce724cc0f1b893e1e0845c04f59eabd765
+	# 	https://gitlab.gnome.org/GNOME/gnome-online-accounts/commit/f5325f00c0d2cae9e5f6253c59c713c4b223af1f
+	# 	https://gitlab.gnome.org/GNOME/gnome-online-accounts/commit/1ba36012879083330871c301464daf7615f7d7d0
+	# 	https://gitlab.gnome.org/GNOME/gnome-online-accounts/commit/094d8b7f42cdacd307e43347cefae8299c676bb2
+	# 	https://gitlab.gnome.org/GNOME/gnome-online-accounts/commit/389ce7fad248998178778ca4a95dd8d09d4f38eb
+	# 	https://gitlab.gnome.org/GNOME/gnome-online-accounts/commit/236987b0dc06fb429e319bd29a2e9227b78b35e1
+	# 	https://gitlab.gnome.org/GNOME/gnome-online-accounts/commit/ee460859029833c7e607f668270d5946525e7d18
+	# 	https://gitlab.gnome.org/GNOME/gnome-online-accounts/commit/2893345fb5a81ae2de631ea82d4e9ff467c610f6
+	# 	https://gitlab.gnome.org/GNOME/gnome-online-accounts/commit/1f18560d1c151d69f2f72b63c436cfe2b86443a1
+	# 	https://gitlab.gnome.org/GNOME/gnome-online-accounts/commit/5583ceb2d001655a492446238ac8074e31c7d2c9
 	"${FILESDIR}"/${PN}-3.20.5-build-new-api-key-for-google.patch
 	"${FILESDIR}"/${PN}-3.20.6-goa-identity-manager-get-identity-finish-should-return-a-new-ref.patch
 	"${FILESDIR}"/${PN}-3.20.6-identity-fix-the-error-handling-when-signing-out-an-identity.patch

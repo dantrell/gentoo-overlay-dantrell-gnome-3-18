@@ -83,9 +83,9 @@ src_prepare() {
 	sed 's/CFLAGS="$CFLAGS -O0 -ggdb3"//' -i configure{.ac,} || die
 
 	# From GNOME:
-	# 	https://git.gnome.org/browse/gnome-boxes/commit/?id=22084f72bae097ab3c3e1990644e3c69ecf04337
-	# 	https://git.gnome.org/browse/gnome-boxes/commit/?id=62c88b1ad43dfec123818e8de7a9290397d6be65
-	# 	https://git.gnome.org/browse/gnome-boxes/commit/?id=3f71ec5cda4e3ad810c1cc50a1fd3e66324b0e17
+	# 	https://gitlab.gnome.org/GNOME/gnome-boxes/commit/22084f72bae097ab3c3e1990644e3c69ecf04337
+	# 	https://gitlab.gnome.org/GNOME/gnome-boxes/commit/62c88b1ad43dfec123818e8de7a9290397d6be65
+	# 	https://gitlab.gnome.org/GNOME/gnome-boxes/commit/3f71ec5cda4e3ad810c1cc50a1fd3e66324b0e17
 	eapply "${FILESDIR}"/${PN}-3.20.4-unattended-setup-box-remove-redundant-code.patch
 	eapply "${FILESDIR}"/${PN}-3.20.4-configure-require-libsecret.patch
 	eapply "${FILESDIR}"/${PN}-3.20.4-unattended-setup-box-dont-cache-passwords-in-plain-text.patch

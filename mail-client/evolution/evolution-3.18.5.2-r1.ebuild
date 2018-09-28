@@ -97,7 +97,7 @@ S="${WORKDIR}/${PN}-3.13.90"
 
 src_prepare() {
 	# From GNOME:
-	# 	https://git.gnome.org/browse/evolution/log/?h=wip/webkit2
+	# 	https://gitlab.gnome.org/GNOME/evolution/commits/wip/webkit2
 	eapply "${FILESDIR}"
 
 	eautoreconf
