@@ -40,7 +40,7 @@ COMMON_DEPEND="
 		>=dev-python/pygobject-3:3[cairo,${PYTHON_USEDEP}]
 		dev-libs/libpeas[python,${PYTHON_USEDEP}] )
 	spell? (
-		>=app-text/enchant-1.2:=
+		>=app-text/enchant-1.2:0=
 		>=app-text/iso-codes-0.35 )
 "
 RDEPEND="${COMMON_DEPEND}
