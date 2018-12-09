@@ -1,0 +1,173 @@
+diff '--exclude=.git' -urN a/js/ui/dnd.js b/js/ui/dnd.js
+--- a/js/ui/dnd.js	2016-04-21 04:42:08.000000000 -0500
++++ b/js/ui/dnd.js	2018-12-08 11:04:26.023041932 -0600
+@@ -27,6 +27,12 @@
+     CONTINUE:  3
+ };
+ 
++const DragState = {
++    INIT:      0,
++    DRAGGING:  1,
++    CANCELLED: 2,
++};
++
+ const DRAG_CURSOR_MAP = {
+     0: Meta.Cursor.DND_UNSUPPORTED_TARGET,
+     1: Meta.Cursor.DND_COPY,
+@@ -79,6 +85,8 @@
+                                         dragActorOpacity: undefined });
+ 
+         this.actor = actor;
++        this._dragState = DragState.INIT;
++
+         if (!params.manualMode)
+             this.actor.connect('button-press-event',
+                                Lang.bind(this, this._onButtonPress));
+@@ -86,7 +94,7 @@
+         this.actor.connect('destroy', Lang.bind(this, function() {
+             this._actorDestroyed = true;
+ 
+-            if (this._dragInProgress && this._dragCancellable)
++            if (this._dragState == DragState.DRAGGING && this._dragCancellable)
+                 this._cancelDrag(global.get_current_time());
+             this.disconnectAll();
+         }));
+@@ -97,7 +105,6 @@
+         this._dragActorOpacity = params.dragActorOpacity;
+ 
+         this._buttonDown = false; // The mouse button has been pressed and has not yet been released.
+-        this._dragInProgress = false; // The drag has been started, and has not been dropped or cancelled yet.
+         this._animationInProgress = false; // The drag is over and the item is in the process of animating to its original position (snapping back or reverting).
+         this._dragCancellable = true;
+ 
+@@ -159,9 +166,10 @@
+         // not get triggered if the drag was cancelled with Esc.
+         if (event.type() == Clutter.EventType.BUTTON_RELEASE) {
+             this._buttonDown = false;
+-            if (this._dragInProgress) {
++            if (this._dragState == DragState.DRAGGING) {
+                 return this._dragActorDropped(event);
+-            } else if (this._dragActor != null && !this._animationInProgress) {
++            } else if ((this._dragActor != null || this._dragState == DragState.CANCELLED) &&
++                       !this._animationInProgress) {
+                 // Drag must have been cancelled with Esc.
+                 this._dragComplete();
+                 return Clutter.EVENT_STOP;
+@@ -173,14 +181,14 @@
+         // We intercept MOTION event to figure out if the drag has started and to draw
+         // this._dragActor under the pointer when dragging is in progress
+         } else if (event.type() == Clutter.EventType.MOTION) {
+-            if (this._dragInProgress) {
++            if (this._dragActor && this._dragState == DragState.DRAGGING) {
+                 return this._updateDragPosition(event);
+-            } else if (this._dragActor == null) {
++            } else if (this._dragActor == null && this._dragState != DragState.CANCELLED) {
+                 return this._maybeStartDrag(event);
+             }
+         // We intercept KEY_PRESS event so that we can process Esc key press to cancel
+         // dragging and ignore all other key presses.
+-        } else if (event.type() == Clutter.EventType.KEY_PRESS && this._dragInProgress) {
++        } else if (event.type() == Clutter.EventType.KEY_PRESS && this._dragState == DragState.DRAGGING) {
+             let symbol = event.get_key_symbol();
+             if (symbol == Clutter.Escape) {
+                 this._cancelDrag(event.get_time());
+@@ -216,7 +224,7 @@
+      */
+     startDrag: function (stageX, stageY, time) {
+         currentDraggable = this;
+-        this._dragInProgress = true;
++        this._dragState = DragState.DRAGGING;
+ 
+         // Special-case St.Button: the pointer grab messes with the internal
+         // state, so force a reset to a reasonable state here
+@@ -291,6 +299,13 @@
+             Shell.util_set_hidden_from_pick(this._dragActor, true);
+         }
+ 
++        this._dragActorDestroyId = this._dragActor.connect('destroy', () => {
++            // Cancel ongoing animation (if any)
++            this._finishAnimation();
++
++            this._dragActor = null;
++            this._dragState = DragState.CANCELLED;
++        });
+         this._dragOrigOpacity = this._dragActor.opacity;
+         if (this._dragActorOpacity != undefined)
+             this._dragActor.opacity = this._dragActorOpacity;
+@@ -449,7 +464,7 @@
+                                                 event.get_time())) {
+                     // If it accepted the drop without taking the actor,
+                     // handle it ourselves.
+-                    if (this._dragActor.get_parent() == Main.uiGroup) {
++                    if (this._dragActor && this._dragActor.get_parent() == Main.uiGroup) {
+                         if (this._restoreOnSuccess) {
+                             this._restoreDragActor(event.get_time());
+                             return true;
+@@ -457,7 +472,7 @@
+                             this._dragActor.destroy();
+                     }
+ 
+-                    this._dragInProgress = false;
++                    this._dragState = DragState.INIT;
+                     global.screen.set_cursor(Meta.Cursor.DEFAULT);
+                     this.emit('drag-end', event.get_time(), true);
+                     this._dragComplete();
+@@ -506,20 +521,22 @@
+ 
+     _cancelDrag: function(eventTime) {
+         this.emit('drag-cancelled', eventTime);
+-        this._dragInProgress = false;
+-        let [snapBackX, snapBackY, snapBackScale] = this._getRestoreLocation();
++        let wasCancelled = (this._dragState == DragState.CANCELLED);
++        this._dragState = DragState.CANCELLED;
+ 
+-        if (this._actorDestroyed) {
++        if (this._actorDestroyed || wasCancelled) {
+             global.screen.set_cursor(Meta.Cursor.DEFAULT);
+             if (!this._buttonDown)
+                 this._dragComplete();
+             this.emit('drag-end', eventTime, false);
+-            if (!this._dragOrigParent)
++            if (!this._dragOrigParent && this._dragActor)
+                 this._dragActor.destroy();
+ 
+             return;
+         }
+ 
++        let [snapBackX, snapBackY, snapBackScale] = this._getRestoreLocation();
++
+         this._animationInProgress = true;
+         // No target, so snap back
+         Tweener.addTween(this._dragActor,
+@@ -537,7 +554,7 @@
+     },
+ 
+     _restoreDragActor: function(eventTime) {
+-        this._dragInProgress = false;
++        this._dragState = DragState.INIT;
+         [restoreX, restoreY, restoreScale] = this._getRestoreLocation();
+ 
+         // fade the actor back in at its original location
+@@ -574,7 +591,7 @@
+     },
+ 
+     _dragComplete: function() {
+-        if (!this._actorDestroyed)
++        if (!this._actorDestroyed && this._dragActor)
+             Shell.util_set_hidden_from_pick(this._dragActor, false);
+ 
+         this._ungrabEvents();
+@@ -585,7 +602,12 @@
+             this._updateHoverId = 0;
+         }
+ 
+-        this._dragActor = undefined;
++        if (this._dragActor) {
++            this._dragActor.disconnect(this._dragActorDestroyId);
++            this._dragActor = null;
++        }
++
++        this._dragState = DragState.INIT;
+         currentDraggable = null;
+     }
+ });
