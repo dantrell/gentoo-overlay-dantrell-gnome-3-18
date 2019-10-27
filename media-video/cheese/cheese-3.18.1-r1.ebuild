@@ -33,7 +33,7 @@ COMMON_DEPEND="
 	media-libs/gstreamer:1.0[introspection?]
 	media-libs/gst-plugins-base:1.0[introspection?,ogg,pango,theora,vorbis,X]
 
-	virtual/libgudev:=
+	dev-libs/libgudev:=
 	introspection? ( >=dev-libs/gobject-introspection-0.6.7:= )
 "
 RDEPEND="${COMMON_DEPEND}
