@@ -14,6 +14,8 @@ KEYWORDS="*"
 
 IUSE="test"
 
+RESTRICT="!test? ( test )"
+
 COMMON_DEPEND="
 	>=dev-libs/glib-2.38.0:2[dbus]
 	>=x11-libs/gtk+-3.13.0:3

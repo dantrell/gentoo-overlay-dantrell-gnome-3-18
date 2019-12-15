@@ -14,6 +14,8 @@ KEYWORDS="*"
 
 IUSE="test"
 
+RESTRICT="!test? ( test )"
+
 RDEPEND="
 	>=app-admin/packagekit-base-1.0.9
 	dev-db/sqlite:3
