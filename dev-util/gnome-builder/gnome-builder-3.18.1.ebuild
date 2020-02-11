@@ -7,7 +7,7 @@ VALA_USE_DEPEND="vapigen"
 
 inherit gnome2 python-single-r1 vala virtualx
 
-DESCRIPTION="Builder attempts to be an IDE for writing software for GNOME"
+DESCRIPTION="An IDE for writing GNOME-based software"
 HOMEPAGE="https://wiki.gnome.org/Apps/Builder"
 
 LICENSE="GPL-3+ GPL-2+ LGPL-3+ LGPL-2+ MIT CC-BY-SA-3.0 CC0-1.0"
@@ -23,7 +23,7 @@ RDEPEND="
 	>=dev-libs/glib-2.45.8:2[dbus]
 	dev-libs/libgit2[ssh,threads]
 	>=dev-libs/libgit2-glib-0.23.4[ssh]
-	>=dev-libs/libpeas-1.14.1[python,${PYTHON_USEDEP}]
+	>=dev-libs/libpeas-1.14.1[python,${PYTHON_SINGLE_USEDEP}]
 	>=dev-libs/libxml2-2.9
 	dev-util/uncrustify
 	sys-devel/clang
