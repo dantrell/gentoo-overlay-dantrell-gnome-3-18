@@ -1,11 +1,12 @@
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="6"
+VALA_MAX_API_VERSION="0.50"
 
 inherit gnome2
 
-DESCRIPTION="Nibbles clone for Gnome"
-HOMEPAGE="https://wiki.gnome.org/Apps/Nibbles"
+DESCRIPTION="Nibbles clone for GNOME"
+HOMEPAGE="https://wiki.gnome.org/Apps/Nibbles https://gitlab.gnome.org/GNOME/gnome-nibbles"
 
 LICENSE="GPL-3+ CC-BY-SA-3.0"
 SLOT="0"

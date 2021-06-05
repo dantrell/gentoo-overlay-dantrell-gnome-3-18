@@ -2,7 +2,7 @@
 
 EAPI="6"
 GNOME2_LA_PUNT="yes"
-PYTHON_COMPAT=( python{2_7,3_7,3_8,3_9} )
+PYTHON_COMPAT=( python{2_7,3_8,3_9,3_10} )
 
 inherit autotools gnome2 python-r1 virtualx
 
@@ -36,6 +36,12 @@ src_prepare() {
 	# From GNOME:
 	# 	https://gitlab.gnome.org/GNOME/pygobject/commit/3b1d130174951f7648beceac270daa8ac65939c7
 	eapply "${FILESDIR}"/${PN}-3.19.2-drop-std-c90-for-now.patch
+
+	# From GNOME:
+	# 	https://gitlab.gnome.org/GNOME/pygobject/commit/e4e241d2bdd470ade220d412f3b58fb40fdedc16
+	# 	https://gitlab.gnome.org/GNOME/pygobject/commit/bbe2e94bb66b5e263655083dd6ed6bb878e21b74
+	eapply "${FILESDIR}"/${PN}-3.28.3-tests-remove-usage-of-time-clock-no-longer-available-in-py3-8.patch
+	eapply "${FILESDIR}"/${PN}-3.20.1-dont-use-pytypeobject-tp-print-with-python-3.patch
 
 	eautoreconf
 	gnome2_src_prepare
