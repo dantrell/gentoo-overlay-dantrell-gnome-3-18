@@ -1,7 +1,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="6"
-VALA_MAX_API_VERSION="0.50"
+VALA_MAX_API_VERSION="0.48"
 
 inherit gnome2
 

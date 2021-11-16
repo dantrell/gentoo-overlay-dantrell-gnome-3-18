@@ -19,7 +19,7 @@ COMMON_DEPEND="
 	${PYTHON_DEPS}
 	app-misc/tracker[introspection(+)]
 	$(python_gen_cond_dep '
-		dev-python/pygobject:3[cairo,${PYTHON_MULTI_USEDEP}]
+		dev-python/pygobject:3[cairo,${PYTHON_USEDEP}]
 	')
 	>=dev-libs/glib-2.28:2
 	>=dev-libs/gobject-introspection-1.35.9:=
@@ -36,7 +36,7 @@ RDEPEND="${COMMON_DEPEND}
 	)
 	x11-libs/libnotify[introspection]
 	$(python_gen_cond_dep '
-		dev-python/dbus-python[${PYTHON_MULTI_USEDEP}]
+		dev-python/dbus-python[${PYTHON_USEDEP}]
 	')
 	media-libs/gstreamer:1.0[introspection]
 	media-libs/gst-plugins-base:1.0[introspection]
