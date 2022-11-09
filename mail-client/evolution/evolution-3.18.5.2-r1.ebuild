@@ -6,7 +6,7 @@ GNOME2_LA_PUNT="yes"
 inherit autotools gnome2 flag-o-matic readme.gentoo-r1 versionator
 
 DESCRIPTION="Integrated mail, addressbook and calendaring functionality"
-HOMEPAGE="https://wiki.gnome.org/Apps/Evolution"
+HOMEPAGE="https://wiki.gnome.org/Apps/Evolution https://gitlab.gnome.org/GNOME/evolution"
 SRC_URI="mirror://gnome/sources/${GNOME_ORG_MODULE}/${GNOME_ORG_PVP}/${GNOME_ORG_MODULE}-3.13.90.tar.${GNOME_TARBALL_SUFFIX}"
 
 # Note: explicitly "|| ( LGPL-2 LGPL-3 )", not "LGPL-2+".
@@ -25,7 +25,7 @@ PINENTRY_DEPEND="|| ( app-crypt/pinentry[gnome-keyring] app-crypt/pinentry[gtk] 
 # dconf explicitely needed for backup plugin
 # gnome-desktop support is optional with --enable-gnome-desktop
 COMMON_DEPEND="
-	>=app-crypt/gcr-3.4:=[gtk]
+	>=app-crypt/gcr-3.4:0=[gtk]
 	>=app-text/enchant-1.1.7:0=
 	>=dev-libs/glib-2.40:2[dbus]
 	>=dev-libs/libxml2-2.7.3:2
@@ -57,7 +57,7 @@ COMMON_DEPEND="
 		>=media-libs/libchamplain-0.12:0.12[gtk]
 		>=media-libs/clutter-1.0.0:1.0
 		>=media-libs/clutter-gtk-0.90:1.0
-		>=sci-geosciences/geocode-glib-3.10.0
+		>=sci-geosciences/geocode-glib-3.10.0:0
 		x11-libs/mx:1.0 )
 	ldap? ( >=net-nds/openldap-2:= )
 	spell? ( app-text/gtkspell:3 )

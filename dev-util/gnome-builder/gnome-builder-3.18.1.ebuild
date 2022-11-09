@@ -1,14 +1,14 @@
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="6"
-PYTHON_COMPAT=( python{3_8,3_9,3_10} )
+PYTHON_COMPAT=( python{3_8,3_9,3_10,3_11} )
 VALA_MIN_API_VERSION="0.30"
 VALA_USE_DEPEND="vapigen"
 
 inherit gnome2 python-single-r1 vala virtualx
 
 DESCRIPTION="An IDE for writing GNOME-based software"
-HOMEPAGE="https://wiki.gnome.org/Apps/Builder"
+HOMEPAGE="https://wiki.gnome.org/Apps/Builder https://gitlab.gnome.org/GNOME/gnome-builder"
 
 LICENSE="GPL-3+ GPL-2+ LGPL-3+ LGPL-2+ MIT CC-BY-SA-3.0 CC0-1.0"
 SLOT="0"

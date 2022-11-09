@@ -1,17 +1,15 @@
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="6"
+EAPI="7"
 
 inherit gnome.org
 
 DESCRIPTION="Notification daemon"
-HOMEPAGE="https://gitlab.gnome.org/GNOME/notification-daemon"
+HOMEPAGE="https://gitlab.gnome.org/Archive/notification-daemon"
 
 LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="*"
-
-IUSE=""
 
 RDEPEND="
 	>=dev-libs/glib-2.27:2
@@ -21,7 +19,8 @@ RDEPEND="
 	!x11-misc/notify-osd
 	!x11-misc/qtnotifydaemon
 "
-DEPEND="${RDEPEND}
+DEPEND="${RDEPEND}"
+BDEPEND="
 	dev-util/gdbus-codegen
 	>=sys-devel/gettext-0.19.4
 	virtual/pkgconfig

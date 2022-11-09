@@ -14,7 +14,7 @@ KEYWORDS="*"
 IUSE="debug ldap zeroconf"
 
 COMMON_DEPEND="
-	>=app-crypt/gcr-3.11.91:=
+	>=app-crypt/gcr-3.11.91:0=
 	>=dev-libs/glib-2.10:2
 	>=x11-libs/gtk+-3.4:3
 	>=app-crypt/libsecret-0.16

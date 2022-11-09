@@ -21,7 +21,7 @@ COMMON_DEPEND="
 	>=dev-libs/glib-2.39.3:2
 	>=dev-libs/libgee-0.16:0.8[introspection]
 	>=media-libs/libchamplain-0.12.9:0.12[gtk,introspection]
-	>=sci-geosciences/geocode-glib-3.15.2[introspection]
+	>=sci-geosciences/geocode-glib-3.15.2:0[introspection]
 	>=x11-libs/gtk+-3.15.9:3[introspection]
 "
 # Found by grepping imports.gi in ${S}
