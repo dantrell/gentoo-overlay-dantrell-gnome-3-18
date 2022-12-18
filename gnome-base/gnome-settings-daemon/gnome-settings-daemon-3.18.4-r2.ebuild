@@ -43,7 +43,6 @@ COMMON_DEPEND="
 	x11-libs/libXext
 	x11-libs/libXfixes
 	x11-libs/libXtst
-	x11-libs/libXxf86misc
 	x11-misc/xkeyboard-config
 
 	>=app-misc/geoclue-2.1.2:2.0
