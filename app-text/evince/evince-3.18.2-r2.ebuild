@@ -56,7 +56,7 @@ DEPEND="${COMMON_DEPEND}
 	app-text/docbook-xml-dtd:4.3
 	app-text/yelp-tools
 	dev-util/gdbus-codegen
-	>=dev-util/gtk-doc-am-1.13
+	>=dev-build/gtk-doc-am-1.13
 	>=dev-util/intltool-0.35
 	dev-util/itstool
 	sys-devel/gettext
@@ -67,11 +67,11 @@ DEPEND="${COMMON_DEPEND}
 
 PATCHES=(
 	# From GNOME:
-	# 	https://gitlab.gnome.org/GNOME/evince/commit/b18b3dc51a93e12172d22c6b8bb92d32b6e8ebb0
-	# 	https://gitlab.gnome.org/GNOME/evince/commit/335c0536c137a8bcc886ca33c1aba6abaf32b99c
-	# 	https://gitlab.gnome.org/GNOME/evince/commit/f932396d1c51646a1535eb28d7c8b1281e794a1a
-	# 	https://gitlab.gnome.org/GNOME/evince/commit/8bbcdee7aacd2a1c0e5015108978321a31c9ef66
-	# 	https://gitlab.gnome.org/GNOME/evince/commit/ef6c1d98e0702d6849d6bbbe4d08cfccb033d243
+	# 	https://gitlab.gnome.org/GNOME/evince/-/commit/b18b3dc51a93e12172d22c6b8bb92d32b6e8ebb0
+	# 	https://gitlab.gnome.org/GNOME/evince/-/commit/335c0536c137a8bcc886ca33c1aba6abaf32b99c
+	# 	https://gitlab.gnome.org/GNOME/evince/-/commit/f932396d1c51646a1535eb28d7c8b1281e794a1a
+	# 	https://gitlab.gnome.org/GNOME/evince/-/commit/8bbcdee7aacd2a1c0e5015108978321a31c9ef66
+	# 	https://gitlab.gnome.org/GNOME/evince/-/commit/ef6c1d98e0702d6849d6bbbe4d08cfccb033d243
 	"${FILESDIR}"/${PN}-3.20.2-ev-toolbar-fix-ev-toolbar-has-visible-popups-after-cb3d4b2.patch
 	"${FILESDIR}"/${PN}-3.20.2-comics-add-application-vnd-comicbookzip-support.patch
 	"${FILESDIR}"/${PN}-3.20.2-comics-fix-mime-type-comparisons.patch

@@ -1,7 +1,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="6"
-PYTHON_COMPAT=( python{3_9,3_10,3_11} )
+PYTHON_COMPAT=( python{3_10,3_11,3_12,3_13} )
 
 inherit autotools gnome2 python-r1
 
@@ -35,8 +35,8 @@ PATCHES=(
 	"${FILESDIR}"/${PN}-2.6.0-examples-python3.patch
 
 	# From GNOME:
-	# 	https://gitlab.gnome.org/GNOME/pyatspi2/commit/f87ffc4bc39264e3b9d5ed5747bd44c93bcae59d
-	# 	https://gitlab.gnome.org/GNOME/pyatspi2/commit/63c8a0d6cce954bedae34a7f6ebc5807fbef0c14
+	# 	https://gitlab.gnome.org/GNOME/pyatspi2/-/commit/f87ffc4bc39264e3b9d5ed5747bd44c93bcae59d
+	# 	https://gitlab.gnome.org/GNOME/pyatspi2/-/commit/63c8a0d6cce954bedae34a7f6ebc5807fbef0c14
 	"${FILESDIR}"/${PN}-2.24.0-rename-enum-module-and-enum-class-not-to-conflict-with-stdlib.patch
 	"${FILESDIR}"/${PN}-2.24.0-python-3-6-invalid-escape-sequence-deprecation-fix.patch
 )

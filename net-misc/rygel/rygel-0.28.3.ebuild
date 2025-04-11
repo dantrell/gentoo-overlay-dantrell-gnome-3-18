@@ -45,7 +45,7 @@ RDEPEND="
 	X? ( >=x11-libs/gtk+-3:3 )
 "
 DEPEND="${RDEPEND}
-	dev-util/gtk-doc-am
+	dev-build/gtk-doc-am
 	>=dev-util/intltool-0.40
 	sys-devel/gettext
 	virtual/pkgconfig

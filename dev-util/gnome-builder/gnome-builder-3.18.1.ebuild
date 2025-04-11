@@ -1,7 +1,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="6"
-PYTHON_COMPAT=( python{3_9,3_10,3_11} )
+PYTHON_COMPAT=( python{3_10,3_11,3_12,3_13} )
 VALA_MIN_API_VERSION="0.30"
 VALA_USE_DEPEND="vapigen"
 
@@ -26,7 +26,7 @@ RDEPEND="
 	>=dev-libs/libpeas-1.14.1[python,${PYTHON_SINGLE_USEDEP}]
 	>=dev-libs/libxml2-2.9
 	dev-util/uncrustify
-	sys-devel/clang
+	llvm-core/clang
 	>=x11-libs/gtk+-3.17.8:3[introspection?]
 	>=x11-libs/gtksourceview-3.17.7:3.0[introspection?]
 	introspection? ( >=dev-libs/gobject-introspection-1.42:= )
@@ -37,7 +37,7 @@ RDEPEND="
 "
 DEPEND="${RDEPEND}
 	dev-libs/appstream-glib
-	>=dev-util/gtk-doc-am-1.11
+	>=dev-build/gtk-doc-am-1.11
 	>=dev-util/intltool-0.50.1
 	>=sys-devel/gettext-0.18
 	virtual/pkgconfig

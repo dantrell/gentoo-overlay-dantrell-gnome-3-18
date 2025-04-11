@@ -25,7 +25,7 @@ RDEPEND="
 	introspection? ( >=dev-libs/gobject-introspection-0.6.3:= )
 "
 DEPEND="${RDEPEND}
-	>=dev-util/gtk-doc-am-1.13
+	>=dev-build/gtk-doc-am-1.13
 	>=sys-devel/gettext-0.18
 	virtual/pkgconfig
 	test? ( sys-apps/dbus )
@@ -36,7 +36,7 @@ DEPEND="${RDEPEND}
 
 PATCHES=(
 	# From GNOME:
-	# 	https://gitlab.gnome.org/GNOME/geocode-glib/commit/3ce317a218c255b8a8025f8f2a6010ce500dc0ee
+	# 	https://gitlab.gnome.org/GNOME/geocode-glib/-/commit/3ce317a218c255b8a8025f8f2a6010ce500dc0ee
 	"${FILESDIR}"/${PN}-3.20.1-use-uclibc-when-checking-for-glibc-features.patch
 )
 

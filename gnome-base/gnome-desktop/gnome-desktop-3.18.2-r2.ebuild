@@ -33,7 +33,7 @@ RDEPEND="${COMMON_DEPEND}
 DEPEND="${COMMON_DEPEND}
 	app-text/docbook-xml-dtd:4.1.2
 	dev-util/gdbus-codegen
-	>=dev-util/gtk-doc-am-1.14
+	>=dev-build/gtk-doc-am-1.14
 	>=dev-util/intltool-0.40.6
 	dev-util/itstool
 	sys-devel/gettext
@@ -47,8 +47,8 @@ DEPEND="${COMMON_DEPEND}
 
 PATCHES=(
 	# From GNOME:
-	# 	https://gitlab.gnome.org/GNOME/gnome-desktop/commit/f9b2c480e38de4dbdd763137709a523f206a8d1b
-	# 	https://gitlab.gnome.org/GNOME/gnome-desktop/commit/70d46d5cd8bac0de99fed21ee2247ec74b03991b
+	# 	https://gitlab.gnome.org/GNOME/gnome-desktop/-/commit/f9b2c480e38de4dbdd763137709a523f206a8d1b
+	# 	https://gitlab.gnome.org/GNOME/gnome-desktop/-/commit/70d46d5cd8bac0de99fed21ee2247ec74b03991b
 	"${FILESDIR}"/${PN}-3.19.1-thumbnail-ignore-errors-when-not-all-frames-are-loaded.patch
 	"${FILESDIR}"/${PN}-3.19.1-build-require-the-newest-gdk-pixbuf.patch
 )

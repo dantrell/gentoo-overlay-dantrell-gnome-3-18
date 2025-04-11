@@ -2,7 +2,7 @@
 
 EAPI="6"
 VALA_USE_DEPEND="vapigen"
-PYTHON_COMPAT=( python{3_9,3_10,3_11} )
+PYTHON_COMPAT=( python{3_10,3_11,3_12,3_13} )
 
 inherit flag-o-matic gnome2 python-any-r1 vala virtualx
 
@@ -35,7 +35,7 @@ DEPEND="${COMMON_DEPEND}
 	dev-libs/libxslt
 	dev-libs/vala-common
 	dev-util/gdbus-codegen
-	>=dev-util/gtk-doc-am-1.9
+	>=dev-build/gtk-doc-am-1.9
 	>=dev-util/intltool-0.35
 	sys-devel/gettext
 	virtual/pkgconfig

@@ -54,7 +54,7 @@ RDEPEND="
 		x11-libs/gdk-pixbuf:2 )
 "
 DEPEND="${RDEPEND}
-	>=dev-util/gtk-doc-am-1.20
+	>=dev-build/gtk-doc-am-1.20
 	>=sys-devel/gettext-0.17
 	virtual/pkgconfig
 	doc? (
@@ -68,12 +68,12 @@ DEPEND="${RDEPEND}
 src_prepare() {
 	if ! use wayland; then
 		# From GNOME:
-		# 	https://gitlab.gnome.org/GNOME/clutter/commit/be8602fbb491c30c1e2febb92553375b2f4ce584
+		# 	https://gitlab.gnome.org/GNOME/clutter/-/commit/be8602fbb491c30c1e2febb92553375b2f4ce584
 		eapply "${FILESDIR}"/${PN}-1.24.2-reorganize-backends.patch
 	fi
 
 	# From GNOME:
-	# 	https://gitlab.gnome.org/GNOME/mutter/commit/31779404f0e083fba11d1d263f278154e0580374
+	# 	https://gitlab.gnome.org/GNOME/mutter/-/commit/31779404f0e083fba11d1d263f278154e0580374
 	eapply "${FILESDIR}"/${PN}-1.26.2-clutter-avoid-unnecessary-relayouts-in-cluttertext.patch
 
 	# We only need conformance tests, the rest are useless for us
